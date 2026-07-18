@@ -71,7 +71,10 @@ abstract class ProductsRepository {
   Future<Either<Failure, void>> clearVariantImages(String variantId);
 
   // Reviews
-  Future<Either<Failure, bool>> checkCustomerPurchase(String productId, String profileId);
+  Future<Either<Failure, bool>> checkCustomerPurchase(
+    String productId,
+    String profileId,
+  );
   Future<Either<Failure, void>> addProductReview({
     required String productId,
     required String profileId,

@@ -52,10 +52,11 @@ class ProductBasicInfoSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           BlocBuilder<ProductFormCubit, ProductFormState>(
-            buildWhen: (p, c) => 
-                p.isLoadingCategories != c.isLoadingCategories || 
-                p.categories != c.categories || 
-                p.selectedCategoryId != c.selectedCategoryId,
+            buildWhen:
+                (p, c) =>
+                    p.isLoadingCategories != c.isLoadingCategories ||
+                    p.categories != c.categories ||
+                    p.selectedCategoryId != c.selectedCategoryId,
             builder: (context, state) {
               if (state.isLoadingCategories) {
                 return const Center(child: CircularProgressIndicator());

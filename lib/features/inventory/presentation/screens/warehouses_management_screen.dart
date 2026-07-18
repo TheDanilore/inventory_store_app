@@ -367,7 +367,6 @@ class _WarehousesManagementScreenState
                       ),
             ),
           ),
-
         ],
       ),
       bottomNavigationBar:

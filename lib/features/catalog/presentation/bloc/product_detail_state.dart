@@ -93,7 +93,8 @@ class ProductDetailState extends Equatable {
       isWishlisted: isWishlisted ?? this.isWishlisted,
       showVariantImage: showVariantImage ?? this.showVariantImage,
       errorMessage: clearMessages ? null : (errorMessage ?? this.errorMessage),
-      successMessage: clearMessages ? null : (successMessage ?? this.successMessage),
+      successMessage:
+          clearMessages ? null : (successMessage ?? this.successMessage),
       selectedQty: selectedQty ?? this.selectedQty,
       selectedImageIndex: selectedImageIndex ?? this.selectedImageIndex,
       selectedVariantId: selectedVariantId ?? this.selectedVariantId,
@@ -158,7 +159,7 @@ class ProductDetailState extends Equatable {
 
   int get effectiveStock {
     if (product?.stockControl != true) return 999;
-    
+
     if (variants.isNotEmpty && selectedVariant == null) {
       int total = 0;
       for (final row in warehouseStocks) {

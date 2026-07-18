@@ -136,17 +136,21 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
         String? finalImageUrl;
         final imagesList = prod?['product_images'] as List<dynamic>? ?? [];
         if (imagesList.isNotEmpty) {
-          final variantImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
-            (img) => img['variant_id'] == variantId,
-            orElse: () => <String, dynamic>{},
-          );
+          final variantImage = imagesList
+              .cast<Map<String, dynamic>>()
+              .firstWhere(
+                (img) => img['variant_id'] == variantId,
+                orElse: () => <String, dynamic>{},
+              );
           if (variantImage.isNotEmpty && variantImage['image_url'] != null) {
             finalImageUrl = variantImage['image_url'] as String;
           } else {
-            final mainImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
-              (img) => img['is_main'] == true,
-              orElse: () => imagesList.first as Map<String, dynamic>,
-            );
+            final mainImage = imagesList
+                .cast<Map<String, dynamic>>()
+                .firstWhere(
+                  (img) => img['is_main'] == true,
+                  orElse: () => imagesList.first as Map<String, dynamic>,
+                );
             finalImageUrl = mainImage['image_url'] as String?;
           }
         }

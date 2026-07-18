@@ -74,9 +74,10 @@ class _AttributesManagementScreenState
       title: 'Atributos de Variantes',
       showBackButton: true,
       body: BlocListener<AttributesCubit, AttributesState>(
-        listenWhen: (previous, current) =>
-            current.errorMessage != null &&
-            current.errorMessage != previous.errorMessage,
+        listenWhen:
+            (previous, current) =>
+                current.errorMessage != null &&
+                current.errorMessage != previous.errorMessage,
         listener: (context, state) {
           if (state.errorMessage != null) {
             AppSnackbar.show(

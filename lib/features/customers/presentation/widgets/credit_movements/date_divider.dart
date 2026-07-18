@@ -28,7 +28,9 @@ class DateDivider extends StatelessWidget {
 
     return Row(
       children: [
-        const Expanded(child: Divider(color: Color(0xFFF1F5F9))), // AppColors.surface approx
+        const Expanded(
+          child: Divider(color: Color(0xFFF1F5F9)),
+        ), // AppColors.surface approx
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           margin: const EdgeInsets.symmetric(horizontal: 8),

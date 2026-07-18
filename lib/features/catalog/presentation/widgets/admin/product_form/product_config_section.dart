@@ -11,9 +11,10 @@ class ProductConfigSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.read<ProductFormCubit>();
     return BlocBuilder<ProductFormCubit, ProductFormState>(
-      buildWhen: (p, c) => 
-          p.productType != c.productType || 
-          p.stockControl != c.stockControl,
+      buildWhen:
+          (p, c) =>
+              p.productType != c.productType ||
+              p.stockControl != c.stockControl,
       builder: (context, state) {
         final bool isService = state.productType == 'service';
 
@@ -95,7 +96,8 @@ class ProductConfigSection extends StatelessWidget {
                     ),
                   ),
                   value: isService ? false : state.stockControl,
-                  onChanged: isService ? null : (val) => cubit.setStockControl(val),
+                  onChanged:
+                      isService ? null : (val) => cubit.setStockControl(val),
                   activeThumbColor: AppColors.primary,
                   contentPadding: EdgeInsets.zero,
                 ),

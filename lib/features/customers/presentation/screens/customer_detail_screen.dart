@@ -90,14 +90,23 @@ class _CustomerDetailContent extends StatelessWidget {
           body: RefreshIndicator(
             color: Theme.of(context).colorScheme.primary,
             onRefresh: () async => _refreshData(context),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isTablet = constraints.maxWidth > 750;
-              final isLoyaltyEnabled =
-                  context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isTablet = constraints.maxWidth > 750;
+                final isLoyaltyEnabled =
+                    context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
 
-              if (isTablet) {
-                return _buildTabletLayout(
+                if (isTablet) {
+                  return _buildTabletLayout(
+                    context,
+                    state,
+                    isLoyaltyEnabled,
+                    isLoading,
+                    error,
+                    c,
+                  );
+                }
+                return _buildMobileLayout(
                   context,
                   state,
                   isLoyaltyEnabled,
@@ -105,17 +114,8 @@ class _CustomerDetailContent extends StatelessWidget {
                   error,
                   c,
                 );
-              }
-              return _buildMobileLayout(
-                context,
-                state,
-                isLoyaltyEnabled,
-                isLoading,
-                error,
-                c,
-              );
-            },
-          ),
+              },
+            ),
           ),
         );
       },

@@ -34,23 +34,24 @@ class CustomerCreditSection extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => RegisterPaymentModal(
-        onSaved: onPaymentRegistered,
-        account: CustomerCreditEntity(
-          id: creditId,
-          profileId: customer.id,
-          currentDebt: debt,
-          creditLimit: limit,
-          isActive: isActive,
-        ),
-        onSavePayment: (amount, method, notes) async {
-          await context.read<CustomerCreditsCubit>().registerPayment(
-            amount: amount,
-            paymentMethod: method,
-            notes: notes,
-          );
-        },
-      ),
+      builder:
+          (_) => RegisterPaymentModal(
+            onSaved: onPaymentRegistered,
+            account: CustomerCreditEntity(
+              id: creditId,
+              profileId: customer.id,
+              currentDebt: debt,
+              creditLimit: limit,
+              isActive: isActive,
+            ),
+            onSavePayment: (amount, method, notes) async {
+              await context.read<CustomerCreditsCubit>().registerPayment(
+                amount: amount,
+                paymentMethod: method,
+                notes: notes,
+              );
+            },
+          ),
     );
   }
 

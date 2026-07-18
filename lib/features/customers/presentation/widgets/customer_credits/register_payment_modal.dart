@@ -6,7 +6,8 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 class RegisterPaymentModal extends StatefulWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity account;
-  final Future<void> Function(double amount, String method, String? notes) onSavePayment;
+  final Future<void> Function(double amount, String method, String? notes)
+  onSavePayment;
 
   const RegisterPaymentModal({
     super.key,
@@ -60,7 +61,8 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
     if (amount > widget.account.currentDebt) {
       AppSnackbar.showMessenger(
         ScaffoldMessenger.of(context),
-        message: 'El monto no puede ser mayor a la deuda actual (S/ ${widget.account.currentDebt.toStringAsFixed(2)}).',
+        message:
+            'El monto no puede ser mayor a la deuda actual (S/ ${widget.account.currentDebt.toStringAsFixed(2)}).',
         type: SnackbarType.error,
       );
       return;
@@ -184,14 +186,15 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
                   child: DropdownButton<String>(
                     value: _selectedMethod,
                     isExpanded: true,
-                    items: _methods
-                        .map(
-                          (e) => DropdownMenuItem(
-                            value: e,
-                            child: Text(_getMethodLabel(e)),
-                          ),
-                        )
-                        .toList(),
+                    items:
+                        _methods
+                            .map(
+                              (e) => DropdownMenuItem(
+                                value: e,
+                                child: Text(_getMethodLabel(e)),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (val) {
                       if (val != null) setState(() => _selectedMethod = val);
                     },
@@ -243,16 +246,17 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text('Registrar Pago'),
+                    child:
+                        _isSaving
+                            ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                            : const Text('Registrar Pago'),
                   ),
                 ],
               ),

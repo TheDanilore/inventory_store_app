@@ -10,9 +10,10 @@ class ProductBatchSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.read<ProductFormCubit>();
     return BlocBuilder<ProductFormCubit, ProductFormState>(
-      buildWhen: (p, c) => 
-          p.productType != c.productType || 
-          p.batchManagementEnabled != c.batchManagementEnabled,
+      buildWhen:
+          (p, c) =>
+              p.productType != c.productType ||
+              p.batchManagementEnabled != c.batchManagementEnabled,
       builder: (context, state) {
         if (state.productType == 'service') {
           return const SizedBox.shrink();
@@ -45,7 +46,10 @@ class ProductBatchSection extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color:
                       state.batchManagementEnabled
@@ -58,7 +62,9 @@ class ProductBatchSection extends StatelessWidget {
                     Icon(
                       Icons.qr_code_2_rounded,
                       color:
-                          state.batchManagementEnabled ? Colors.teal : Colors.grey,
+                          state.batchManagementEnabled
+                              ? Colors.teal
+                              : Colors.grey,
                       size: 20,
                     ),
                     const SizedBox(width: 10),

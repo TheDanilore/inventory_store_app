@@ -4,11 +4,11 @@ import 'package:inventory_store_app/features/customers/domain/entities/customer_
 class CustomerCreditListState extends Equatable {
   final bool isLoading;
   final String errorMessage;
-  
+
   // Data
   final List<CustomerCreditEntity> accounts;
   final int totalAccounts;
-  
+
   // Stats
   final double totalDebt;
   final int activeAccounts;
@@ -36,7 +36,8 @@ class CustomerCreditListState extends Equatable {
     this.pageSize = 8,
   });
 
-  int get totalPages => totalAccounts == 0 ? 1 : (totalAccounts / pageSize).ceil();
+  int get totalPages =>
+      totalAccounts == 0 ? 1 : (totalAccounts / pageSize).ceil();
 
   CustomerCreditListState copyWith({
     bool? isLoading,
@@ -70,17 +71,17 @@ class CustomerCreditListState extends Equatable {
 
   @override
   List<Object?> get props => [
-        isLoading,
-        errorMessage,
-        accounts,
-        totalAccounts,
-        totalDebt,
-        activeAccounts,
-        suspendedAccounts,
-        maxedOutAccounts,
-        currentPage,
-        searchQuery,
-        withDebtOnly,
-        pageSize,
-      ];
+    isLoading,
+    errorMessage,
+    accounts,
+    totalAccounts,
+    totalDebt,
+    activeAccounts,
+    suspendedAccounts,
+    maxedOutAccounts,
+    currentPage,
+    searchQuery,
+    withDebtOnly,
+    pageSize,
+  ];
 }

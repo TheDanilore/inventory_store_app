@@ -206,18 +206,15 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   Widget _buildFloatingAction(BuildContext context) {
     return FloatingActionButton.extended(
       onPressed: () async {
-          final result = await context.push<bool>(
-            '/admin/inventory-entry-form',
-          );
-          if (result == true && context.mounted) {
-            context.read<InventoryEntriesCubit>().loadEntries(page: 0);
-          }
-          _checkDraft();
-        },
-        icon: Icon(_hasDraft ? Icons.edit_note_rounded : Icons.add_rounded),
-        label: Text(_hasDraft ? 'Continuar Borrador' : 'Nueva entrada'),
-        backgroundColor:
-            _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
+        final result = await context.push<bool>('/admin/inventory-entry-form');
+        if (result == true && context.mounted) {
+          context.read<InventoryEntriesCubit>().loadEntries(page: 0);
+        }
+        _checkDraft();
+      },
+      icon: Icon(_hasDraft ? Icons.edit_note_rounded : Icons.add_rounded),
+      label: Text(_hasDraft ? 'Continuar Borrador' : 'Nueva entrada'),
+      backgroundColor: _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
       foregroundColor: Colors.white,
       elevation: 4,
     );

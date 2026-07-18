@@ -16,11 +16,12 @@ class ProductBatchesCard extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final filteredBatches = state.selectedVariantId == null
-        ? state.batchesList
-        : state.batchesList
-            .where((row) => row['variant_id'] == state.selectedVariantId)
-            .toList();
+    final filteredBatches =
+        state.selectedVariantId == null
+            ? state.batchesList
+            : state.batchesList
+                .where((row) => row['variant_id'] == state.selectedVariantId)
+                .toList();
 
     return Container(
       decoration: AppColors.card(),

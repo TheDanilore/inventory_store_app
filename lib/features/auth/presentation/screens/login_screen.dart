@@ -108,7 +108,8 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthCubit, AuthState>(
-      listenWhen: (previous, current) => previous.viewState != current.viewState,
+      listenWhen:
+          (previous, current) => previous.viewState != current.viewState,
       listener: (context, state) {
         if (state.viewState == ViewState.error && state.errorMessage != null) {
           AppSnackbar.show(

@@ -190,259 +190,266 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
               body: Scaffold(
                 backgroundColor: Colors.transparent,
                 body:
-                  !_initialized || state.isInitializingData
-                      ? const _ProductFormSkeleton()
-                      : state.hasErrorLoading
-                      ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.wifi_off_rounded,
-                                size: 64,
-                                color: AppColors.error,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                state.errorMessage,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.black87,
+                    !_initialized || state.isInitializingData
+                        ? const _ProductFormSkeleton()
+                        : state.hasErrorLoading
+                        ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.wifi_off_rounded,
+                                  size: 64,
+                                  color: AppColors.error,
                                 ),
-                              ),
-                              const SizedBox(height: 24),
-                              AppPrimaryButton(
-                                label: 'Reintentar cargar datos',
-                                onPressed: _loadData,
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                      : Stack(
-                        children: [
-                          Form(
-                            key: _formKey,
-                            onChanged: cubit.markAsDirty,
-                            child: CustomScrollView(
-                              slivers: [
-                                SliverPadding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  sliver: SliverList(
-                                    delegate: SliverChildListDelegate([
-                                      const ProductImagesSection(),
-                                      const SizedBox(height: 16),
-                                      ProductBasicInfoSection(
-                                        nombreCtrl: _nombreCtrl,
-                                        descCtrl: _descCtrl,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      const ProductConfigSection(),
-                                      const SizedBox(height: 16),
-                                      const ProductDetailsSection(),
-                                      const SizedBox(height: 16),
-                                      ProductPricingSection(
-                                        formKey: _formKey,
-                                        costoCtrl: _costoCtrl,
-                                        precioCtrl: _precioCtrl,
-                                        precioMayorCtrl: _precioMayorCtrl,
-                                        cantidadMayorCtrl: _cantidadMayorCtrl,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      const ProductIngredientsSection(),
-                                      const SizedBox(height: 16),
-                                      const ProductBatchSection(),
-                                      const SizedBox(height: 16),
-                                      Row(
-                                        children: [
-                                          const Expanded(
-                                            child: Text(
-                                              'Variantes',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                          TextButton.icon(
-                                            onPressed: cubit.addVariantDraft,
-                                            icon: const Icon(
-                                              Icons.add_circle_outline,
-                                            ),
-                                            label: const Text('Agregar'),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      if (state.variantDrafts.isEmpty)
-                                        Container(
-                                          padding: const EdgeInsets.all(16),
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey.shade100,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            'Sin variantes aún. Agrega una si este producto cambia por color, talla, etc.',
-                                          ),
-                                        ),
-                                    ]),
+                                const SizedBox(height: 16),
+                                Text(
+                                  state.errorMessage,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.black87,
                                   ),
                                 ),
-                                if (state.variantDrafts.isNotEmpty)
-                                  SliverPadding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16.0,
-                                    ),
-                                    sliver: SliverList(
-                                      delegate: SliverChildBuilderDelegate(
-                                        (context, index) {
-                                          return VariantDraftCard(
-                                            index: index,
-                                            draft: state.variantDrafts[index],
-                                            onRemove:
-                                                () => cubit.removeVariantDraft(
-                                                  index,
-                                                ),
-                                            onDuplicate:
-                                                () =>
-                                                    cubit.duplicateVariantDraft(
-                                                      index,
-                                                    ),
-                                            onActiveChanged: (val) {
-                                              cubit.updateVariantDraft(
-                                                index,
-                                                state.variantDrafts[index]
-                                                    .copyWith(isActive: val),
-                                              );
-                                            },
-                                            onPickImage:
-                                                () => cubit.pickVariantImage(
-                                                  index,
-                                                ),
-                                            onUpdate:
-                                                (newDraft) =>
-                                                    cubit.updateVariantDraft(
-                                                      index,
-                                                      newDraft,
-                                                    ),
-                                          );
-                                        },
-                                        childCount: state.variantDrafts.length,
-                                      ),
-                                    ),
-                                  ),
-                                if (state.variantDrafts.isNotEmpty)
-                                  SliverPadding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16.0,
-                                    ),
-                                    sliver: SliverToBoxAdapter(
-                                      child: Column(
-                                        children: [
-                                          const SizedBox(height: 12),
-                                          SizedBox(
-                                            width: double.infinity,
-                                            child: OutlinedButton.icon(
-                                              onPressed: cubit.addVariantDraft,
-                                              icon: const Icon(
-                                                Icons.add_circle_outline,
-                                              ),
-                                              label: const Text(
-                                                'Agregar otra variante',
-                                              ),
-                                              style: OutlinedButton.styleFrom(
-                                                foregroundColor:
-                                                    AppColors.primary,
-                                                side: BorderSide(
-                                                  color: AppColors.primary
-                                                      .withValues(alpha: 0.3),
-                                                ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 14,
-                                                    ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                const SliverPadding(
-                                  padding: EdgeInsets.only(bottom: 100),
+                                const SizedBox(height: 24),
+                                AppPrimaryButton(
+                                  label: 'Reintentar cargar datos',
+                                  onPressed: _loadData,
                                 ),
                               ],
                             ),
                           ),
-                          // ── Barra inferior de guardado ─────────────────────
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            child: ClipRRect(
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(
-                                  sigmaX: 15.0,
-                                  sigmaY: 15.0,
-                                ),
-                                child: Container(
-                                  padding: const EdgeInsets.only(
-                                    left: 16,
-                                    right: 16,
-                                    top: 16,
-                                    bottom: 32,
+                        )
+                        : Stack(
+                          children: [
+                            Form(
+                              key: _formKey,
+                              onChanged: cubit.markAsDirty,
+                              child: CustomScrollView(
+                                slivers: [
+                                  SliverPadding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    sliver: SliverList(
+                                      delegate: SliverChildListDelegate([
+                                        const ProductImagesSection(),
+                                        const SizedBox(height: 16),
+                                        ProductBasicInfoSection(
+                                          nombreCtrl: _nombreCtrl,
+                                          descCtrl: _descCtrl,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        const ProductConfigSection(),
+                                        const SizedBox(height: 16),
+                                        const ProductDetailsSection(),
+                                        const SizedBox(height: 16),
+                                        ProductPricingSection(
+                                          formKey: _formKey,
+                                          costoCtrl: _costoCtrl,
+                                          precioCtrl: _precioCtrl,
+                                          precioMayorCtrl: _precioMayorCtrl,
+                                          cantidadMayorCtrl: _cantidadMayorCtrl,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        const ProductIngredientsSection(),
+                                        const SizedBox(height: 16),
+                                        const ProductBatchSection(),
+                                        const SizedBox(height: 16),
+                                        Row(
+                                          children: [
+                                            const Expanded(
+                                              child: Text(
+                                                'Variantes',
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ),
+                                            TextButton.icon(
+                                              onPressed: cubit.addVariantDraft,
+                                              icon: const Icon(
+                                                Icons.add_circle_outline,
+                                              ),
+                                              label: const Text('Agregar'),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        if (state.variantDrafts.isEmpty)
+                                          Container(
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade100,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: const Text(
+                                              'Sin variantes aún. Agrega una si este producto cambia por color, talla, etc.',
+                                            ),
+                                          ),
+                                      ]),
+                                    ),
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.75),
-                                    border: Border(
-                                      top: BorderSide(
-                                        color: Colors.grey.withValues(
-                                          alpha: 0.2,
+                                  if (state.variantDrafts.isNotEmpty)
+                                    SliverPadding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16.0,
+                                      ),
+                                      sliver: SliverList(
+                                        delegate: SliverChildBuilderDelegate(
+                                          (context, index) {
+                                            return VariantDraftCard(
+                                              index: index,
+                                              draft: state.variantDrafts[index],
+                                              onRemove:
+                                                  () =>
+                                                      cubit.removeVariantDraft(
+                                                        index,
+                                                      ),
+                                              onDuplicate:
+                                                  () => cubit
+                                                      .duplicateVariantDraft(
+                                                        index,
+                                                      ),
+                                              onActiveChanged: (val) {
+                                                cubit.updateVariantDraft(
+                                                  index,
+                                                  state.variantDrafts[index]
+                                                      .copyWith(isActive: val),
+                                                );
+                                              },
+                                              onPickImage:
+                                                  () => cubit.pickVariantImage(
+                                                    index,
+                                                  ),
+                                              onUpdate:
+                                                  (newDraft) =>
+                                                      cubit.updateVariantDraft(
+                                                        index,
+                                                        newDraft,
+                                                      ),
+                                            );
+                                          },
+                                          childCount:
+                                              state.variantDrafts.length,
                                         ),
                                       ),
                                     ),
+                                  if (state.variantDrafts.isNotEmpty)
+                                    SliverPadding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16.0,
+                                      ),
+                                      sliver: SliverToBoxAdapter(
+                                        child: Column(
+                                          children: [
+                                            const SizedBox(height: 12),
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: OutlinedButton.icon(
+                                                onPressed:
+                                                    cubit.addVariantDraft,
+                                                icon: const Icon(
+                                                  Icons.add_circle_outline,
+                                                ),
+                                                label: const Text(
+                                                  'Agregar otra variante',
+                                                ),
+                                                style: OutlinedButton.styleFrom(
+                                                  foregroundColor:
+                                                      AppColors.primary,
+                                                  side: BorderSide(
+                                                    color: AppColors.primary
+                                                        .withValues(alpha: 0.3),
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 14,
+                                                      ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  const SliverPadding(
+                                    padding: EdgeInsets.only(bottom: 100),
                                   ),
-                                  child: AppPrimaryButton(
-                                    label:
-                                        isEdit
-                                            ? 'Actualizar Producto'
-                                            : 'Guardar Producto',
-                                    onPressed: state.isSaving ? null : _guardar,
-                                    backgroundColor: AppColors.success,
-                                    foregroundColor: Colors.white,
-                                  ),
-                                ),
+                                ],
                               ),
                             ),
-                          ),
-                          if (state.isSaving)
-                            Positioned.fill(
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(
-                                  sigmaX: 5.0,
-                                  sigmaY: 5.0,
-                                ),
-                                child: Container(
-                                  color: Colors.white.withValues(alpha: 0.4),
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      color: AppColors.primary,
+                            // ── Barra inferior de guardado ─────────────────────
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              child: ClipRRect(
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(
+                                    sigmaX: 15.0,
+                                    sigmaY: 15.0,
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.only(
+                                      left: 16,
+                                      right: 16,
+                                      top: 16,
+                                      bottom: 32,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.75,
+                                      ),
+                                      border: Border(
+                                        top: BorderSide(
+                                          color: Colors.grey.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    child: AppPrimaryButton(
+                                      label:
+                                          isEdit
+                                              ? 'Actualizar Producto'
+                                              : 'Guardar Producto',
+                                      onPressed:
+                                          state.isSaving ? null : _guardar,
+                                      backgroundColor: AppColors.success,
+                                      foregroundColor: Colors.white,
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                        ],
-                      ),
+                            if (state.isSaving)
+                              Positioned.fill(
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(
+                                    sigmaX: 5.0,
+                                    sigmaY: 5.0,
+                                  ),
+                                  child: Container(
+                                    color: Colors.white.withValues(alpha: 0.4),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
               ),
             ),
           );

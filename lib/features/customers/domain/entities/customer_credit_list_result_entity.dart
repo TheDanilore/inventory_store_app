@@ -20,11 +20,11 @@ class CustomerCreditListResultEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        accounts,
-        totalCount,
-        totalDebt,
-        activeAccounts,
-        suspendedAccounts,
-        maxedOutAccounts,
-      ];
+    accounts,
+    totalCount,
+    totalDebt,
+    activeAccounts,
+    suspendedAccounts,
+    maxedOutAccounts,
+  ];
 }

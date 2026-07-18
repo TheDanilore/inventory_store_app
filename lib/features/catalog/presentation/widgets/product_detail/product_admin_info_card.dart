@@ -19,7 +19,8 @@ class ProductAdminInfoCard extends StatelessWidget {
             ? state.selectedVariant!.unitCost!
             : product.unitCost;
     final wPrice = state.baseWholesalePrice;
-    final int rPoint = state.selectedVariant?.reorderPoint ??
+    final int rPoint =
+        state.selectedVariant?.reorderPoint ??
         (product.productVariants.isNotEmpty
             ? product.productVariants.fold(0, (sum, v) => sum + v.reorderPoint)
             : 0);

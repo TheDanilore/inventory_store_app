@@ -77,11 +77,12 @@ class _CustomerCreditsScreenContentState
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => CreditAccountModal(
-        onSaved: () {
-          if (mounted) context.read<CustomerCreditListCubit>().loadData();
-        },
-      ),
+      builder:
+          (ctx) => CreditAccountModal(
+            onSaved: () {
+              if (mounted) context.read<CustomerCreditListCubit>().loadData();
+            },
+          ),
     );
   }
 
@@ -107,8 +108,10 @@ class _CustomerCreditsScreenContentState
             icon: const Icon(Icons.domain_add_rounded, color: Colors.white),
             label: const Text(
               'Nuevo Crédito',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           body: Column(
@@ -116,8 +119,9 @@ class _CustomerCreditsScreenContentState
               Expanded(
                 child: RefreshIndicator(
                   color: AppColors.primary,
-                  onRefresh: () async =>
-                      context.read<CustomerCreditListCubit>().loadData(),
+                  onRefresh:
+                      () async =>
+                          context.read<CustomerCreditListCubit>().loadData(),
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
@@ -196,14 +200,17 @@ class _CustomerCreditsScreenContentState
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           const Text('Con Deuda'),
-                                          if (state.accounts.any((a) =>
-                                              a.currentDebt > 0 && a.isActive)) ...[
+                                          if (state.accounts.any(
+                                            (a) =>
+                                                a.currentDebt > 0 && a.isActive,
+                                          )) ...[
                                             const SizedBox(width: 6),
                                             Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 1,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 1,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: AppColors.error,
                                                 borderRadius:
@@ -259,22 +266,21 @@ class _CustomerCreditsScreenContentState
                         SliverPadding(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                           sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final account = state.accounts[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: CreditAccountCard(
-                                    account: account,
-                                    onTap: () => _showAccountOptions(
-                                      context,
-                                      account,
-                                    ),
-                                  ),
-                                );
-                              },
-                              childCount: state.accounts.length,
-                            ),
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              final account = state.accounts[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: CreditAccountCard(
+                                  account: account,
+                                  onTap:
+                                      () =>
+                                          _showAccountOptions(context, account),
+                                ),
+                              );
+                            }, childCount: state.accounts.length),
                           ),
                         ),
                     ],
@@ -299,8 +305,10 @@ class _CustomerCreditsScreenContentState
                     child: AdminPageBlocks(
                       currentPage: state.currentPage,
                       totalPages: state.totalPages,
-                      onPageChanged: (page) =>
-                          context.read<CustomerCreditListCubit>().setPage(page),
+                      onPageChanged:
+                          (page) => context
+                              .read<CustomerCreditListCubit>()
+                              .setPage(page),
                     ),
                   ),
                 ),
@@ -351,14 +359,16 @@ class _CustomerCreditsScreenContentState
                 ),
                 onTap: () {
                   Navigator.pop(ctx);
-                  context.push(
-                    '/admin/customer-credit-movements/${account.id}?name=${Uri.encodeComponent(account.customerName ?? '')}&debt=${account.currentDebt}&limit=${account.creditLimit}',
-                    extra: {
-                      'customerName': account.customerName,
-                      'currentDebt': account.currentDebt,
-                      'creditLimit': account.creditLimit,
-                    },
-                  ).then((_) => cubit.loadData());
+                  context
+                      .push(
+                        '/admin/customer-credit-movements/${account.id}?name=${Uri.encodeComponent(account.customerName ?? '')}&debt=${account.currentDebt}&limit=${account.creditLimit}',
+                        extra: {
+                          'customerName': account.customerName,
+                          'currentDebt': account.currentDebt,
+                          'creditLimit': account.creditLimit,
+                        },
+                      )
+                      .then((_) => cubit.loadData());
                 },
               ),
               ListTile(
@@ -378,25 +388,28 @@ class _CustomerCreditsScreenContentState
                       context: context,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
-                      builder: (ctx2) => RegisterPaymentModal(
-                        account: account,
-                        onSaved: () => cubit.loadData(),
-                        onSavePayment: (amount, method, notes) async {
-                          await cubit.registerPayment(
-                            creditId: account.id,
-                            amount: amount,
-                            paymentMethod: method,
-                            notes: notes,
-                          );
-                        },
-                      ),
+                      builder:
+                          (ctx2) => RegisterPaymentModal(
+                            account: account,
+                            onSaved: () => cubit.loadData(),
+                            onSavePayment: (amount, method, notes) async {
+                              await cubit.registerPayment(
+                                creditId: account.id,
+                                amount: amount,
+                                paymentMethod: method,
+                                notes: notes,
+                              );
+                            },
+                          ),
                     );
                   }
                 },
               ),
               ListTile(
-                leading:
-                    const Icon(Icons.edit_rounded, color: AppColors.primary),
+                leading: const Icon(
+                  Icons.edit_rounded,
+                  color: AppColors.primary,
+                ),
                 title: const Text(
                   'Editar Límite de Crédito',
                   style: TextStyle(fontWeight: FontWeight.w700),
@@ -407,10 +420,11 @@ class _CustomerCreditsScreenContentState
                     context: context,
                     isScrollControlled: true,
                     backgroundColor: Colors.transparent,
-                    builder: (ctx3) => CreditAccountModal(
-                      accountToEdit: account,
-                      onSaved: () => cubit.loadData(),
-                    ),
+                    builder:
+                        (ctx3) => CreditAccountModal(
+                          accountToEdit: account,
+                          onSaved: () => cubit.loadData(),
+                        ),
                   );
                 },
               ),
@@ -419,8 +433,7 @@ class _CustomerCreditsScreenContentState
                   account.isActive
                       ? Icons.block_rounded
                       : Icons.check_circle_rounded,
-                  color:
-                      account.isActive ? AppColors.error : AppColors.success,
+                  color: account.isActive ? AppColors.error : AppColors.success,
                 ),
                 title: Text(
                   account.isActive ? 'Suspender Línea' : 'Reactivar Línea',
@@ -429,13 +442,17 @@ class _CustomerCreditsScreenContentState
                 onTap: () async {
                   Navigator.pop(ctx);
                   try {
-                    await cubit.toggleAccountStatus(account.id, account.isActive);
+                    await cubit.toggleAccountStatus(
+                      account.id,
+                      account.isActive,
+                    );
                     if (!context.mounted) return;
                     AppSnackbar.show(
                       context,
-                      message: account.isActive
-                          ? 'Línea de crédito suspendida'
-                          : 'Línea de crédito reactivada',
+                      message:
+                          account.isActive
+                              ? 'Línea de crédito suspendida'
+                              : 'Línea de crédito reactivada',
                       type: SnackbarType.success,
                     );
                   } catch (e) {

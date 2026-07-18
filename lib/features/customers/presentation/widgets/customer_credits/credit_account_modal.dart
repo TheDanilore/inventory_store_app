@@ -36,13 +36,11 @@ class _CreditAccountModalView extends StatefulWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity? accountToEdit;
 
-  const _CreditAccountModalView({
-    required this.onSaved,
-    this.accountToEdit,
-  });
+  const _CreditAccountModalView({required this.onSaved, this.accountToEdit});
 
   @override
-  State<_CreditAccountModalView> createState() => _CreditAccountModalViewState();
+  State<_CreditAccountModalView> createState() =>
+      _CreditAccountModalViewState();
 }
 
 class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
@@ -138,18 +136,16 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
         // Asumiendo que agregaste updateCreditLimit al cubit
         // await cubit.updateCreditLimit(widget.accountToEdit!.id, limitVal);
       } else {
-        await cubit.createCreditAccount(
-          _selectedProfileId!,
-          limitVal,
-        );
+        await cubit.createCreditAccount(_selectedProfileId!, limitVal);
       }
 
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: _isEditing
-              ? 'Límite de crédito actualizado.'
-              : 'Línea de crédito aprobada.',
+          message:
+              _isEditing
+                  ? 'Límite de crédito actualizado.'
+                  : 'Línea de crédito aprobada.',
           type: SnackbarType.success,
         );
         widget.onSaved();
@@ -194,7 +190,9 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
             ),
           ),
           Text(
-            _isEditing ? 'Editar límite de crédito' : 'Aprobar línea de crédito',
+            _isEditing
+                ? 'Editar límite de crédito'
+                : 'Aprobar línea de crédito',
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -216,9 +214,10 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
               color: _isEditing ? Colors.grey.shade100 : AppColors.background,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _selectedProfileId != null
-                    ? AppColors.primary
-                    : AppColors.border,
+                color:
+                    _selectedProfileId != null
+                        ? AppColors.primary
+                        : AppColors.border,
               ),
             ),
             child: TextField(
@@ -226,7 +225,8 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
               onChanged: _onSearchChanged,
               enabled: !_isEditing,
               style: TextStyle(
-                color: _isEditing ? Colors.grey.shade600 : AppColors.textPrimary,
+                color:
+                    _isEditing ? Colors.grey.shade600 : AppColors.textPrimary,
               ),
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre, DNI o teléfono...',
@@ -234,9 +234,10 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
                   _selectedProfileId != null
                       ? Icons.check_circle_rounded
                       : Icons.search_rounded,
-                  color: _selectedProfileId != null
-                      ? AppColors.primary
-                      : AppColors.textMuted,
+                  color:
+                      _selectedProfileId != null
+                          ? AppColors.primary
+                          : AppColors.textMuted,
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 14),
@@ -292,7 +293,8 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                           subtitle: Text('Doc: ${client.documentNumber}'),
-                          onTap: () => _selectClient(client.id, client.fullName),
+                          onTap:
+                              () => _selectClient(client.id, client.fullName),
                         );
                       },
                     ),
@@ -372,25 +374,26 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: _isSaving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
+            child:
+                _isSaving
+                    ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                    : Text(
+                      _isEditing
+                          ? 'Actualizar límite'
+                          : 'Crear cuenta de crédito',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  )
-                : Text(
-                    _isEditing
-                        ? 'Actualizar límite'
-                        : 'Crear cuenta de crédito',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
           ),
         ],
       ),

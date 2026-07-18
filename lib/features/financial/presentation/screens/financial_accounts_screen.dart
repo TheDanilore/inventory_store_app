@@ -59,15 +59,15 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
       body: Column(
         children: [
           Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth >= 720) {
-                return _buildTabletLayout();
-              }
-              return _buildMobileLayout();
-            },
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth >= 720) {
+                  return _buildTabletLayout();
+                }
+                return _buildMobileLayout();
+              },
+            ),
           ),
-        ),
         ],
       ),
     );

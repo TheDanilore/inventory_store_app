@@ -192,7 +192,7 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
                                 ),
                       ),
                     );
-                  }
+                  },
                 ),
               ],
             ),

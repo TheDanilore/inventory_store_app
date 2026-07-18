@@ -15,7 +15,6 @@ import 'package:inventory_store_app/features/inventory/presentation/screens/inve
 import 'package:inventory_store_app/features/inventory/presentation/screens/kardex_screen.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/warehouses_management_screen.dart';
 
-
 class InventoryRoutes {
   static List<RouteBase> get adminRoutes => [
     GoRoute(

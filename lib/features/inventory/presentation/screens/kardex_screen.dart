@@ -451,7 +451,6 @@ class _KardexScreenState extends State<KardexScreen> {
                       ),
                     ),
                   ),
-
                 ],
               ),
               bottomNavigationBar:
@@ -474,10 +473,9 @@ class _KardexScreenState extends State<KardexScreen> {
                             currentPage: currentState.currentPage,
                             totalPages: currentState.totalPages,
                             onPageChanged:
-                                (page) =>
-                                    context.read<KardexCubit>().changePage(
-                                      page,
-                                    ),
+                                (page) => context
+                                    .read<KardexCubit>()
+                                    .changePage(page),
                           ),
                         ),
                       )

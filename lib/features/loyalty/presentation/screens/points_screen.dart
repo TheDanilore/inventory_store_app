@@ -11,6 +11,7 @@ import 'package:inventory_store_app/features/loyalty/presentation/widgets/points
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/points/points_mini_game_card.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/points/points_movements_section.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 
 class PointsScreen extends StatefulWidget {
   const PointsScreen({super.key});
@@ -72,165 +73,175 @@ class _PointsScreenState extends State<PointsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: PointsDS.bg,
-      body: BlocBuilder<PointsCubit, PointsState>(
-        builder: (context, state) {
-          final config = context.watch<AppConfigCubit>();
+    return CustomerLayout(
+      title: 'Mis Monedas',
+      showBackButton: true,
+      showBottomNav: false,
+      showCartIcon: true,
+      showWalletChip: false,
+      body: ColoredBox(
+        color: PointsDS.bg,
+        child: BlocBuilder<PointsCubit, PointsState>(
+          builder: (context, state) {
+            final config = context.watch<AppConfigCubit>();
 
-          if (!config.loyaltyGlobalEnabled || !config.loyaltyCustomerVisible) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.stars_rounded, size: 64, color: Colors.grey),
-                    SizedBox(height: 16),
-                    Text(
-                      'Sistema No Disponible',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'El sistema de recompensas no está activo en este momento.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          if (state.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
-          }
-
-          if (state.errorMessage != null && state.currentBalance == 0) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.error_outline_rounded,
-                      size: 48,
-                      color: AppColors.error,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      state.errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.textPrimary),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: _loadData,
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Reintentar'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          return RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: _loadData,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Stack(
+            if (!config.loyaltyGlobalEnabled ||
+                !config.loyaltyCustomerVisible) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        height: 120,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              AppColors.primary.withValues(alpha: 0.15),
-                              PointsDS.bg,
-                            ],
-                          ),
+                      Icon(Icons.stars_rounded, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'Sistema No Disponible',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
                         ),
                       ),
-                      Column(
-                        children: [
-                          const SizedBox(height: 20),
-                          Builder(
-                            builder: (context) {
-                              final pointsToSolesRatio = config.getDouble(
-                                'points_to_soles_ratio',
-                                0.01,
-                              );
-                              final hundredCoinsValue =
-                                  (100 * pointsToSolesRatio).toStringAsFixed(2);
-                              return PointsBalanceHeroCard(
-                                balanceKey: _balanceKey,
-                                currentBalance: state.currentBalance,
-                                hundredCoinsValue: hundredCoinsValue,
-                                currentStreak: state.currentStreak,
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                          Builder(
-                            builder: (context) {
-                              final pointsToSolesRatio = config.getDouble(
-                                'points_to_soles_ratio',
-                                0.01,
-                              );
-                              final hundredCoinsValue =
-                                  (100 * pointsToSolesRatio).toStringAsFixed(2);
-                              return PointsDailyCheckinCard(
-                                claimButtonKey: _claimButtonKey,
-                                currentStreak: state.currentStreak,
-                                hasTodayCheckin: state.hasTodayCheckin,
-                                nextCheckinReward: state.nextCheckinReward,
-                                isClaimingCheckin: state.isClaimingCheckin,
-                                hundredCoinsValue: hundredCoinsValue,
-                                claimMessage:
-                                    'Reclama tu bono diario de puntos',
-                                streakPreviewLabel:
-                                    'Días seguidos: ${state.currentStreak}',
-                                onClaim: () => _handleClaim(state),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 24),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20),
-                            child: PointsMiniGameCard(),
-                          ),
-                          const SizedBox(height: 24),
-                          const PointsGameActionsSection(),
-                          const SizedBox(height: 24),
-                          const PointsMovementsSection(),
-                          const SizedBox(height: 40),
-                        ],
+                      SizedBox(height: 8),
+                      Text(
+                        'El sistema de recompensas no está activo en este momento.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.textSecondary),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-          );
-        },
+              );
+            }
+
+            if (state.isLoading) {
+              return const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              );
+            }
+
+            if (state.errorMessage != null && state.currentBalance == 0) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        size: 48,
+                        color: AppColors.error,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        state.errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: _loadData,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Reintentar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: _loadData,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Stack(
+                      children: [
+                        Container(
+                          height: 120,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                AppColors.primary.withValues(alpha: 0.15),
+                                PointsDS.bg,
+                              ],
+                            ),
+                          ),
+                        ),
+                        Column(
+                          children: [
+                            const SizedBox(height: 20),
+                            Builder(
+                              builder: (context) {
+                                final pointsToSolesRatio = config.getDouble(
+                                  'points_to_soles_ratio',
+                                  0.01,
+                                );
+                                final hundredCoinsValue = (100 *
+                                        pointsToSolesRatio)
+                                    .toStringAsFixed(2);
+                                return PointsBalanceHeroCard(
+                                  balanceKey: _balanceKey,
+                                  currentBalance: state.currentBalance,
+                                  hundredCoinsValue: hundredCoinsValue,
+                                  currentStreak: state.currentStreak,
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 20),
+                            Builder(
+                              builder: (context) {
+                                final pointsToSolesRatio = config.getDouble(
+                                  'points_to_soles_ratio',
+                                  0.01,
+                                );
+                                final hundredCoinsValue = (100 *
+                                        pointsToSolesRatio)
+                                    .toStringAsFixed(2);
+                                return PointsDailyCheckinCard(
+                                  claimButtonKey: _claimButtonKey,
+                                  currentStreak: state.currentStreak,
+                                  hasTodayCheckin: state.hasTodayCheckin,
+                                  nextCheckinReward: state.nextCheckinReward,
+                                  isClaimingCheckin: state.isClaimingCheckin,
+                                  hundredCoinsValue: hundredCoinsValue,
+                                  claimMessage:
+                                      'Reclama tu bono diario de puntos',
+                                  streakPreviewLabel:
+                                      'Días seguidos: ${state.currentStreak}',
+                                  onClaim: () => _handleClaim(state),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 24),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 20),
+                              child: PointsMiniGameCard(),
+                            ),
+                            const SizedBox(height: 24),
+                            const PointsGameActionsSection(),
+                            const SizedBox(height: 24),
+                            const PointsMovementsSection(),
+                            const SizedBox(height: 40),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

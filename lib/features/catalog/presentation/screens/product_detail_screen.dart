@@ -68,9 +68,10 @@ class ProductDetailScreen extends StatelessWidget {
                 initialVariantId: initialVariantId,
               ),
       child: BlocListener<ProductDetailCubit, ProductDetailState>(
-        listenWhen: (previous, current) =>
-            previous.errorMessage != current.errorMessage ||
-            previous.successMessage != current.successMessage,
+        listenWhen:
+            (previous, current) =>
+                previous.errorMessage != current.errorMessage ||
+                previous.successMessage != current.successMessage,
         listener: (context, state) {
           if (state.errorMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -436,10 +437,12 @@ class _ProductDetailScreenContentState
       _showReviewDialog(isAdmin: true);
       return;
     }
-    
+
     final canReview = await cubit.canReview();
     if (!canReview) {
-      _showSnack('Debes iniciar sesión y haber comprado este producto para opinar.');
+      _showSnack(
+        'Debes iniciar sesión y haber comprado este producto para opinar.',
+      );
       return;
     }
 
@@ -448,16 +451,10 @@ class _ProductDetailScreenContentState
     final currentUser = authCubit.state.currentUser;
     final defaultName = currentUser?.fullName ?? 'Usuario';
 
-    _showReviewDialog(
-      isAdmin: false,
-      defaultName: defaultName,
-    );
+    _showReviewDialog(isAdmin: false, defaultName: defaultName);
   }
 
-  void _showReviewDialog({
-    required bool isAdmin,
-    String? defaultName,
-  }) {
+  void _showReviewDialog({required bool isAdmin, String? defaultName}) {
     int selectedRating = 5;
     final commentCtrl = TextEditingController();
     final nameCtrl = TextEditingController(text: defaultName ?? '');
@@ -603,14 +600,14 @@ class _ProductDetailScreenContentState
                                             return;
                                           }
                                           setS(() => isSubmitting = true);
-                                          
+
                                           await cubit.addReview(
                                             userName: name,
                                             rating: selectedRating,
                                             comment: commentCtrl.text.trim(),
                                             isAdminSubmission: isAdmin,
                                           );
-                                          
+
                                           if (!context.mounted) return;
                                           Navigator.pop(dialogCtx);
                                         },
@@ -875,7 +872,8 @@ class _ProductDetailScreenContentState
                         );
                       } else {
                         final cartCubit = context.read<CartCubit>();
-                        final productDetailCubit = context.read<ProductDetailCubit>();
+                        final productDetailCubit =
+                            context.read<ProductDetailCubit>();
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
@@ -884,14 +882,18 @@ class _ProductDetailScreenContentState
                               (sheetContext) => Padding(
                                 padding: EdgeInsets.only(
                                   bottom:
-                                      MediaQuery.of(sheetContext).viewInsets.bottom,
+                                      MediaQuery.of(
+                                        sheetContext,
+                                      ).viewInsets.bottom,
                                 ),
                                 child: CartVariantPickerSheet(
                                   cartCubit: cartCubit,
                                   product: widget.product,
                                   onVariantSelected: (variant) {
                                     productDetailCubit.setVariant(variant.id);
-                                    productDetailCubit.selectVariantImage(variant.id);
+                                    productDetailCubit.selectVariantImage(
+                                      variant.id,
+                                    );
                                   },
                                 ),
                               ),

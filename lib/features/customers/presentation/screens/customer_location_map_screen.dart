@@ -570,10 +570,12 @@ class _DebouncedSearchSuggestions extends StatefulWidget {
   });
 
   @override
-  State<_DebouncedSearchSuggestions> createState() => _DebouncedSearchSuggestionsState();
+  State<_DebouncedSearchSuggestions> createState() =>
+      _DebouncedSearchSuggestionsState();
 }
 
-class _DebouncedSearchSuggestionsState extends State<_DebouncedSearchSuggestions> {
+class _DebouncedSearchSuggestionsState
+    extends State<_DebouncedSearchSuggestions> {
   Timer? _debounce;
   Future<List<PlaceResult>>? _searchFuture;
   String _lastQuery = '';
@@ -599,7 +601,7 @@ class _DebouncedSearchSuggestionsState extends State<_DebouncedSearchSuggestions
       });
       return;
     }
-    
+
     if (query == _lastQuery && _searchFuture != null) return;
     _lastQuery = query;
 
@@ -607,7 +609,10 @@ class _DebouncedSearchSuggestionsState extends State<_DebouncedSearchSuggestions
     _debounce = Timer(const Duration(milliseconds: 500), () {
       if (mounted) {
         setState(() {
-          _searchFuture = widget.service.searchPlaces(query, locationBias: widget.currentCenter);
+          _searchFuture = widget.service.searchPlaces(
+            query,
+            locationBias: widget.currentCenter,
+          );
         });
       }
     });
@@ -626,7 +631,9 @@ class _DebouncedSearchSuggestionsState extends State<_DebouncedSearchSuggestions
     }
 
     if (_searchFuture == null) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.teal));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.teal),
+      );
     }
 
     return FutureBuilder<List<PlaceResult>>(

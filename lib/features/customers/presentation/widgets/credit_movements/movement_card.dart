@@ -24,7 +24,7 @@ class _MovementCardState extends State<MovementCard> {
   void _openOrder() async {
     final orderId = widget.movement.orderId;
     if (orderId == null) return;
-    
+
     setState(() => _isLoadingOrder = true);
     final result = await sl<OrdersRepository>().getOrderById(orderId);
     if (!mounted) return;
@@ -34,7 +34,8 @@ class _MovementCardState extends State<MovementCard> {
       (failure) {
         AppSnackbar.show(
           context,
-          message: 'No se pudo cargar el pedido. Es posible que haya sido eliminado.',
+          message:
+              'No se pudo cargar el pedido. Es posible que haya sido eliminado.',
           type: SnackbarType.error,
         );
       },
@@ -44,12 +45,13 @@ class _MovementCardState extends State<MovementCard> {
           isScrollControlled: true,
           useRootNavigator: true,
           backgroundColor: Colors.transparent,
-          builder: (ctx) => BlocProvider(
-            create: (_) => sl<OrderDetailCubit>()..fetchData(order.id),
-            child: OrderDetailSheet(order: order),
-          ),
+          builder:
+              (ctx) => BlocProvider(
+                create: (_) => sl<OrderDetailCubit>()..fetchData(order.id),
+                child: OrderDetailSheet(order: order),
+              ),
         );
-      }
+      },
     );
   }
 
@@ -59,14 +61,16 @@ class _MovementCardState extends State<MovementCard> {
     final isCharge = movement.movementType == 'CHARGE';
     final color = isCharge ? Colors.orange.shade700 : Colors.green.shade700;
     final bgColor = isCharge ? Colors.orange.shade50 : Colors.green.shade50;
-    final icon = isCharge ? Icons.shopping_cart_rounded : Icons.payments_rounded;
+    final icon =
+        isCharge ? Icons.shopping_cart_rounded : Icons.payments_rounded;
     final sign = isCharge ? '+' : '-';
     final textMuted = const Color(0xFF64748B);
 
     // Formato AM/PM
-    final timeStr = movement.createdAt != null
-        ? DateFormat.jm().format(movement.createdAt!.toLocal())
-        : '--:--';
+    final timeStr =
+        movement.createdAt != null
+            ? DateFormat.jm().format(movement.createdAt!.toLocal())
+            : '--:--';
 
     return Card(
       elevation: 0,
@@ -123,10 +127,7 @@ class _MovementCardState extends State<MovementCard> {
                       if (isCharge && movement.orderTotalAmount != null)
                         Text(
                           'Venta: S/ ${movement.orderTotalAmount!.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: textMuted,
-                          ),
+                          style: TextStyle(fontSize: 13, color: textMuted),
                         ),
 
                       if (movement.orderNumber != null)
@@ -158,9 +159,10 @@ class _MovementCardState extends State<MovementCard> {
                           expanded: true,
                           textMuted: textMuted,
                         ),
-                        crossFadeState: _expanded
-                            ? CrossFadeState.showSecond
-                            : CrossFadeState.showFirst,
+                        crossFadeState:
+                            _expanded
+                                ? CrossFadeState.showSecond
+                                : CrossFadeState.showFirst,
                         duration: const Duration(milliseconds: 250),
                       ),
 
@@ -177,10 +179,7 @@ class _MovementCardState extends State<MovementCard> {
                           Expanded(
                             child: Text(
                               movement.createdByName ?? 'Desconocido',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: textMuted,
-                              ),
+                              style: TextStyle(fontSize: 12, color: textMuted),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -194,22 +193,26 @@ class _MovementCardState extends State<MovementCard> {
                           padding: const EdgeInsets.only(top: 12),
                           child: OutlinedButton.icon(
                             onPressed: _isLoadingOrder ? null : _openOrder,
-                            icon: _isLoadingOrder
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
+                            icon:
+                                _isLoadingOrder
+                                    ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                    : const Icon(
+                                      Icons.receipt_long_outlined,
+                                      size: 16,
                                     ),
-                                  )
-                                : const Icon(
-                                    Icons.receipt_long_outlined,
-                                    size: 16,
-                                  ),
-                            label: Text(_isLoadingOrder ? 'Cargando...' : 'Ver pedido'),
+                            label: Text(
+                              _isLoadingOrder ? 'Cargando...' : 'Ver pedido',
+                            ),
                             style: OutlinedButton.styleFrom(
                               visualDensity: VisualDensity.compact,
-                              foregroundColor: Theme.of(context).colorScheme.primary,
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ),
@@ -249,7 +252,11 @@ class _MovementCardState extends State<MovementCard> {
     );
   }
 
-  Widget _buildNotes(String? notes, {required bool expanded, required Color textMuted}) {
+  Widget _buildNotes(
+    String? notes, {
+    required bool expanded,
+    required Color textMuted,
+  }) {
     if (notes == null || notes.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 6),

@@ -71,7 +71,7 @@ class _CategoriesManagementScreenState
   void _showCategoryForm([CategoryEntity? category]) {
     final cubit = context.read<CategoriesCubit>();
     final isTablet = MediaQuery.of(context).size.width >= 600;
-    
+
     if (isTablet) {
       showDialog(
         context: context,
@@ -95,10 +95,11 @@ class _CategoriesManagementScreenState
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (context) => BlocProvider.value(
-          value: cubit,
-          child: CategoryFormSheet(category: category),
-        ),
+        builder:
+            (context) => BlocProvider.value(
+              value: cubit,
+              child: CategoryFormSheet(category: category),
+            ),
       );
     }
   }

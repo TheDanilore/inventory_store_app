@@ -20,10 +20,7 @@ import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 class ShiftsTab extends StatefulWidget {
   final bool showOpenShiftButton;
 
-  const ShiftsTab({
-    super.key,
-    this.showOpenShiftButton = true,
-  });
+  const ShiftsTab({super.key, this.showOpenShiftButton = true});
 
   @override
   State<ShiftsTab> createState() => _ShiftsTabState();
@@ -303,54 +300,58 @@ class _ShiftsTabState extends State<ShiftsTab> {
                 right: 16,
                 child: FloatingActionButton.extended(
                   heroTag: 'fab_shifts',
-                onPressed:
-                    isLoading
-                        ? null
-                        : () async {
-                          // Solo vibrar si no es web para evitar MissingPluginException
-                          if (!kIsWeb) {
-                            Vibration.vibrate(duration: 50, amplitude: 128);
-                          }
-                          // Obtener cuentas de caja, temporalmente sin usar estado, o esperar que el cubit las provea.
-                          // Wait, CashShiftsState doesn't expose cajaAccounts. Let's fetch them on demand or from cubit.
-                          final availableAccounts =
-                              await cubit.getAvailableAccounts();
-                          if (!context.mounted) return;
-                          if (availableAccounts.isEmpty) {
-                            AppSnackbar.show(
+                  onPressed:
+                      isLoading
+                          ? null
+                          : () async {
+                            // Solo vibrar si no es web para evitar MissingPluginException
+                            if (!kIsWeb) {
+                              Vibration.vibrate(duration: 50, amplitude: 128);
+                            }
+                            // Obtener cuentas de caja, temporalmente sin usar estado, o esperar que el cubit las provea.
+                            // Wait, CashShiftsState doesn't expose cajaAccounts. Let's fetch them on demand or from cubit.
+                            final availableAccounts =
+                                await cubit.getAvailableAccounts();
+                            if (!context.mounted) return;
+                            if (availableAccounts.isEmpty) {
+                              AppSnackbar.show(
+                                context,
+                                message:
+                                    'Todas las cajas tienen turnos abiertos',
+                                type: SnackbarType.warning,
+                              );
+                              return;
+                            }
+                            OpenShiftSheet.show(
                               context,
-                              message: 'Todas las cajas tienen turnos abiertos',
-                              type: SnackbarType.warning,
+                              accounts: availableAccounts,
                             );
-                            return;
-                          }
-                          OpenShiftSheet.show(
-                            context,
-                            accounts: availableAccounts,
-                          );
-                        },
-                backgroundColor: AppColors.success,
-                icon: const Icon(Icons.lock_open_rounded, color: Colors.white),
-                label: ValueListenableBuilder<bool>(
-                  valueListenable: _isFabExtended,
-                  builder: (context, isExtended, _) {
-                    return AnimatedSize(
-                      duration: const Duration(milliseconds: 200),
-                      child:
-                          isExtended
-                              ? const Text(
-                                'Abrir turno',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              )
-                              : const SizedBox.shrink(),
-                    );
-                  },
+                          },
+                  backgroundColor: AppColors.success,
+                  icon: const Icon(
+                    Icons.lock_open_rounded,
+                    color: Colors.white,
+                  ),
+                  label: ValueListenableBuilder<bool>(
+                    valueListenable: _isFabExtended,
+                    builder: (context, isExtended, _) {
+                      return AnimatedSize(
+                        duration: const Duration(milliseconds: 200),
+                        child:
+                            isExtended
+                                ? const Text(
+                                  'Abrir turno',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                )
+                                : const SizedBox.shrink(),
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
           ],
         );
       },

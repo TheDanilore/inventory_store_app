@@ -70,6 +70,4 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
       }
     }
   }
-
-
 }

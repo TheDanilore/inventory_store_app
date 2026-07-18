@@ -27,13 +27,14 @@ class CustomerCreditMovementsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<CustomerCreditMovementsCubit>()
-        ..init(
-          creditId: creditId,
-          customerName: customerName,
-          currentDebt: currentDebt,
-          creditLimit: creditLimit,
-        ),
+      create:
+          (_) =>
+              sl<CustomerCreditMovementsCubit>()..init(
+                creditId: creditId,
+                customerName: customerName,
+                currentDebt: currentDebt,
+                creditLimit: creditLimit,
+              ),
       child: const _CustomerCreditMovementsScreenContent(),
     );
   }
@@ -44,11 +45,15 @@ class _CustomerCreditMovementsScreenContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<CustomerCreditMovementsCubit, CustomerCreditMovementsState>(
-      listenWhen: (previous, current) =>
-          previous.isExporting != current.isExporting ||
-          previous.exportSuccess != current.exportSuccess ||
-          previous.error != current.error,
+    return BlocConsumer<
+      CustomerCreditMovementsCubit,
+      CustomerCreditMovementsState
+    >(
+      listenWhen:
+          (previous, current) =>
+              previous.isExporting != current.isExporting ||
+              previous.exportSuccess != current.exportSuccess ||
+              previous.error != current.error,
       listener: (context, state) {
         if (state.exportSuccess && !state.isExporting) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -62,9 +67,9 @@ class _CustomerCreditMovementsScreenContent extends StatelessWidget {
             ),
           );
         } else if (state.isExporting) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Generando PDF...')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Generando PDF...')));
         }
       },
       builder: (context, state) {
@@ -80,51 +85,48 @@ class _CustomerCreditMovementsScreenContent extends StatelessWidget {
               context.read<CustomerCreditMovementsCubit>().exportToPdf();
             }
           },
-          body: state.isLoading && state.movements.isEmpty
-              ? const _MovementsShimmer()
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isTablet = constraints.maxWidth >= 700;
+          body:
+              state.isLoading && state.movements.isEmpty
+                  ? const _MovementsShimmer()
+                  : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isTablet = constraints.maxWidth >= 700;
 
-                    if (isTablet) {
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Panel Izquierdo: Resumen Fijo
-                          SizedBox(
-                            width: 350,
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: MovementsSummaryHeader(
-                                customerName: state.customerName,
-                                currentDebt: state.currentDebt,
-                                creditLimit: state.creditLimit,
-                                debtPercent: state.debtPercent,
-                                totalCharged: state.totalCharged,
-                                totalPaid: state.totalPaid,
+                      if (isTablet) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Panel Izquierdo: Resumen Fijo
+                            SizedBox(
+                              width: 350,
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: MovementsSummaryHeader(
+                                  customerName: state.customerName,
+                                  currentDebt: state.currentDebt,
+                                  creditLimit: state.creditLimit,
+                                  debtPercent: state.debtPercent,
+                                  totalCharged: state.totalCharged,
+                                  totalPaid: state.totalPaid,
+                                ),
                               ),
                             ),
-                          ),
-                          // Panel Derecho: Lista de Movimientos Scrollable
-                          Expanded(
-                            child: _buildMainContent(
-                              context,
-                              state,
-                              isTablet: true,
+                            // Panel Derecho: Lista de Movimientos Scrollable
+                            Expanded(
+                              child: _buildMainContent(
+                                context,
+                                state,
+                                isTablet: true,
+                              ),
                             ),
-                          ),
-                        ],
-                      );
-                    }
+                          ],
+                        );
+                      }
 
-                    // Mobile: Todo en un Scroll
-                    return _buildMainContent(
-                      context,
-                      state,
-                      isTablet: false,
-                    );
-                  },
-                ),
+                      // Mobile: Todo en un Scroll
+                      return _buildMainContent(context, state, isTablet: false);
+                    },
+                  ),
         );
       },
     );
@@ -244,7 +246,8 @@ class _CustomerCreditMovementsScreenContent extends StatelessWidget {
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate((context, index) {
                         final movement = state.movements[index];
-                        final showDateLabel = index == 0 ||
+                        final showDateLabel =
+                            index == 0 ||
                             !_sameDay(
                               movement.createdAt,
                               state.movements[index - 1].createdAt,
@@ -279,14 +282,14 @@ class _CustomerCreditMovementsScreenContent extends StatelessWidget {
                     ),
                   ),
 
-                  // Loading footer for pagination / refresh
-                  if (state.isLoading && state.movements.isNotEmpty)
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Center(child: CircularProgressIndicator()),
-                      ),
+                // Loading footer for pagination / refresh
+                if (state.isLoading && state.movements.isNotEmpty)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(child: CircularProgressIndicator()),
                     ),
+                  ),
               ],
             ),
           ),

@@ -768,7 +768,8 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
             width: 250,
             child: AppPrimaryButton(
               label: isSaving ? 'Guardando...' : 'Guardar Cambios',
-              onPressed: isSaving ? null : () => _saveSection(_selectedIndex, keys),
+              onPressed:
+                  isSaving ? null : () => _saveSection(_selectedIndex, keys),
             ),
           ),
         ),

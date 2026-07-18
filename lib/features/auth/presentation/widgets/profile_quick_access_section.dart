@@ -5,10 +5,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 class ProfileQuickAccessSection extends StatelessWidget {
   final bool isLoyaltyEnabled;
 
-  const ProfileQuickAccessSection({
-    super.key,
-    this.isLoyaltyEnabled = false,
-  });
+  const ProfileQuickAccessSection({super.key, this.isLoyaltyEnabled = false});
 
   @override
   Widget build(BuildContext context) {

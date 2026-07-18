@@ -26,17 +26,19 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
     final newQuery = query ?? state.searchQuery;
     final newWithDebtOnly = withDebtOnly ?? state.withDebtOnly;
 
-    emit(state.copyWith(
-      isLoading: true,
-      errorMessage: '',
-      currentPage: newPage,
-      searchQuery: newQuery,
-      withDebtOnly: newWithDebtOnly,
-    ));
+    emit(
+      state.copyWith(
+        isLoading: true,
+        errorMessage: '',
+        currentPage: newPage,
+        searchQuery: newQuery,
+        withDebtOnly: newWithDebtOnly,
+      ),
+    );
 
     try {
       final offset = (newPage - 1) * state.pageSize;
-      
+
       final result = await _getCreditAccountsUseCase(
         limit: state.pageSize,
         offset: offset,
@@ -44,26 +46,27 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
         showOnlyWithDebt: newWithDebtOnly,
       );
 
-      emit(state.copyWith(
-        isLoading: false,
-        accounts: result.accounts,
-        totalAccounts: result.totalCount,
-        totalDebt: result.totalDebt,
-        activeAccounts: result.activeAccounts,
-        suspendedAccounts: result.suspendedAccounts,
-        maxedOutAccounts: result.maxedOutAccounts,
-      ));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          accounts: result.accounts,
+          totalAccounts: result.totalCount,
+          totalDebt: result.totalDebt,
+          activeAccounts: result.activeAccounts,
+          suspendedAccounts: result.suspendedAccounts,
+          maxedOutAccounts: result.maxedOutAccounts,
+        ),
+      );
     } catch (e) {
       String errorMessage = 'Error al cargar los créditos.';
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
         errorMessage = 'Sin conexión a internet.';
       }
-      
-      emit(state.copyWith(
-        isLoading: false,
-        errorMessage: errorMessage,
-      ));
+
+      emit(state.copyWith(isLoading: false, errorMessage: errorMessage));
     }
   }
 
@@ -92,7 +95,9 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
       await loadData();
     } catch (e) {
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
         throw Exception('Sin conexión a internet.');
       }
       throw Exception('Error al cambiar el estado del crédito.');

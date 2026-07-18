@@ -39,7 +39,8 @@ class CustomerCreditMovementsState extends Equatable {
   });
 
   int get totalPages => (totalCount / pageSize).ceil();
-  double get debtPercent => creditLimit > 0 ? (currentDebt / creditLimit).clamp(0.0, 1.0) : 0.0;
+  double get debtPercent =>
+      creditLimit > 0 ? (currentDebt / creditLimit).clamp(0.0, 1.0) : 0.0;
 
   CustomerCreditMovementsState copyWith({
     String? creditId,
@@ -73,26 +74,27 @@ class CustomerCreditMovementsState extends Equatable {
       totalPaid: totalPaid ?? this.totalPaid,
       dateFilter: dateFilter ?? this.dateFilter,
       error: error,
-      exportSuccess: exportSuccess ?? false, // Reset by default unless explicitly true
+      exportSuccess:
+          exportSuccess ?? false, // Reset by default unless explicitly true
     );
   }
 
   @override
   List<Object?> get props => [
-        creditId,
-        customerName,
-        currentDebt,
-        creditLimit,
-        isLoading,
-        isExporting,
-        movements,
-        totalCount,
-        currentPage,
-        pageSize,
-        totalCharged,
-        totalPaid,
-        dateFilter,
-        error,
-        exportSuccess,
-      ];
+    creditId,
+    customerName,
+    currentDebt,
+    creditLimit,
+    isLoading,
+    isExporting,
+    movements,
+    totalCount,
+    currentPage,
+    pageSize,
+    totalCharged,
+    totalPaid,
+    dateFilter,
+    error,
+    exportSuccess,
+  ];
 }

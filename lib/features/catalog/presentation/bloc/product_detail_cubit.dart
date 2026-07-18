@@ -345,32 +345,39 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     required bool isAdminSubmission,
   }) async {
     if (product == null) return;
-    
+
     emit(state.copyWith(viewState: ViewState.loading));
     try {
       if (isAdminSubmission) {
         if (userName.trim().isEmpty) {
-          emit(state.copyWith(
-            viewState: ViewState.error,
-            errorMessage: 'Ingresa el nombre del cliente.',
-          ));
+          emit(
+            state.copyWith(
+              viewState: ViewState.error,
+              errorMessage: 'Ingresa el nombre del cliente.',
+            ),
+          );
           return;
         }
-        await _unwrap(_addReview.call(
-          productId: product!.id,
-          profileId: _profileId ?? '',
-          userName: userName.trim(),
-          rating: rating,
-          comment: comment?.trim().isNotEmpty == true ? comment!.trim() : null,
-        ));
+        await _unwrap(
+          _addReview.call(
+            productId: product!.id,
+            profileId: _profileId ?? '',
+            userName: userName.trim(),
+            rating: rating,
+            comment:
+                comment?.trim().isNotEmpty == true ? comment!.trim() : null,
+          ),
+        );
       } else {
         final pid = _profileId ?? await _unwrap(_getProfileId.call());
         _profileId = pid;
         if (pid == null) {
-          emit(state.copyWith(
-            viewState: ViewState.error,
-            errorMessage: 'Inicia sesión para opinar.',
-          ));
+          emit(
+            state.copyWith(
+              viewState: ViewState.error,
+              errorMessage: 'Inicia sesión para opinar.',
+            ),
+          );
           return;
         }
 
@@ -378,35 +385,45 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
           _checkPurchase.call(productId: product!.id, profileId: pid),
         );
         if (!hasPurchased) {
-          emit(state.copyWith(
-            viewState: ViewState.error,
-            errorMessage: 'Debes haber comprado este producto para opinar.',
-          ));
+          emit(
+            state.copyWith(
+              viewState: ViewState.error,
+              errorMessage: 'Debes haber comprado este producto para opinar.',
+            ),
+          );
           return;
         }
 
-        await _unwrap(_addReview.call(
-          productId: product!.id,
-          profileId: pid,
-          userName: userName,
-          rating: rating,
-          comment: comment?.trim().isNotEmpty == true ? comment!.trim() : null,
-        ));
+        await _unwrap(
+          _addReview.call(
+            productId: product!.id,
+            profileId: pid,
+            userName: userName,
+            rating: rating,
+            comment:
+                comment?.trim().isNotEmpty == true ? comment!.trim() : null,
+          ),
+        );
       }
 
-      emit(state.copyWith(
-        viewState: ViewState.success,
-        successMessage: 'Reseña enviada, ¡gracias!',
-      ));
-      
+      emit(
+        state.copyWith(
+          viewState: ViewState.success,
+          successMessage: 'Reseña enviada, ¡gracias!',
+        ),
+      );
+
       await loadData();
     } catch (e) {
-      emit(state.copyWith(
-        viewState: ViewState.error,
-        errorMessage: 'Error al enviar reseña: $e',
-      ));
+      emit(
+        state.copyWith(
+          viewState: ViewState.error,
+          errorMessage: 'Error al enviar reseña: $e',
+        ),
+      );
     }
   }
+
   Future<bool> canReview() async {
     if (isAdmin) return true;
     try {
@@ -423,17 +440,18 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
   bool validateCartAddition(int qty) {
     final stock = state.effectiveStock;
     if (stock <= 0) {
-      emit(state.copyWith(
-        viewState: ViewState.error,
-        errorMessage: 'Sin stock.',
-      ));
+      emit(
+        state.copyWith(viewState: ViewState.error, errorMessage: 'Sin stock.'),
+      );
       return false;
     }
     if (qty > stock) {
-      emit(state.copyWith(
-        viewState: ViewState.error,
-        errorMessage: 'Cantidad mayor al stock.',
-      ));
+      emit(
+        state.copyWith(
+          viewState: ViewState.error,
+          errorMessage: 'Cantidad mayor al stock.',
+        ),
+      );
       return false;
     }
     return true;

@@ -157,9 +157,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         appConfigState.businessInfo?.loyaltyGlobalEnabled ?? false;
     final isLoyaltyCustomer =
         appConfigState.businessInfo?.loyaltyCustomerVisible ?? false;
-    final isLoyaltyEnabled = widget.openedFromAdmin
-        ? isLoyaltyGlobal
-        : (isLoyaltyGlobal && isLoyaltyCustomer);
+    final isLoyaltyEnabled =
+        widget.openedFromAdmin
+            ? isLoyaltyGlobal
+            : (isLoyaltyGlobal && isLoyaltyCustomer);
 
     // En CustomerLayout usualmente está el WalletCubit.
     // En AdminLayout (openedFromAdmin = true) puede que no esté disponible.
@@ -216,7 +217,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
                     SliverPadding(
-                      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                      ),
                       sliver: SliverList(
                         delegate: SliverChildListDelegate([
                           ProfileHeaderSection(
@@ -252,65 +255,93 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 400),
-                              child: _isEditing
-                                  ? Column(
-                                      key: const ValueKey('editMode'),
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                                      children: [
-                                        _sectionLabelInline(context, 'Editar Datos Personales'),
-                                        Stack(
-                                          children: [
-                                            ProfileEditFormSection(
-                                              nameCtrl: _fullNameCtrl,
-                                              phoneCtrl: _phoneCtrl,
-                                              docNumCtrl: _docNumCtrl,
-                                              docType: _docType,
-                                              onDocTypeChanged: (val) =>
-                                                  setState(() => _docType = val),
-                                              onSave: _saveProfile,
-                                            ),
-                                            if (isLoading)
-                                              Positioned.fill(
-                                                child: ClipRRect(
-                                                  borderRadius: BorderRadius.circular(24),
-                                                  child: BackdropFilter(
-                                                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                                                    child: Container(
-                                                      color: Colors.white.withValues(alpha: 0.3),
-                                                      child: const Center(
-                                                        child: CircularProgressIndicator(),
+                              child:
+                                  _isEditing
+                                      ? Column(
+                                        key: const ValueKey('editMode'),
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          _sectionLabelInline(
+                                            context,
+                                            'Editar Datos Personales',
+                                          ),
+                                          Stack(
+                                            children: [
+                                              ProfileEditFormSection(
+                                                nameCtrl: _fullNameCtrl,
+                                                phoneCtrl: _phoneCtrl,
+                                                docNumCtrl: _docNumCtrl,
+                                                docType: _docType,
+                                                onDocTypeChanged:
+                                                    (val) => setState(
+                                                      () => _docType = val,
+                                                    ),
+                                                onSave: _saveProfile,
+                                              ),
+                                              if (isLoading)
+                                                Positioned.fill(
+                                                  child: ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          24,
+                                                        ),
+                                                    child: BackdropFilter(
+                                                      filter: ImageFilter.blur(
+                                                        sigmaX: 8,
+                                                        sigmaY: 8,
+                                                      ),
+                                                      child: Container(
+                                                        color: Colors.white
+                                                            .withValues(
+                                                              alpha: 0.3,
+                                                            ),
+                                                        child: const Center(
+                                                          child:
+                                                              CircularProgressIndicator(),
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
                                                 ),
-                                              ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 14),
-                                        _sectionLabelInline(context, 'Seguridad'),
-                                        PasswordChangeCard(
-                                          newPasswordCtrl: _newPasswordCtrl,
-                                          confirmPasswordCtrl: _confirmPasswordCtrl,
-                                          isUpdating: isLoading,
-                                          onSave: _changePassword,
-                                        ),
-                                      ],
-                                    )
-                                  : Column(
-                                      key: const ValueKey('readMode'),
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                                      children: [
-                                        _sectionLabelInline(context, 'Información de cuenta'),
-                                        ProfileReadOnlyInfoSection(
-                                          email: user.email.isEmpty ? 'Sin correo' : user.email,
-                                          userRole: user.role,
-                                          fullName: user.fullName,
-                                          phone: user.phone,
-                                          docType: user.documentType,
-                                          docNum: user.documentNumber,
-                                        ),
-                                      ],
-                                    ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 14),
+                                          _sectionLabelInline(
+                                            context,
+                                            'Seguridad',
+                                          ),
+                                          PasswordChangeCard(
+                                            newPasswordCtrl: _newPasswordCtrl,
+                                            confirmPasswordCtrl:
+                                                _confirmPasswordCtrl,
+                                            isUpdating: isLoading,
+                                            onSave: _changePassword,
+                                          ),
+                                        ],
+                                      )
+                                      : Column(
+                                        key: const ValueKey('readMode'),
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          _sectionLabelInline(
+                                            context,
+                                            'Información de cuenta',
+                                          ),
+                                          ProfileReadOnlyInfoSection(
+                                            email:
+                                                user.email.isEmpty
+                                                    ? 'Sin correo'
+                                                    : user.email,
+                                            userRole: user.role,
+                                            fullName: user.fullName,
+                                            phone: user.phone,
+                                            docType: user.documentType,
+                                            docNum: user.documentNumber,
+                                          ),
+                                        ],
+                                      ),
                             ),
                           ),
                           const SizedBox(height: 20),

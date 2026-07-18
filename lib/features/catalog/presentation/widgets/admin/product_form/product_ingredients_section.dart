@@ -71,194 +71,252 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
     final cubit = context.read<ProductFormCubit>();
 
     return BlocBuilder<ProductFormCubit, ProductFormState>(
-      buildWhen: (p, c) => 
-          p.ingredientsEnabled != c.ingredientsEnabled || 
-          p.ingredientRows != c.ingredientRows,
+      buildWhen:
+          (p, c) =>
+              p.ingredientsEnabled != c.ingredientsEnabled ||
+              p.ingredientRows != c.ingredientRows,
       builder: (context, state) {
         _syncControllers(state.ingredientRows);
 
         return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Ingredientes Activos / Componentes',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color:
-                  state.ingredientsEnabled
-                      ? AppColors.primary.withValues(alpha: 0.06)
-                      : Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color:
-                    state.ingredientsEnabled
-                        ? AppColors.primary.withValues(alpha: 0.25)
-                        : Colors.grey.shade200,
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.science_rounded,
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Ingredientes Activos / Componentes',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
                   color:
                       state.ingredientsEnabled
-                          ? AppColors.primary
-                          : Colors.grey,
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Gestión de componentes activos',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color:
-                              state.ingredientsEnabled
-                                  ? AppColors.primary
-                                  : Colors.grey.shade600,
-                        ),
-                      ),
-                      Text(
-                        'Permite buscar este producto por componente químico',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                    ],
+                          ? AppColors.primary.withValues(alpha: 0.06)
+                          : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color:
+                        state.ingredientsEnabled
+                            ? AppColors.primary.withValues(alpha: 0.25)
+                            : Colors.grey.shade200,
                   ),
                 ),
-                Switch.adaptive(
-                  value: state.ingredientsEnabled,
-                  onChanged: cubit.setIngredientsEnabled,
-                  activeThumbColor: AppColors.primary,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.science_rounded,
+                      color:
+                          state.ingredientsEnabled
+                              ? AppColors.primary
+                              : Colors.grey,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Gestión de componentes activos',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  state.ingredientsEnabled
+                                      ? AppColors.primary
+                                      : Colors.grey.shade600,
+                            ),
+                          ),
+                          Text(
+                            'Permite buscar este producto por componente químico',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: state.ingredientsEnabled,
+                      onChanged: cubit.setIngredientsEnabled,
+                      activeThumbColor: AppColors.primary,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            alignment: Alignment.topCenter,
-            child:
-                state.ingredientsEnabled
-                    ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 14),
-                        if (state.ingredientRows.isEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 14,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Text(
-                              'Sin componentes. Agrega uno con el botón.',
-                              style: TextStyle(
-                                color: Colors.grey.shade500,
-                                fontSize: 13,
-                              ),
-                            ),
-                          )
-                        else
-                          ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: state.ingredientRows.length,
-                            separatorBuilder:
-                                (_, _) => const SizedBox(height: 10),
-                            itemBuilder: (context, idx) {
-                              final row = state.ingredientRows[idx];
-                              final nameCtrl = _nameControllers[row.id]!;
-                              final concentrationCtrl =
-                                  _concentrationControllers[row.id]!;
-                              final unitCtrl = _unitControllers[row.id]!;
-
-                              return Container(
-                                padding: const EdgeInsets.all(12),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                alignment: Alignment.topCenter,
+                child:
+                    state.ingredientsEnabled
+                        ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 14),
+                            if (state.ingredientRows.isEmpty)
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 14,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: Colors.grey.shade50,
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
                                     color: Colors.grey.shade200,
                                   ),
                                 ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: GestureDetector(
-                                            onTap: () async {
-                                              final result = await showDialog<
-                                                Map<String, dynamic>
-                                              >(
-                                                context: context,
-                                                builder:
-                                                    (_) =>
-                                                        const IngredientSearchDialog(),
-                                              );
+                                child: Text(
+                                  'Sin componentes. Agrega uno con el botón.',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              )
+                            else
+                              ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: state.ingredientRows.length,
+                                separatorBuilder:
+                                    (_, _) => const SizedBox(height: 10),
+                                itemBuilder: (context, idx) {
+                                  final row = state.ingredientRows[idx];
+                                  final nameCtrl = _nameControllers[row.id]!;
+                                  final concentrationCtrl =
+                                      _concentrationControllers[row.id]!;
+                                  final unitCtrl = _unitControllers[row.id]!;
 
-                                              if (result != null) {
-                                                nameCtrl.text =
-                                                    result['name'] as String;
-                                                cubit.updateIngredientRow(
-                                                  idx,
-                                                  row.copyWith(
-                                                    ingredientId:
-                                                        result['id'] as String,
-                                                    name:
+                                  return Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: Colors.grey.shade200,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: GestureDetector(
+                                                onTap: () async {
+                                                  final result = await showDialog<
+                                                    Map<String, dynamic>
+                                                  >(
+                                                    context: context,
+                                                    builder:
+                                                        (_) =>
+                                                            const IngredientSearchDialog(),
+                                                  );
+
+                                                  if (result != null) {
+                                                    nameCtrl.text =
                                                         result['name']
-                                                            as String,
+                                                            as String;
+                                                    cubit.updateIngredientRow(
+                                                      idx,
+                                                      row.copyWith(
+                                                        ingredientId:
+                                                            result['id']
+                                                                as String,
+                                                        name:
+                                                            result['name']
+                                                                as String,
+                                                      ),
+                                                    );
+                                                  }
+                                                },
+                                                child: AbsorbPointer(
+                                                  child: TextField(
+                                                    controller: nameCtrl,
+                                                    decoration: InputDecoration(
+                                                      labelText:
+                                                          'Componente / Ingrediente Activo *',
+                                                      hintText:
+                                                          'Toca para buscar o crear...',
+                                                      isDense: true,
+                                                      suffixIcon: const Icon(
+                                                        Icons.search_rounded,
+                                                        color:
+                                                            AppColors.primary,
+                                                      ),
+                                                      border: OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
                                                   ),
-                                                );
-                                              }
-                                            },
-                                            child: AbsorbPointer(
+                                                ),
+                                              ),
+                                            ),
+                                            IconButton(
+                                              onPressed:
+                                                  () => cubit
+                                                      .removeIngredientRow(idx),
+                                              icon: Icon(
+                                                Icons.delete_outline_rounded,
+                                                color: Colors.red.shade400,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            Expanded(
                                               child: TextField(
-                                                controller: nameCtrl,
+                                                controller: concentrationCtrl,
+                                                keyboardType:
+                                                    TextInputType.number,
+                                                onChanged:
+                                                    (val) => cubit
+                                                        .updateIngredientRow(
+                                                          idx,
+                                                          row.copyWith(
+                                                            concentration: val,
+                                                          ),
+                                                        ),
                                                 decoration: InputDecoration(
                                                   labelText:
-                                                      'Componente / Ingrediente Activo *',
-                                                  hintText:
-                                                      'Toca para buscar o crear...',
+                                                      'Concentración (Nro)',
+                                                  hintText: 'Ej: 500',
                                                   isDense: true,
-                                                  suffixIcon: const Icon(
-                                                    Icons.search_rounded,
-                                                    color: AppColors.primary,
-                                                  ),
                                                   border: OutlineInputBorder(
                                                     borderRadius:
                                                         BorderRadius.circular(
@@ -268,111 +326,74 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
                                                 ),
                                                 style: const TextStyle(
                                                   fontSize: 13,
-                                                  fontWeight: FontWeight.bold,
                                                 ),
                                               ),
                                             ),
-                                          ),
-                                        ),
-                                        IconButton(
-                                          onPressed:
-                                              () => cubit.removeIngredientRow(
-                                                idx,
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: TextField(
+                                                controller: unitCtrl,
+                                                onChanged:
+                                                    (val) => cubit
+                                                        .updateIngredientRow(
+                                                          idx,
+                                                          row.copyWith(
+                                                            unit: val,
+                                                          ),
+                                                        ),
+                                                decoration: InputDecoration(
+                                                  labelText: 'Unidad de medida',
+                                                  hintText: 'Ej: mg',
+                                                  isDense: true,
+                                                  border: OutlineInputBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                ),
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                ),
                                               ),
-                                          icon: Icon(
-                                            Icons.delete_outline_rounded,
-                                            color: Colors.red.shade400,
-                                            size: 20,
-                                          ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: TextField(
-                                            controller: concentrationCtrl,
-                                            keyboardType: TextInputType.number,
-                                            onChanged:
-                                                (val) =>
-                                                    cubit.updateIngredientRow(
-                                                      idx,
-                                                      row.copyWith(
-                                                        concentration: val,
-                                                      ),
-                                                    ),
-                                            decoration: InputDecoration(
-                                              labelText: 'Concentración (Nro)',
-                                              hintText: 'Ej: 500',
-                                              isDense: true,
-                                              border: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                            ),
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: TextField(
-                                            controller: unitCtrl,
-                                            onChanged:
-                                                (val) =>
-                                                    cubit.updateIngredientRow(
-                                                      idx,
-                                                      row.copyWith(unit: val),
-                                                    ),
-                                            decoration: InputDecoration(
-                                              labelText: 'Unidad de medida',
-                                              hintText: 'Ej: mg',
-                                              isDense: true,
-                                              border: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                            ),
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                  );
+                                },
+                              ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: cubit.addIngredientRow,
+                                icon: const Icon(Icons.add, size: 18),
+                                label: const Text('Agregar componente'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                  side: BorderSide(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.4,
                                     ),
-                                  ],
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
                                 ),
-                              );
-                            },
-                          ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: cubit.addIngredientRow,
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Agregar componente'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                              side: BorderSide(
-                                color: AppColors.primary.withValues(alpha: 0.4),
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
                             ),
-                          ),
-                        ),
-                      ],
-                    )
-                    : const SizedBox.shrink(),
+                          ],
+                        )
+                        : const SizedBox.shrink(),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        );
       },
     );
   }

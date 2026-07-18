@@ -44,16 +44,15 @@ class ProductImagesSection extends StatelessWidget {
           SizedBox(
             height: 120,
             child: BlocBuilder<ProductFormCubit, ProductFormState>(
-              buildWhen: (p, c) => p.isSaving != c.isSaving || p.formImages != c.formImages,
+              buildWhen:
+                  (p, c) =>
+                      p.isSaving != c.isSaving || p.formImages != c.formImages,
               builder: (context, state) {
                 final cubit = context.read<ProductFormCubit>();
                 return Row(
                   children: [
                     InkWell(
-                      onTap:
-                          state.isSaving
-                              ? null
-                              : () => cubit.pickImages(),
+                      onTap: state.isSaving ? null : () => cubit.pickImages(),
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
                         width: 100,

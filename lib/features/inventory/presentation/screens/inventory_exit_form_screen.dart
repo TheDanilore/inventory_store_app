@@ -814,91 +814,90 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   Widget _buildBottomActionButton(InventoryExitFormCubit cubit) {
     return ClipRRect(
       child: BackdropFilter(
-          filter: dart_ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            decoration: BoxDecoration(
-              color: AppColors.background.withValues(alpha: 0.8),
-              border: Border(
-                top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
-              ),
+        filter: dart_ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          decoration: BoxDecoration(
+            color: AppColors.background.withValues(alpha: 0.8),
+            border: Border(
+              top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
             ),
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Pérdida Valorizada',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Pérdida Valorizada',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${cubit.state.items.length} items · ${cubit.state.totalUnits} unidades retiradas',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textMuted,
-                            ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${cubit.state.items.length} items · ${cubit.state.totalUnits} unidades retiradas',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textMuted,
                           ),
-                        ],
-                      ),
-                      Text(
-                        'S/ ${cubit.state.totalLossCost.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.danger,
-                          letterSpacing: -0.5,
                         ),
+                      ],
+                    ),
+                    Text(
+                      'S/ ${cubit.state.totalLossCost.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.danger,
+                        letterSpacing: -0.5,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton.icon(
-                      onPressed:
-                          cubit.state.items.isNotEmpty ? _saveExit : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.danger,
-                        disabledBackgroundColor: AppColors.border,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: cubit.state.items.isNotEmpty ? _saveExit : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.danger,
+                      disabledBackgroundColor: AppColors.border,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      icon: const Icon(
-                        Icons.remove_circle_outline_rounded,
-                        size: 20,
+                    ),
+                    icon: const Icon(
+                      Icons.remove_circle_outline_rounded,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      'Confirmar Salida',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
                         color: Colors.white,
-                      ),
-                      label: const Text(
-                        'Confirmar Salida',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
+      ),
     );
   }
 

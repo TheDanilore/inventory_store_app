@@ -21,10 +21,13 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
     bool showOnlyWithDebt = false,
   }) async {
     var queryBuilder = _supabase.from('customer_credits_summary').select();
-    var countBuilder = _supabase.from('customer_credits_summary').select('credit_id');
+    var countBuilder = _supabase
+        .from('customer_credits_summary')
+        .select('credit_id');
 
     if (query != null && query.isNotEmpty) {
-      final orStr = 'partner_name.ilike.%$query%,partner_document.ilike.%$query%,partner_phone.ilike.%$query%';
+      final orStr =
+          'partner_name.ilike.%$query%,partner_document.ilike.%$query%,partner_phone.ilike.%$query%';
       queryBuilder = queryBuilder.or(orStr);
       countBuilder = countBuilder.or(orStr);
     }
@@ -39,9 +42,10 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
 
     final response = await queryBuilder.range(offset, offset + limit - 1);
 
-    final accounts = (response as List)
-        .map((e) => CreditAccountModel.fromView(e).toEntity())
-        .toList();
+    final accounts =
+        (response as List)
+            .map((e) => CreditAccountModel.fromView(e).toEntity())
+            .toList();
 
     // Stats
     final statsResponse = await _supabase

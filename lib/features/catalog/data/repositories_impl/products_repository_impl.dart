@@ -26,7 +26,10 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
-  Future<Either<Failure, bool>> checkCustomerPurchase(String productId, String profileId) async {
+  Future<Either<Failure, bool>> checkCustomerPurchase(
+    String productId,
+    String profileId,
+  ) async {
     try {
       final purchases = await _supabase
           .from('order_items')
