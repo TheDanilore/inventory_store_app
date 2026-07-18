@@ -180,8 +180,9 @@ class PosRepositoryImpl implements PosRepository {
 
       for (final item in sale.items) {
         final safeVariantId = item.variantId;
-        if (safeVariantId == null)
+        if (safeVariantId == null) {
           throw Exception('No variant ID for item ${item.productId}');
+        }
 
         List<({String id, int take, int available, String batchNumber})>
         segments = [];

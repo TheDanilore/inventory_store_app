@@ -141,8 +141,9 @@ class InventoryCubit extends Cubit<InventoryState> {
 
   void setStockPage(int page) {
     if (state is InventoryLoaded &&
-        page == (state as InventoryLoaded).currentStockPage)
+        page == (state as InventoryLoaded).currentStockPage) {
       return;
+    }
     fetchStockPage(page: page);
   }
 
@@ -233,8 +234,9 @@ class InventoryCubit extends Cubit<InventoryState> {
 
   void setBatchPage(int page) {
     if (state is InventoryLoaded &&
-        page == (state as InventoryLoaded).currentBatchPage)
+        page == (state as InventoryLoaded).currentBatchPage) {
       return;
+    }
     fetchBatchPage(page: page);
   }
 

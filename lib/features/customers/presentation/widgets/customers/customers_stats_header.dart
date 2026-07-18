@@ -74,10 +74,12 @@ class CustomersStatsHeader extends StatelessWidget {
   }
 
   static String _compact(double v, bool isCurrency) {
-    if (v >= 1000000)
+    if (v >= 1000000) {
       return '${isCurrency ? 'S/ ' : ''}${(v / 1000000).toStringAsFixed(1)}M';
-    if (v >= 1000)
+    }
+    if (v >= 1000) {
       return '${isCurrency ? 'S/ ' : ''}${(v / 1000).toStringAsFixed(1)}K';
+    }
     return isCurrency ? 'S/ ${v.toStringAsFixed(0)}' : v.toStringAsFixed(0);
   }
 }

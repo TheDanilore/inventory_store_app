@@ -36,8 +36,9 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
               .eq('auth_user_id', authUserId)
               .maybeSingle();
 
-      if (response == null)
+      if (response == null) {
         return left(Failure.from('No se encontró el perfil'));
+      }
       return right(LoyaltyProfileModel.fromJson(response).toEntity());
     } catch (e) {
       return _handleError(e);
@@ -54,8 +55,9 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
               .eq('auth_user_id', authUserId)
               .maybeSingle();
 
-      if (response == null)
+      if (response == null) {
         return left(Failure.from('No se encontró el saldo'));
+      }
       final balance = (response['wallet_balance'] as num?)?.toInt() ?? 0;
       return right(balance);
     } catch (e) {

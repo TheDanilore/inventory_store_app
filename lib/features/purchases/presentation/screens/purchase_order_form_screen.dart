@@ -964,8 +964,9 @@ class _PurchaseOrderFormViewModel {
   _PurchaseOrderFormViewModel(this.cubit, this.state);
 
   String get errorMessage {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).errorMessage ?? '';
+    }
     return '';
   }
 
@@ -974,104 +975,121 @@ class _PurchaseOrderFormViewModel {
   bool get isLoading =>
       state is PurchaseOrderFormLoading || state is PurchaseOrderFormInitial;
   bool get isSaving {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).isSaving;
+    }
     return false;
   }
 
   List<Map<String, dynamic>> get suppliers {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).suppliers;
+    }
     return [];
   }
 
   List<WarehouseModel> get warehouses {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).warehouses;
+    }
     return [];
   }
 
   List<FinancialAccountModel> get accounts {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).accounts;
+    }
     return [];
   }
 
   List<InventoryEntryItemEntity> get items {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).items;
+    }
     return [];
   }
 
   String? get selectedSupplierId {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).selectedSupplierId;
+    }
     return null;
   }
 
   String? get selectedWarehouseId {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).selectedWarehouseId;
+    }
     return null;
   }
 
   DateTime? get dueDate {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).dueDate;
+    }
     return null;
   }
 
   DateTime? get documentDate {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).documentDate;
+    }
     return null;
   }
 
   String get documentType {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).documentType;
+    }
     return 'NINGUNO';
   }
 
   String get paymentMode {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).paymentMode;
+    }
     return 'EFECTIVO';
   }
 
   String get paymentStatus {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).paymentStatus;
+    }
     return 'PENDING';
   }
 
   String? get selectedAccountId {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).selectedAccountId;
+    }
     return null;
   }
 
   String get documentNumber {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).documentNumber;
+    }
     return '';
   }
 
   String get notes {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).notes;
+    }
     return '';
   }
 
   bool get isValid {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).isValid;
+    }
     return false;
   }
 
   double get totalAmount {
-    if (state is PurchaseOrderFormLoaded)
+    if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).totalAmount;
+    }
     return 0.0;
   }
 

@@ -89,14 +89,16 @@ class KardexCubit extends Cubit<KardexState> {
   }
 
   void setTypeFilter(String type) {
-    if (state is KardexLoaded && (state as KardexLoaded).typeFilter == type)
+    if (state is KardexLoaded && (state as KardexLoaded).typeFilter == type) {
       return;
+    }
     loadMovements(typeFilter: type, page: 0);
   }
 
   void setSearchText(String text) {
-    if (state is KardexLoaded && (state as KardexLoaded).searchText == text)
+    if (state is KardexLoaded && (state as KardexLoaded).searchText == text) {
       return;
+    }
     loadMovements(searchText: text, page: 0);
   }
 
@@ -105,8 +107,9 @@ class KardexCubit extends Cubit<KardexState> {
       final currentState = state as KardexLoaded;
       if (newPage < 0 ||
           newPage >= currentState.totalPages ||
-          newPage == currentState.currentPage)
+          newPage == currentState.currentPage) {
         return;
+      }
       loadMovements(page: newPage);
     }
   }

@@ -138,8 +138,9 @@ class _SupplierCreditAccountModalState
         creditLimit: limitVal,
         adminProfileId: adminProfileId,
       );
-      if (saveResult.isLeft())
+      if (saveResult.isLeft()) {
         throw Exception(saveResult.fold((l) => l.message, (r) => ''));
+      }
 
       if (mounted) {
         AppSnackbar.show(

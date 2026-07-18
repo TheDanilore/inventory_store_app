@@ -88,8 +88,9 @@ class OrdersCubit extends Cubit<OrdersState> {
   }
 
   void goToPage(int page) {
-    if (page < 0 || page >= state.totalPages || page == state.currentPage)
+    if (page < 0 || page >= state.totalPages || page == state.currentPage) {
       return;
+    }
     emit(state.copyWith(currentPage: page));
     loadOrders();
   }

@@ -14,12 +14,15 @@ sealed class Failure {
 
   /// Crea el [Failure] apropiado a partir de cualquier excepción.
   factory Failure.from(Object error) {
-    if (error is NetworkException)
+    if (error is NetworkException) {
       return NetworkFailure(message: error.message);
-    if (error is ServerException)
+    }
+    if (error is ServerException) {
       return ServerFailure(message: error.message, code: error.code);
-    if (error is NotFoundException)
+    }
+    if (error is NotFoundException) {
       return NotFoundFailure(message: error.message);
+    }
     if (error is UnauthorizedException) return UnauthorizedFailure();
     if (error is ValidationException) {
       return ValidationFailure(
@@ -35,10 +38,12 @@ sealed class Failure {
         available: error.available,
       );
     }
-    if (error is CacheException)
+    if (error is CacheException) {
       return CacheFailure(message: error.message, code: error.code);
-    if (error is AppException)
+    }
+    if (error is AppException) {
       return ServerFailure(message: error.message, code: error.code);
+    }
     return UnexpectedFailure(message: error.toString());
   }
 

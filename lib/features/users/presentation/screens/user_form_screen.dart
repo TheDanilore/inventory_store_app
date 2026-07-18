@@ -467,8 +467,9 @@ class _UserFormContentState extends State<_UserFormContent> {
                                           );
                                         }).toList(),
                                     onChanged: (val) {
-                                      if (val != null)
+                                      if (val != null) {
                                         setState(() => _docType = val);
+                                      }
                                     },
                                   ),
                                 ),

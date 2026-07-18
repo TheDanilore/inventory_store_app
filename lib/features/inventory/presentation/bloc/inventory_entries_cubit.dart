@@ -115,15 +115,17 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
 
   void setSearchQuery(String query) {
     if (state is InventoryEntriesLoaded &&
-        (state as InventoryEntriesLoaded).searchQuery == query)
+        (state as InventoryEntriesLoaded).searchQuery == query) {
       return;
+    }
     loadEntries(searchQuery: query, page: 0);
   }
 
   void setWarehouseFilter(String warehouse) {
     if (state is InventoryEntriesLoaded &&
-        (state as InventoryEntriesLoaded).warehouseFilter == warehouse)
+        (state as InventoryEntriesLoaded).warehouseFilter == warehouse) {
       return;
+    }
     loadEntries(warehouseFilter: warehouse, page: 0);
   }
 
@@ -145,8 +147,9 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
       final currentState = state as InventoryEntriesLoaded;
       if (page < 0 ||
           page >= currentState.totalPages ||
-          page == currentState.currentPage)
+          page == currentState.currentPage) {
         return;
+      }
       loadEntries(page: page);
     }
   }

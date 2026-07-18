@@ -13,8 +13,6 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/custom
 import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_shimmers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';

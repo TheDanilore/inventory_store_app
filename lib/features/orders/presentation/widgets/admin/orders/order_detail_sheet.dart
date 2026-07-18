@@ -335,8 +335,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
     return BlocBuilder<OrderDetailCubit, OrderDetailState>(
       builder: (context, state) {
-        if (state.order == null && !state.isLoading)
+        if (state.order == null && !state.isLoading) {
           return const SizedBox.shrink();
+        }
         final cubit = context.read<OrderDetailCubit>();
         final isEditing = cubit.canToggleEdit();
         final isCompleted = cubit.isCompleted();

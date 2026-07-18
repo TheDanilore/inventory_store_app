@@ -247,8 +247,9 @@ class PointsCubit extends Cubit<PointsState> {
   Future<void> loadMoreMovements() async {
     if (state.profileId == null ||
         state.isLoadingMore ||
-        !state.hasMoreMovements)
+        !state.hasMoreMovements) {
       return;
+    }
 
     emit(state.copyWith(isLoadingMore: true));
     try {
@@ -284,8 +285,9 @@ class PointsCubit extends Cubit<PointsState> {
   Future<void> claimDailyCheckin() async {
     if (state.profileId == null ||
         state.hasTodayCheckin ||
-        state.isClaimingCheckin)
+        state.isClaimingCheckin) {
       return;
+    }
 
     emit(state.copyWith(isClaimingCheckin: true));
 

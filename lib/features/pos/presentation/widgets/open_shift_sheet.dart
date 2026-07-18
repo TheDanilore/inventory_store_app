@@ -48,8 +48,9 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate() || _selectedAccountId == null)
+    if (!_formKey.currentState!.validate() || _selectedAccountId == null) {
       return;
+    }
     setState(() => _saving = true);
 
     try {

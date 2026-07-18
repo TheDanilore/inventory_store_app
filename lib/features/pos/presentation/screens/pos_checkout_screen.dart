@@ -177,8 +177,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       final shiftRes = await _checkoutService.checkActiveShift(
         _selectedAccountId!,
       );
-      if (mounted)
+      if (mounted) {
         setState(() => _activeShift = shiftRes.fold((l) => null, (r) => r));
+      }
     } catch (e) {
       debugPrint('Error verificando turno de caja: $e');
     }
@@ -245,8 +246,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       final creditResp = await _checkoutService.fetchClientCredit(
         client['id'] as String,
       );
-      if (mounted)
+      if (mounted) {
         setState(() => _creditInfo = creditResp.fold((l) => null, (r) => r));
+      }
     } catch (e) {
       debugPrint('Error cargando crédito: $e');
     }

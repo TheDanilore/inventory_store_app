@@ -168,8 +168,9 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, void>> deleteAccount(String password) async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null || user.email == null)
+      if (user == null || user.email == null) {
         return left(Failure.from('No hay sesión.'));
+      }
 
       final res = await _supabase.auth.signInWithPassword(
         email: user.email!,

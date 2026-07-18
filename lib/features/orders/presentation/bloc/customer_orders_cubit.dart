@@ -70,8 +70,9 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
   }
 
   Future<void> loadMore() async {
-    if (state.profileId == null || state.isLoadingMore || !state.hasMore)
+    if (state.profileId == null || state.isLoadingMore || !state.hasMore) {
       return;
+    }
 
     emit(state.copyWith(isLoadingMore: true));
 
