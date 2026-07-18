@@ -93,14 +93,28 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
   }
 
   Future<void> _processCheckout(BuildContext context) async {
+    final userId = context.read<AuthCubit>().state.currentUser?.id;
+    if (userId == null || userId.isEmpty) {
+      AppSnackbar.show(
+        context,
+        message: 'Debes iniciar sesión para pedir',
+        backgroundColor: AppColors.warning,
+      );
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        if (context.mounted) {
+          context.push('/login');
+        }
+      });
+      return;
+    }
+
     final cartCubit = context.read<CartCubit>();
     final cartState = cartCubit.state;
     final walletState = context.read<WalletCubit>().state;
     final checkout = context.read<CheckoutCubit>();
     final config = context.read<AppConfigCubit>();
 
-    final userId = context.read<AuthCubit>().state.currentUser?.id;
-    final profileId = (userId != null && userId.isNotEmpty) ? userId : null;
+    final profileId = userId;
 
     final result = await checkout.submitOrder(
       itemsToBuy: cartState.items.values.toList(),
@@ -241,7 +255,14 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                                           'Inicia sesión para gestionar ubicaciones',
                                       backgroundColor: AppColors.warning,
                                     );
-                                    context.push('/login');
+                                    Future.delayed(
+                                      const Duration(milliseconds: 1200),
+                                      () {
+                                        if (context.mounted) {
+                                          context.push('/login');
+                                        }
+                                      },
+                                    );
                                     return;
                                   }
                                   await context.push('/customer/locations');
