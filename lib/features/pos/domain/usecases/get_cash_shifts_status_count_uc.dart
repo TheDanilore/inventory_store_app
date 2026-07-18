@@ -17,13 +17,20 @@ class GetCashShiftsStatusCountParams {
 }
 
 @lazySingleton
-class GetCashShiftsStatusCountUseCase implements UseCase<({int openCount, int closedCount}), GetCashShiftsStatusCountParams> {
+class GetCashShiftsStatusCountUseCase
+    implements
+        UseCase<
+          ({int openCount, int closedCount}),
+          GetCashShiftsStatusCountParams
+        > {
   final CashShiftRepository repository;
 
   GetCashShiftsStatusCountUseCase(this.repository);
 
   @override
-  Future<Either<Failure, ({int openCount, int closedCount})>> call(GetCashShiftsStatusCountParams params) async {
+  Future<Either<Failure, ({int openCount, int closedCount})>> call(
+    GetCashShiftsStatusCountParams params,
+  ) async {
     return await repository.getShiftsStatusCount(
       dateFrom: params.dateFrom,
       dateTo: params.dateTo,

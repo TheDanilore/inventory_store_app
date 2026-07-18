@@ -12,62 +12,69 @@ import 'package:inventory_store_app/features/loyalty/presentation/screens/games/
 
 class LoyaltyRoutes {
   static List<RouteBase> get adminRoutes => [
-        GoRoute(
-          path: 'top-customers',
-          builder: (context, state) => const TopCustomersScreen(),
-        ),
-        GoRoute(
-          path: 'points-settings',
-          builder: (context, state) => const PointsSettingsScreen(),
-        ),
-      ];
+    GoRoute(
+      path: 'top-customers',
+      builder: (context, state) => const TopCustomersScreen(),
+    ),
+    GoRoute(
+      path: 'points-settings',
+      builder: (context, state) => const PointsSettingsScreen(),
+    ),
+  ];
 
   static List<RouteBase> get customerRoutes => [
-        GoRoute(
-          path: '/customer/points',
-          builder: (context, state) => const PointsScreen(),
-        ),
-        GoRoute(
-          path: '/customer/games/claw-machine/:profileId',
-          builder: (context, state) => ClawMachineScreen(
+    GoRoute(
+      path: '/customer/points',
+      builder: (context, state) => const PointsScreen(),
+    ),
+    GoRoute(
+      path: '/customer/games/claw-machine/:profileId',
+      builder:
+          (context, state) => ClawMachineScreen(
             profileId: state.pathParameters['profileId'] ?? '',
           ),
-        ),
-        GoRoute(
-          path: '/customer/games/coin-catcher/:profileId',
-          builder: (context, state) => CoinCatcherGameScreen(
+    ),
+    GoRoute(
+      path: '/customer/games/coin-catcher/:profileId',
+      builder:
+          (context, state) => CoinCatcherGameScreen(
             profileId: state.pathParameters['profileId'] ?? '',
           ),
-        ),
-        GoRoute(
-          path: '/customer/games/dodge/:profileId',
-          builder: (context, state) => DodgeGameScreen(
+    ),
+    GoRoute(
+      path: '/customer/games/dodge/:profileId',
+      builder:
+          (context, state) => DodgeGameScreen(
             profileId: state.pathParameters['profileId'] ?? '',
           ),
-        ),
-        GoRoute(
-          path: '/customer/games/memorama/:profileId',
-          builder: (context, state) => MemoramaGameScreen(
+    ),
+    GoRoute(
+      path: '/customer/games/memorama/:profileId',
+      builder:
+          (context, state) => MemoramaGameScreen(
             profileId: state.pathParameters['profileId'] ?? '',
           ),
-        ),
-        GoRoute(
-          path: '/customer/games/pinata/:profileId',
-          builder: (context, state) => PinataGameScreen(
+    ),
+    GoRoute(
+      path: '/customer/games/pinata/:profileId',
+      builder:
+          (context, state) => PinataGameScreen(
             profileId: state.pathParameters['profileId'] ?? '',
           ),
-        ),
-        GoRoute(
-          path: '/customer/games/stack/:profileId',
-          builder: (context, state) => StackGameScreen(
+    ),
+    GoRoute(
+      path: '/customer/games/stack/:profileId',
+      builder:
+          (context, state) => StackGameScreen(
             profileId: state.pathParameters['profileId'] ?? '',
           ),
-        ),
-        GoRoute(
-          path: '/customer/games/super-salto/:profileId',
-          builder: (context, state) => SuperSaltoScreen(
+    ),
+    GoRoute(
+      path: '/customer/games/super-salto/:profileId',
+      builder:
+          (context, state) => SuperSaltoScreen(
             profileId: state.pathParameters['profileId'] ?? '',
           ),
-        ),
-      ];
+    ),
+  ];
 }

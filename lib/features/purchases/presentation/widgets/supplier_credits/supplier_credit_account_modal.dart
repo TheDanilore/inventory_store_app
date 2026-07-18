@@ -26,7 +26,6 @@ class SupplierCreditAccountModal extends StatefulWidget {
 
 class _SupplierCreditAccountModalState
     extends State<SupplierCreditAccountModal> {
-  
   final _searchCtrl = TextEditingController();
   final _limitCtrl = TextEditingController();
   Timer? _debounce;
@@ -81,12 +80,20 @@ class _SupplierCreditAccountModalState
     }
     setState(() => _isSearching = true);
     try {
-      final existingIdsResult = await sl<GetExistingCreditSupplierIdsUseCase>().call(
-        excludeSupplierId: _isEditing ? widget.accountToEdit!.supplierId : null,
-      );
+      final existingIdsResult = await sl<GetExistingCreditSupplierIdsUseCase>()
+          .call(
+            excludeSupplierId:
+                _isEditing ? widget.accountToEdit!.supplierId : null,
+          );
       final existingIds = existingIdsResult.fold((l) => <String>{}, (r) => r);
-      final filteredResult = await sl<SearchSuppliersUseCase>().call(text, existingIds);
-      final filtered = filteredResult.fold((l) => <Map<String, dynamic>>[], (r) => r);
+      final filteredResult = await sl<SearchSuppliersUseCase>().call(
+        text,
+        existingIds,
+      );
+      final filtered = filteredResult.fold(
+        (l) => <Map<String, dynamic>>[],
+        (r) => r,
+      );
 
       if (mounted) {
         setState(() {
@@ -131,7 +138,8 @@ class _SupplierCreditAccountModalState
         creditLimit: limitVal,
         adminProfileId: adminProfileId,
       );
-      if (saveResult.isLeft()) throw Exception(saveResult.fold((l) => l.message, (r) => ''));
+      if (saveResult.isLeft())
+        throw Exception(saveResult.fold((l) => l.message, (r) => ''));
 
       if (mounted) {
         AppSnackbar.show(
@@ -293,9 +301,3 @@ class _SupplierCreditAccountModalState
     );
   }
 }
-
-
-
-
-
-

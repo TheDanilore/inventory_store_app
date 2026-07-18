@@ -95,7 +95,6 @@ class CustomerCreditModel {
   }
 }
 
-
 class CreditAccountModel {
   final String creditId;
   final String profileId;

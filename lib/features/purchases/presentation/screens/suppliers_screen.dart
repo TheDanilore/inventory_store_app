@@ -41,10 +41,13 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => SupplierFormModal(
-        supplierToEdit: supplier,
-        onSaved: () => context.read<SuppliersCubit>().loadSuppliers(refresh: true),
-      ),
+      builder:
+          (_) => SupplierFormModal(
+            supplierToEdit: supplier,
+            onSaved:
+                () =>
+                    context.read<SuppliersCubit>().loadSuppliers(refresh: true),
+          ),
     );
   }
 
@@ -53,22 +56,24 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     return BlocListener<SuppliersCubit, SuppliersState>(
       listener: (context, state) {
         if (state is SuppliersError) {
-          AppSnackbar.show(context, message: state.message, type: SnackbarType.error);
+          AppSnackbar.show(
+            context,
+            message: state.message,
+            type: SnackbarType.error,
+          );
           context.read<SuppliersCubit>().clearError();
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.transparent, // Background provided by AdminLayout
+        backgroundColor:
+            Colors.transparent, // Background provided by AdminLayout
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _openSupplierModal(context),
           backgroundColor: AppColors.teal,
           icon: const Icon(Icons.add_business_rounded, color: Colors.white),
           label: const Text(
             'Nuevo',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
         ),
         body: Column(
@@ -111,14 +116,15 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
             Expanded(
               child: BlocBuilder<SuppliersCubit, SuppliersState>(
                 builder: (context, state) {
-                  final isLoading = state is SuppliersLoading || state is SuppliersInitial;
-                  
+                  final isLoading =
+                      state is SuppliersLoading || state is SuppliersInitial;
+
                   // Extract state values to avoid duplicate logic
                   List<SupplierEntity> suppliers = [];
                   String searchQuery = '';
                   int currentPage = 0;
                   int totalPages = 1;
-                  
+
                   if (state is SuppliersLoaded) {
                     suppliers = state.suppliers;
                     searchQuery = state.searchQuery;
@@ -128,12 +134,18 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                     suppliers = state.currentSuppliers;
                     searchQuery = state.searchQuery;
                     currentPage = state.currentPage;
-                    totalPages = state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                    totalPages =
+                        state.totalCount == 0
+                            ? 1
+                            : (state.totalCount / 8).ceil();
                   } else if (state is SuppliersError) {
                     suppliers = state.currentSuppliers;
                     searchQuery = state.searchQuery;
                     currentPage = state.currentPage;
-                    totalPages = state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                    totalPages =
+                        state.totalCount == 0
+                            ? 1
+                            : (state.totalCount / 8).ceil();
                   }
 
                   if (isLoading && suppliers.isEmpty) {
@@ -183,18 +195,26 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                       ),
                       Expanded(
                         child: RefreshIndicator(
-                          onRefresh: () async => context.read<SuppliersCubit>().loadSuppliers(refresh: true),
+                          onRefresh:
+                              () async => context
+                                  .read<SuppliersCubit>()
+                                  .loadSuppliers(refresh: true),
                           child: ListView.separated(
                             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                             itemCount: suppliers.length,
-                            separatorBuilder: (_, _) => const SizedBox(height: 12),
+                            separatorBuilder:
+                                (_, _) => const SizedBox(height: 12),
                             itemBuilder: (context, index) {
                               final supplier = suppliers[index];
                               return SupplierCard(
                                 // Notice SupplierCard might need to be updated to take SupplierEntity instead of SupplierModel
                                 supplier: supplier,
-                                onEdit: () => _openSupplierModal(context, supplier),
-                                onToggleStatus: () => context.read<SuppliersCubit>().toggleSupplierStatus(supplier),
+                                onEdit:
+                                    () => _openSupplierModal(context, supplier),
+                                onToggleStatus:
+                                    () => context
+                                        .read<SuppliersCubit>()
+                                        .toggleSupplierStatus(supplier),
                               );
                             },
                           ),
@@ -206,7 +226,8 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                           child: AdminPageBlocks(
                             currentPage: currentPage,
                             totalPages: totalPages,
-                            onPageChanged: context.read<SuppliersCubit>().setPage,
+                            onPageChanged:
+                                context.read<SuppliersCubit>().setPage,
                           ),
                         ),
                     ],

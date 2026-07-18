@@ -10,7 +10,11 @@ class RegisterParams {
   final String email;
   final String password;
   final String fullName;
-  const RegisterParams({required this.email, required this.password, required this.fullName});
+  const RegisterParams({
+    required this.email,
+    required this.password,
+    required this.fullName,
+  });
 }
 
 @injectable
@@ -25,17 +29,14 @@ class RegisterUseCase implements UseCase<UserEntity, RegisterParams> {
       password: params.password,
     );
 
-    return registerResult.fold(
-      (failure) => left(failure),
-      (authUserId) async {
-        return await repository.createProfile(
-          authUserId: authUserId,
-          email: params.email,
-          fullName: params.fullName,
-          role: AppRoles.customer,
-          isActive: true,
-        );
-      },
-    );
+    return registerResult.fold((failure) => left(failure), (authUserId) async {
+      return await repository.createProfile(
+        authUserId: authUserId,
+        email: params.email,
+        fullName: params.fullName,
+        role: AppRoles.customer,
+        isActive: true,
+      );
+    });
   }
 }

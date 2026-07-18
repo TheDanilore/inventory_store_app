@@ -4,7 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 import 'package:inventory_store_app/features/purchases/domain/repositories/supplier_credits_repository.dart';
-import 'package:inventory_store_app/features/purchases/data/models/supplier_credit_models.dart' hide SupplierFinancialAccountOption;
+import 'package:inventory_store_app/features/purchases/data/models/supplier_credit_models.dart'
+    hide SupplierFinancialAccountOption;
 
 @LazySingleton(as: SupplierCreditsRepository)
 class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
@@ -12,13 +13,16 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
 
   @override
   Future<
-      Either<
-          Failure,
-          ({
-            List<SupplierCreditEntity> accounts,
-            int count,
-            Map<String, dynamic> stats
-          })>> fetchAccountsPaginated({
+    Either<
+      Failure,
+      ({
+        List<SupplierCreditEntity> accounts,
+        int count,
+        Map<String, dynamic> stats,
+      })
+    >
+  >
+  fetchAccountsPaginated({
     required int page,
     required int pageSize,
     String searchQuery = '',
@@ -102,7 +106,9 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
 
   @override
   Future<Either<Failure, void>> toggleAccountStatus(
-      String creditId, bool currentStatus) async {
+    String creditId,
+    bool currentStatus,
+  ) async {
     try {
       await _supabase
           .from('supplier_credits')
@@ -160,11 +166,12 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
           .or('name.ilike.%$query%,tax_id.ilike.%$query%,phone.ilike.%$query%')
           .limit(20);
 
-      final list = (response as List)
-          .cast<Map<String, dynamic>>()
-          .where((p) => !existingSupplierIds.contains(p['id'] as String))
-          .take(6)
-          .toList();
+      final list =
+          (response as List)
+              .cast<Map<String, dynamic>>()
+              .where((p) => !existingSupplierIds.contains(p['id'] as String))
+              .take(6)
+              .toList();
       return Right(list);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
@@ -179,10 +186,11 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
       final existingCredits = await _supabase
           .from('supplier_credits')
           .select('supplier_id');
-      final ids = (existingCredits as List)
-          .map((e) => e['supplier_id'] as String)
-          .where((id) => id != excludeSupplierId)
-          .toSet();
+      final ids =
+          (existingCredits as List)
+              .map((e) => e['supplier_id'] as String)
+              .where((id) => id != excludeSupplierId)
+              .toSet();
       return Right(ids);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
@@ -210,7 +218,7 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
 
   @override
   Future<Either<Failure, List<SupplierFinancialAccountOption>>>
-      getFinancialAccounts() async {
+  getFinancialAccounts() async {
     try {
       final resp = await _supabase
           .from('financial_accounts')
@@ -219,22 +227,23 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
           .order('name');
 
       const typeOrder = {'CAJA': 0, 'BANCO': 1, 'DIGITAL': 2, 'OTRO': 3};
-      final list = (resp as List)
-          .map(
-            (a) => SupplierFinancialAccountOption(
-              id: a['id'] as String,
-              name: a['name'] as String,
-              type: a['type'] as String,
-              balance: (a['balance'] as num).toDouble(),
-            ),
-          )
-          .toList()
-        ..sort((a, b) {
-          final oa = typeOrder[a.type] ?? 99;
-          final ob = typeOrder[b.type] ?? 99;
-          if (oa != ob) return oa.compareTo(ob);
-          return a.name.compareTo(b.name);
-        });
+      final list =
+          (resp as List)
+              .map(
+                (a) => SupplierFinancialAccountOption(
+                  id: a['id'] as String,
+                  name: a['name'] as String,
+                  type: a['type'] as String,
+                  balance: (a['balance'] as num).toDouble(),
+                ),
+              )
+              .toList()
+            ..sort((a, b) {
+              final oa = typeOrder[a.type] ?? 99;
+              final ob = typeOrder[b.type] ?? 99;
+              if (oa != ob) return oa.compareTo(ob);
+              return a.name.compareTo(b.name);
+            });
       return Right(list);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
@@ -243,14 +252,16 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
 
   @override
   Future<Either<Failure, Map<String, dynamic>?>> getActiveCashShift(
-      String accountId) async {
+    String accountId,
+  ) async {
     try {
-      final data = await _supabase
-          .from('cash_shifts')
-          .select('id, opened_at, opening_amount')
-          .eq('account_id', accountId)
-          .eq('status', 'OPEN')
-          .maybeSingle();
+      final data =
+          await _supabase
+              .from('cash_shifts')
+              .select('id, opened_at, opening_amount')
+              .eq('account_id', accountId)
+              .eq('status', 'OPEN')
+              .maybeSingle();
       return Right(data);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
@@ -309,8 +320,12 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
         final orderId = order['id'] as String;
         final total = (order['total_amount'] as num).toDouble();
         final alreadyPaid = (order['amount_paid'] as num).toDouble();
-        final pendingOfOrder = (total - alreadyPaid).clamp(0.0, double.infinity);
-        final toApply = remaining >= pendingOfOrder ? pendingOfOrder : remaining;
+        final pendingOfOrder = (total - alreadyPaid).clamp(
+          0.0,
+          double.infinity,
+        );
+        final toApply =
+            remaining >= pendingOfOrder ? pendingOfOrder : remaining;
         final newAmountPaid = alreadyPaid + toApply;
         remaining -= toApply;
 
@@ -325,7 +340,10 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
             .eq('id', orderId);
       }
 
-      final newDebt = (account.currentDebt - amount).clamp(0.0, double.infinity);
+      final newDebt = (account.currentDebt - amount).clamp(
+        0.0,
+        double.infinity,
+      );
       await _supabase
           .from('supplier_credits')
           .update({
@@ -357,6 +375,3 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
     }
   }
 }
-
-
-

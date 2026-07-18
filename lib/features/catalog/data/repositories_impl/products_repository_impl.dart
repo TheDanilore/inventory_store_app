@@ -40,13 +40,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
       String selectString =
           'id, name, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(*), categories(name)';
 
-      if (searchByIngredient && searchQuery != null && searchQuery.trim().isNotEmpty) {
-        selectString += ', product_active_ingredients!inner(active_ingredients!inner(name))';
+      if (searchByIngredient &&
+          searchQuery != null &&
+          searchQuery.trim().isNotEmpty) {
+        selectString +=
+            ', product_active_ingredients!inner(active_ingredients!inner(name))';
       }
 
-      var query = _supabase
-          .from('products')
-          .select(selectString);
+      var query = _supabase.from('products').select(selectString);
 
       if (isActive != null) {
         query = query.eq('is_active', isActive);
@@ -57,8 +58,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         if (searchByIngredient) {
           query = query.ilike(
-              'product_active_ingredients.active_ingredients.name',
-              '%${searchQuery.trim()}%');
+            'product_active_ingredients.active_ingredients.name',
+            '%${searchQuery.trim()}%',
+          );
         } else {
           query = query.ilike('name', '%${searchQuery.trim()}%');
         }

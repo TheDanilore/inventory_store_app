@@ -70,25 +70,26 @@ class OrdersState extends Equatable {
 
   @override
   List<Object?> get props => [
-        orders,
-        totalRecords,
-        isLoading,
-        isBackgroundLoading,
-        errorMessage,
-        processingOrders,
-        generatingPdfOrderId,
-        statusFilter,
-        paymentStatusFilter,
-        startDate,
-        endDate,
-        searchQuery,
-        currentPage,
-        customerIdFilter,
-      ];
+    orders,
+    totalRecords,
+    isLoading,
+    isBackgroundLoading,
+    errorMessage,
+    processingOrders,
+    generatingPdfOrderId,
+    statusFilter,
+    paymentStatusFilter,
+    startDate,
+    endDate,
+    searchQuery,
+    currentPage,
+    customerIdFilter,
+  ];
 
   static const int pageSize = 8;
 
-  int get totalPages => totalRecords == 0 ? 1 : (totalRecords / pageSize).ceil();
+  int get totalPages =>
+      totalRecords == 0 ? 1 : (totalRecords / pageSize).ceil();
 
   bool isOrderProcessing(String id) => processingOrders.contains(id);
 

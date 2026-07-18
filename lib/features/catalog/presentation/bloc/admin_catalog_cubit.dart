@@ -140,9 +140,10 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
           stockResult.fold((_) {}, (s) => stock = s);
         }
 
-        final enriched = data.products
-            .map((p) => p.copyWith(totalStock: stock[p.id] ?? 0))
-            .toList();
+        final enriched =
+            data.products
+                .map((p) => p.copyWith(totalStock: stock[p.id] ?? 0))
+                .toList();
 
         emit(
           state.copyWith(
@@ -211,17 +212,21 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       );
       result.fold(
         (failure) {
-          emit(state.copyWith(
-            actionState: ViewState.error,
-            errorMessage: 'Error al cargar productos: ${failure.message}',
-          ));
+          emit(
+            state.copyWith(
+              actionState: ViewState.error,
+              errorMessage: 'Error al cargar productos: ${failure.message}',
+            ),
+          );
         },
         (data) async {
           if (data.products.isEmpty) {
-            emit(state.copyWith(
-              actionState: ViewState.error,
-              errorMessage: 'No hay productos para exportar.',
-            ));
+            emit(
+              state.copyWith(
+                actionState: ViewState.error,
+                errorMessage: 'No hay productos para exportar.',
+              ),
+            );
             return;
           }
 
@@ -235,27 +240,32 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
           } else if (optionsMode == 1) {
             filteredProducts = max50Products;
           } else if (optionsMode == 2) {
-            filteredProducts = max50Products
-                .where((p) => selectedIds.contains(p.id))
-                .toList();
+            filteredProducts =
+                max50Products.where((p) => selectedIds.contains(p.id)).toList();
           }
 
           if (filteredProducts.isEmpty) {
-            emit(state.copyWith(
-              actionState: ViewState.error,
-              errorMessage: 'No hay productos seleccionados.',
-            ));
+            emit(
+              state.copyWith(
+                actionState: ViewState.error,
+                errorMessage: 'No hay productos seleccionados.',
+              ),
+            );
             return;
           }
 
-          final exportResult = await exportCatalogPdfUC(products: filteredProducts);
-          
+          final exportResult = await exportCatalogPdfUC(
+            products: filteredProducts,
+          );
+
           exportResult.fold(
             (failure) {
-              emit(state.copyWith(
-                actionState: ViewState.error,
-                errorMessage: 'Error al generar PDF: ${failure.message}',
-              ));
+              emit(
+                state.copyWith(
+                  actionState: ViewState.error,
+                  errorMessage: 'Error al generar PDF: ${failure.message}',
+                ),
+              );
             },
             (_) {
               emit(state.copyWith(actionState: ViewState.success));
@@ -264,10 +274,12 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         },
       );
     } catch (e) {
-      emit(state.copyWith(
-        actionState: ViewState.error,
-        errorMessage: 'Error inesperado: $e',
-      ));
+      emit(
+        state.copyWith(
+          actionState: ViewState.error,
+          errorMessage: 'Error inesperado: $e',
+        ),
+      );
     }
   }
 
@@ -277,5 +289,3 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     return super.close();
   }
 }
-
-

@@ -47,8 +47,10 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
           .order('name');
 
       final suppliers = List<Map<String, dynamic>>.from(pRes as List);
-      final warehouses = (wRes as List).map((e) => WarehouseModel.fromJson(e)).toList();
-      final accounts = (aRes as List).map((e) => FinancialAccountModel.fromJson(e)).toList();
+      final warehouses =
+          (wRes as List).map((e) => WarehouseModel.fromJson(e)).toList();
+      final accounts =
+          (aRes as List).map((e) => FinancialAccountModel.fromJson(e)).toList();
 
       final prefs = await SharedPreferences.getInstance();
       final draftStr = prefs.getString(_draftKey);
@@ -65,9 +67,21 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
           initialWarehouse = data['warehouseId'] as String?;
           if (data['items'] != null) {
             final rawItems = data['items'] as List;
-            initialItems = rawItems
-                .map((e) => InventoryEntryItemEntity(productId: e['productId'], variantId: e['variantId'], productName: e['productName'], variantLabel: e['variantLabel'] ?? '', batchNumber: e['batchNumber'], usesBatches: e['usesBatches'] ?? false, unitCost: (e['unitCost'] as num?)?.toDouble() ?? 0.0, quantity: (e['quantity'] as num?)?.toDouble() ?? 0.0))
-                .toList();
+            initialItems =
+                rawItems
+                    .map(
+                      (e) => InventoryEntryItemEntity(
+                        productId: e['productId'],
+                        variantId: e['variantId'],
+                        productName: e['productName'],
+                        variantLabel: e['variantLabel'] ?? '',
+                        batchNumber: e['batchNumber'],
+                        usesBatches: e['usesBatches'] ?? false,
+                        unitCost: (e['unitCost'] as num?)?.toDouble() ?? 0.0,
+                        quantity: (e['quantity'] as num?)?.toDouble() ?? 0.0,
+                      ),
+                    )
+                    .toList();
           }
           isDraftRestored = true;
         } catch (e) {
@@ -75,35 +89,53 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
         }
       }
 
-      emit(PurchaseOrderFormLoaded(
-        suppliers: suppliers,
-        warehouses: warehouses,
-        accounts: accounts,
-        items: initialItems,
-        selectedSupplierId: initialSupplier,
-        selectedWarehouseId: initialWarehouse,
-        isDraftRestored: isDraftRestored,
-      ));
+      emit(
+        PurchaseOrderFormLoaded(
+          suppliers: suppliers,
+          warehouses: warehouses,
+          accounts: accounts,
+          items: initialItems,
+          selectedSupplierId: initialSupplier,
+          selectedWarehouseId: initialWarehouse,
+          isDraftRestored: isDraftRestored,
+        ),
+      );
     } catch (e) {
-      emit(PurchaseOrderFormLoaded(
-        suppliers: const [],
-        warehouses: const [],
-        accounts: const [],
-        errorMessage: 'Error al cargar catálogos. Verifique su conexión.',
-      ));
+      emit(
+        PurchaseOrderFormLoaded(
+          suppliers: const [],
+          warehouses: const [],
+          accounts: const [],
+          errorMessage: 'Error al cargar catálogos. Verifique su conexión.',
+        ),
+      );
     }
   }
 
   Future<void> _saveDraft() async {
     final currentState = state;
     if (currentState is! PurchaseOrderFormLoaded) return;
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final data = {
         'supplierId': currentState.selectedSupplierId,
         'warehouseId': currentState.selectedWarehouseId,
-        'items': currentState.items.map((i) => {'productId': i.productId, 'variantId': i.variantId, 'productName': i.productName, 'variantLabel': i.variantLabel, 'batchNumber': i.batchNumber, 'usesBatches': i.usesBatches, 'unitCost': i.unitCost, 'quantity': i.quantity}).toList(),
+        'items':
+            currentState.items
+                .map(
+                  (i) => {
+                    'productId': i.productId,
+                    'variantId': i.variantId,
+                    'productName': i.productName,
+                    'variantLabel': i.variantLabel,
+                    'batchNumber': i.batchNumber,
+                    'usesBatches': i.usesBatches,
+                    'unitCost': i.unitCost,
+                    'quantity': i.quantity,
+                  },
+                )
+                .toList(),
       };
       await prefs.setString(_draftKey, jsonEncode(data));
     } catch (_) {}
@@ -153,43 +185,47 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
   void clearDueDate() {
     final currentState = state;
     if (currentState is! PurchaseOrderFormLoaded) return;
-    emit(PurchaseOrderFormLoaded(
-      suppliers: currentState.suppliers,
-      warehouses: currentState.warehouses,
-      accounts: currentState.accounts,
-      items: currentState.items,
-      selectedSupplierId: currentState.selectedSupplierId,
-      selectedWarehouseId: currentState.selectedWarehouseId,
-      dueDate: null, // Clear due date explicitly
-      documentDate: currentState.documentDate,
-      documentType: currentState.documentType,
-      paymentMode: currentState.paymentMode,
-      paymentStatus: currentState.paymentStatus,
-      selectedAccountId: currentState.selectedAccountId,
-      documentNumber: currentState.documentNumber,
-      notes: currentState.notes,
-    ));
+    emit(
+      PurchaseOrderFormLoaded(
+        suppliers: currentState.suppliers,
+        warehouses: currentState.warehouses,
+        accounts: currentState.accounts,
+        items: currentState.items,
+        selectedSupplierId: currentState.selectedSupplierId,
+        selectedWarehouseId: currentState.selectedWarehouseId,
+        dueDate: null, // Clear due date explicitly
+        documentDate: currentState.documentDate,
+        documentType: currentState.documentType,
+        paymentMode: currentState.paymentMode,
+        paymentStatus: currentState.paymentStatus,
+        selectedAccountId: currentState.selectedAccountId,
+        documentNumber: currentState.documentNumber,
+        notes: currentState.notes,
+      ),
+    );
   }
 
   void clearDocumentDate() {
     final currentState = state;
     if (currentState is! PurchaseOrderFormLoaded) return;
-    emit(PurchaseOrderFormLoaded(
-      suppliers: currentState.suppliers,
-      warehouses: currentState.warehouses,
-      accounts: currentState.accounts,
-      items: currentState.items,
-      selectedSupplierId: currentState.selectedSupplierId,
-      selectedWarehouseId: currentState.selectedWarehouseId,
-      dueDate: currentState.dueDate,
-      documentDate: null, // Clear document date explicitly
-      documentType: currentState.documentType,
-      paymentMode: currentState.paymentMode,
-      paymentStatus: currentState.paymentStatus,
-      selectedAccountId: currentState.selectedAccountId,
-      documentNumber: currentState.documentNumber,
-      notes: currentState.notes,
-    ));
+    emit(
+      PurchaseOrderFormLoaded(
+        suppliers: currentState.suppliers,
+        warehouses: currentState.warehouses,
+        accounts: currentState.accounts,
+        items: currentState.items,
+        selectedSupplierId: currentState.selectedSupplierId,
+        selectedWarehouseId: currentState.selectedWarehouseId,
+        dueDate: currentState.dueDate,
+        documentDate: null, // Clear document date explicitly
+        documentType: currentState.documentType,
+        paymentMode: currentState.paymentMode,
+        paymentStatus: currentState.paymentStatus,
+        selectedAccountId: currentState.selectedAccountId,
+        documentNumber: currentState.documentNumber,
+        notes: currentState.notes,
+      ),
+    );
   }
 
   void addItem(InventoryEntryItemEntity item) {
@@ -220,9 +256,12 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
     final currentState = state;
     if (currentState is! PurchaseOrderFormLoaded) return;
 
-    final newItems = currentState.items
-        .where((i) => !(i.productId == productId && i.variantId == variantId))
-        .toList();
+    final newItems =
+        currentState.items
+            .where(
+              (i) => !(i.productId == productId && i.variantId == variantId),
+            )
+            .toList();
 
     emit(currentState.copyWith(items: newItems));
     _saveDraft();
@@ -232,12 +271,13 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
     final currentState = state;
     if (currentState is! PurchaseOrderFormLoaded) return;
 
-    final newItems = currentState.items.map((i) {
-      if (i.productId == productId && i.variantId == variantId) {
-        return i.copyWith(quantity: qty);
-      }
-      return i;
-    }).toList();
+    final newItems =
+        currentState.items.map((i) {
+          if (i.productId == productId && i.variantId == variantId) {
+            return i.copyWith(quantity: qty);
+          }
+          return i;
+        }).toList();
 
     emit(currentState.copyWith(items: newItems));
     _saveDraft();
@@ -247,12 +287,13 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
     final currentState = state;
     if (currentState is! PurchaseOrderFormLoaded) return;
 
-    final newItems = currentState.items.map((i) {
-      if (i.productId == productId && i.variantId == variantId) {
-        return i.copyWith(unitCost: cost);
-      }
-      return i;
-    }).toList();
+    final newItems =
+        currentState.items.map((i) {
+          if (i.productId == productId && i.variantId == variantId) {
+            return i.copyWith(unitCost: cost);
+          }
+          return i;
+        }).toList();
 
     emit(currentState.copyWith(items: newItems));
     _saveDraft();
@@ -260,20 +301,27 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
 
   Future<void> submitOrder() async {
     final currentState = state;
-    if (currentState is! PurchaseOrderFormLoaded || !currentState.isValid) return;
+    if (currentState is! PurchaseOrderFormLoaded || !currentState.isValid)
+      return;
 
-    emit(currentState.copyWith(isSaving: true, errorMessage: null)); // Assume null clears. Actually wait, I didn't wrap errorMessage.
+    emit(
+      currentState.copyWith(isSaving: true, errorMessage: null),
+    ); // Assume null clears. Actually wait, I didn't wrap errorMessage.
     // I should use clearError() then copyWith.
     final loadingState = currentState.clearError().copyWith(isSaving: true);
     emit(loadingState);
 
     try {
       final supplier = loadingState.suppliers.firstWhere(
-          (s) => s['id'] == loadingState.selectedSupplierId);
+        (s) => s['id'] == loadingState.selectedSupplierId,
+      );
 
       String? activeShiftId;
-      if (loadingState.paymentStatus == 'PAID' && loadingState.selectedAccountId != null) {
-        final shiftRes = await getActiveCashShiftUseCase(loadingState.selectedAccountId!);
+      if (loadingState.paymentStatus == 'PAID' &&
+          loadingState.selectedAccountId != null) {
+        final shiftRes = await getActiveCashShiftUseCase(
+          loadingState.selectedAccountId!,
+        );
         shiftRes.fold(
           (failure) => null,
           (data) => activeShiftId = data?['id'] as String?,
@@ -299,10 +347,12 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
 
       await result.fold(
         (failure) async {
-          emit(loadingState.copyWith(
-            isSaving: false,
-            errorMessage: 'Error al guardar la orden: ${failure.message}',
-          ));
+          emit(
+            loadingState.copyWith(
+              isSaving: false,
+              errorMessage: 'Error al guardar la orden: ${failure.message}',
+            ),
+          );
         },
         (_) async {
           await clearDraft();
@@ -310,10 +360,12 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
         },
       );
     } catch (e) {
-      emit(loadingState.copyWith(
-        isSaving: false,
-        errorMessage: 'Error inesperado: $e',
-      ));
+      emit(
+        loadingState.copyWith(
+          isSaving: false,
+          errorMessage: 'Error inesperado: $e',
+        ),
+      );
     }
   }
 
@@ -324,8 +376,3 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
     }
   }
 }
-
-
-
-
-

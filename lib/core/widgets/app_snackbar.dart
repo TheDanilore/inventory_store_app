@@ -65,7 +65,9 @@ class AppSnackbar {
     // Insertamos al inicio para que la más nueva tome la posición frontal
     _queue.insert(0, newSnackbar);
 
-    final overlayState = Navigator.maybeOf(context, rootNavigator: true)?.overlay ?? Overlay.of(context);
+    final overlayState =
+        Navigator.maybeOf(context, rootNavigator: true)?.overlay ??
+        Overlay.of(context);
 
     if (_overlayEntry == null) {
       _overlayEntry = OverlayEntry(
@@ -135,8 +137,8 @@ class AppSnackbar {
 
     _queue.insert(0, newSnackbar);
 
-    final overlayState = messenger.context
-        .findAncestorStateOfType<OverlayState>();
+    final overlayState =
+        messenger.context.findAncestorStateOfType<OverlayState>();
     if (overlayState == null) return;
 
     if (_overlayEntry == null) {
@@ -262,12 +264,22 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
   void _startAutoDismissTimer(Duration duration) {
     if (widget.index == 0) {
       _progressController.duration = duration;
-      _progressController.reverse(from: _progressController.value == 0 ? 1.0 : _progressController.value).then((_) async {
-        if (mounted && !_isDismissedBySwipe && !_isBeingPressed && widget.index == 0) {
-          await _controller.reverse();
-          widget.onDismissed();
-        }
-      });
+      _progressController
+          .reverse(
+            from:
+                _progressController.value == 0
+                    ? 1.0
+                    : _progressController.value,
+          )
+          .then((_) async {
+            if (mounted &&
+                !_isDismissedBySwipe &&
+                !_isBeingPressed &&
+                widget.index == 0) {
+              await _controller.reverse();
+              widget.onDismissed();
+            }
+          });
     }
   }
 
@@ -342,7 +354,9 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                       filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: widget.item.backgroundColor.withValues(alpha: 0.95),
+                          color: widget.item.backgroundColor.withValues(
+                            alpha: 0.95,
+                          ),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: widget.item.backgroundColor,
@@ -350,7 +364,9 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: widget.item.backgroundColor.withValues(alpha: 0.3),
+                              color: widget.item.backgroundColor.withValues(
+                                alpha: 0.3,
+                              ),
                               blurRadius: (16 - (widget.index * 2)).toDouble(),
                               offset: Offset(0, (8 + widget.index).toDouble()),
                             ),
@@ -369,7 +385,9 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                                   Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.2),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.2,
+                                      ),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(

@@ -1,4 +1,3 @@
-
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -125,7 +124,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   ) async {
     final allProducts = state.products;
     final max50Products = allProducts.take(50).toList();
-    
+
     final options = await CatalogDialogs.showExportOptionsDialog(
       context,
       max50Products,
@@ -217,19 +216,28 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(10),
                                       gradient: const LinearGradient(
-                                        colors: [Color(0xFF0EA5E9), Color(0xFF0284C7)],
+                                        colors: [
+                                          Color(0xFF0EA5E9),
+                                          Color(0xFF0284C7),
+                                        ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(0xFF0284C7).withValues(alpha: 0.3),
+                                          color: const Color(
+                                            0xFF0284C7,
+                                          ).withValues(alpha: 0.3),
                                           blurRadius: 8,
                                           offset: const Offset(0, 3),
                                         ),
                                       ],
                                     ),
-                                    child: const Icon(Icons.person_rounded, color: Colors.white, size: 20),
+                                    child: const Icon(
+                                      Icons.person_rounded,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -268,7 +276,13 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           PopupMenuButton<String>(
                             tooltip: 'Opciones',
                             offset: const Offset(0, 45),
-                            onSelected: (value) => _handleMenuSelection(value, cubit, state, context),
+                            onSelected:
+                                (value) => _handleMenuSelection(
+                                  value,
+                                  cubit,
+                                  state,
+                                  context,
+                                ),
                             itemBuilder: (_) => _buildMenuItems(state),
                             child: Container(
                               width: 38,
@@ -276,26 +290,43 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                                border: Border.all(
+                                  color: Colors.grey.withValues(alpha: 0.2),
+                                ),
                               ),
-                              child: const Icon(Icons.more_vert_rounded, color: Color(0xFF64748B), size: 20),
+                              child: const Icon(
+                                Icons.more_vert_rounded,
+                                color: Color(0xFF64748B),
+                                size: 20,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Builder(
-                            builder: (context) => GestureDetector(
-                              onTap: () => Scaffold.of(context).openEndDrawer(),
-                              child: Container(
-                                width: 38,
-                                height: 38,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                            builder:
+                                (context) => GestureDetector(
+                                  onTap:
+                                      () =>
+                                          Scaffold.of(context).openEndDrawer(),
+                                  child: Container(
+                                    width: 38,
+                                    height: 38,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: Colors.grey.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.menu_rounded,
+                                      color: Color(0xFF64748B),
+                                      size: 20,
+                                    ),
+                                  ),
                                 ),
-                                child: const Icon(Icons.menu_rounded, color: Color(0xFF64748B), size: 20),
-                              ),
-                            ),
                           ),
                           const SizedBox(width: 12),
                         ],
@@ -342,8 +373,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                             state.actionState ==
                                             ViewState.loading,
                                         onExport:
-                                            () =>
-                                                _exportCatalogPdf(context, cubit, state),
+                                            () => _exportCatalogPdf(
+                                              context,
+                                              cubit,
+                                              state,
+                                            ),
                                         onSearchChanged: cubit.setSearchTerm,
                                         searchByIngredient:
                                             state.searchByIngredient,
@@ -474,7 +508,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           pageSize: 20,
                           currentPage: state.currentPage,
                           onPageChanged: cubit.setPage,
-                          onSale: widget.onAddToCart ??
+                          onSale:
+                              widget.onAddToCart ??
                               (product) {
                                 showModalBottomSheet(
                                   context: context,
@@ -483,7 +518,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                   builder:
                                       (_) => Padding(
                                         padding: EdgeInsets.only(
-                                          bottom: MediaQuery.of(context).viewInsets.bottom,
+                                          bottom:
+                                              MediaQuery.of(
+                                                context,
+                                              ).viewInsets.bottom,
                                         ),
                                         child: PosAddToCartSheet(
                                           productEntity: product,
@@ -626,4 +664,3 @@ class _CatalogHeaderDelegate extends SliverPersistentHeaderDelegate {
         child != oldDelegate.child;
   }
 }
-

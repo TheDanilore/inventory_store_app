@@ -91,24 +91,25 @@ class _CustomerCreditMovementsScreenContentState
     if (!mounted) return;
     Navigator.pop(context);
     result.fold(
-        (failure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Error al cargar la orden')),
-          );
-        },
-        (order) {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            useRootNavigator: true,
-            backgroundColor: Colors.transparent,
-            builder: (ctx) => BlocProvider(
-              create: (_) => sl<OrderDetailCubit>()..fetchData(order.id),
-              child: OrderDetailSheet(order: order),
-            ),
-          );
-        },
-      );
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al cargar la orden')),
+        );
+      },
+      (order) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          useRootNavigator: true,
+          backgroundColor: Colors.transparent,
+          builder:
+              (ctx) => BlocProvider(
+                create: (_) => sl<OrderDetailCubit>()..fetchData(order.id),
+                child: OrderDetailSheet(order: order),
+              ),
+        );
+      },
+    );
   }
 
   @override

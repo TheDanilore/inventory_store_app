@@ -62,16 +62,16 @@ class KardexLoaded extends KardexState {
 
   @override
   List<Object?> get props => [
-        movements,
-        startDate,
-        endDate,
-        typeFilter,
-        searchText,
-        currentPage,
-        totalCount,
-        totalPages,
-        isExporting,
-      ];
+    movements,
+    startDate,
+    endDate,
+    typeFilter,
+    searchText,
+    currentPage,
+    totalCount,
+    totalPages,
+    isExporting,
+  ];
 }
 
 class KardexError extends KardexState {

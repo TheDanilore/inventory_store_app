@@ -226,7 +226,11 @@ class _CoinCatcherGameScreenState extends State<CoinCatcherGameScreen> {
         return;
       }
       try {
-        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_CATCHER', _score, 'Lluvia de Monedas: Ganó $_score monedas');
+        await context.read<PointsCubit>().recordMiniGameResult(
+          'MINI_GAME_CATCHER',
+          _score,
+          'Lluvia de Monedas: Ganó $_score monedas',
+        );
       } catch (e) {
         if (mounted) {
           AppSnackbar.show(
@@ -495,4 +499,3 @@ class _CoinCatcherGameScreenState extends State<CoinCatcherGameScreen> {
     );
   }
 }
-

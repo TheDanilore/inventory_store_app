@@ -52,7 +52,7 @@ class TopCustomersSection extends StatelessWidget {
                 ),
               ),
               SizedBox(
-                height: 140, 
+                height: 140,
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   scrollDirection: Axis.horizontal,
@@ -63,7 +63,11 @@ class TopCustomersSection extends StatelessWidget {
                     return _TopCustomerCard(
                       customer: c,
                       medal: _medals[i],
-                      onTap: (c) => context.push('/admin/customer-detail/${c.id}', extra: c),
+                      onTap:
+                          (c) => context.push(
+                            '/admin/customer-detail/${c.id}',
+                            extra: c,
+                          ),
                     );
                   },
                 ),
@@ -133,10 +137,7 @@ class _TopCustomerCardState extends State<_TopCustomerCard> {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        widget.medal,
-                        style: const TextStyle(fontSize: 16),
-                      ),
+                      Text(widget.medal, style: const TextStyle(fontSize: 16)),
                       const Spacer(),
                       _MiniAvatar(
                         name: widget.customer.fullName,

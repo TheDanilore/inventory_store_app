@@ -5,8 +5,8 @@ import 'injection_container.config.dart';
 final sl = GetIt.instance;
 
 @InjectableInit(
-  initializerName: 'init', 
-  preferRelativeImports: true, 
-  asExtension: true, 
+  initializerName: 'init',
+  preferRelativeImports: true,
+  asExtension: true,
 )
 void initDI() => sl.init();

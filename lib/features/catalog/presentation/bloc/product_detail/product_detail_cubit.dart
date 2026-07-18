@@ -7,7 +7,8 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/product_d
 class ProductDetailCubit extends Cubit<ProductDetailState> {
   final GetProductByIdUseCase _getProductByIdUseCase;
 
-  ProductDetailCubit(this._getProductByIdUseCase) : super(ProductDetailInitial());
+  ProductDetailCubit(this._getProductByIdUseCase)
+    : super(ProductDetailInitial());
 
   Future<void> loadProduct(String productId) async {
     emit(ProductDetailLoading());

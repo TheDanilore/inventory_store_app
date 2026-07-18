@@ -12,7 +12,11 @@ abstract class CheckoutRepository {
     required String? warehouseId,
     required List<CartItemEntity> itemsToBuy,
   });
-  
-  Future<Either<Failure, Map<String, dynamic>?>> fetchDefaultAddress(String profileId);
-  Future<Either<Failure, Map<String, int>>> fetchStockForVariants(List<String> variantIds);
+
+  Future<Either<Failure, Map<String, dynamic>?>> fetchDefaultAddress(
+    String profileId,
+  );
+  Future<Either<Failure, Map<String, int>>> fetchStockForVariants(
+    List<String> variantIds,
+  );
 }

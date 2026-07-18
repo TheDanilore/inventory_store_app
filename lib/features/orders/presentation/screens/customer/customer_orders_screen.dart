@@ -445,4 +445,3 @@ class _StickyFiltersDelegate extends SliverPersistentHeaderDelegate {
     return true;
   }
 }
-

@@ -1,7 +1,6 @@
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_movement_entity.dart';
 
 class SupplierCreditMovementModel extends SupplierCreditMovementEntity {
-
   const SupplierCreditMovementModel({
     required super.id,
     required super.creditId,

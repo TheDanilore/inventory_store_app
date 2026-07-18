@@ -73,12 +73,20 @@ class InventoryEntryFormState extends Equatable {
       suppliers: suppliers ?? this.suppliers,
       accounts: accounts ?? this.accounts,
       selectedWarehouseId: selectedWarehouseId ?? this.selectedWarehouseId,
-      selectedSupplierId: clearSelectedSupplierId ? null : (selectedSupplierId ?? this.selectedSupplierId),
+      selectedSupplierId:
+          clearSelectedSupplierId
+              ? null
+              : (selectedSupplierId ?? this.selectedSupplierId),
       documentType: documentType ?? this.documentType,
-      documentNumber: clearDocumentNumber ? null : (documentNumber ?? this.documentNumber),
-      documentDate: clearDocumentDate ? null : (documentDate ?? this.documentDate),
+      documentNumber:
+          clearDocumentNumber ? null : (documentNumber ?? this.documentNumber),
+      documentDate:
+          clearDocumentDate ? null : (documentDate ?? this.documentDate),
       paymentMode: paymentMode ?? this.paymentMode,
-      selectedAccountId: clearSelectedAccountId ? null : (selectedAccountId ?? this.selectedAccountId),
+      selectedAccountId:
+          clearSelectedAccountId
+              ? null
+              : (selectedAccountId ?? this.selectedAccountId),
       purchaseOrderId: purchaseOrderId ?? this.purchaseOrderId,
       activeShiftId: activeShiftId ?? this.activeShiftId,
       items: items ?? this.items,
@@ -91,22 +99,22 @@ class InventoryEntryFormState extends Equatable {
 
   @override
   List<Object?> get props => [
-        warehouses,
-        suppliers,
-        accounts,
-        selectedWarehouseId,
-        selectedSupplierId,
-        documentType,
-        documentNumber,
-        documentDate,
-        paymentMode,
-        selectedAccountId,
-        purchaseOrderId,
-        activeShiftId,
-        items,
-        isLoading,
-        isSaving,
-        errorMessage,
-        isSuccess,
-      ];
+    warehouses,
+    suppliers,
+    accounts,
+    selectedWarehouseId,
+    selectedSupplierId,
+    documentType,
+    documentNumber,
+    documentDate,
+    paymentMode,
+    selectedAccountId,
+    purchaseOrderId,
+    activeShiftId,
+    items,
+    isLoading,
+    isSaving,
+    errorMessage,
+    isSuccess,
+  ];
 }

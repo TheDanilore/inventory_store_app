@@ -22,7 +22,8 @@ class KardexMovementModel {
     this.imageUrl,
   });
 
-  bool get isReturn => movement.orderId != null && movement.reason.toUpperCase() == 'RETURN';
+  bool get isReturn =>
+      movement.orderId != null && movement.reason.toUpperCase() == 'RETURN';
 
   bool get isSale => movement.orderId != null && !isReturn;
 

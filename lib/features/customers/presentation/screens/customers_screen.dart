@@ -26,10 +26,12 @@ class _CustomersScreenContent extends StatefulWidget {
   const _CustomersScreenContent();
 
   @override
-  State<_CustomersScreenContent> createState() => _CustomersScreenContentState();
+  State<_CustomersScreenContent> createState() =>
+      _CustomersScreenContentState();
 }
 
-class _CustomersScreenContentState extends State<_CustomersScreenContent> with SingleTickerProviderStateMixin {
+class _CustomersScreenContentState extends State<_CustomersScreenContent>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabCtrl;
   final _searchCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
@@ -46,7 +48,8 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
     });
 
     _scrollCtrl.addListener(() {
-      if (_scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 200) {
+      if (_scrollCtrl.position.pixels >=
+          _scrollCtrl.position.maxScrollExtent - 200) {
         final state = context.read<CustomersCubit>().state;
         if (state is CustomersLoaded && !state.hasReachedMax) {
           context.read<CustomersCubit>().fetchCustomers();
@@ -64,13 +67,15 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
   }
 
   void _openDetail(CustomerEntity customer) {
-    context.push('/admin/customer-detail/${customer.id}', extra: customer).then((_) {
-      if (mounted) {
-        context.read<CustomersCubit>().fetchCustomers(reset: true);
-        context.read<CustomersStatsCubit>().loadStats();
-        context.read<TopCustomersCubit>().loadTopCustomers();
-      }
-    });
+    context.push('/admin/customer-detail/${customer.id}', extra: customer).then(
+      (_) {
+        if (mounted) {
+          context.read<CustomersCubit>().fetchCustomers(reset: true);
+          context.read<CustomersStatsCubit>().loadStats();
+          context.read<TopCustomersCubit>().loadTopCustomers();
+        }
+      },
+    );
   }
 
   @override
@@ -100,7 +105,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
                         }
                       });
                     },
-                    child: const Icon(Icons.person_add_rounded, color: Colors.white),
+                    child: const Icon(
+                      Icons.person_add_rounded,
+                      color: Colors.white,
+                    ),
                   )
                   : null,
           body: RefreshIndicator(
@@ -136,23 +144,24 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
             decoration: InputDecoration(
               hintText: 'Buscar por nombre, documento o teléfono...',
               prefixIcon: const Icon(Icons.search),
-              suffixIcon: isLoading
-                  ? const Padding(
-                      padding: EdgeInsets.all(12.0),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : _searchCtrl.text.isNotEmpty
+              suffixIcon:
+                  isLoading
+                      ? const Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                      : _searchCtrl.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            context.read<CustomersCubit>().search('');
-                          },
-                        )
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          context.read<CustomersCubit>().search('');
+                        },
+                      )
                       : null,
               filled: true,
               fillColor: Theme.of(context).colorScheme.surface,
@@ -161,7 +170,8 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
                 borderSide: BorderSide.none,
               ),
             ),
-            onChanged: (val) => context.read<CustomersCubit>().search(val.trim()),
+            onChanged:
+                (val) => context.read<CustomersCubit>().search(val.trim()),
           ),
         ),
       ),
@@ -195,7 +205,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
             ),
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textSecondary,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
             tabs: const [
               Tab(text: 'Todos los clientes'),
               Tab(text: 'Con deuda activa'),
@@ -216,10 +229,16 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.people_outline, size: 64, color: Colors.grey.shade300),
+                Icon(
+                  Icons.people_outline,
+                  size: 64,
+                  color: Colors.grey.shade300,
+                ),
                 const SizedBox(height: 16),
                 Text(
-                  state.showOnlyWithDebt ? 'No hay clientes con deuda activa' : 'No hay clientes registrados',
+                  state.showOnlyWithDebt
+                      ? 'No hay clientes con deuda activa'
+                      : 'No hay clientes registrados',
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
                 ),
                 const SizedBox(height: 16),
@@ -233,16 +252,26 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
                         builder: (_) => const CustomerFormSheet(),
                       ).then((saved) {
                         if (saved == true && mounted) {
-                          context.read<CustomersCubit>().fetchCustomers(reset: true);
+                          context.read<CustomersCubit>().fetchCustomers(
+                            reset: true,
+                          );
                           context.read<CustomersStatsCubit>().loadStats();
                         }
                       });
                     },
-                    icon: const Icon(Icons.person_add_rounded, color: Colors.white),
-                    label: const Text('Registrar Cliente', style: TextStyle(color: Colors.white)),
+                    icon: const Icon(
+                      Icons.person_add_rounded,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      'Registrar Cliente',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
               ],
@@ -260,9 +289,13 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: !state.hasReachedMax
-                        ? const CircularProgressIndicator()
-                        : const Text('No hay más clientes', style: TextStyle(color: Colors.grey)),
+                    child:
+                        !state.hasReachedMax
+                            ? const CircularProgressIndicator()
+                            : const Text(
+                              'No hay más clientes',
+                              style: TextStyle(color: Colors.grey),
+                            ),
                   ),
                 );
               }
@@ -326,5 +359,3 @@ class _CustomersSkeleton extends StatelessWidget {
     );
   }
 }
-
-

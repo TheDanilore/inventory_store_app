@@ -28,7 +28,14 @@ class SupplierCreditsLoading extends SupplierCreditsState {
   });
 
   @override
-  List<Object?> get props => [currentAccounts, searchQuery, withDebtOnly, currentPage, totalCount, stats];
+  List<Object?> get props => [
+    currentAccounts,
+    searchQuery,
+    withDebtOnly,
+    currentPage,
+    totalCount,
+    stats,
+  ];
 }
 
 class SupplierCreditsLoaded extends SupplierCreditsState {
@@ -69,7 +76,14 @@ class SupplierCreditsLoaded extends SupplierCreditsState {
   }
 
   @override
-  List<Object?> get props => [accounts, searchQuery, withDebtOnly, currentPage, totalCount, stats];
+  List<Object?> get props => [
+    accounts,
+    searchQuery,
+    withDebtOnly,
+    currentPage,
+    totalCount,
+    stats,
+  ];
 }
 
 class SupplierCreditsError extends SupplierCreditsState {
@@ -92,5 +106,13 @@ class SupplierCreditsError extends SupplierCreditsState {
   });
 
   @override
-  List<Object?> get props => [message, currentAccounts, searchQuery, withDebtOnly, currentPage, totalCount, stats];
+  List<Object?> get props => [
+    message,
+    currentAccounts,
+    searchQuery,
+    withDebtOnly,
+    currentPage,
+    totalCount,
+    stats,
+  ];
 }

@@ -8,16 +8,13 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 
 class FinancialRoutes {
   static List<RouteBase> get adminRoutes => [
-        GoRoute(
-          path: 'financial-accounts',
-          builder: (context, state) => MultiBlocProvider(
+    GoRoute(
+      path: 'financial-accounts',
+      builder:
+          (context, state) => MultiBlocProvider(
             providers: [
-              BlocProvider(
-                create: (_) => sl<FinancialAccountsCubit>(),
-              ),
-              BlocProvider(
-                create: (_) => sl<AccountMovementsCubit>(),
-              ),
+              BlocProvider(create: (_) => sl<FinancialAccountsCubit>()),
+              BlocProvider(create: (_) => sl<AccountMovementsCubit>()),
             ],
             child: const AdminLayout(
               title: 'Cuentas y Bancos',
@@ -25,6 +22,6 @@ class FinancialRoutes {
               body: FinancialAccountsScreen(),
             ),
           ),
-        ),
-      ];
+    ),
+  ];
 }

@@ -33,7 +33,8 @@ class GetFilteredOrdersUc {
   GetFilteredOrdersUc(this.repository);
 
   Future<Either<Failure, ({List<OrderEntity> orders, int total})>> call(
-      GetFilteredOrdersParams params) {
+    GetFilteredOrdersParams params,
+  ) {
     return repository.getFilteredOrders(
       customerIdFilter: params.customerIdFilter,
       statusFilter: params.statusFilter,

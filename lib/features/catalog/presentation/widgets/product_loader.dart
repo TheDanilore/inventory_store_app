@@ -30,9 +30,7 @@ class ProductLoader extends StatelessWidget {
           }
 
           if (state is ProductDetailError) {
-            return Scaffold(
-              body: Center(child: Text(state.message)),
-            );
+            return Scaffold(body: Center(child: Text(state.message)));
           }
 
           if (state is ProductDetailLoaded) {

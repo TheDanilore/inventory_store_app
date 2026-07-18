@@ -14,5 +14,3 @@ class GetFinancialAccountsUseCase {
     return repository.getFinancialAccounts();
   }
 }
-
-

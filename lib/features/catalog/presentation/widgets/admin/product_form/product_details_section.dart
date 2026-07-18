@@ -106,8 +106,7 @@ class _ProductDetailsSectionState extends State<ProductDetailsSection> {
           if (state.detailRows.isEmpty)
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               decoration: BoxDecoration(
                 color: Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(12),
@@ -115,8 +114,7 @@ class _ProductDetailsSectionState extends State<ProductDetailsSection> {
               ),
               child: Text(
                 'Sin detalles adicionales',
-                style:
-                    TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
               ),
             )
           else
@@ -140,9 +138,12 @@ class _ProductDetailsSectionState extends State<ProductDetailsSection> {
                         decoration: InputDecoration(
                           hintText: 'Propiedad (ej: Material)',
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                           isDense: true,
                         ),
                         style: const TextStyle(fontSize: 13),
@@ -150,8 +151,10 @@ class _ProductDetailsSectionState extends State<ProductDetailsSection> {
                     ),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Text(':',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text(
+                        ':',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                     Expanded(
                       flex: 5,
@@ -161,9 +164,12 @@ class _ProductDetailsSectionState extends State<ProductDetailsSection> {
                         decoration: InputDecoration(
                           hintText: 'Valor (ej: Acero)',
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                           isDense: true,
                         ),
                         style: const TextStyle(fontSize: 13),
@@ -171,8 +177,11 @@ class _ProductDetailsSectionState extends State<ProductDetailsSection> {
                     ),
                     IconButton(
                       onPressed: () => cubit.removeDetailRow(idx),
-                      icon: Icon(Icons.remove_circle_outline,
-                          color: Colors.red.shade400, size: 20),
+                      icon: Icon(
+                        Icons.remove_circle_outline,
+                        color: Colors.red.shade400,
+                        size: 20,
+                      ),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),

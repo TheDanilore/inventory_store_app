@@ -208,10 +208,15 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
                     variantId: variant.id,
                     variantLabel: variant.label,
                     unitPrice: variant.salePrice ?? widget.product.salePrice,
-                    wholesalePrice: variant.wholesalePrice ?? widget.product.wholesalePrice,
+                    wholesalePrice:
+                        variant.wholesalePrice ?? widget.product.wholesalePrice,
                     wholesaleMinQuantity: widget.product.wholesaleMinQuantity,
                     unitCost: variant.unitCost ?? widget.product.unitCost,
-                    imageUrl: (variant.images.isNotEmpty ? variant.images.first.imageUrl : null) ?? widget.product.primaryImageUrl,
+                    imageUrl:
+                        (variant.images.isNotEmpty
+                            ? variant.images.first.imageUrl
+                            : null) ??
+                        widget.product.primaryImageUrl,
                     sku: variant.sku,
                     availableStock: variantStock,
                     usesBatches: widget.product.stockControl,

@@ -1,4 +1,4 @@
-﻿import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 
 abstract class CustomerLocationsRepository {
   Future<List<CustomerLocationEntity>> getCustomerLocations(String customerId);
@@ -30,4 +30,3 @@ abstract class CustomerLocationsRepository {
   Future<void> deleteLocation(String locationId);
   Future<void> setLocationAsDefault(String customerId, String locationId);
 }
-

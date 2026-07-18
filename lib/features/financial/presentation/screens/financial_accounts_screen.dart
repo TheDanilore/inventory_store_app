@@ -9,7 +9,6 @@ import 'package:inventory_store_app/features/financial/presentation/bloc/account
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 
-
 // FINANCIAL ACCOUNTS SCREEN
 
 class FinancialAccountsScreen extends StatefulWidget {

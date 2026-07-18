@@ -8,9 +8,8 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/invento
 class InventoryExitsCubit extends Cubit<InventoryExitsState> {
   final GetInventoryExitsUseCase getExitsUseCase;
 
-  InventoryExitsCubit({
-    required this.getExitsUseCase,
-  }) : super(const InventoryExitsState());
+  InventoryExitsCubit({required this.getExitsUseCase})
+    : super(const InventoryExitsState());
 
   void initLoad() {
     loadExits(isRefresh: true);
@@ -36,17 +35,31 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
       final exits = List<InventoryExitEntity>.from(dataList);
       final totalRecords = response.count;
 
-      emit(state.copyWith(
-        exits: exits,
-        totalRecords: totalRecords,
-        isLoading: false,
-      ));
+      emit(
+        state.copyWith(
+          exits: exits,
+          totalRecords: totalRecords,
+          isLoading: false,
+        ),
+      );
     } catch (e) {
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
-        emit(state.copyWith(errorMessage: 'Sin conexión a internet.', isLoading: false));
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
+        emit(
+          state.copyWith(
+            errorMessage: 'Sin conexión a internet.',
+            isLoading: false,
+          ),
+        );
       } else {
-        emit(state.copyWith(errorMessage: 'Error al cargar salidas.', isLoading: false));
+        emit(
+          state.copyWith(
+            errorMessage: 'Error al cargar salidas.',
+            isLoading: false,
+          ),
+        );
       }
     }
   }

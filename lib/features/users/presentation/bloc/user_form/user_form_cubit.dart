@@ -9,7 +9,8 @@ class UserFormCubit extends Cubit<UserFormState> {
   final CreateUserUseCase _createUser;
   final UpdateUserUseCase _updateUser;
 
-  UserFormCubit(this._createUser, this._updateUser) : super(const UserFormInitial());
+  UserFormCubit(this._createUser, this._updateUser)
+    : super(const UserFormInitial());
 
   Future<void> saveUser({
     String? id, // If id is provided, we update, else create

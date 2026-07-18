@@ -68,13 +68,21 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
       widget.onUpdate(widget.draft.copyWith(price: priceCtrl.text));
     });
     wholesalePriceCtrl.addListener(() {
-      widget.onUpdate(widget.draft.copyWith(wholesalePrice: wholesalePriceCtrl.text));
+      widget.onUpdate(
+        widget.draft.copyWith(wholesalePrice: wholesalePriceCtrl.text),
+      );
     });
     wholesaleMinQuantityCtrl.addListener(() {
-      widget.onUpdate(widget.draft.copyWith(wholesaleMinQuantity: wholesaleMinQuantityCtrl.text));
+      widget.onUpdate(
+        widget.draft.copyWith(
+          wholesaleMinQuantity: wholesaleMinQuantityCtrl.text,
+        ),
+      );
     });
     reorderPointCtrl.addListener(() {
-      widget.onUpdate(widget.draft.copyWith(reorderPoint: reorderPointCtrl.text));
+      widget.onUpdate(
+        widget.draft.copyWith(reorderPoint: reorderPointCtrl.text),
+      );
     });
     unitCostCtrl.addListener(() {
       widget.onUpdate(widget.draft.copyWith(unitCost: unitCostCtrl.text));
@@ -556,7 +564,11 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                     ),
                                     onDelete: () {
                                       setState(() {
-                                        widget.onUpdate(widget.draft.copyWith(urlsExistentes: []));
+                                        widget.onUpdate(
+                                          widget.draft.copyWith(
+                                            urlsExistentes: [],
+                                          ),
+                                        );
                                       });
                                     },
                                   ),
@@ -568,7 +580,11 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                     ),
                                     onDelete: () {
                                       setState(() {
-                                        widget.onUpdate(widget.draft.copyWith(nuevasImagenes: []));
+                                        widget.onUpdate(
+                                          widget.draft.copyWith(
+                                            nuevasImagenes: [],
+                                          ),
+                                        );
                                       });
                                     },
                                   ),

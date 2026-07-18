@@ -120,92 +120,6 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // ── Collapsible AppBar con íconos de perfil / carrito ─────────────
-            SliverAppBar(
-              backgroundColor: AppColors.background,
-              surfaceTintColor: Colors.transparent,
-              elevation: 0,
-              floating: true,
-              snap: true,
-              automaticallyImplyLeading: false,
-              toolbarHeight: 56,
-              title: Text(
-                widget.businessName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                  color: AppColors.textPrimary,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-              actions: [
-                // Carrito con badge
-                if (!isGuest && !isAdmin)
-                  BlocBuilder<CartCubit, CartState>(
-                    builder: (context, cartState) {
-                      final count = cartState.items.values.fold(
-                        0,
-                        (sum, item) => sum + item.quantity,
-                      );
-                      return Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.shopping_bag_outlined,
-                              color: AppColors.textPrimary,
-                            ),
-                            onPressed: () => context.push('/customer/cart'),
-                          ),
-                          if (count > 0)
-                            Positioned(
-                              right: 6,
-                              top: 6,
-                              child: Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.accent,
-                                  shape: BoxShape.circle,
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 16,
-                                  minHeight: 16,
-                                ),
-                                child: Text(
-                                  count > 99 ? '99+' : '$count',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                // Perfil
-                IconButton(
-                  icon: const Icon(
-                    Icons.person_outline_rounded,
-                    color: AppColors.textPrimary,
-                  ),
-                  onPressed: () {
-                    if (isGuest) {
-                      context.push('/login');
-                    } else if (isAdmin) {
-                      context.push('/admin/profile');
-                    } else {
-                      context.push('/customer/profile');
-                    }
-                  },
-                ),
-                const SizedBox(width: 4),
-              ],
-            ),
-
             // ── Banners (solo en modo normal) ─────────────────────────────────
             if (!state.isSearchMode && state.searchTerm.isEmpty) ...[
               SliverToBoxAdapter(
@@ -222,9 +136,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
             // ── Buscador fijo (pinned) ─────────────────────────────────────────
             SliverPersistentHeader(
               pinned: true,
-              delegate: _StickySearchDelegate(
-                child: const CatalogSearchBar(),
-              ),
+              delegate: _StickySearchDelegate(child: const CatalogSearchBar()),
             ),
 
             // ── Categorías ────────────────────────────────────────────────────
@@ -235,10 +147,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                   padding: EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
                     'Categorías',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -250,10 +159,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                   padding: EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
                     'Todos los Productos',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -334,13 +240,12 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                   vertical: 8,
                 ),
                 sliver: SliverGrid(
-                  gridDelegate:
-                      const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 220,
-                        childAspectRatio: 0.58,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                      ),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 220,
+                    childAspectRatio: 0.58,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                  ),
                   delegate: SliverChildBuilderDelegate(
                     (_, _) => const CatalogProductShimmer(),
                     childCount: 8,
@@ -402,23 +307,19 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                   vertical: 8,
                 ),
                 sliver: SliverGrid(
-                  gridDelegate:
-                      const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 220,
-                        childAspectRatio: 0.58,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                      ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final product = state.products[index];
-                      return CatalogProductCard(
-                        product: product,
-                        onAddToCart: widget.onAddToCart ?? (p) async {},
-                      );
-                    },
-                    childCount: state.products.length,
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 220,
+                    childAspectRatio: 0.58,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
                   ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final product = state.products[index];
+                    return CatalogProductCard(
+                      product: product,
+                      onAddToCart: widget.onAddToCart ?? (p) async {},
+                    );
+                  }, childCount: state.products.length),
                 ),
               ),
               if ((state.viewState == ViewState.loading ||

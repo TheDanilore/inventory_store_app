@@ -3,9 +3,9 @@ import 'package:inventory_store_app/features/app_config/presentation/screens/bus
 
 class AppConfigRoutes {
   static List<RouteBase> get adminRoutes => [
-        GoRoute(
-          path: 'business-info',
-          builder: (context, state) => const BusinessInfoScreen(),
-        ),
-      ];
+    GoRoute(
+      path: 'business-info',
+      builder: (context, state) => const BusinessInfoScreen(),
+    ),
+  ];
 }

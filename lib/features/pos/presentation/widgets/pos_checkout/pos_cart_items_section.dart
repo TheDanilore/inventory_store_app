@@ -12,10 +12,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 class PosCartItemsSection extends StatelessWidget {
   final Function(CartItemEntity item) onShowBatchEditSheet;
 
-  const PosCartItemsSection({
-    super.key,
-    required this.onShowBatchEditSheet,
-  });
+  const PosCartItemsSection({super.key, required this.onShowBatchEditSheet});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +25,10 @@ class PosCartItemsSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border, style: BorderStyle.solid),
+              border: Border.all(
+                color: AppColors.border,
+                style: BorderStyle.solid,
+              ),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -134,7 +134,10 @@ class PosCartItemRow extends StatelessWidget {
                 onPressed: () {
                   final newQty = int.tryParse(qtyCtrl.text.trim());
                   if (newQty != null && newQty >= 0) {
-                    context.read<CartCubit>().updateQuantity(item.cartKey, newQty);
+                    context.read<CartCubit>().updateQuantity(
+                      item.cartKey,
+                      newQty,
+                    );
                     Navigator.pop(dialogContext);
                   }
                 },
@@ -151,7 +154,11 @@ class PosCartItemRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Inject PosCubit to check for batch overrides.
-    final bool hasBatchOverride = context.watch<PosCubit>().state.batchOverrides.containsKey(item.cartKey);
+    final bool hasBatchOverride = context
+        .watch<PosCubit>()
+        .state
+        .batchOverrides
+        .containsKey(item.cartKey);
 
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -286,10 +293,12 @@ class PosCartItemRow extends StatelessWidget {
                           InkWell(
                             onTap:
                                 item.quantity > 1
-                                    ? () => context.read<CartCubit>().updateQuantity(
-                                      item.cartKey,
-                                      item.quantity - 1,
-                                    )
+                                    ? () => context
+                                        .read<CartCubit>()
+                                        .updateQuantity(
+                                          item.cartKey,
+                                          item.quantity - 1,
+                                        )
                                     : null,
                             borderRadius: const BorderRadius.horizontal(
                               left: Radius.circular(6),
@@ -328,10 +337,12 @@ class PosCartItemRow extends StatelessWidget {
                           InkWell(
                             onTap:
                                 item.quantity < item.availableStock
-                                    ? () => context.read<CartCubit>().updateQuantity(
-                                      item.cartKey,
-                                      item.quantity + 1,
-                                    )
+                                    ? () => context
+                                        .read<CartCubit>()
+                                        .updateQuantity(
+                                          item.cartKey,
+                                          item.quantity + 1,
+                                        )
                                     : null,
                             borderRadius: const BorderRadius.horizontal(
                               right: Radius.circular(6),

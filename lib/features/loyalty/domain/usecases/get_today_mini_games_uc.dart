@@ -10,7 +10,10 @@ class GetTodayMiniGamesUC {
 
   GetTodayMiniGamesUC(this.repository);
 
-  Future<Either<Failure, List<WalletMovementEntity>>> call(String profileId, String currentDayUtcIso) async {
+  Future<Either<Failure, List<WalletMovementEntity>>> call(
+    String profileId,
+    String currentDayUtcIso,
+  ) async {
     return await repository.getTodayMiniGames(profileId, currentDayUtcIso);
   }
 }

@@ -59,15 +59,15 @@ class InventoryEntriesLoaded extends InventoryEntriesState {
 
   @override
   List<Object?> get props => [
-        entries,
-        searchQuery,
-        warehouseFilter,
-        dateRange,
-        availableWarehouses,
-        currentPage,
-        totalCount,
-        totalPages,
-      ];
+    entries,
+    searchQuery,
+    warehouseFilter,
+    dateRange,
+    availableWarehouses,
+    currentPage,
+    totalCount,
+    totalPages,
+  ];
 }
 
 class InventoryEntriesError extends InventoryEntriesState {

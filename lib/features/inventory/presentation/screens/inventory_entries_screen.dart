@@ -152,23 +152,35 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         }
       },
       builder: (context, state) {
-        if (state is InventoryEntriesInitial || (state is InventoryEntriesLoading && state is! InventoryEntriesLoaded)) {
+        if (state is InventoryEntriesInitial ||
+            (state is InventoryEntriesLoading &&
+                state is! InventoryEntriesLoaded)) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final loadedState = state is InventoryEntriesLoaded 
-          ? state 
-          : (state is InventoryEntriesLoading 
-              ? context.read<InventoryEntriesCubit>().state as InventoryEntriesLoaded?
-              : null);
+        final loadedState =
+            state is InventoryEntriesLoaded
+                ? state
+                : (state is InventoryEntriesLoading
+                    ? context.read<InventoryEntriesCubit>().state
+                        as InventoryEntriesLoaded?
+                    : null);
 
         if (loadedState == null && state is InventoryEntriesError) {
           return Center(child: Text('Error: ${state.message}'));
         }
 
-        final currentState = loadedState ?? const InventoryEntriesLoaded(
-          entries: [], searchQuery: '', warehouseFilter: 'Todos', availableWarehouses: ['Todos'], currentPage: 0, totalCount: 0, totalPages: 1,
-        );
+        final currentState =
+            loadedState ??
+            const InventoryEntriesLoaded(
+              entries: [],
+              searchQuery: '',
+              warehouseFilter: 'Todos',
+              availableWarehouses: ['Todos'],
+              currentPage: 0,
+              totalCount: 0,
+              totalPages: 1,
+            );
 
         final isLoading = state is InventoryEntriesLoading;
 
@@ -225,7 +237,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         Expanded(
           child: RefreshIndicator(
             color: AppColors.primary,
-            onRefresh: () async => context.read<InventoryEntriesCubit>().loadEntries(page: 0),
+            onRefresh:
+                () async =>
+                    context.read<InventoryEntriesCubit>().loadEntries(page: 0),
             child: _buildCustomScrollView(context, state, isLoading, false),
           ),
         ),
@@ -249,8 +263,16 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
               Expanded(
                 child: RefreshIndicator(
                   color: AppColors.primary,
-                  onRefresh: () async => context.read<InventoryEntriesCubit>().loadEntries(page: 0),
-                  child: _buildCustomScrollView(context, state, isLoading, true),
+                  onRefresh:
+                      () async => context
+                          .read<InventoryEntriesCubit>()
+                          .loadEntries(page: 0),
+                  child: _buildCustomScrollView(
+                    context,
+                    state,
+                    isLoading,
+                    true,
+                  ),
                 ),
               ),
               _buildPagination(context, state, isLoading),
@@ -403,18 +425,27 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                           controller: _searchCtrl,
                           hint: 'Buscar proveedor o comprobante...',
                           onChanged: (v) {},
-                          onSubmitted: (v) => context.read<InventoryEntriesCubit>().setSearchQuery(v),
+                          onSubmitted:
+                              (v) => context
+                                  .read<InventoryEntriesCubit>()
+                                  .setSearchQuery(v),
                           onClear: () {
                             _searchCtrl.clear();
-                            context.read<InventoryEntriesCubit>().setSearchQuery('');
+                            context
+                                .read<InventoryEntriesCubit>()
+                                .setSearchQuery('');
                           },
                         ),
                       ),
                       const SizedBox(width: 8),
                       DateFilterCalendar(
                         dateRange: state.dateRange,
-                        onDateRangeSelected: context.read<InventoryEntriesCubit>().setDateRange,
-                        onClear: () => context.read<InventoryEntriesCubit>().setDateRange(null),
+                        onDateRangeSelected:
+                            context.read<InventoryEntriesCubit>().setDateRange,
+                        onClear:
+                            () => context
+                                .read<InventoryEntriesCubit>()
+                                .setDateRange(null),
                       ),
                     ],
                   ),
@@ -433,7 +464,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                                   label: Text(w),
                                   selected: sel,
                                   onSelected:
-                                      (_) => context.read<InventoryEntriesCubit>().setWarehouseFilter(w),
+                                      (_) => context
+                                          .read<InventoryEntriesCubit>()
+                                          .setWarehouseFilter(w),
                                   selectedColor: AppColors.primary.withValues(
                                     alpha: 0.15,
                                   ),
@@ -512,7 +545,11 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     );
   }
 
-  Widget _buildPagination(BuildContext context, InventoryEntriesLoaded state, bool isLoading) {
+  Widget _buildPagination(
+    BuildContext context,
+    InventoryEntriesLoaded state,
+    bool isLoading,
+  ) {
     if (state.totalPages <= 1 || isLoading) {
       return const SizedBox.shrink();
     }
@@ -966,4 +1003,3 @@ class _EntriesSkeleton extends StatelessWidget {
     );
   }
 }
-

@@ -26,7 +26,8 @@ class InventoryExitsState extends Equatable {
     this.endDate,
   });
 
-  int get totalPages => totalRecords == 0 ? 1 : (totalRecords / pageSize).ceil();
+  int get totalPages =>
+      totalRecords == 0 ? 1 : (totalRecords / pageSize).ceil();
 
   InventoryExitsState copyWith({
     List<InventoryExitEntity>? exits,
@@ -44,7 +45,8 @@ class InventoryExitsState extends Equatable {
     return InventoryExitsState(
       exits: exits ?? this.exits,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
       currentPage: currentPage ?? this.currentPage,
       totalRecords: totalRecords ?? this.totalRecords,
       pageSize: pageSize ?? this.pageSize,
@@ -56,14 +58,14 @@ class InventoryExitsState extends Equatable {
 
   @override
   List<Object?> get props => [
-        exits,
-        isLoading,
-        errorMessage,
-        currentPage,
-        totalRecords,
-        pageSize,
-        searchQuery,
-        startDate,
-        endDate,
-      ];
+    exits,
+    isLoading,
+    errorMessage,
+    currentPage,
+    totalRecords,
+    pageSize,
+    searchQuery,
+    startDate,
+    endDate,
+  ];
 }

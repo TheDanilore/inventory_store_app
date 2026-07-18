@@ -645,7 +645,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 }
 
-// DELGATE PARA EL HEADER STICKY DE BÚSQUEDA Y FILTROS 
+// DELGATE PARA EL HEADER STICKY DE BÚSQUEDA Y FILTROS
 
 class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
   final TextEditingController searchCtrl;
@@ -809,9 +809,7 @@ class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            _getPaymentStatusLabel(
-                              state.paymentStatusFilter,
-                            ),
+                            _getPaymentStatusLabel(state.paymentStatusFilter),
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -831,7 +829,13 @@ class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                 ),
                 const SizedBox(width: 8),
                 DateFilterCalendar(
-                  dateRange: state.startDate != null && state.endDate != null ? DateTimeRange(start: state.startDate!, end: state.endDate!) : null,
+                  dateRange:
+                      state.startDate != null && state.endDate != null
+                          ? DateTimeRange(
+                            start: state.startDate!,
+                            end: state.endDate!,
+                          )
+                          : null,
                   onDateRangeSelected: (picked) {
                     cubit.setDateRange(picked.start, picked.end);
                   },
@@ -867,7 +871,7 @@ class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-// Helpers: Modal de Opciones de Pago 
+// Helpers: Modal de Opciones de Pago
 
 class _PaymentOptionButton extends StatelessWidget {
   final String label;
@@ -911,4 +915,3 @@ class _PaymentOptionButton extends StatelessWidget {
     );
   }
 }
-

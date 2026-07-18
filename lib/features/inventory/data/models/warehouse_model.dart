@@ -1,4 +1,5 @@
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+
 class WarehouseModel {
   final String? id;
   final String name;

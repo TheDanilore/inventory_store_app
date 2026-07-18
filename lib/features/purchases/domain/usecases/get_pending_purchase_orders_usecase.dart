@@ -9,10 +9,7 @@ class GetPendingPurchaseOrdersUseCase {
 
   GetPendingPurchaseOrdersUseCase(this.repository);
 
-  Future<Either<Failure, List<Map<String, dynamic>>>> call(
-    String supplierId,
-  ) {
+  Future<Either<Failure, List<Map<String, dynamic>>>> call(String supplierId) {
     return repository.getPendingPurchaseOrders(supplierId);
   }
 }
-

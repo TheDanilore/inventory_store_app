@@ -64,14 +64,16 @@ class SupplierCreditMovementsCubit extends Cubit<SupplierCreditMovementsState> {
       currentPage = page ?? 0;
     }
 
-    emit(SupplierCreditMovementsLoading(
-      currentMovements: currentMovements,
-      dateFilter: currentFilter,
-      currentPage: currentPage,
-      totalCount: currentTotalCount,
-      totalCharged: currentCharged,
-      totalPaid: currentPaid,
-    ));
+    emit(
+      SupplierCreditMovementsLoading(
+        currentMovements: currentMovements,
+        dateFilter: currentFilter,
+        currentPage: currentPage,
+        totalCount: currentTotalCount,
+        totalCharged: currentCharged,
+        totalPaid: currentPaid,
+      ),
+    );
 
     final result = await fetchMovementsUseCase(
       creditId: creditId,
@@ -89,25 +91,29 @@ class SupplierCreditMovementsCubit extends Cubit<SupplierCreditMovementsState> {
             errStr.contains('failed host lookup')) {
           msg = 'Sin conexión a internet.';
         }
-        emit(SupplierCreditMovementsError(
-          message: msg,
-          currentMovements: currentMovements,
-          dateFilter: currentFilter,
-          currentPage: currentPage,
-          totalCount: currentTotalCount,
-          totalCharged: currentCharged,
-          totalPaid: currentPaid,
-        ));
+        emit(
+          SupplierCreditMovementsError(
+            message: msg,
+            currentMovements: currentMovements,
+            dateFilter: currentFilter,
+            currentPage: currentPage,
+            totalCount: currentTotalCount,
+            totalCharged: currentCharged,
+            totalPaid: currentPaid,
+          ),
+        );
       },
       (data) {
-        emit(SupplierCreditMovementsLoaded(
-          movements: data.movements,
-          dateFilter: currentFilter,
-          currentPage: currentPage,
-          totalCount: data.totalCount,
-          totalCharged: data.totalCharged,
-          totalPaid: data.totalPaid,
-        ));
+        emit(
+          SupplierCreditMovementsLoaded(
+            movements: data.movements,
+            dateFilter: currentFilter,
+            currentPage: currentPage,
+            totalCount: data.totalCount,
+            totalCharged: data.totalCharged,
+            totalPaid: data.totalPaid,
+          ),
+        );
       },
     );
   }
@@ -140,15 +146,17 @@ class SupplierCreditMovementsCubit extends Cubit<SupplierCreditMovementsState> {
     await fetchResult.fold(
       (failure) async {
         emit(currentState.copyWith(isExporting: false));
-        emit(SupplierCreditMovementsError(
-          message: 'Error al exportar PDF: ${failure.message}',
-          currentMovements: currentState.movements,
-          dateFilter: currentState.dateFilter,
-          currentPage: currentState.currentPage,
-          totalCount: currentState.totalCount,
-          totalCharged: currentState.totalCharged,
-          totalPaid: currentState.totalPaid,
-        ));
+        emit(
+          SupplierCreditMovementsError(
+            message: 'Error al exportar PDF: ${failure.message}',
+            currentMovements: currentState.movements,
+            dateFilter: currentState.dateFilter,
+            currentPage: currentState.currentPage,
+            totalCount: currentState.totalCount,
+            totalCharged: currentState.totalCharged,
+            totalPaid: currentState.totalPaid,
+          ),
+        );
       },
       (data) async {
         final pdfResult = await generatePdfUseCase(
@@ -159,15 +167,17 @@ class SupplierCreditMovementsCubit extends Cubit<SupplierCreditMovementsState> {
         pdfResult.fold(
           (failure) {
             emit(currentState.copyWith(isExporting: false));
-            emit(SupplierCreditMovementsError(
-              message: 'Error al generar PDF: ${failure.message}',
-              currentMovements: currentState.movements,
-              dateFilter: currentState.dateFilter,
-              currentPage: currentState.currentPage,
-              totalCount: currentState.totalCount,
-              totalCharged: currentState.totalCharged,
-              totalPaid: currentState.totalPaid,
-            ));
+            emit(
+              SupplierCreditMovementsError(
+                message: 'Error al generar PDF: ${failure.message}',
+                currentMovements: currentState.movements,
+                dateFilter: currentState.dateFilter,
+                currentPage: currentState.currentPage,
+                totalCount: currentState.totalCount,
+                totalCharged: currentState.totalCharged,
+                totalPaid: currentState.totalPaid,
+              ),
+            );
           },
           (pdfBytes) async {
             emit(currentState.copyWith(isExporting: false));
@@ -181,15 +191,16 @@ class SupplierCreditMovementsCubit extends Cubit<SupplierCreditMovementsState> {
   void clearError() {
     final currentState = state;
     if (currentState is SupplierCreditMovementsError) {
-      emit(SupplierCreditMovementsLoaded(
-        movements: currentState.currentMovements,
-        dateFilter: currentState.dateFilter,
-        currentPage: currentState.currentPage,
-        totalCount: currentState.totalCount,
-        totalCharged: currentState.totalCharged,
-        totalPaid: currentState.totalPaid,
-      ));
+      emit(
+        SupplierCreditMovementsLoaded(
+          movements: currentState.currentMovements,
+          dateFilter: currentState.dateFilter,
+          currentPage: currentState.currentPage,
+          totalCount: currentState.totalCount,
+          totalCharged: currentState.totalCharged,
+          totalPaid: currentState.totalPaid,
+        ),
+      );
     }
   }
 }
-

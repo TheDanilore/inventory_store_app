@@ -24,9 +24,10 @@ class WalletMovementModel {
       movementType: json['movement_type'] as String? ?? '',
       points: (json['points'] as num?)?.toInt() ?? 0,
       description: json['description'] as String?,
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'].toString()) 
-          : DateTime.now(),
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.parse(json['created_at'].toString())
+              : DateTime.now(),
     );
   }
 

@@ -1,8 +1,6 @@
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 
 class SupplierModel extends SupplierEntity {
-
-
   const SupplierModel({
     required super.id,
     required super.name,
@@ -70,4 +68,3 @@ class SupplierModel extends SupplierEntity {
     );
   }
 }
-

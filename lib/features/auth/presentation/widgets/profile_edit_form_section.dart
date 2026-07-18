@@ -63,7 +63,10 @@ class ProfileEditFormSection extends StatelessWidget {
                   decoration: const InputDecoration(
                     labelText: 'Tipo Doc',
                     prefixIcon: Icon(Icons.badge_outlined),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 16,
+                    ),
                   ),
                   items:
                       ['DNI', 'RUC', 'CE', 'PASAPORTE']

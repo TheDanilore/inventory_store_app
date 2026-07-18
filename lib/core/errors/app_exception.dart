@@ -8,11 +8,7 @@ class AppException implements Exception {
   final String? code;
   final Object? originalError;
 
-  const AppException({
-    required this.message,
-    this.code,
-    this.originalError,
-  });
+  const AppException({required this.message, this.code, this.originalError});
 
   @override
   String toString() => 'AppException(code: $code, message: $message)';
@@ -21,7 +17,8 @@ class AppException implements Exception {
 /// Error de red: sin conexión o timeout.
 class NetworkException extends AppException {
   const NetworkException({
-    super.message = 'Sin conexión a internet. Verifica tu red e intenta de nuevo.',
+    super.message =
+        'Sin conexión a internet. Verifica tu red e intenta de nuevo.',
     super.code = 'NETWORK_ERROR',
     super.originalError,
   });

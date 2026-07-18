@@ -24,13 +24,19 @@ class GetCashShiftsParams {
 }
 
 @lazySingleton
-class GetCashShiftsUseCase implements UseCase<({List<CashShiftEntity> shifts, int totalCount}), GetCashShiftsParams> {
+class GetCashShiftsUseCase
+    implements
+        UseCase<
+          ({List<CashShiftEntity> shifts, int totalCount}),
+          GetCashShiftsParams
+        > {
   final CashShiftRepository repository;
 
   GetCashShiftsUseCase(this.repository);
 
   @override
-  Future<Either<Failure, ({List<CashShiftEntity> shifts, int totalCount})>> call(GetCashShiftsParams params) async {
+  Future<Either<Failure, ({List<CashShiftEntity> shifts, int totalCount})>>
+  call(GetCashShiftsParams params) async {
     return await repository.getShifts(
       limit: params.limit,
       offset: params.offset,

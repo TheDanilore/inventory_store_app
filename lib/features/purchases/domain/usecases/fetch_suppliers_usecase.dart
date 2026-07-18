@@ -11,11 +11,7 @@ class FetchSuppliersUseCase {
   FetchSuppliersUseCase(this.repository);
 
   Future<Either<Failure, ({List<SupplierEntity> suppliers, int totalCount})>>
-      call({
-    required int page,
-    required int pageSize,
-    String searchQuery = '',
-  }) {
+  call({required int page, required int pageSize, String searchQuery = ''}) {
     return repository.fetchSuppliers(
       page: page,
       pageSize: pageSize,
@@ -23,4 +19,3 @@ class FetchSuppliersUseCase {
     );
   }
 }
-

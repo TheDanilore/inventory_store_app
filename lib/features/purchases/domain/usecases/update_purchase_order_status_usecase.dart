@@ -13,4 +13,3 @@ class UpdatePurchaseOrderStatusUseCase {
     return repository.updateOrderStatus(poId, status);
   }
 }
-

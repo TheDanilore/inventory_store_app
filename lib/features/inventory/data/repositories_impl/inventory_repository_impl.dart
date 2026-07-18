@@ -36,7 +36,8 @@ class InventoryRepositoryImpl implements InventoryRepository {
       final stockControl = raw['products']['stock_control'] as bool? ?? true;
       final reorderPoint = raw['reorder_point'] as int? ?? 3;
 
-      final double pUnitCost = (raw['products']['unit_cost'] as num?)?.toDouble() ?? 0.0;
+      final double pUnitCost =
+          (raw['products']['unit_cost'] as num?)?.toDouble() ?? 0.0;
       final double vUnitCost = (raw['unit_cost'] as num?)?.toDouble() ?? 0.0;
       final double finalCost = vUnitCost > 0 ? vUnitCost : pUnitCost;
 
@@ -50,7 +51,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
         totalStock += variantStock;
         totalCost += variantStock * finalCost;
         if (variantStock <= reorderPoint && variantStock > 0) {
-          lowStockCount++; 
+          lowStockCount++;
         } else if (variantStock <= 0) {
           lowStockCount++;
         }
@@ -103,9 +104,12 @@ class InventoryRepositoryImpl implements InventoryRepository {
         .eq('products.is_active', true);
 
     if (search.isNotEmpty) {
-      final matchingProducts = await _supabase.from('products').select('id').ilike('name', '%$search%');
+      final matchingProducts = await _supabase
+          .from('products')
+          .select('id')
+          .ilike('name', '%$search%');
       final pIds = (matchingProducts as List).map((e) => e['id']).toList();
-      
+
       final orConditions = ['sku.ilike.%$search%'];
       if (pIds.isNotEmpty) {
         orConditions.add('product_id.in.(${pIds.join(',')})');
@@ -297,12 +301,18 @@ class InventoryRepositoryImpl implements InventoryRepository {
         .eq('products.uses_batches', true);
 
     if (search.isNotEmpty) {
-      final matchingProducts = await _supabase.from('products').select('id').ilike('name', '%$search%');
+      final matchingProducts = await _supabase
+          .from('products')
+          .select('id')
+          .ilike('name', '%$search%');
       final pIds = (matchingProducts as List).map((e) => e['id']).toList();
-      
-      final matchingVariants = await _supabase.from('product_variants').select('id').ilike('sku', '%$search%');
+
+      final matchingVariants = await _supabase
+          .from('product_variants')
+          .select('id')
+          .ilike('sku', '%$search%');
       final vIds = (matchingVariants as List).map((e) => e['id']).toList();
-      
+
       final orConditions = ['batch_number.ilike.%$search%'];
       if (pIds.isNotEmpty) {
         orConditions.add('product_id.in.(${pIds.join(',')})');
@@ -415,12 +425,18 @@ class InventoryRepositoryImpl implements InventoryRepository {
         .eq('products.uses_batches', true);
 
     if (search.isNotEmpty) {
-      final matchingProducts = await _supabase.from('products').select('id').ilike('name', '%$search%');
+      final matchingProducts = await _supabase
+          .from('products')
+          .select('id')
+          .ilike('name', '%$search%');
       final pIds = (matchingProducts as List).map((e) => e['id']).toList();
-      
-      final matchingVariants = await _supabase.from('product_variants').select('id').ilike('sku', '%$search%');
+
+      final matchingVariants = await _supabase
+          .from('product_variants')
+          .select('id')
+          .ilike('sku', '%$search%');
       final vIds = (matchingVariants as List).map((e) => e['id']).toList();
-      
+
       final orConditions = ['batch_number.ilike.%$search%'];
       if (pIds.isNotEmpty) {
         orConditions.add('product_id.in.(${pIds.join(',')})');
@@ -482,9 +498,12 @@ class InventoryRepositoryImpl implements InventoryRepository {
         .eq('products.is_active', true);
 
     if (search.isNotEmpty) {
-      final matchingProducts = await _supabase.from('products').select('id').ilike('name', '%$search%');
+      final matchingProducts = await _supabase
+          .from('products')
+          .select('id')
+          .ilike('name', '%$search%');
       final pIds = (matchingProducts as List).map((e) => e['id']).toList();
-      
+
       final orConditions = ['sku.ilike.%$search%'];
       if (pIds.isNotEmpty) {
         orConditions.add('product_id.in.(${pIds.join(',')})');
@@ -528,12 +547,18 @@ class InventoryRepositoryImpl implements InventoryRepository {
         .eq('products.uses_batches', true);
 
     if (search.isNotEmpty) {
-      final matchingProducts = await _supabase.from('products').select('id').ilike('name', '%$search%');
+      final matchingProducts = await _supabase
+          .from('products')
+          .select('id')
+          .ilike('name', '%$search%');
       final pIds = (matchingProducts as List).map((e) => e['id']).toList();
-      
-      final matchingVariants = await _supabase.from('product_variants').select('id').ilike('sku', '%$search%');
+
+      final matchingVariants = await _supabase
+          .from('product_variants')
+          .select('id')
+          .ilike('sku', '%$search%');
       final vIds = (matchingVariants as List).map((e) => e['id']).toList();
-      
+
       final orConditions = ['batch_number.ilike.%$search%'];
       if (pIds.isNotEmpty) {
         orConditions.add('product_id.in.(${pIds.join(',')})');

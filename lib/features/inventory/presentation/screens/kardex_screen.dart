@@ -179,27 +179,41 @@ class _KardexScreenState extends State<KardexScreen> {
     return BlocConsumer<KardexCubit, KardexState>(
       listener: (context, state) {
         if (state is KardexError) {
-          AppSnackbar.show(context, message: state.message, type: SnackbarType.error);
+          AppSnackbar.show(
+            context,
+            message: state.message,
+            type: SnackbarType.error,
+          );
         }
       },
       builder: (context, state) {
-        if (state is KardexInitial || state is KardexLoading && state is! KardexLoaded) {
+        if (state is KardexInitial ||
+            state is KardexLoading && state is! KardexLoaded) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final loadedState = state is KardexLoaded 
-          ? state 
-          : (state is KardexLoading 
-              ? context.read<KardexCubit>().state as KardexLoaded?
-              : null);
+        final loadedState =
+            state is KardexLoaded
+                ? state
+                : (state is KardexLoading
+                    ? context.read<KardexCubit>().state as KardexLoaded?
+                    : null);
 
         if (loadedState == null && state is KardexError) {
           return Center(child: Text('Error: ${state.message}'));
         }
 
-        final currentState = loadedState ?? const KardexLoaded(
-          movements: [], typeFilter: 'ALL', searchText: '', currentPage: 0, totalCount: 0, totalPages: 1, isExporting: false,
-        );
+        final currentState =
+            loadedState ??
+            const KardexLoaded(
+              movements: [],
+              typeFilter: 'ALL',
+              searchText: '',
+              currentPage: 0,
+              totalCount: 0,
+              totalPages: 1,
+              isExporting: false,
+            );
 
         final isLoading = state is KardexLoading;
 
@@ -211,46 +225,68 @@ class _KardexScreenState extends State<KardexScreen> {
               backgroundColor: AppColors.background,
               body: Column(
                 children: [
-                      // Acciones principales en Tablet
-                      if (isTablet)
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              ElevatedButton.icon(
-                                onPressed: () => _openEntryScreen(context),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green.shade50,
-                                  foregroundColor: Colors.green.shade700,
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                ),
-                                icon: const Icon(Icons.add_shopping_cart, size: 18),
-                                label: const Text('Ingreso', style: TextStyle(fontWeight: FontWeight.bold)),
+                  // Acciones principales en Tablet
+                  if (isTablet)
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () => _openEntryScreen(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green.shade50,
+                              foregroundColor: Colors.green.shade700,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
                               ),
-                              const SizedBox(width: 8),
-                              ElevatedButton.icon(
-                                onPressed: () => _openExitScreen(context),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red.shade50,
-                                  foregroundColor: Colors.red.shade700,
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                ),
-                                icon: const Icon(Icons.remove_circle_outline, size: 18),
-                                label: const Text('Salida', style: TextStyle(fontWeight: FontWeight.bold)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                            ],
+                            ),
+                            icon: const Icon(Icons.add_shopping_cart, size: 18),
+                            label: const Text(
+                              'Ingreso',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
-                        ),
-                      Expanded(
-                        child: RefreshIndicator(
-                          color: AppColors.primary,
-                          onRefresh: () async => context.read<KardexCubit>().loadMovements(page: 0),
-                          child: CustomScrollView(
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: () => _openExitScreen(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade50,
+                              foregroundColor: Colors.red.shade700,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.remove_circle_outline,
+                              size: 18,
+                            ),
+                            label: const Text(
+                              'Salida',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh:
+                          () async => context.read<KardexCubit>().loadMovements(
+                            page: 0,
+                          ),
+                      child: CustomScrollView(
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         slivers: [
@@ -276,20 +312,36 @@ class _KardexScreenState extends State<KardexScreen> {
                                             onChanged: _onSearchChanged,
                                             onClear: () {
                                               _searchCtrl.clear();
-                                              context.read<KardexCubit>().setSearchText('');
+                                              context
+                                                  .read<KardexCubit>()
+                                                  .setSearchText('');
                                             },
                                           ),
                                         ),
                                         const SizedBox(width: 12),
                                         DateFilterCalendar(
-                                          dateRange: currentState.startDate != null && currentState.endDate != null
-                                              ? DateTimeRange(start: currentState.startDate!, end: currentState.endDate!)
-                                              : null,
+                                          dateRange:
+                                              currentState.startDate != null &&
+                                                      currentState.endDate !=
+                                                          null
+                                                  ? DateTimeRange(
+                                                    start:
+                                                        currentState.startDate!,
+                                                    end: currentState.endDate!,
+                                                  )
+                                                  : null,
                                           onDateRangeSelected: (picked) {
-                                            context.read<KardexCubit>().setDateRange(picked.start, picked.end);
+                                            context
+                                                .read<KardexCubit>()
+                                                .setDateRange(
+                                                  picked.start,
+                                                  picked.end,
+                                                );
                                           },
                                           onClear: () {
-                                            context.read<KardexCubit>().setDateRange(null, null);
+                                            context
+                                                .read<KardexCubit>()
+                                                .setDateRange(null, null);
                                           },
                                         ),
                                       ],
@@ -299,11 +351,31 @@ class _KardexScreenState extends State<KardexScreen> {
                                       scrollDirection: Axis.horizontal,
                                       child: Row(
                                         children: [
-                                          _buildFilterChip(currentState, 'Todos', 'ALL'),
-                                          _buildFilterChip(currentState, 'Ingresos', 'ENTRY'),
-                                          _buildFilterChip(currentState, 'Salidas', 'EXIT'),
-                                          _buildFilterChip(currentState, 'Ventas', 'SALE'),
-                                          _buildFilterChip(currentState, 'Devoluciones', 'RETURN'),
+                                          _buildFilterChip(
+                                            currentState,
+                                            'Todos',
+                                            'ALL',
+                                          ),
+                                          _buildFilterChip(
+                                            currentState,
+                                            'Ingresos',
+                                            'ENTRY',
+                                          ),
+                                          _buildFilterChip(
+                                            currentState,
+                                            'Salidas',
+                                            'EXIT',
+                                          ),
+                                          _buildFilterChip(
+                                            currentState,
+                                            'Ventas',
+                                            'SALE',
+                                          ),
+                                          _buildFilterChip(
+                                            currentState,
+                                            'Devoluciones',
+                                            'RETURN',
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -317,7 +389,12 @@ class _KardexScreenState extends State<KardexScreen> {
                           if (!isLoading && currentState.movements.isNotEmpty)
                             SliverToBoxAdapter(
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  12,
+                                ),
                                 child: Align(
                                   alignment: Alignment.centerLeft,
                                   child: Text(
@@ -340,13 +417,19 @@ class _KardexScreenState extends State<KardexScreen> {
                               child: AppEmptyState(
                                 icon: Icons.history,
                                 title: 'No hay movimientos',
-                                message: 'Aún no se han registrado ingresos o salidas de inventario con estos filtros.',
+                                message:
+                                    'Aún no se han registrado ingresos o salidas de inventario con estos filtros.',
                               ),
                             )
                           else
                             SliverToBoxAdapter(
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  16,
+                                ),
                                 child: ListView.builder(
                                   physics: const NeverScrollableScrollPhysics(),
                                   shrinkWrap: true,
@@ -354,7 +437,9 @@ class _KardexScreenState extends State<KardexScreen> {
                                   itemBuilder: (context, index) {
                                     return KardexCard(
                                       item: currentState.movements[index],
-                                      isLast: index == currentState.movements.length - 1,
+                                      isLast:
+                                          index ==
+                                          currentState.movements.length - 1,
                                     );
                                   },
                                 ),
@@ -384,31 +469,40 @@ class _KardexScreenState extends State<KardexScreen> {
                         child: AdminPageBlocks(
                           currentPage: currentState.currentPage,
                           totalPages: currentState.totalPages,
-                          onPageChanged: (page) => context.read<KardexCubit>().changePage(page),
+                          onPageChanged:
+                              (page) =>
+                                  context.read<KardexCubit>().changePage(page),
                         ),
                       ),
                     ),
                 ],
               ),
-              floatingActionButton: !isTablet
-                  ? FloatingActionButton.extended(
-                      onPressed: () => _showActionOptionsMobile(context),
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      icon: const Icon(Icons.add),
-                      label: ValueListenableBuilder<bool>(
-                        valueListenable: _isFabExtended,
-                        builder: (context, isExtended, _) {
-                          return AnimatedSize(
-                            duration: const Duration(milliseconds: 200),
-                            child: isExtended
-                                ? const Text('Movimiento', style: TextStyle(fontWeight: FontWeight.bold))
-                                : const SizedBox.shrink(),
-                          );
-                        },
-                      ),
-                    )
-                  : null,
+              floatingActionButton:
+                  !isTablet
+                      ? FloatingActionButton.extended(
+                        onPressed: () => _showActionOptionsMobile(context),
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        icon: const Icon(Icons.add),
+                        label: ValueListenableBuilder<bool>(
+                          valueListenable: _isFabExtended,
+                          builder: (context, isExtended, _) {
+                            return AnimatedSize(
+                              duration: const Duration(milliseconds: 200),
+                              child:
+                                  isExtended
+                                      ? const Text(
+                                        'Movimiento',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      )
+                                      : const SizedBox.shrink(),
+                            );
+                          },
+                        ),
+                      )
+                      : null,
             );
           },
         );
@@ -510,4 +604,3 @@ class _SearchField extends StatelessWidget {
     );
   }
 }
-

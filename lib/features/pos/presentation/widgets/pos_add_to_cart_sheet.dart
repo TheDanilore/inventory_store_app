@@ -22,7 +22,6 @@ class PosAddToCartSheet extends StatefulWidget {
 }
 
 class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
-
   final _repo = sl<ProductsRepository>();
   bool _isLoading = true;
   List<ProductVariantEntity> _variants = [];
@@ -43,12 +42,17 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
       final variantMapRes = await _repo.fetchVariantsByProductIds([
         widget.productEntity.id,
       ]);
-      final variantMap = variantMapRes.fold((l) => <String, List<ProductVariantEntity>>{}, (r) => r);
+      final variantMap = variantMapRes.fold(
+        (l) => <String, List<ProductVariantEntity>>{},
+        (r) => r,
+      );
       _variants = variantMap[widget.productEntity.id] ?? [];
 
       if (_variants.isNotEmpty) {
         final variantIds = _variants.map((v) => v.id).toList();
-        final stockMapRes = await _repo.fetchVariantStockByVariantIds(variantIds);
+        final stockMapRes = await _repo.fetchVariantStockByVariantIds(
+          variantIds,
+        );
         final stockMap = stockMapRes.fold((l) => <String, int>{}, (r) => r);
         _stockByVariant.addAll(stockMap);
       }
@@ -198,15 +202,16 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                  child:
+                child:
                     imageUrl != null
                         ? Image.network(
-                            imageUrl,
-                            width: 72,
-                            height: 72,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => const _ImgPlaceholder(size: 72),
-                          )
+                          imageUrl,
+                          width: 72,
+                          height: 72,
+                          fit: BoxFit.cover,
+                          errorBuilder:
+                              (_, _, _) => const _ImgPlaceholder(size: 72),
+                        )
                         : const _ImgPlaceholder(size: 72),
               ),
               const SizedBox(width: 16),
@@ -569,4 +574,3 @@ class _QtyButton extends StatelessWidget {
     );
   }
 }
-

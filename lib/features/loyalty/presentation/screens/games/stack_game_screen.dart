@@ -207,7 +207,11 @@ class _StackGameScreenState extends State<StackGameScreen> {
         return;
       }
       try {
-        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_STACK', _score, 'Torre de Cajas: $_score cajas apiladas. Ganó $_score monedas');
+        await context.read<PointsCubit>().recordMiniGameResult(
+          'MINI_GAME_STACK',
+          _score,
+          'Torre de Cajas: $_score cajas apiladas. Ganó $_score monedas',
+        );
       } catch (e) {
         if (mounted) {
           AppSnackbar.show(
@@ -454,4 +458,3 @@ class _StackGameScreenState extends State<StackGameScreen> {
     );
   }
 }
-

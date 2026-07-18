@@ -11,14 +11,17 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   @override
-  Future<Either<Failure, Map<String, dynamic>?>> fetchDefaultAddress(String profileId) async {
+  Future<Either<Failure, Map<String, dynamic>?>> fetchDefaultAddress(
+    String profileId,
+  ) async {
     try {
-      final res = await _supabase
-          .from('customer_locations')
-          .select('*')
-          .eq('profile_id', profileId)
-          .eq('is_default', true)
-          .maybeSingle();
+      final res =
+          await _supabase
+              .from('customer_locations')
+              .select('*')
+              .eq('profile_id', profileId)
+              .eq('is_default', true)
+              .maybeSingle();
       return Right(res);
     } catch (e) {
       return Left(ServerFailure(message: 'Error fetching address: $e'));
@@ -27,12 +30,13 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
 
   Future<Either<Failure, String?>> getActiveWarehouseId() async {
     try {
-      final warehouseResp = await _supabase
-          .from('warehouses')
-          .select('id')
-          .eq('is_active', true)
-          .limit(1)
-          .maybeSingle();
+      final warehouseResp =
+          await _supabase
+              .from('warehouses')
+              .select('id')
+              .eq('is_active', true)
+              .limit(1)
+              .maybeSingle();
       return Right(warehouseResp?['id']);
     } catch (e) {
       return Left(ServerFailure(message: 'Error fetching warehouse: $e'));
@@ -78,37 +82,39 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
   }) async {
     try {
       // 1. Crear Orden
-      final orderResp = await _supabase
-          .from('orders')
-          .insert({
-            'customer_id': customerId,
-            'created_by': customerId,
-            'total_amount': totalAmount,
-            'points_used': pointsUsed,
-            'points_earned': pointsEarned,
-            'total_profit': totalProfit,
-            'payment_method': 'POR ACORDAR',
-            'status': 'PENDING',
-            'payment_status': 'PENDING',
-            'warehouse_id': warehouseId,
-          })
-          .select('id')
-          .single();
+      final orderResp =
+          await _supabase
+              .from('orders')
+              .insert({
+                'customer_id': customerId,
+                'created_by': customerId,
+                'total_amount': totalAmount,
+                'points_used': pointsUsed,
+                'points_earned': pointsEarned,
+                'total_profit': totalProfit,
+                'payment_method': 'POR ACORDAR',
+                'status': 'PENDING',
+                'payment_status': 'PENDING',
+                'warehouse_id': warehouseId,
+              })
+              .select('id')
+              .single();
 
       final orderId = orderResp['id'];
 
       // 2. Insertar items
-      final itemsToInsert = itemsToBuy.map((item) {
-        return {
-          'order_id': orderId,
-          'product_id': item.productId,
-          'variant_id': item.variantId,
-          'quantity': item.quantity,
-          'unit_cost': item.unitCost,
-          'applied_price': item.unitPrice,
-          'net_profit': (item.unitPrice - item.unitCost) * item.quantity,
-        };
-      }).toList();
+      final itemsToInsert =
+          itemsToBuy.map((item) {
+            return {
+              'order_id': orderId,
+              'product_id': item.productId,
+              'variant_id': item.variantId,
+              'quantity': item.quantity,
+              'unit_cost': item.unitCost,
+              'applied_price': item.unitPrice,
+              'net_profit': (item.unitPrice - item.unitCost) * item.quantity,
+            };
+          }).toList();
 
       await _supabase.from('order_items').insert(itemsToInsert);
 

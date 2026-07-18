@@ -11,7 +11,15 @@ class GetCustomerOrdersUc {
 
   GetCustomerOrdersUc(this.repository);
 
-  Future<Either<Failure, List<OrderEntity>>> call(String profileId, {int limit = 10, int offset = 0}) {
-    return repository.getCustomerOrders(profileId, limit: limit, offset: offset);
+  Future<Either<Failure, List<OrderEntity>>> call(
+    String profileId, {
+    int limit = 10,
+    int offset = 0,
+  }) {
+    return repository.getCustomerOrders(
+      profileId,
+      limit: limit,
+      offset: offset,
+    );
   }
 }

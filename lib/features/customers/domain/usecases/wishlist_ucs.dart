@@ -27,10 +27,7 @@ class RemoveFromWishlistUseCase {
 
   RemoveFromWishlistUseCase(this._repository);
 
-  Future<void> call({
-    required String profileId,
-    required String productId,
-  }) {
+  Future<void> call({required String profileId, required String productId}) {
     return _repository.removeFromWishlist(
       profileId: profileId,
       productId: productId,

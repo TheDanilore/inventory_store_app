@@ -11,17 +11,23 @@ class PointsGameActionsSection extends StatelessWidget {
   const PointsGameActionsSection({super.key});
 
   Future<void> _playGame(
-    BuildContext context, 
-    String path, 
-    PointsState state,
-    {required bool forFun, required String movementType, required String description}
-  ) async {
+    BuildContext context,
+    String path,
+    PointsState state, {
+    required bool forFun,
+    required String movementType,
+    required String description,
+  }) async {
     final pId = forFun ? 'offline' : (state.profileId ?? 'offline');
 
     final r = await context.push<int>('$path/$pId');
     if (r != null && context.mounted) {
       if (!forFun && r > 0 && state.profileId != null) {
-        await context.read<PointsCubit>().recordMiniGameResult(movementType, r, description);
+        await context.read<PointsCubit>().recordMiniGameResult(
+          movementType,
+          r,
+          description,
+        );
       }
 
       // Refresh points data after playing
@@ -53,14 +59,15 @@ class PointsGameActionsSection extends StatelessWidget {
       limit: limit,
       color: color,
       active: active,
-      onPlay: () => _playGame(
-        context, 
-        path, 
-        state,
-        forFun: !active,
-        movementType: movementType,
-        description: description,
-      ),
+      onPlay:
+          () => _playGame(
+            context,
+            path,
+            state,
+            forFun: !active,
+            movementType: movementType,
+            description: description,
+          ),
     );
   }
 
@@ -70,7 +77,8 @@ class PointsGameActionsSection extends StatelessWidget {
       builder: (context, state) {
         final config = context.watch<AppConfigCubit>();
 
-        final memoramaLimit = config.getDouble('memorama_daily_limit', 1).round();
+        final memoramaLimit =
+            config.getDouble('memorama_daily_limit', 1).round();
         final catcherLimit = config.getDouble('catcher_daily_limit', 1).round();
         final pinataLimit = config.getDouble('pinata_daily_limit', 1).round();
         final clawLimit = config.getDouble('claw_daily_limit', 1).round();
@@ -320,4 +328,3 @@ class _GameTile extends StatelessWidget {
     );
   }
 }
-

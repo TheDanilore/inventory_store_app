@@ -17,14 +17,17 @@ class CartRepositoryImpl implements CartRepository {
   String _getCartKey(String cartType) => 'local_cart_$cartType';
 
   @override
-  Future<Either<Failure, Map<String, CartItemEntity>>> loadLocalCart(String cartType) async {
+  Future<Either<Failure, Map<String, CartItemEntity>>> loadLocalCart(
+    String cartType,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cartString = prefs.getString(_getCartKey(cartType));
       if (cartString != null) {
         final Map<String, dynamic> decodedMap = json.decode(cartString);
         final map = decodedMap.map(
-          (key, value) => MapEntry(key, CartItemModel.fromJson(value).toEntity()),
+          (key, value) =>
+              MapEntry(key, CartItemModel.fromJson(value).toEntity()),
         );
         return right(map);
       }
@@ -35,16 +38,19 @@ class CartRepositoryImpl implements CartRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> saveLocalCart(String cartType, Map<String, CartItemEntity> items) async {
+  Future<Either<Failure, Unit>> saveLocalCart(
+    String cartType,
+    Map<String, CartItemEntity> items,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       // Convert Entity to Model for serialization
       // Note: we'd need CartItemModel.fromEntity if it existed, but we can do it manually or assume CartItemModel constructor takes a ProductEntity and maps it.
       // Actually CartItemModel constructor takes ProductEntity and other params. Let's map it.
       final modelsMap = items.map((key, item) {
         // We recreate a dummy ProductEntity with only the id and name since that's what CartItemModel needs minimally, OR we just use the JSON directly.
-        // Wait, the current CartItemModel constructor requires a full ProductEntity. 
+        // Wait, the current CartItemModel constructor requires a full ProductEntity.
         // Let's create a map to JSON directly from the entity for local storage.
         return MapEntry(key, {
           'product': {
@@ -67,7 +73,7 @@ class CartRepositoryImpl implements CartRepository {
           'isSelected': item.isSelected,
         });
       });
-      
+
       final encodedMap = json.encode(modelsMap);
       await prefs.setString(_getCartKey(cartType), encodedMap);
       return right(unit);
@@ -88,34 +94,43 @@ class CartRepositoryImpl implements CartRepository {
   }
 
   Future<String?> _getOrCreateCartId(String profileId) async {
-    final existing = await _supabase
-        .from('shopping_carts')
-        .select('id')
-        .eq('profile_id', profileId)
-        .maybeSingle();
+    final existing =
+        await _supabase
+            .from('shopping_carts')
+            .select('id')
+            .eq('profile_id', profileId)
+            .maybeSingle();
 
     if (existing != null) {
       return existing['id'] as String?;
     }
 
-    final created = await _supabase
-        .from('shopping_carts')
-        .insert({'profile_id': profileId})
-        .select('id')
-        .maybeSingle();
+    final created =
+        await _supabase
+            .from('shopping_carts')
+            .insert({'profile_id': profileId})
+            .select('id')
+            .maybeSingle();
     return created?['id'] as String?;
   }
 
   @override
   Future<Either<Failure, Map<String, CartItemEntity>>> syncCloudCart(
-      String cartType, String profileId, Map<String, CartItemEntity> localItems) async {
+    String cartType,
+    String profileId,
+    Map<String, CartItemEntity> localItems,
+  ) async {
     try {
       if (cartType == 'pos') {
         return right(localItems);
       }
       final cartId = await _getOrCreateCartId(profileId);
       if (cartId == null) {
-        return left(const ServerFailure(message: 'No se pudo crear/obtener carrito en la nube.'));
+        return left(
+          const ServerFailure(
+            message: 'No se pudo crear/obtener carrito en la nube.',
+          ),
+        );
       }
 
       // 1. Si hay items locales, sincronizamos hacia la nube (overwrite)
@@ -123,16 +138,17 @@ class CartRepositoryImpl implements CartRepository {
       await _supabase.from('cart_items').delete().eq('cart_id', cartId);
 
       if (localItems.isNotEmpty) {
-        final itemsToInsert = localItems.values.map((item) {
-          final vid = item.variantId;
-          return {
-            'cart_id': cartId,
-            'product_id': item.productId,
-            'variant_id': (vid == null || vid.isEmpty) ? null : vid,
-            'quantity': item.quantity,
-            'is_selected': item.isSelected,
-          };
-        }).toList();
+        final itemsToInsert =
+            localItems.values.map((item) {
+              final vid = item.variantId;
+              return {
+                'cart_id': cartId,
+                'product_id': item.productId,
+                'variant_id': (vid == null || vid.isEmpty) ? null : vid,
+                'quantity': item.quantity,
+                'is_selected': item.isSelected,
+              };
+            }).toList();
 
         await _supabase.from('cart_items').insert(itemsToInsert);
       }
@@ -169,47 +185,66 @@ class CartRepositoryImpl implements CartRepository {
 
       for (final row in List<Map<String, dynamic>>.from(itemsResponse)) {
         final rawProduct = row['products'];
-        final productJson = rawProduct is Map
-            ? rawProduct
-            : (rawProduct is List && rawProduct.isNotEmpty ? rawProduct.first : null);
+        final productJson =
+            rawProduct is Map
+                ? rawProduct
+                : (rawProduct is List && rawProduct.isNotEmpty
+                    ? rawProduct.first
+                    : null);
 
         if (productJson == null) continue;
 
-        final product = ProductModel.fromJson(Map<String, dynamic>.from(productJson as Map)).toEntity();
+        final product =
+            ProductModel.fromJson(
+              Map<String, dynamic>.from(productJson as Map),
+            ).toEntity();
         final qty = (row['quantity'] as num?)?.toInt() ?? 1;
         final isSelected = row['is_selected'] as bool? ?? true;
         final rawVariantId = row['variant_id'] as String?;
 
         final rawVariant = row['product_variants'];
-        final variantJson = rawVariant is Map
-            ? rawVariant
-            : (rawVariant is List && rawVariant.isNotEmpty ? rawVariant.first : null);
+        final variantJson =
+            rawVariant is Map
+                ? rawVariant
+                : (rawVariant is List && rawVariant.isNotEmpty
+                    ? rawVariant.first
+                    : null);
 
         ProductVariantModel? variantModel;
         if (variantJson != null) {
           try {
-            variantModel = ProductVariantModel.fromJson(Map<String, dynamic>.from(variantJson as Map));
+            variantModel = ProductVariantModel.fromJson(
+              Map<String, dynamic>.from(variantJson as Map),
+            );
           } catch (e) {
             debugPrint('CartRepositoryImpl: error parseando variante: $e');
           }
         }
-        
+
         final variant = variantModel?.toEntity();
         final finalVariantId = variant?.id ?? rawVariantId;
         final cartKey = CartItemModel.buildKey(product.id, finalVariantId);
 
-        final effectiveUnitCost = ((variant?.unitCost ?? 0) > 0) ? variant!.unitCost! : product.unitCost;
+        final effectiveUnitCost =
+            ((variant?.unitCost ?? 0) > 0)
+                ? variant!.unitCost!
+                : product.unitCost;
 
         final entity = CartItemEntity(
           productId: product.id,
           productName: product.name,
           quantity: qty,
           variantId: finalVariantId,
-          variantLabel: variant?.label ?? (finalVariantId != null ? 'Variante seleccionada' : null),
+          variantLabel:
+              variant?.label ??
+              (finalVariantId != null ? 'Variante seleccionada' : null),
           unitPrice: variant?.salePrice ?? product.salePrice,
           unitCost: effectiveUnitCost,
           wholesalePrice: variant?.wholesalePrice ?? product.wholesalePrice,
-          imageUrl: (variant != null && variant.images.isNotEmpty) ? variant.images.first.imageUrl : product.primaryImageUrl,
+          imageUrl:
+              (variant != null && variant.images.isNotEmpty)
+                  ? variant.images.first.imageUrl
+                  : product.primaryImageUrl,
           sku: variant?.sku,
           availableStock: 999, // Legacy hardcode
           cartKey: cartKey,
@@ -227,14 +262,21 @@ class CartRepositoryImpl implements CartRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> clearCloudCart(String cartType, String profileId) async {
+  Future<Either<Failure, Unit>> clearCloudCart(
+    String cartType,
+    String profileId,
+  ) async {
     try {
       if (cartType == 'pos') {
         return right(unit);
       }
       final cartId = await _getOrCreateCartId(profileId);
       if (cartId == null) {
-        return left(const ServerFailure(message: 'No se pudo crear/obtener carrito en la nube.'));
+        return left(
+          const ServerFailure(
+            message: 'No se pudo crear/obtener carrito en la nube.',
+          ),
+        );
       }
       await _supabase.from('cart_items').delete().eq('cart_id', cartId);
       return right(unit);

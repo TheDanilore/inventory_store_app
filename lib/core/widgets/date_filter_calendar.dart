@@ -67,13 +67,14 @@ class DateFilterCalendar extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  hasDate 
-                    ? '${dateRange!.start.day}/${dateRange!.start.month}/${dateRange!.start.year} - ${dateRange!.end.day}/${dateRange!.end.month}/${dateRange!.end.year}'
-                    : 'Seleccionar fechas',
+                  hasDate
+                      ? '${dateRange!.start.day}/${dateRange!.start.month}/${dateRange!.start.year} - ${dateRange!.end.day}/${dateRange!.end.month}/${dateRange!.end.year}'
+                      : 'Seleccionar fechas',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: hasDate ? AppColors.primary : AppColors.textSecondary,
+                    color:
+                        hasDate ? AppColors.primary : AppColors.textSecondary,
                   ),
                 ),
               ),

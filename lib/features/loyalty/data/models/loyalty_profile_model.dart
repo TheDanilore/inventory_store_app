@@ -4,10 +4,7 @@ class LoyaltyProfileModel {
   final String id;
   final int walletBalance;
 
-  LoyaltyProfileModel({
-    required this.id,
-    required this.walletBalance,
-  });
+  LoyaltyProfileModel({required this.id, required this.walletBalance});
 
   factory LoyaltyProfileModel.fromJson(Map<String, dynamic> json) {
     return LoyaltyProfileModel(
@@ -17,9 +14,6 @@ class LoyaltyProfileModel {
   }
 
   LoyaltyProfileEntity toEntity() {
-    return LoyaltyProfileEntity(
-      id: id,
-      walletBalance: walletBalance,
-    );
+    return LoyaltyProfileEntity(id: id, walletBalance: walletBalance);
   }
 }

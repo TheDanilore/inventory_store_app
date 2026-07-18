@@ -32,7 +32,8 @@ class CustomerCreditsLoaded extends CustomerCreditsState {
     return CustomerCreditsLoaded(
       creditAccount: creditAccount ?? this.creditAccount,
       movements: movements ?? this.movements,
-      hasReachedMaxMovements: hasReachedMaxMovements ?? this.hasReachedMaxMovements,
+      hasReachedMaxMovements:
+          hasReachedMaxMovements ?? this.hasReachedMaxMovements,
     );
   }
 

@@ -172,32 +172,46 @@ class _PointsScreenState extends State<PointsScreen> {
                       Column(
                         children: [
                           const SizedBox(height: 20),
-                          Builder(builder: (context) {
-                            final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
-                            final hundredCoinsValue = (100 * pointsToSolesRatio).toStringAsFixed(2);
-                            return PointsBalanceHeroCard(
-                              balanceKey: _balanceKey,
-                              currentBalance: state.currentBalance,
-                              hundredCoinsValue: hundredCoinsValue,
-                              currentStreak: state.currentStreak,
-                            );
-                          }),
+                          Builder(
+                            builder: (context) {
+                              final pointsToSolesRatio = config.getDouble(
+                                'points_to_soles_ratio',
+                                0.01,
+                              );
+                              final hundredCoinsValue =
+                                  (100 * pointsToSolesRatio).toStringAsFixed(2);
+                              return PointsBalanceHeroCard(
+                                balanceKey: _balanceKey,
+                                currentBalance: state.currentBalance,
+                                hundredCoinsValue: hundredCoinsValue,
+                                currentStreak: state.currentStreak,
+                              );
+                            },
+                          ),
                           const SizedBox(height: 20),
-                          Builder(builder: (context) {
-                            final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
-                            final hundredCoinsValue = (100 * pointsToSolesRatio).toStringAsFixed(2);
-                            return PointsDailyCheckinCard(
-                              claimButtonKey: _claimButtonKey,
-                              currentStreak: state.currentStreak,
-                              hasTodayCheckin: state.hasTodayCheckin,
-                              nextCheckinReward: state.nextCheckinReward,
-                              isClaimingCheckin: state.isClaimingCheckin,
-                              hundredCoinsValue: hundredCoinsValue,
-                              claimMessage: 'Reclama tu bono diario de puntos',
-                              streakPreviewLabel: 'Días seguidos: ${state.currentStreak}',
-                              onClaim: () => _handleClaim(state),
-                            );
-                          }),
+                          Builder(
+                            builder: (context) {
+                              final pointsToSolesRatio = config.getDouble(
+                                'points_to_soles_ratio',
+                                0.01,
+                              );
+                              final hundredCoinsValue =
+                                  (100 * pointsToSolesRatio).toStringAsFixed(2);
+                              return PointsDailyCheckinCard(
+                                claimButtonKey: _claimButtonKey,
+                                currentStreak: state.currentStreak,
+                                hasTodayCheckin: state.hasTodayCheckin,
+                                nextCheckinReward: state.nextCheckinReward,
+                                isClaimingCheckin: state.isClaimingCheckin,
+                                hundredCoinsValue: hundredCoinsValue,
+                                claimMessage:
+                                    'Reclama tu bono diario de puntos',
+                                streakPreviewLabel:
+                                    'Días seguidos: ${state.currentStreak}',
+                                onClaim: () => _handleClaim(state),
+                              );
+                            },
+                          ),
                           const SizedBox(height: 24),
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 20),
@@ -221,4 +235,3 @@ class _PointsScreenState extends State<PointsScreen> {
     );
   }
 }
-

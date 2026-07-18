@@ -14,12 +14,18 @@ sealed class Failure {
 
   /// Crea el [Failure] apropiado a partir de cualquier excepción.
   factory Failure.from(Object error) {
-    if (error is NetworkException) return NetworkFailure(message: error.message);
-    if (error is ServerException) return ServerFailure(message: error.message, code: error.code);
-    if (error is NotFoundException) return NotFoundFailure(message: error.message);
+    if (error is NetworkException)
+      return NetworkFailure(message: error.message);
+    if (error is ServerException)
+      return ServerFailure(message: error.message, code: error.code);
+    if (error is NotFoundException)
+      return NotFoundFailure(message: error.message);
     if (error is UnauthorizedException) return UnauthorizedFailure();
     if (error is ValidationException) {
-      return ValidationFailure(message: error.message, fieldErrors: error.fieldErrors);
+      return ValidationFailure(
+        message: error.message,
+        fieldErrors: error.fieldErrors,
+      );
     }
     if (error is InsufficientStockException) {
       return StockFailure(
@@ -29,8 +35,10 @@ sealed class Failure {
         available: error.available,
       );
     }
-    if (error is CacheException) return CacheFailure(message: error.message, code: error.code);
-    if (error is AppException) return ServerFailure(message: error.message, code: error.code);
+    if (error is CacheException)
+      return CacheFailure(message: error.message, code: error.code);
+    if (error is AppException)
+      return ServerFailure(message: error.message, code: error.code);
     return UnexpectedFailure(message: error.toString());
   }
 
@@ -41,7 +49,8 @@ sealed class Failure {
 /// Fallo de red — sin conexión o timeout.
 final class NetworkFailure extends Failure {
   const NetworkFailure({
-    super.message = 'Sin conexión a internet. Verifica tu red e intenta de nuevo.',
+    super.message =
+        'Sin conexión a internet. Verifica tu red e intenta de nuevo.',
     super.code = 'NETWORK_ERROR',
   });
 }
@@ -59,10 +68,10 @@ final class NotFoundFailure extends Failure {
 /// El usuario no tiene permisos.
 final class UnauthorizedFailure extends Failure {
   const UnauthorizedFailure()
-      : super(
-          message: 'No tienes permisos para realizar esta acción.',
-          code: 'UNAUTHORIZED',
-        );
+    : super(
+        message: 'No tienes permisos para realizar esta acción.',
+        code: 'UNAUTHORIZED',
+      );
 }
 
 /// Error de validación de datos.

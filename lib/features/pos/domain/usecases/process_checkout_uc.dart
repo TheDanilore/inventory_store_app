@@ -17,17 +17,22 @@ class ProcessCheckoutUseCase extends UseCase<String, SaleEntity> {
     try {
       // 1. Validaciones de negocio puras
       if (params.items.isEmpty) {
-        return left(const ValidationFailure(message: 'La venta no tiene ítems.'));
+        return left(
+          const ValidationFailure(message: 'La venta no tiene ítems.'),
+        );
       }
 
       if (params.totalAmount < 0) {
-        return left(const ValidationFailure(message: 'El total no puede ser negativo.'));
+        return left(
+          const ValidationFailure(message: 'El total no puede ser negativo.'),
+        );
       }
 
       if (params.isCredit && !params.hasCustomer) {
         return left(
           const ValidationFailure(
-            message: 'Debe seleccionar un cliente para realizar una venta al crédito.',
+            message:
+                'Debe seleccionar un cliente para realizar una venta al crédito.',
           ),
         );
       }

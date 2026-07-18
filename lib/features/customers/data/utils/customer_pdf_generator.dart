@@ -29,7 +29,8 @@ class CustomerPdfGenerator {
   }
 
   static Future<Uint8List> _buildPdfInternal(
-      List<CustomerEntity> customers) async {
+    List<CustomerEntity> customers,
+  ) async {
     final baseFont = await PdfGoogleFonts.interRegular();
     final boldFont = await PdfGoogleFonts.interBold();
     final italicFont = await PdfGoogleFonts.interItalic();
@@ -46,19 +47,20 @@ class CustomerPdfGenerator {
           bold: boldFont,
           italic: italicFont,
         ),
-        build: (context) => [
-          pw.Text(
-            'Reporte de Clientes',
-            style: pw.TextStyle(
-              fontSize: 20,
-              fontWeight: pw.FontWeight.bold,
-            ),
-          ),
-          pw.SizedBox(height: 4),
-          pw.Text('Generado: $generatedAt'),
-          pw.SizedBox(height: 16),
-          _buildCustomersTable(customers),
-        ],
+        build:
+            (context) => [
+              pw.Text(
+                'Reporte de Clientes',
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 4),
+              pw.Text('Generado: $generatedAt'),
+              pw.SizedBox(height: 16),
+              _buildCustomersTable(customers),
+            ],
       ),
     );
 
@@ -71,18 +73,21 @@ class CustomerPdfGenerator {
       'Documento',
       'Teléfono',
       'Estado',
-      'Deuda Total'
+      'Deuda Total',
     ];
 
-    final data = customers.map((c) {
-      return [
-        c.fullName,
-        c.documentNumber ?? '-',
-        c.phone ?? '-',
-        c.isActive ? 'Activo' : 'Inactivo',
-        c.currentDebt > 0 ? _currencyFormat.format(c.currentDebt) : 'S/ 0.00',
-      ];
-    }).toList();
+    final data =
+        customers.map((c) {
+          return [
+            c.fullName,
+            c.documentNumber ?? '-',
+            c.phone ?? '-',
+            c.isActive ? 'Activo' : 'Inactivo',
+            c.currentDebt > 0
+                ? _currencyFormat.format(c.currentDebt)
+                : 'S/ 0.00',
+          ];
+        }).toList();
 
     return pw.TableHelper.fromTextArray(
       headers: headers,

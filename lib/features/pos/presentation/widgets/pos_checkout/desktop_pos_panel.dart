@@ -106,7 +106,8 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
           if (mounted) {
             setState(() {
               _warehouseList = list;
-              if (posCubit.state.selectedWarehouseId == null && list.isNotEmpty) {
+              if (posCubit.state.selectedWarehouseId == null &&
+                  list.isNotEmpty) {
                 posCubit.setWarehouse(list.first.id);
               }
               _accountsList = accs;
@@ -126,23 +127,20 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
               }
             });
           }
-        }
+        },
       );
 
       if (posCubit.state.selectedClientId != null) {
         final creditResp = await _checkoutService.fetchClientCredit(
           posCubit.state.selectedClientId!,
         );
-        creditResp.fold(
-          (_) {},
-          (info) {
-            if (mounted) {
-              setState(() {
-                _creditInfo = info;
-              });
-            }
+        creditResp.fold((_) {}, (info) {
+          if (mounted) {
+            setState(() {
+              _creditInfo = info;
+            });
           }
-        );
+        });
       }
     } catch (e) {
       debugPrint('Error cargando datos iniciales: $e');
@@ -174,7 +172,9 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     }
 
     try {
-      final shiftResult = await _checkoutService.checkActiveShift(_selectedAccountId!);
+      final shiftResult = await _checkoutService.checkActiveShift(
+        _selectedAccountId!,
+      );
       shiftResult.fold(
         (_) {
           if (mounted) setState(() => _activeShift = null);
@@ -185,7 +185,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
               _activeShift = shift;
             });
           }
-        }
+        },
       );
     } catch (e) {
       debugPrint('Error checkActiveShift: $e');
@@ -235,7 +235,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
               _clientMatches = matches;
               _searchingClients = false;
             });
-          }
+          },
         );
       }
     } catch (e) {
@@ -270,7 +270,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
         },
         (info) {
           if (mounted) setState(() => _creditInfo = info);
-        }
+        },
       );
     } catch (e) {
       debugPrint('Error cargando crédito: $e');
@@ -278,7 +278,11 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     }
   }
 
-  Future<void> _processSale(PosCubit posCubit, CartCubit cartCubit, {bool isDraft = false}) async {
+  Future<void> _processSale(
+    PosCubit posCubit,
+    CartCubit cartCubit, {
+    bool isDraft = false,
+  }) async {
     if (posCubit.state.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
@@ -328,7 +332,8 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     final totalFinal = PosCalculatorUtils.calcularTotalFinal(
       discountText: _descuentoCtrl.text,
       isDiscountPercentage: _isDiscountPercentage,
-      pos: posCubit.state, cart: cartCubit.state,
+      pos: posCubit.state,
+      cart: cartCubit.state,
       ratio: pointsToSolesRatio,
     );
 
@@ -394,26 +399,30 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       final totalProfit = PosCalculatorUtils.calcularGananciaTotal(
         discountText: _descuentoCtrl.text,
         isDiscountPercentage: _isDiscountPercentage,
-        pos: posCubit.state, cart: cartCubit.state,
+        pos: posCubit.state,
+        cart: cartCubit.state,
         ratio: pointsToSolesRatio,
       );
       final descuentoExtra = PosCalculatorUtils.getCustomDiscountAmount(
         discountText: _descuentoCtrl.text,
         isDiscountPercentage: _isDiscountPercentage,
-        pos: posCubit.state, cart: cartCubit.state,
+        pos: posCubit.state,
+        cart: cartCubit.state,
         ratio: pointsToSolesRatio,
       );
 
-      final saleItems = cartCubit.state.items.values.map((item) {
-        return SaleItemEntity(
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          unitCost: item.unitCost,
-          appliedPrice: item.unitPrice,
-          batchAssignments: posCubit.state.batchOverrides[item.cartKey] ?? [],
-        );
-      }).toList();
+      final saleItems =
+          cartCubit.state.items.values.map((item) {
+            return SaleItemEntity(
+              productId: item.productId,
+              variantId: item.variantId,
+              quantity: item.quantity,
+              unitCost: item.unitCost,
+              appliedPrice: item.unitPrice,
+              batchAssignments:
+                  posCubit.state.batchOverrides[item.cartKey] ?? [],
+            );
+          }).toList();
 
       final sale = SaleEntity(
         items: saleItems,
@@ -422,13 +431,21 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
         totalAmount: totalFinal,
         totalProfit: totalProfit,
         customerId: posCubit.state.selectedClientId,
-        customerName: posCubit.state.selectedClientName ?? (_clienteCtrl.text.trim().isNotEmpty ? _clienteCtrl.text.trim() : null),
+        customerName:
+            posCubit.state.selectedClientName ??
+            (_clienteCtrl.text.trim().isNotEmpty
+                ? _clienteCtrl.text.trim()
+                : null),
         accountId: _selectedAccountId,
-        paymentStatus: isCredito ? SalePaymentStatus.pending : SalePaymentStatus.paid,
+        paymentStatus:
+            isCredito ? SalePaymentStatus.pending : SalePaymentStatus.paid,
         discountAmount: descuentoExtra,
         amountPaid: isCredito ? 0 : totalFinal,
         pointsUsed: puntosUsados,
-        pointsEarned: PosCalculatorUtils.calcularPuntosGanados(total: totalFinal, rate: earningRate),
+        pointsEarned: PosCalculatorUtils.calcularPuntosGanados(
+          total: totalFinal,
+          rate: earningRate,
+        ),
         isDraft: isDraft,
         isCredit: isCredito,
         activeShift: _activeShift,
@@ -436,26 +453,25 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
 
       final saleResult = await _checkoutService.processSale(sale);
       if (!mounted) return;
-      
-      final orderId = saleResult.fold(
-        (failure) {
-          AppSnackbar.show(
-            context,
-            message: 'Error procesando venta: ${failure.message}',
-            type: SnackbarType.error,
-          );
-          return null;
-        },
-        (id) => id,
-      );
-      
+
+      final orderId = saleResult.fold((failure) {
+        AppSnackbar.show(
+          context,
+          message: 'Error procesando venta: ${failure.message}',
+          type: SnackbarType.error,
+        );
+        return null;
+      }, (id) => id);
+
       if (orderId == null) {
         setState(() => _isProcessingSale = false);
         return;
       }
 
-
-      posCubit.removeClient(); posCubit.setPuntosAUsar(0); cartCubit.clearCart(); posCubit.clearAllBatchOverrides();
+      posCubit.removeClient();
+      posCubit.setPuntosAUsar(0);
+      cartCubit.clearCart();
+      posCubit.clearAllBatchOverrides();
       widget.onSaleCompleted?.call();
 
       if (mounted) {
@@ -531,7 +547,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
         item.variantId!,
         posCubit.state.selectedWarehouseId!,
       );
-      
+
       batchesResult.fold(
         (failure) {
           if (!mounted) return;
@@ -673,20 +689,17 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                                       ),
                                       actions: [
                                         TextButton(
-                                          onPressed:
-                                              () => Navigator.pop(ctx),
+                                          onPressed: () => Navigator.pop(ctx),
                                           child: const Text(
                                             'Cancelar',
                                             style: TextStyle(
-                                              color:
-                                                  AppColors.textSecondary,
+                                              color: AppColors.textSecondary,
                                             ),
                                           ),
                                         ),
                                         ElevatedButton(
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                AppColors.danger,
+                                            backgroundColor: AppColors.danger,
                                           ),
                                           onPressed: () {
                                             posCubit.removeClient();
@@ -758,8 +771,9 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _SectionTitle('Cliente'),
-        Builder(builder: (context) {
-        final posCubit = context.watch<PosCubit>();
+        Builder(
+          builder: (context) {
+            final posCubit = context.watch<PosCubit>();
             final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
             return AdminSaleClientSection(
               controller: _clienteCtrl,
@@ -775,9 +789,10 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
             );
           },
         ),
-        Builder(builder: (context) {
-        final posCubit = context.watch<PosCubit>();
-        final cartCubit = context.watch<CartCubit>();
+        Builder(
+          builder: (context) {
+            final posCubit = context.watch<PosCubit>();
+            final cartCubit = context.watch<CartCubit>();
             final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
             return AdminSalePointsSection(
               show:
@@ -794,7 +809,12 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
               pointsToSolesRatio: ratio,
               pointsController: _puntosCtrl,
               onPointsChanged: (p) {
-                final next = PosCalculatorUtils.clampPointsValue(p, posCubit.state, cartCubit.state, ratio);
+                final next = PosCalculatorUtils.clampPointsValue(
+                  p,
+                  posCubit.state,
+                  cartCubit.state,
+                  ratio,
+                );
                 posCubit.setPuntosAUsar(next);
                 _puntosCtrl.value = TextEditingValue(
                   text: next.toString(),
@@ -808,8 +828,9 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
         ),
         const SizedBox(height: 32),
         const _SectionTitle('Configuración de venta'),
-        Builder(builder: (context) {
-        final posCubit = context.watch<PosCubit>();
+        Builder(
+          builder: (context) {
+            final posCubit = context.watch<PosCubit>();
             final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
             return PaymentWarehouseAccountCard(
               paymentMethod: posCubit.state.paymentMethod,
@@ -863,7 +884,8 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     double earningRate,
     bool isLoyaltyEnabled,
   ) {
-    return Builder(builder: (context) {
+    return Builder(
+      builder: (context) {
         final posCubit = context.watch<PosCubit>();
         final cartCubit = context.watch<CartCubit>();
         final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
@@ -887,7 +909,8 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                 totalFinal: PosCalculatorUtils.calcularTotalFinal(
                   discountText: _descuentoCtrl.text,
                   isDiscountPercentage: _isDiscountPercentage,
-                  pos: posCubit.state, cart: cartCubit.state,
+                  pos: posCubit.state,
+                  cart: cartCubit.state,
                   ratio: ratio,
                 ),
                 creditInfo: _creditInfo,
@@ -896,7 +919,12 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
             ],
 
             if (!isCredito) ...[
-              _buildCustomDiscountCard(posCubit.state, cartCubit.state, ratio, puntosSeguros),
+              _buildCustomDiscountCard(
+                posCubit.state,
+                cartCubit.state,
+                ratio,
+                puntosSeguros,
+              ),
               const SizedBox(height: 24),
             ],
 
@@ -911,13 +939,15 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                       : PosCalculatorUtils.getCustomDiscountAmount(
                         discountText: _descuentoCtrl.text,
                         isDiscountPercentage: _isDiscountPercentage,
-                        pos: posCubit.state, cart: cartCubit.state,
+                        pos: posCubit.state,
+                        cart: cartCubit.state,
                         ratio: ratio,
                       ),
               totalFinal: PosCalculatorUtils.calcularTotalFinal(
                 discountText: _descuentoCtrl.text,
                 isDiscountPercentage: _isDiscountPercentage,
-                pos: posCubit.state, cart: cartCubit.state,
+                pos: posCubit.state,
+                cart: cartCubit.state,
                 ratio: ratio,
               ),
               earningRate: earningRate,
@@ -1020,7 +1050,9 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                 puntosSeguros,
               );
               final amt =
-                  _isDiscountPercentage ? (cartState.totalAmount * (val / 100)) : val;
+                  _isDiscountPercentage
+                      ? (cartState.totalAmount * (val / 100))
+                      : val;
               if (amt > maxDiscount) {
                 if (_isDiscountPercentage) {
                   final maxPerc = (maxDiscount / cartState.totalAmount) * 100;
@@ -1046,13 +1078,15 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       ),
       child: SafeArea(
         top: false,
-        child: Builder(builder: (context) {
-        final posCubit = context.watch<PosCubit>();
-        final cartCubit = context.watch<CartCubit>();
+        child: Builder(
+          builder: (context) {
+            final posCubit = context.watch<PosCubit>();
+            final cartCubit = context.watch<CartCubit>();
             final total = PosCalculatorUtils.calcularTotalFinal(
               discountText: _descuentoCtrl.text,
               isDiscountPercentage: _isDiscountPercentage,
-              pos: posCubit.state, cart: cartCubit.state,
+              pos: posCubit.state,
+              cart: cartCubit.state,
               ratio: ratio,
             );
             return Row(
@@ -1063,7 +1097,11 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                     onPressed:
                         cartCubit.state.items.isEmpty
                             ? null
-                            : () => _processSale(posCubit, cartCubit, isDraft: true),
+                            : () => _processSale(
+                              posCubit,
+                              cartCubit,
+                              isDraft: true,
+                            ),
                     icon: const Icon(Icons.save_outlined),
                     label: const Text('Borrador'),
                     style: OutlinedButton.styleFrom(
@@ -1081,7 +1119,11 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                     onPressed:
                         cartCubit.state.items.isEmpty
                             ? null
-                            : () => _processSale(posCubit, cartCubit, isDraft: false),
+                            : () => _processSale(
+                              posCubit,
+                              cartCubit,
+                              isDraft: false,
+                            ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           cartCubit.state.items.isEmpty
@@ -1217,4 +1259,3 @@ class _CreditWarningCard extends StatelessWidget {
     );
   }
 }
-

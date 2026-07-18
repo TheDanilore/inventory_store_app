@@ -13,7 +13,8 @@ abstract class PurchaseOrdersRepository {
   });
 
   Future<Either<Failure, List<PurchaseOrderItemEntity>>> fetchOrderItems(
-      String poId);
+    String poId,
+  );
 
   Future<Either<Failure, void>> updateOrderStatus(String poId, String status);
 

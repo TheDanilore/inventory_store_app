@@ -7,7 +7,6 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredient_form_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-
 class ActiveIngredientsScreen extends StatefulWidget {
   const ActiveIngredientsScreen({super.key});
 
@@ -351,4 +350,3 @@ class _IngredientCardState extends State<_IngredientCard> {
     );
   }
 }
-

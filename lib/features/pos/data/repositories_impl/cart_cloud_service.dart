@@ -106,9 +106,10 @@ class CartCloudService {
 
         if (productJson == null) continue;
 
-        final product = ProductModel.fromJson(
-          Map<String, dynamic>.from(productJson as Map),
-        ).toEntity();
+        final product =
+            ProductModel.fromJson(
+              Map<String, dynamic>.from(productJson as Map),
+            ).toEntity();
         final qty = (row['quantity'] as num?)?.toInt() ?? 1;
         final isSelected = row['is_selected'] as bool? ?? true;
         final rawVariantId = row['variant_id'] as String?;
@@ -124,9 +125,10 @@ class CartCloudService {
         ProductVariantEntity? variant;
         if (variantJson != null) {
           try {
-            variant = ProductVariantModel.fromJson(
-              Map<String, dynamic>.from(variantJson as Map),
-            ).toEntity();
+            variant =
+                ProductVariantModel.fromJson(
+                  Map<String, dynamic>.from(variantJson as Map),
+                ).toEntity();
           } catch (e) {
             debugPrint('CartCloudService: error parseando variante: $e');
           }
@@ -150,7 +152,10 @@ class CartCloudService {
           unitPrice: variant?.salePrice ?? product.salePrice,
           unitCost: effectiveUnitCost,
           wholesalePrice: variant?.wholesalePrice ?? product.wholesalePrice,
-          imageUrl: (variant != null && variant.images.isNotEmpty) ? variant.images.first.imageUrl : product.primaryImageUrl,
+          imageUrl:
+              (variant != null && variant.images.isNotEmpty)
+                  ? variant.images.first.imageUrl
+                  : product.primaryImageUrl,
           sku: variant?.sku,
           availableStock:
               999, // Stock se actualizará en background en la UI si hace falta

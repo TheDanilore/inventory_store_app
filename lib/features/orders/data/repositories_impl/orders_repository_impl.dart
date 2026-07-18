@@ -15,7 +15,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   @override
-  Future<Either<Failure, List<OrderEntity>>> getCustomerOrders(String profileId, {int limit = 10, int offset = 0}) async {
+  Future<Either<Failure, List<OrderEntity>>> getCustomerOrders(
+    String profileId, {
+    int limit = 10,
+    int offset = 0,
+  }) async {
     try {
       final data = await _supabase
           .from('orders')
@@ -36,7 +40,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
   }
 
   @override
-  Future<Either<Failure, ({List<OrderEntity> orders, int total})>> getFilteredOrders({
+  Future<Either<Failure, ({List<OrderEntity> orders, int total})>>
+  getFilteredOrders({
     String? customerIdFilter,
     required String statusFilter,
     required String paymentStatusFilter,
@@ -72,16 +77,17 @@ class OrdersRepositoryImpl implements OrdersRepository {
       if (paymentStatusFilter != 'ALL') {
         query = query.eq('payment_status', paymentStatusFilter);
       }
-      
+
       if (customerIdFilter != null) {
         query = query.eq('customer_id', customerIdFilter);
       }
 
       if (startDate != null && endDate != null) {
         final start = startDate.toIso8601String();
-        final end = endDate
-            .add(const Duration(hours: 23, minutes: 59, seconds: 59))
-            .toIso8601String();
+        final end =
+            endDate
+                .add(const Duration(hours: 23, minutes: 59, seconds: 59))
+                .toIso8601String();
         query = query.gte('created_at', start).lte('created_at', end);
       }
 
@@ -117,11 +123,13 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final rawData = response.data as List<dynamic>;
       final totalRecords = response.count;
       final orders = rawData.map((e) => OrderModel.fromJson(e)).toList();
-      
+
       return Right((orders: orders, total: totalRecords));
     } catch (e) {
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
         return const Left(ServerFailure(message: 'Sin conexión a internet.'));
       }
       return Left(ServerFailure(message: 'Error fetching orders: $e'));
@@ -131,7 +139,10 @@ class OrdersRepositoryImpl implements OrdersRepository {
   @override
   Future<Either<Failure, OrderEntity>> getOrderById(String orderId) async {
     try {
-      final data = await _supabase.from('orders').select('''
+      final data =
+          await _supabase
+              .from('orders')
+              .select('''
         id,
         customer_id,
         customer_name,
@@ -150,7 +161,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
         created_by,
         profiles!orders_customer_id_fkey ( id, full_name, phone ),
         warehouses ( id, name )
-      ''').eq('id', orderId).maybeSingle();
+      ''')
+              .eq('id', orderId)
+              .maybeSingle();
 
       if (data == null) {
         return const Left(ServerFailure(message: 'Pedido no encontrado.'));
@@ -163,13 +176,18 @@ class OrdersRepositoryImpl implements OrdersRepository {
   }
 
   @override
-  Future<Either<Failure, List<OrderItemEntity>>> getOrderItems(String orderId) async {
+  Future<Either<Failure, List<OrderItemEntity>>> getOrderItems(
+    String orderId,
+  ) async {
     try {
-      final data = await _supabase.from('order_items').select('''
+      final data = await _supabase
+          .from('order_items')
+          .select('''
         *,
         products ( id, name, sku, has_variants, product_images (image_url, is_main) ),
         product_variants ( id, name, sku, product_images (image_url, is_main) )
-      ''').eq('order_id', orderId);
+      ''')
+          .eq('order_id', orderId);
 
       final items = data.map((json) => OrderItemModel.fromJson(json)).toList();
       return Right(items);
@@ -177,12 +195,10 @@ class OrdersRepositoryImpl implements OrdersRepository {
       return Left(ServerFailure(message: 'Error fetching order items: $e'));
     }
   }
-  
-  
+
   // ─── UTILIDADES ────────────────────────────────────────────────────────────
 
   /// Resuelve el profileId del usuario autenticado actual.
-  
 
   // ─── GUARDAR CAMBIOS ────────────────────────────────────────────────────────
 
@@ -214,11 +230,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final isNowCompleted = newStatus.toUpperCase() == 'COMPLETED';
       final isNowCancelled = newStatus.toUpperCase() == 'CANCELLED';
 
-      
       // ─── BLOQUEO: método de pago vacío al completar ───────────────────────
       if (isNowCompleted &&
           (paymentMethod == 'POR ACORDAR' || paymentMethod.trim().isEmpty)) {
-        return const Left(ServerFailure(message: '__PAYMENT_METHOD_REQUIRED__'));
+        return const Left(
+          ServerFailure(message: '__PAYMENT_METHOD_REQUIRED__'),
+        );
       }
 
       // ─── ESCENARIO 1: PENDING → COMPLETED ────────────────────────────────
@@ -343,13 +360,19 @@ class OrdersRepositoryImpl implements OrdersRepository {
             .single();
     final warehouseId = orderData['warehouse_id'] as String?;
     if (warehouseId == null) {
-      return Left(ServerFailure(message: 'El pedido no tiene almacén asignado.'));
+      return Left(
+        ServerFailure(message: 'El pedido no tiene almacén asignado.'),
+      );
     }
 
     // Validar crédito si aplica
     if (paymentMethod == 'CRÉDITO') {
       if (selectedCustomerId == null) {
-        return const Left(ServerFailure(message: 'No hay cliente asignado para validar el crédito.'));
+        return const Left(
+          ServerFailure(
+            message: 'No hay cliente asignado para validar el crédito.',
+          ),
+        );
       }
       final creditInfo =
           await _supabase
@@ -359,13 +382,22 @@ class OrdersRepositoryImpl implements OrdersRepository {
               .maybeSingle();
 
       if (creditInfo == null || creditInfo['is_active'] != true) {
-        return const Left(ServerFailure(message: 'El cliente no tiene línea de crédito activa.'));
+        return const Left(
+          ServerFailure(
+            message: 'El cliente no tiene línea de crédito activa.',
+          ),
+        );
       }
       final availableCredit =
           (creditInfo['credit_limit'] as num).toDouble() -
           (creditInfo['current_debt'] as num).toDouble();
       if (availableCredit < totalAmount) {
-        return Left(ServerFailure(message: 'Crédito insuficiente. Disponible: S/ ${availableCredit.toStringAsFixed(2)}'));
+        return Left(
+          ServerFailure(
+            message:
+                'Crédito insuficiente. Disponible: S/ ${availableCredit.toStringAsFixed(2)}',
+          ),
+        );
       }
     }
 
@@ -385,7 +417,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
       if (overrides != null) {
         final totalAssigned = overrides.fold(0, (s, b) => s + b.assigned);
         if (totalAssigned != qtyNeeded) {
-          return Left(ServerFailure(message: 'Asignación de lotes inválida para ${item.productName ?? 'Producto'}.'));
+          return Left(
+            ServerFailure(
+              message:
+                  'Asignación de lotes inválida para ${item.productName ?? 'Producto'}.',
+            ),
+          );
         }
         for (final b in overrides) {
           if (b.assigned > 0) {
@@ -501,7 +538,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
     String? notesOverride,
   }) async {
     try {
-            await cancelOrder(
+      await cancelOrder(
         orderId: orderId,
         customerId: null, // OrdersService fetches it internally
         currentProfileId: currentProfileId,
@@ -788,13 +825,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
     }
   }
 
-  
-  
   /// Resuelve el profileId del usuario autenticado actual.
-  
 
   /// Obtiene un pedido por su ID con todos los detalles necesarios para OrderModel
-  
 
   /// Completa un pedido PENDING:
   /// - Descuenta stock en lotes (FIFO).
@@ -813,7 +846,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
     required int pointsEarned,
     required String? currentProfileId,
   }) async {
-        final warehouseId = order['warehouse_id'] as String?;
+    final warehouseId = order['warehouse_id'] as String?;
     if (warehouseId == null) {
       throw Exception('El pedido no tiene almacén asignado.');
     }
@@ -1118,81 +1151,87 @@ class OrdersRepositoryImpl implements OrdersRepository {
     String? notesOverride,
   }) async {
     try {
-    final orderData =
-        await _supabase
-            .from('orders')
-            .select('status, warehouse_id, total_amount, amount_paid, payment_method, customer_id')
-            .eq('id', orderId)
-            .single();
+      final orderData =
+          await _supabase
+              .from('orders')
+              .select(
+                'status, warehouse_id, total_amount, amount_paid, payment_method, customer_id',
+              )
+              .eq('id', orderId)
+              .single();
 
-    final status = orderData['status'] as String;
-    final origCustomerId = orderData['customer_id'] as String?;
-    
-    if (status == 'COMPLETED') {
-      final warehouseId = orderData['warehouse_id'] as String?;
-      final origAmount = (orderData['total_amount'] as num).toDouble();
-      final amountPaid = (orderData['amount_paid'] as num).toDouble();
-      final origPaymentMethod = orderData['payment_method'] as String;
+      final status = orderData['status'] as String;
+      final origCustomerId = orderData['customer_id'] as String?;
 
-      // Fetch items
-      final itemsResp = await _supabase.from('order_items').select().eq('order_id', orderId);
-      final items = (itemsResp as List).map((i) => OrderItemModel.fromJson(i)).toList();
+      if (status == 'COMPLETED') {
+        final warehouseId = orderData['warehouse_id'] as String?;
+        final origAmount = (orderData['total_amount'] as num).toDouble();
+        final amountPaid = (orderData['amount_paid'] as num).toDouble();
+        final origPaymentMethod = orderData['payment_method'] as String;
 
-      // Revertir stock
-      await Future.wait(
-        items.map(
-          (item) => _revertItemStock(
+        // Fetch items
+        final itemsResp = await _supabase
+            .from('order_items')
+            .select()
+            .eq('order_id', orderId);
+        final items =
+            (itemsResp as List).map((i) => OrderItemModel.fromJson(i)).toList();
+
+        // Revertir stock
+        await Future.wait(
+          items.map(
+            (item) => _revertItemStock(
+              orderId: orderId,
+              item: item,
+              warehouseId: warehouseId,
+              currentProfileId: currentProfileId,
+              notesOverride: notesOverride,
+            ),
+          ),
+        );
+
+        // Revertir crédito o movimiento financiero
+        if (origPaymentMethod == 'CRÉDITO' && origCustomerId != null) {
+          await revertCreditDebt(
+            customerId: origCustomerId,
             orderId: orderId,
-            item: item,
-            warehouseId: warehouseId,
+            origAmount: origAmount,
+            amountPaid: amountPaid,
             currentProfileId: currentProfileId,
             notesOverride: notesOverride,
-          ),
-        ),
-      );
-
-      // Revertir crédito o movimiento financiero
-      if (origPaymentMethod == 'CRÉDITO' && origCustomerId != null) {
-        await revertCreditDebt(
-          customerId: origCustomerId,
-          orderId: orderId,
-          origAmount: origAmount,
-          amountPaid: amountPaid,
-          currentProfileId: currentProfileId,
-          notesOverride: notesOverride,
-        );
-        if (amountPaid > 0) {
+          );
+          if (amountPaid > 0) {
+            await revertFinancialMovement(
+              orderId: orderId,
+              currentProfileId: currentProfileId,
+              notesOverride: notesOverride,
+            );
+          }
+        } else if (origPaymentMethod != 'CRÉDITO') {
           await revertFinancialMovement(
             orderId: orderId,
             currentProfileId: currentProfileId,
             notesOverride: notesOverride,
           );
         }
-      } else if (origPaymentMethod != 'CRÉDITO') {
-        await revertFinancialMovement(
-          orderId: orderId,
-          currentProfileId: currentProfileId,
-          notesOverride: notesOverride,
-        );
       }
-    }
 
-    // Revertir monedas de fidelidad (EARNED o REDEEMED), aplica para PENDING y COMPLETED
-    if (origCustomerId != null) {
-      await revertLoyaltyPoints(orderId: orderId, customerId: origCustomerId);
-    }
+      // Revertir monedas de fidelidad (EARNED o REDEEMED), aplica para PENDING y COMPLETED
+      if (origCustomerId != null) {
+        await revertLoyaltyPoints(orderId: orderId, customerId: origCustomerId);
+      }
 
-    // Actualizar la orden a CANCELLED o RETURNED
-    final newStatus = status == 'COMPLETED' ? 'RETURNED' : 'CANCELLED';
-    await _supabase
-        .from('orders')
-        .update({
-          'status': newStatus,
-          'payment_status': 'PAID',
-          'amount_paid': 0,
-        })
-        .eq('id', orderId);
-        return const Right(null);
+      // Actualizar la orden a CANCELLED o RETURNED
+      final newStatus = status == 'COMPLETED' ? 'RETURNED' : 'CANCELLED';
+      await _supabase
+          .from('orders')
+          .update({
+            'status': newStatus,
+            'payment_status': 'PAID',
+            'amount_paid': 0,
+          })
+          .eq('id', orderId);
+      return const Right(null);
     } catch (e) {
       return Left(ServerFailure(message: 'Error al cancelar orden: $e'));
     }
@@ -1274,7 +1313,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
     final creditId = creditResp['id'] as String;
     final currentDebt = (creditResp['current_debt'] as num).toDouble();
-    
+
     // Calculamos la reducción neta de la deuda
     final netReduction = origAmount - amountPaid;
     final newDebt = (currentDebt - netReduction).clamp(0.0, double.infinity);
@@ -1297,7 +1336,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
         'order_id': orderId,
         'movement_type': 'PAYMENT',
         'amount': origAmount,
-        'notes': notesOverride ?? 'Reversión por cancelación de pedido #$orderId',
+        'notes':
+            notesOverride ?? 'Reversión por cancelación de pedido #$orderId',
         if (currentProfileId != null) 'created_by': currentProfileId,
       }),
     );
@@ -1324,13 +1364,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
     required String? currentProfileId,
     String? notesOverride,
   }) async {
-    final origMovResp =
-        await _supabase
-            .from('account_movements')
-            .select('account_id, amount')
-            .eq('reference_id', orderId)
-            .eq('reference_type', 'orders')
-            .eq('movement_type', 'INCOME');
+    final origMovResp = await _supabase
+        .from('account_movements')
+        .select('account_id, amount')
+        .eq('reference_id', orderId)
+        .eq('reference_type', 'orders')
+        .eq('movement_type', 'INCOME');
 
     for (final mov in origMovResp as List) {
       final accountId = mov['account_id'] as String;
@@ -1486,5 +1525,4 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
     return Right(List<Map<String, dynamic>>.from(resp));
   }
-
 }

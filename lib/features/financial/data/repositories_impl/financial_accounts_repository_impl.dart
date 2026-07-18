@@ -29,19 +29,23 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
 
     final data = response.data as List;
     return data
-        .map((e) => FinancialAccountModel.fromJson(
-              Map<String, dynamic>.from(e as Map),
-            ).toEntity())
+        .map(
+          (e) =>
+              FinancialAccountModel.fromJson(
+                Map<String, dynamic>.from(e as Map),
+              ).toEntity(),
+        )
         .toList();
   }
 
   @override
   Future<FinancialAccountEntity?> getAccountById(String accountId) async {
-    final response = await _supabase
-        .from('financial_accounts')
-        .select('id, name, type, balance, is_active, created_at')
-        .eq('id', accountId)
-        .maybeSingle();
+    final response =
+        await _supabase
+            .from('financial_accounts')
+            .select('id, name, type, balance, is_active, created_at')
+            .eq('id', accountId)
+            .maybeSingle();
     if (response == null) return null;
     return FinancialAccountModel.fromJson(response).toEntity();
   }
@@ -67,11 +71,7 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
       if (accountId != null) {
         await _supabase
             .from('financial_accounts')
-            .update({
-              'name': name,
-              'type': type,
-              'is_active': isActive,
-            })
+            .update({'name': name, 'type': type, 'is_active': isActive})
             .eq('id', accountId);
       } else {
         await _supabase.from('financial_accounts').insert({

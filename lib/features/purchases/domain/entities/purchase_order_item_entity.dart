@@ -34,17 +34,17 @@ class PurchaseOrderItemEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        productId,
-        variantId,
-        productName,
-        variantAttrs,
-        sku,
-        quantityOrdered,
-        quantityReceived,
-        unitCost,
-        batchNumber,
-        expiryDate,
-        usesBatches,
-        imageUrl,
-      ];
+    productId,
+    variantId,
+    productName,
+    variantAttrs,
+    sku,
+    quantityOrdered,
+    quantityReceived,
+    unitCost,
+    batchNumber,
+    expiryDate,
+    usesBatches,
+    imageUrl,
+  ];
 }

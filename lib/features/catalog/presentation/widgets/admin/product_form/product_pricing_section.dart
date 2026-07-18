@@ -115,8 +115,7 @@ class ProductPricingSection extends StatelessWidget {
                   label: 'Precio Venta (S/.)',
                   icon: Icons.sell_outlined,
                   keyboardType: TextInputType.number,
-                  validator: (val) =>
-                      _validateSalePrice(val, costoCtrl.text),
+                  validator: (val) => _validateSalePrice(val, costoCtrl.text),
                   onChanged: (_) => formKey.currentState?.validate(),
                 ),
               ),
@@ -134,11 +133,12 @@ class ProductPricingSection extends StatelessWidget {
                   label: 'Precio Mayorista',
                   icon: Icons.local_offer_outlined,
                   keyboardType: TextInputType.number,
-                  validator: (val) => _validateWholesalePrice(
-                    val,
-                    costoCtrl.text,
-                    precioCtrl.text,
-                  ),
+                  validator:
+                      (val) => _validateWholesalePrice(
+                        val,
+                        costoCtrl.text,
+                        precioCtrl.text,
+                      ),
                   onChanged: (_) => formKey.currentState?.validate(),
                 ),
               ),

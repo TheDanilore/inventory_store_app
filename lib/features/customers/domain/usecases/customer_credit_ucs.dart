@@ -1,4 +1,4 @@
-﻿import 'package:injectable/injectable.dart';
+import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customer_credits_repository.dart';
@@ -62,10 +62,7 @@ class UpdateCreditLimitUseCase {
     required String creditId,
     required double newLimit,
   }) {
-    return repository.updateCreditLimit(
-      creditId: creditId,
-      newLimit: newLimit,
-    );
+    return repository.updateCreditLimit(creditId: creditId, newLimit: newLimit);
   }
 }
 
@@ -119,4 +116,3 @@ class RegisterCreditPaymentUseCase {
     );
   }
 }
-

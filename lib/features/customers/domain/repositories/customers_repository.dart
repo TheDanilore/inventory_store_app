@@ -54,4 +54,3 @@ abstract class CustomersRepository {
   Future<List<RecentOrderEntity>> getCustomerRecentOrders(String customerId);
   Future<List<TopProductEntity>> getCustomerTopProducts(String customerId);
 }
-

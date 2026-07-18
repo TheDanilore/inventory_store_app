@@ -8,7 +8,6 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/attributes/attributes_skeleton.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-
 class AttributesManagementScreen extends StatefulWidget {
   const AttributesManagementScreen({super.key});
 
@@ -363,4 +362,3 @@ class _ValueChipState extends State<_ValueChip> {
     );
   }
 }
-

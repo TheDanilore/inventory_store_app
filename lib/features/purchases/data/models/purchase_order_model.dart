@@ -1,7 +1,6 @@
 import 'package:inventory_store_app/features/purchases/domain/entities/purchase_order_entity.dart';
 
 class PurchaseOrderModel extends PurchaseOrderEntity {
-
   const PurchaseOrderModel({
     required super.id,
     required super.createdAt,

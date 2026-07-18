@@ -50,12 +50,19 @@ class _ShiftsTabState extends State<ShiftsTab> {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<CashShiftsCubit>();
-    
+
     return BlocBuilder<CashShiftsCubit, CashShiftsState>(
       builder: (context, state) {
         final shifts = state.shifts;
         final isLoading = state.isLoading;
-        final openShifts = shifts.where((s) => s.status.name == 'open' || s.status.toString() == 'CashShiftStatus.open').toList();
+        final openShifts =
+            shifts
+                .where(
+                  (s) =>
+                      s.status.name == 'open' ||
+                      s.status.toString() == 'CashShiftStatus.open',
+                )
+                .toList();
 
         return Stack(
           children: [
@@ -73,12 +80,11 @@ class _ShiftsTabState extends State<ShiftsTab> {
                                   child: _ActiveShiftBanner(
                                     shift: s,
                                     onClose: () async {
-                                      final expected = await cubit
-                                          .calcExpected(
-                                            s.id,
-                                            s.accountId ?? '',
-                                            s.openingAmount,
-                                          );
+                                      final expected = await cubit.calcExpected(
+                                        s.id,
+                                        s.accountId ?? '',
+                                        s.openingAmount,
+                                      );
                                       if (context.mounted) {
                                         CloseShiftSheet.show(
                                           context,
@@ -121,9 +127,7 @@ class _ShiftsTabState extends State<ShiftsTab> {
                         selected: state.filterStatus == 'CLOSED',
                         onTap: () {
                           cubit.setFilterStatus(
-                            state.filterStatus == 'CLOSED'
-                                ? 'Todos'
-                                : 'CLOSED',
+                            state.filterStatus == 'CLOSED' ? 'Todos' : 'CLOSED',
                           );
                         },
                       ),
@@ -221,19 +225,21 @@ class _ShiftsTabState extends State<ShiftsTab> {
                                                 child: _ShiftCard(
                                                   shift: shifts[i],
                                                   onClose:
-                                                      shifts[i].status.name == 'open' || shifts[i].status.toString() == 'CashShiftStatus.open'
+                                                      shifts[i].status.name ==
+                                                                  'open' ||
+                                                              shifts[i].status
+                                                                      .toString() ==
+                                                                  'CashShiftStatus.open'
                                                           ? () async {
-                                                            final expected =
-                                                                await cubit
-                                                                    .calcExpected(
-                                                                      shifts[i]
-                                                                          .id,
-                                                                      shifts[i]
-                                                                              .accountId ??
-                                                                          '',
-                                                                      shifts[i]
-                                                                          .openingAmount,
-                                                                    );
+                                                            final expected = await cubit
+                                                                .calcExpected(
+                                                                  shifts[i].id,
+                                                                  shifts[i]
+                                                                          .accountId ??
+                                                                      '',
+                                                                  shifts[i]
+                                                                      .openingAmount,
+                                                                );
                                                             if (context
                                                                 .mounted) {
                                                               CloseShiftSheet.show(
@@ -299,9 +305,10 @@ class _ShiftsTabState extends State<ShiftsTab> {
                           if (!kIsWeb) {
                             Vibration.vibrate(duration: 50, amplitude: 128);
                           }
-                          // Obtener cuentas de caja, temporalmente sin usar estado, o esperar que el cubit las provea. 
+                          // Obtener cuentas de caja, temporalmente sin usar estado, o esperar que el cubit las provea.
                           // Wait, CashShiftsState doesn't expose cajaAccounts. Let's fetch them on demand or from cubit.
-                          final availableAccounts = await cubit.getAvailableAccounts();
+                          final availableAccounts =
+                              await cubit.getAvailableAccounts();
                           if (!context.mounted) return;
                           if (availableAccounts.isEmpty) {
                             AppSnackbar.show(
@@ -319,23 +326,23 @@ class _ShiftsTabState extends State<ShiftsTab> {
                 backgroundColor: AppColors.success,
                 icon: const Icon(Icons.lock_open_rounded, color: Colors.white),
                 label: ValueListenableBuilder<bool>(
-                          valueListenable: _isFabExtended,
-                          builder: (context, isExtended, _) {
-                            return AnimatedSize(
-                  duration: const Duration(milliseconds: 200),
-                  child:
-                      isExtended
-                          ? const Text(
-                            'Abrir turno',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          )
-                          : const SizedBox.shrink(),
-                );
-                          },
-                        ),
+                  valueListenable: _isFabExtended,
+                  builder: (context, isExtended, _) {
+                    return AnimatedSize(
+                      duration: const Duration(milliseconds: 200),
+                      child:
+                          isExtended
+                              ? const Text(
+                                'Abrir turno',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              )
+                              : const SizedBox.shrink(),
+                    );
+                  },
+                ),
               ),
             ),
           ],

@@ -1,4 +1,4 @@
-﻿import 'package:injectable/injectable.dart';
+import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customer_locations_repository.dart';
 
@@ -92,11 +92,7 @@ class SetDefaultCustomerLocationUseCase {
 
   SetDefaultCustomerLocationUseCase(this.repository);
 
-  Future<void> call({
-    required String customerId,
-    required String locationId,
-  }) {
+  Future<void> call({required String customerId, required String locationId}) {
     return repository.setLocationAsDefault(customerId, locationId);
   }
 }
-

@@ -340,7 +340,9 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                                                 child: _GlobalShiftCard(
                                                   shift: shift,
                                                   onClose:
-                                                      shift.status == CashShiftStatus.open
+                                                      shift.status ==
+                                                              CashShiftStatus
+                                                                  .open
                                                           ? () async {
                                                             final expected = await cubit
                                                                 .calcExpected(
@@ -544,7 +546,8 @@ class _GlobalShiftCardState extends State<_GlobalShiftCard> {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              shift.openedByName?.split(' ')[0] ?? 'Desconocido',
+                              shift.openedByName?.split(' ')[0] ??
+                                  'Desconocido',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: colorScheme.onSurfaceVariant,

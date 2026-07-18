@@ -184,7 +184,10 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   Widget build(BuildContext context) {
     return BlocBuilder<PurchaseOrderFormCubit, PurchaseOrderFormState>(
       builder: (context, state) {
-        final viewModel = _PurchaseOrderFormViewModel(context.read<PurchaseOrderFormCubit>(), state);
+        final viewModel = _PurchaseOrderFormViewModel(
+          context.read<PurchaseOrderFormCubit>(),
+          state,
+        );
         if (viewModel.isLoading) {
           return const AdminLayout(
             title: 'Nueva Orden',
@@ -955,124 +958,163 @@ class _DatePickerField extends StatelessWidget {
   }
 }
 
-
 class _PurchaseOrderFormViewModel {
   final PurchaseOrderFormCubit cubit;
   final PurchaseOrderFormState state;
   _PurchaseOrderFormViewModel(this.cubit, this.state);
 
   String get errorMessage {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).errorMessage ?? '';
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).errorMessage ?? '';
     return '';
   }
+
   void clearError() => cubit.clearError();
 
-  bool get isLoading => state is PurchaseOrderFormLoading || state is PurchaseOrderFormInitial;
+  bool get isLoading =>
+      state is PurchaseOrderFormLoading || state is PurchaseOrderFormInitial;
   bool get isSaving {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).isSaving;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).isSaving;
     return false;
   }
-  
+
   List<Map<String, dynamic>> get suppliers {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).suppliers;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).suppliers;
     return [];
   }
+
   List<WarehouseModel> get warehouses {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).warehouses;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).warehouses;
     return [];
   }
+
   List<FinancialAccountModel> get accounts {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).accounts;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).accounts;
     return [];
   }
-  
+
   List<InventoryEntryItemEntity> get items {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).items;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).items;
     return [];
   }
-  
+
   String? get selectedSupplierId {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).selectedSupplierId;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).selectedSupplierId;
     return null;
   }
+
   String? get selectedWarehouseId {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).selectedWarehouseId;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).selectedWarehouseId;
     return null;
   }
+
   DateTime? get dueDate {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).dueDate;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).dueDate;
     return null;
   }
+
   DateTime? get documentDate {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).documentDate;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).documentDate;
     return null;
   }
+
   String get documentType {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).documentType;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).documentType;
     return 'NINGUNO';
   }
+
   String get paymentMode {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).paymentMode;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).paymentMode;
     return 'EFECTIVO';
   }
+
   String get paymentStatus {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).paymentStatus;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).paymentStatus;
     return 'PENDING';
   }
+
   String? get selectedAccountId {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).selectedAccountId;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).selectedAccountId;
     return null;
   }
+
   String get documentNumber {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).documentNumber;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).documentNumber;
     return '';
   }
+
   String get notes {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).notes;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).notes;
     return '';
   }
+
   bool get isValid {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).isValid;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).isValid;
     return false;
   }
+
   double get totalAmount {
-    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).totalAmount;
+    if (state is PurchaseOrderFormLoaded)
+      return (state as PurchaseOrderFormLoaded).totalAmount;
     return 0.0;
   }
 
-    void setSupplier(String? v) => cubit.updateField(supplierId: v);
+  void setSupplier(String? v) => cubit.updateField(supplierId: v);
   void setWarehouse(String? v) => cubit.updateField(warehouseId: v);
-  void setDueDate(DateTime? v) => v == null ? cubit.clearDueDate() : cubit.updateField(dueDate: v);
-  void setDocumentDate(DateTime? v) => v == null ? cubit.clearDocumentDate() : cubit.updateField(documentDate: v);
+  void setDueDate(DateTime? v) =>
+      v == null ? cubit.clearDueDate() : cubit.updateField(dueDate: v);
+  void setDocumentDate(DateTime? v) =>
+      v == null
+          ? cubit.clearDocumentDate()
+          : cubit.updateField(documentDate: v);
   void setDocumentType(String v) => cubit.updateField(documentType: v);
   void setPaymentMode(String v) => cubit.updateField(paymentMode: v);
   void setPaymentStatus(String v) => cubit.updateField(paymentStatus: v);
   void setAccount(String? v) => cubit.updateField(accountId: v);
   void setDocumentNumber(String v) => cubit.updateField(documentNumber: v);
   void setNotes(String v) => cubit.updateField(notes: v);
-  
+
   void addItem(InventoryEntryItemEntity i) => cubit.addItem(i);
   void updateItem(int idx, InventoryEntryItemEntity i) {
     cubit.updateItemQuantity(i.productId, i.variantId, i.quantity);
     cubit.updateItemCost(i.productId, i.variantId, i.unitCost);
   }
+
   void updateItemQuantity(int idx, double qty) {
     if (idx < 0 || idx >= items.length) return;
     final i = items[idx];
     cubit.updateItemQuantity(i.productId, i.variantId, qty);
   }
+
   void removeItem(int idx) {
     if (idx < 0 || idx >= items.length) return;
     final i = items[idx];
     cubit.removeItem(i.productId, i.variantId);
   }
-  
-  Future<bool> saveOrder() async { await cubit.submitOrder(); return cubit.state is PurchaseOrderFormLoaded && (cubit.state as PurchaseOrderFormLoaded).errorMessage == null; }
-  Future<void> saveDraft() => Future.value(); // Now done automatically in cubit.updateField
+
+  Future<bool> saveOrder() async {
+    await cubit.submitOrder();
+    return cubit.state is PurchaseOrderFormLoaded &&
+        (cubit.state as PurchaseOrderFormLoaded).errorMessage == null;
+  }
+
+  Future<void> saveDraft() =>
+      Future.value(); // Now done automatically in cubit.updateField
   void clearDraft() => cubit.clearDraft();
 }
-
-
-
-
-

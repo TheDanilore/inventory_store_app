@@ -31,16 +31,16 @@ class RecentOrderEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        createdAt,
-        totalAmount,
-        amountPaid,
-        discountAmount,
-        status,
-        paymentStatus,
-        paymentMethod,
-        pointsEarned,
-        pointsUsed,
-        dueDate,
-      ];
+    id,
+    createdAt,
+    totalAmount,
+    amountPaid,
+    discountAmount,
+    status,
+    paymentStatus,
+    paymentMethod,
+    pointsEarned,
+    pointsUsed,
+    dueDate,
+  ];
 }

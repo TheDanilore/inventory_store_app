@@ -16,9 +16,9 @@ class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
   FinancialAccountsCubit({
     required GetFinancialAccountsUseCase getAccounts,
     required SaveFinancialAccountUseCase saveAccount,
-  })  : _getAccounts = getAccounts,
-        _saveAccount = saveAccount,
-        super(const FinancialAccountsInitial());
+  }) : _getAccounts = getAccounts,
+       _saveAccount = saveAccount,
+       super(const FinancialAccountsInitial());
 
   int get currentPage => _currentPage;
   int get totalPages => _totalPages;
@@ -27,10 +27,7 @@ class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
     emit(const FinancialAccountsLoading());
     try {
       _currentPage = page;
-      final accounts = await _getAccounts(
-        page: page,
-        pageSize: _pageSize,
-      );
+      final accounts = await _getAccounts(page: page, pageSize: _pageSize);
       // Calculamos totalPages a partir del resultado (si devolvemos menos que pageSize, es la última)
       if (accounts.length < _pageSize && page == 0) {
         _totalPages = 1;
@@ -38,11 +35,13 @@ class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
         _totalPages = page + 1;
       }
 
-      emit(FinancialAccountsLoaded(
-        accounts: accounts,
-        currentPage: _currentPage,
-        totalPages: _totalPages,
-      ));
+      emit(
+        FinancialAccountsLoaded(
+          accounts: accounts,
+          currentPage: _currentPage,
+          totalPages: _totalPages,
+        ),
+      );
     } catch (e) {
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
@@ -50,7 +49,9 @@ class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
           errStr.contains('failed host lookup')) {
         emit(const FinancialAccountsError('Sin conexión a internet.'));
       } else {
-        emit(const FinancialAccountsError('Error al cargar cuentas financieras.'));
+        emit(
+          const FinancialAccountsError('Error al cargar cuentas financieras.'),
+        );
       }
     }
   }

@@ -50,12 +50,14 @@ class SuppliersCubit extends Cubit<SuppliersState> {
       currentPage = page ?? 0;
     }
 
-    emit(SuppliersLoading(
-      currentSuppliers: currentSuppliers,
-      searchQuery: currentQuery,
-      currentPage: currentPage,
-      totalCount: currentTotalCount,
-    ));
+    emit(
+      SuppliersLoading(
+        currentSuppliers: currentSuppliers,
+        searchQuery: currentQuery,
+        currentPage: currentPage,
+        totalCount: currentTotalCount,
+      ),
+    );
 
     final result = await fetchSuppliersUseCase(
       page: currentPage,
@@ -72,21 +74,25 @@ class SuppliersCubit extends Cubit<SuppliersState> {
             errStr.contains('failed host lookup')) {
           msg = 'Sin conexión a internet.';
         }
-        emit(SuppliersError(
-          message: msg,
-          currentSuppliers: currentSuppliers,
-          searchQuery: currentQuery,
-          currentPage: currentPage,
-          totalCount: currentTotalCount,
-        ));
+        emit(
+          SuppliersError(
+            message: msg,
+            currentSuppliers: currentSuppliers,
+            searchQuery: currentQuery,
+            currentPage: currentPage,
+            totalCount: currentTotalCount,
+          ),
+        );
       },
       (data) {
-        emit(SuppliersLoaded(
-          suppliers: data.suppliers,
-          searchQuery: currentQuery,
-          currentPage: currentPage,
-          totalCount: data.totalCount,
-        ));
+        emit(
+          SuppliersLoaded(
+            suppliers: data.suppliers,
+            searchQuery: currentQuery,
+            currentPage: currentPage,
+            totalCount: data.totalCount,
+          ),
+        );
       },
     );
   }
@@ -104,7 +110,9 @@ class SuppliersCubit extends Cubit<SuppliersState> {
     if (currentState is! SuppliersLoaded) return;
 
     final result = await toggleSupplierStatusUseCase(
-        supplier.id, supplier.isActive);
+      supplier.id,
+      supplier.isActive,
+    );
 
     result.fold(
       (failure) {
@@ -115,22 +123,25 @@ class SuppliersCubit extends Cubit<SuppliersState> {
             errStr.contains('failed host lookup')) {
           msg = 'Sin conexión a internet.';
         }
-        emit(SuppliersError(
-          message: msg,
-          currentSuppliers: currentState.suppliers,
-          searchQuery: currentState.searchQuery,
-          currentPage: currentState.currentPage,
-          totalCount: currentState.totalCount,
-        ));
+        emit(
+          SuppliersError(
+            message: msg,
+            currentSuppliers: currentState.suppliers,
+            searchQuery: currentState.searchQuery,
+            currentPage: currentState.currentPage,
+            totalCount: currentState.totalCount,
+          ),
+        );
       },
       (_) {
-        final updatedSuppliers = currentState.suppliers.map((s) {
-          if (s.id == supplier.id) {
-            return s.copyWith(isActive: !s.isActive);
-          }
-          return s;
-        }).toList();
-        
+        final updatedSuppliers =
+            currentState.suppliers.map((s) {
+              if (s.id == supplier.id) {
+                return s.copyWith(isActive: !s.isActive);
+              }
+              return s;
+            }).toList();
+
         emit(currentState.copyWith(suppliers: updatedSuppliers));
       },
     );
@@ -139,13 +150,14 @@ class SuppliersCubit extends Cubit<SuppliersState> {
   void clearError() {
     final currentState = state;
     if (currentState is SuppliersError) {
-      emit(SuppliersLoaded(
-        suppliers: currentState.currentSuppliers,
-        searchQuery: currentState.searchQuery,
-        currentPage: currentState.currentPage,
-        totalCount: currentState.totalCount,
-      ));
+      emit(
+        SuppliersLoaded(
+          suppliers: currentState.currentSuppliers,
+          searchQuery: currentState.searchQuery,
+          currentPage: currentState.currentPage,
+          totalCount: currentState.totalCount,
+        ),
+      );
     }
   }
 }
-

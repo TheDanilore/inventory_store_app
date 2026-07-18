@@ -13,4 +13,3 @@ class ToggleSupplierStatusUseCase {
     return repository.toggleSupplierStatus(supplierId, currentStatus);
   }
 }
-

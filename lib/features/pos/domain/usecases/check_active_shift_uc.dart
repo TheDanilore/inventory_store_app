@@ -17,7 +17,11 @@ class CheckActiveShiftUseCase extends UseCase<CashShiftEntity?, String> {
   Future<Either<Failure, CashShiftEntity?>> call(String accountId) async {
     try {
       if (accountId.isEmpty) {
-        return left(ValidationFailure(message: 'El ID de la cuenta no puede estar vacío.'));
+        return left(
+          ValidationFailure(
+            message: 'El ID de la cuenta no puede estar vacío.',
+          ),
+        );
       }
       return await repository.checkActiveShift(accountId);
     } catch (e) {

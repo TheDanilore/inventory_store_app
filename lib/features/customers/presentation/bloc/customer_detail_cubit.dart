@@ -34,11 +34,13 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
       final recentOrders = await _getRecentOrdersUseCase(customerId);
       final topProducts = await _getTopProductsUseCase(customerId);
 
-      emit(CustomerDetailLoaded(
-        customer: customer,
-        recentOrders: recentOrders,
-        topProducts: topProducts,
-      ));
+      emit(
+        CustomerDetailLoaded(
+          customer: customer,
+          recentOrders: recentOrders,
+          topProducts: topProducts,
+        ),
+      );
     } catch (e) {
       emit(CustomerDetailError(e.toString()));
     }
@@ -100,7 +102,10 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
     }
   }
 
-  Future<void> updateLocation(String locationId, CustomerLocationEntity location) async {
+  Future<void> updateLocation(
+    String locationId,
+    CustomerLocationEntity location,
+  ) async {
     final previousState = state;
     if (previousState is CustomerDetailLoaded) {
       try {
@@ -136,4 +141,3 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
     }
   }
 }
-

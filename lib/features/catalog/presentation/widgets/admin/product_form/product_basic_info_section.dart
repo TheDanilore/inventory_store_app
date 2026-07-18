@@ -54,30 +54,30 @@ class ProductBasicInfoSection extends StatelessWidget {
           state.isLoadingCategories
               ? const Center(child: CircularProgressIndicator())
               : DropdownButtonFormField<String>(
-                  initialValue: state.selectedCategoryId,
-                  decoration: InputDecoration(
-                    labelText: 'Categoría',
-                    prefixIcon: const Icon(Icons.category_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
+                initialValue: state.selectedCategoryId,
+                decoration: InputDecoration(
+                  labelText: 'Categoría',
+                  prefixIcon: const Icon(Icons.category_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('Sin categoría'),
-                    ),
-                    ...state.categories.map(
-                      (cat) => DropdownMenuItem(
-                          value: cat.id!, child: Text(cat.name)),
-                    ),
-                  ],
-                  onChanged: cubit.setSelectedCategory,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Sin categoría'),
+                  ),
+                  ...state.categories.map(
+                    (cat) =>
+                        DropdownMenuItem(value: cat.id!, child: Text(cat.name)),
+                  ),
+                ],
+                onChanged: cubit.setSelectedCategory,
+              ),
           const SizedBox(height: 16),
           AppTextField(
             controller: descCtrl,

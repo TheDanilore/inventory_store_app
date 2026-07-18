@@ -63,7 +63,11 @@ class CustomerLocationsCubit extends Cubit<CustomerLocationsState> {
     }
   }
 
-  Future<void> updateLocation(String customerId, String locationId, CustomerLocationEntity loc) async {
+  Future<void> updateLocation(
+    String customerId,
+    String locationId,
+    CustomerLocationEntity loc,
+  ) async {
     try {
       await _updateLocationUseCase(
         locationId: locationId,

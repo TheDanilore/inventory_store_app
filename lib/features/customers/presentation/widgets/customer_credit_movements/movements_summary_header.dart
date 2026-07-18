@@ -180,10 +180,7 @@ class MovementsSummaryHeader extends StatelessWidget {
                   label: 'Total cargado',
                   value: 'S/ ${totalCharged.toStringAsFixed(2)}',
                   icon: Icons.arrow_upward_rounded,
-                  color:
-                      isAtRisk
-                          ? Colors.white
-                          : Colors.orange.shade100, 
+                  color: isAtRisk ? Colors.white : Colors.orange.shade100,
                 ),
               ),
               const SizedBox(width: 12),
@@ -192,10 +189,7 @@ class MovementsSummaryHeader extends StatelessWidget {
                   label: 'Total pagado',
                   value: 'S/ ${totalPaid.toStringAsFixed(2)}',
                   icon: Icons.arrow_downward_rounded,
-                  color:
-                      isAtRisk
-                          ? Colors.white
-                          : Colors.green.shade100,
+                  color: isAtRisk ? Colors.white : Colors.green.shade100,
                 ),
               ),
             ],
@@ -224,9 +218,7 @@ class _StatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(
-          alpha: 0.15,
-        ),
+        color: Colors.black.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -241,7 +233,7 @@ class _StatChip extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9), 
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),

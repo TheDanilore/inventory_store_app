@@ -45,7 +45,10 @@ class _AccountsTabState extends State<AccountsTab> {
   Widget build(BuildContext context) {
     return BlocBuilder<FinancialAccountsCubit, FinancialAccountsState>(
       builder: (context, state) {
-        final accounts = state is FinancialAccountsLoaded ? state.accounts : <FinancialAccountEntity>[];
+        final accounts =
+            state is FinancialAccountsLoaded
+                ? state.accounts
+                : <FinancialAccountEntity>[];
         final isLoading = state is FinancialAccountsLoading;
 
         final activeAccounts = accounts.where((a) => a.isActive).toList();
@@ -66,7 +69,11 @@ class _AccountsTabState extends State<AccountsTab> {
                             message: 'No hay cuentas financieras registradas.',
                           )
                           : RefreshIndicator(
-                            onRefresh: () async => context.read<FinancialAccountsCubit>().fetchAccounts(),
+                            onRefresh:
+                                () async =>
+                                    context
+                                        .read<FinancialAccountsCubit>()
+                                        .fetchAccounts(),
                             child: AnimationLimiter(
                               child: ListView(
                                 controller: _scrollController,

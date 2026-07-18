@@ -31,10 +31,13 @@ class WishlistRepositoryImpl implements WishlistRepository {
     final rows = List<Map<String, dynamic>>.from(response);
 
     // Enriquecer con stock
-    final productIds = rows
-        .map((r) => (r['products'] as Map<String, dynamic>?)?['id'] as String?)
-        .whereType<String>()
-        .toList();
+    final productIds =
+        rows
+            .map(
+              (r) => (r['products'] as Map<String, dynamic>?)?['id'] as String?,
+            )
+            .whereType<String>()
+            .toList();
 
     Map<String, int> stockByProduct = {};
     if (productIds.isNotEmpty) {
@@ -46,7 +49,8 @@ class WishlistRepositoryImpl implements WishlistRepository {
 
       for (final row in List<Map<String, dynamic>>.from(stockResponse)) {
         final pid = row['product_id'] as String;
-        stockByProduct[pid] = (stockByProduct[pid] ?? 0) +
+        stockByProduct[pid] =
+            (stockByProduct[pid] ?? 0) +
             ((row['available_quantity'] as num?)?.toInt() ?? 0);
       }
     }
@@ -59,9 +63,10 @@ class WishlistRepositoryImpl implements WishlistRepository {
       return WishlistEntryEntity(
         wishlistId: row['id'] as String,
         createdAt: DateTime.tryParse(row['created_at']?.toString() ?? ''),
-        product: ProductModel.fromJson(productJson)
-            .copyWith(totalStock: stock)
-            .toEntity(),
+        product:
+            ProductModel.fromJson(
+              productJson,
+            ).copyWith(totalStock: stock).toEntity(),
       );
     }).toList();
   }

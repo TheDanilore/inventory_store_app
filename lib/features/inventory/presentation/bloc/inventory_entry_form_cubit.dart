@@ -36,15 +36,17 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     String? prefillDocumentNumber,
     DateTime? prefillDocumentDate,
   }) async {
-    emit(state.copyWith(
-      isLoading: true,
-      errorMessage: '',
-      purchaseOrderId: purchaseOrderId,
-      selectedSupplierId: prefillSupplierId,
-      documentType: prefillDocumentType ?? 'NINGUNO',
-      documentNumber: prefillDocumentNumber,
-      documentDate: prefillDocumentDate,
-    ));
+    emit(
+      state.copyWith(
+        isLoading: true,
+        errorMessage: '',
+        purchaseOrderId: purchaseOrderId,
+        selectedSupplierId: prefillSupplierId,
+        documentType: prefillDocumentType ?? 'NINGUNO',
+        documentNumber: prefillDocumentNumber,
+        documentDate: prefillDocumentDate,
+      ),
+    );
 
     try {
       final results = await Future.wait([
@@ -54,31 +56,39 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       ]);
 
       final warehousesList = results[0] as List;
-      final warehouses = warehousesList.map((w) => WarehouseModel(id: w.id, name: w.name)).toList();
+      final warehouses =
+          warehousesList
+              .map((w) => WarehouseModel(id: w.id, name: w.name))
+              .toList();
       final suppliers = List<Map<String, dynamic>>.from(results[1] as List);
       final accountEntities = results[2] as List;
-      final accounts = accountEntities
-          .map((a) => FinancialAccountModel(
-                id: a.id,
-                name: a.name,
-                type: a.type,
-                balance: a.balance,
-                isActive: a.isActive,
-                createdAt: a.createdAt,
-              ))
-          .toList();
+      final accounts =
+          accountEntities
+              .map(
+                (a) => FinancialAccountModel(
+                  id: a.id,
+                  name: a.name,
+                  type: a.type,
+                  balance: a.balance,
+                  isActive: a.isActive,
+                  createdAt: a.createdAt,
+                ),
+              )
+              .toList();
 
       String? initialWarehouseId;
       if (warehouses.length == 1) {
         initialWarehouseId = warehouses.first.id;
       }
 
-      emit(state.copyWith(
-        warehouses: warehouses,
-        suppliers: suppliers,
-        accounts: accounts,
-        selectedWarehouseId: initialWarehouseId,
-      ));
+      emit(
+        state.copyWith(
+          warehouses: warehouses,
+          suppliers: suppliers,
+          accounts: accounts,
+          selectedWarehouseId: initialWarehouseId,
+        ),
+      );
 
       if (prefillItems != null && prefillItems.isNotEmpty) {
         emit(state.copyWith(items: List.from(prefillItems)));
@@ -87,7 +97,9 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       }
     } catch (e) {
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
         emit(state.copyWith(errorMessage: 'Sin conexión a internet.'));
       } else {
         emit(state.copyWith(errorMessage: 'Error cargando datos.'));
@@ -103,7 +115,12 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
   }
 
   void setSupplier(String? id) {
-    emit(state.copyWith(selectedSupplierId: id, clearSelectedSupplierId: id == null));
+    emit(
+      state.copyWith(
+        selectedSupplierId: id,
+        clearSelectedSupplierId: id == null,
+      ),
+    );
     _saveDraft();
   }
 
@@ -128,7 +145,9 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
   }
 
   void setAccount(String? id) {
-    emit(state.copyWith(selectedAccountId: id, clearSelectedAccountId: id == null));
+    emit(
+      state.copyWith(selectedAccountId: id, clearSelectedAccountId: id == null),
+    );
     _saveDraft();
   }
 
@@ -176,27 +195,46 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
     if (state.purchaseOrderId == null) {
       if (state.paymentMode == 'CONTADO' && state.selectedAccountId == null) {
-        emit(state.copyWith(errorMessage: 'Seleccione la cuenta financiera para pagar'));
+        emit(
+          state.copyWith(
+            errorMessage: 'Seleccione la cuenta financiera para pagar',
+          ),
+        );
         return false;
       }
       if (state.paymentMode == 'CONTADO' && state.selectedAccountId != null) {
         final accountData = state.accounts.firstWhereOrNull(
           (a) => a.id == state.selectedAccountId,
         );
-        if (accountData?.type.toUpperCase() == 'CAJA' && activeShiftId.isEmpty) {
-          emit(state.copyWith(errorMessage: 'La caja seleccionada no tiene un turno abierto.'));
+        if (accountData?.type.toUpperCase() == 'CAJA' &&
+            activeShiftId.isEmpty) {
+          emit(
+            state.copyWith(
+              errorMessage: 'La caja seleccionada no tiene un turno abierto.',
+            ),
+          );
           return false;
         }
-        final totalCost = state.items.fold(0.0, (sum, item) => sum + item.subtotal);
+        final totalCost = state.items.fold(
+          0.0,
+          (sum, item) => sum + item.subtotal,
+        );
         if (accountData != null && accountData.balance < totalCost) {
-          emit(state.copyWith(
-            errorMessage: 'Saldo insuficiente en la cuenta (S/ ${accountData.balance.toStringAsFixed(2)} disponible)',
-          ));
+          emit(
+            state.copyWith(
+              errorMessage:
+                  'Saldo insuficiente en la cuenta (S/ ${accountData.balance.toStringAsFixed(2)} disponible)',
+            ),
+          );
           return false;
         }
       }
       if (state.paymentMode == 'CRÉDITO' && state.selectedSupplierId == null) {
-        emit(state.copyWith(errorMessage: 'Seleccione un proveedor para compra a crédito'));
+        emit(
+          state.copyWith(
+            errorMessage: 'Seleccione un proveedor para compra a crédito',
+          ),
+        );
         return false;
       }
     }
@@ -204,7 +242,12 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     for (final item in state.items) {
       if (item.usesBatches &&
           (item.batchNumber == 'DEFAULT' || item.batchNumber.trim().isEmpty)) {
-        emit(state.copyWith(errorMessage: 'El producto "${item.productName}" requiere un lote válido.'));
+        emit(
+          state.copyWith(
+            errorMessage:
+                'El producto "${item.productName}" requiere un lote válido.',
+          ),
+        );
         return false;
       }
     }
@@ -233,10 +276,22 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       emit(state.copyWith(isSaving: false, isSuccess: true));
     } catch (e) {
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
-        emit(state.copyWith(errorMessage: 'Sin conexión a internet.', isSaving: false));
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
+        emit(
+          state.copyWith(
+            errorMessage: 'Sin conexión a internet.',
+            isSaving: false,
+          ),
+        );
       } else {
-        emit(state.copyWith(errorMessage: 'Error registrando entrada.', isSaving: false));
+        emit(
+          state.copyWith(
+            errorMessage: 'Error registrando entrada.',
+            isSaving: false,
+          ),
+        );
       }
     }
   }
@@ -246,20 +301,21 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
     final prefs = await SharedPreferences.getInstance();
 
-    final itemsJson = state.items.map((e) {
-      return {
-        'product_id': e.productId,
-        'product_name': e.productName,
-        'variant_id': e.variantId,
-        'variant_label': e.variantLabel,
-        'image_url': e.imageUrl,
-        'uses_batches': e.usesBatches,
-        'quantity': e.quantity,
-        'unit_cost': e.unitCost,
-        'batch_number': e.batchNumber,
-        'expiry_date': e.expiryDate?.toIso8601String(),
-      };
-    }).toList();
+    final itemsJson =
+        state.items.map((e) {
+          return {
+            'product_id': e.productId,
+            'product_name': e.productName,
+            'variant_id': e.variantId,
+            'variant_label': e.variantLabel,
+            'image_url': e.imageUrl,
+            'uses_batches': e.usesBatches,
+            'quantity': e.quantity,
+            'unit_cost': e.unitCost,
+            'batch_number': e.batchNumber,
+            'expiry_date': e.expiryDate?.toIso8601String(),
+          };
+        }).toList();
 
     final draftData = {
       'warehouseId': state.selectedWarehouseId,
@@ -293,29 +349,36 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
               productId: itemJson['product_id'] as String? ?? '',
               productName: itemJson['product_name'] as String? ?? '—',
               variantId: itemJson['variant_id'] as String? ?? '',
-              variantLabel: itemJson['variant_label'] as String? ?? 'Variante Única',
+              variantLabel:
+                  itemJson['variant_label'] as String? ?? 'Variante Única',
               imageUrl: itemJson['image_url'] as String?,
               usesBatches: itemJson['uses_batches'] as bool? ?? false,
               quantity: (itemJson['quantity'] as num).toDouble(),
               unitCost: (itemJson['unit_cost'] as num).toDouble(),
               batchNumber: itemJson['batch_number'] as String? ?? 'DEFAULT',
-              expiryDate: itemJson['expiry_date'] != null
-                  ? DateTime.tryParse(itemJson['expiry_date'] as String)
-                  : null,
+              expiryDate:
+                  itemJson['expiry_date'] != null
+                      ? DateTime.tryParse(itemJson['expiry_date'] as String)
+                      : null,
             ),
           );
         }
 
-        emit(state.copyWith(
-          selectedWarehouseId: draftData['warehouseId'],
-          selectedSupplierId: draftData['supplierId'],
-          documentType: draftData['documentType'] ?? 'NINGUNO',
-          documentNumber: draftData['documentNumber'],
-          documentDate: draftData['documentDate'] != null ? DateTime.tryParse(draftData['documentDate']) : null,
-          paymentMode: draftData['paymentMode'] ?? 'CONTADO',
-          selectedAccountId: draftData['accountId'],
-          items: newItems,
-        ));
+        emit(
+          state.copyWith(
+            selectedWarehouseId: draftData['warehouseId'],
+            selectedSupplierId: draftData['supplierId'],
+            documentType: draftData['documentType'] ?? 'NINGUNO',
+            documentNumber: draftData['documentNumber'],
+            documentDate:
+                draftData['documentDate'] != null
+                    ? DateTime.tryParse(draftData['documentDate'])
+                    : null,
+            paymentMode: draftData['paymentMode'] ?? 'CONTADO',
+            selectedAccountId: draftData['accountId'],
+            items: newItems,
+          ),
+        );
       } catch (e) {
         // Fallback
       }

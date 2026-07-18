@@ -9,7 +9,8 @@ import 'package:inventory_store_app/features/purchases/data/models/supplier_cred
 import 'package:inventory_store_app/features/purchases/data/utils/credit_movements_pdf_generator.dart';
 
 @LazySingleton(as: SupplierCreditMovementsRepository)
-class SupplierCreditMovementsRepositoryImpl implements SupplierCreditMovementsRepository {
+class SupplierCreditMovementsRepositoryImpl
+    implements SupplierCreditMovementsRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   PostgrestFilterBuilder<T> _applyDateFilter<T>(
@@ -34,14 +35,17 @@ class SupplierCreditMovementsRepositoryImpl implements SupplierCreditMovementsRe
 
   @override
   Future<
-      Either<
-          Failure,
-          ({
-            List<SupplierCreditMovementEntity> movements,
-            int totalCount,
-            double totalCharged,
-            double totalPaid,
-          })>> fetchMovementsPaginated({
+    Either<
+      Failure,
+      ({
+        List<SupplierCreditMovementEntity> movements,
+        int totalCount,
+        double totalCharged,
+        double totalPaid,
+      })
+    >
+  >
+  fetchMovementsPaginated({
     required String creditId,
     required int page,
     required int pageSize,
@@ -88,9 +92,10 @@ class SupplierCreditMovementsRepositoryImpl implements SupplierCreditMovementsRe
           .count(CountOption.exact);
 
       final count = response.count;
-      final movementsList = (response.data as List)
-          .map((e) => SupplierCreditMovementModel.fromJson(e))
-          .toList();
+      final movementsList =
+          (response.data as List)
+              .map((e) => SupplierCreditMovementModel.fromJson(e))
+              .toList();
 
       return Right((
         movements: movementsList,
@@ -119,6 +124,3 @@ class SupplierCreditMovementsRepositoryImpl implements SupplierCreditMovementsRe
     }
   }
 }
-
-
-

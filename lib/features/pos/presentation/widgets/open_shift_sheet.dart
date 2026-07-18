@@ -48,24 +48,28 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate() || _selectedAccountId == null) return;
+    if (!_formKey.currentState!.validate() || _selectedAccountId == null)
+      return;
     setState(() => _saving = true);
 
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('No hay sesión activa');
 
-      final profileRes = await _supabase
-          .from('profiles')
-          .select('id')
-          .eq('auth_user_id', user.id)
-          .maybeSingle();
+      final profileRes =
+          await _supabase
+              .from('profiles')
+              .select('id')
+              .eq('auth_user_id', user.id)
+              .maybeSingle();
       final profileId = profileRes?['id'] as String? ?? user.id;
 
-      final amount = double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
+      final amount =
+          double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
 
-      final selectedAccount =
-          widget.accounts.firstWhere((a) => a['id'] == _selectedAccountId);
+      final selectedAccount = widget.accounts.firstWhere(
+        (a) => a['id'] == _selectedAccountId,
+      );
       if (amount > selectedAccount['balance']) {
         if (mounted) {
           AppSnackbar.show(
@@ -162,32 +166,36 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
                 child: DropdownButton<String>(
                   value: _selectedAccountId,
                   isExpanded: true,
-                  items: widget.accounts
-                      .map(
-                        (a) => DropdownMenuItem<String>(
-                          value: a['id'],
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.point_of_sale_rounded,
-                                size: 16,
-                                color: AppColors.textSecondary,
+                  items:
+                      widget.accounts
+                          .map(
+                            (a) => DropdownMenuItem<String>(
+                              value: a['id'],
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.point_of_sale_rounded,
+                                    size: 16,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    a['name'],
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                a['name'],
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) =>
-                      v != null ? setState(() => _selectedAccountId = v) : null,
+                            ),
+                          )
+                          .toList(),
+                  onChanged:
+                      (v) =>
+                          v != null
+                              ? setState(() => _selectedAccountId = v)
+                              : null,
                 ),
               ),
             ),
@@ -196,16 +204,19 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
             _FieldLabel('Monto de apertura (S/)'),
             TextFormField(
               controller: _amountCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
               ],
               decoration: InputDecoration(
                 prefixText: 'S/ ',
                 isDense: true,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 filled: true,
                 fillColor: AppColors.surface,
                 border: OutlineInputBorder(
@@ -235,22 +246,23 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: _saving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+                child:
+                    _saving
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Text(
+                          'Abrir turno',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
                         ),
-                      )
-                    : const Text(
-                        'Abrir turno',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
               ),
             ),
           ],
@@ -262,7 +274,9 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
 
 // ignore: non_constant_identifier_names
 Widget _FieldLabel(String text) => Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child:
-          Text(text, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-    );
+  padding: const EdgeInsets.only(bottom: 6),
+  child: Text(
+    text,
+    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+  ),
+);

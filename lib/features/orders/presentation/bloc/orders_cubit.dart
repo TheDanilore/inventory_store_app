@@ -17,7 +17,8 @@ class OrdersCubit extends Cubit<OrdersState> {
   final SaveOrderChangesUc _saveOrderChangesUc;
   final CancelOrderUc _cancelOrderUc;
   final GetOrderItemsUc _getOrderItemsUc;
-  final OrdersRepository _repository; // For fetchOrderItemsForPdf and general access
+  final OrdersRepository
+  _repository; // For fetchOrderItemsForPdf and general access
 
   OrdersCubit({
     required GetFilteredOrdersUc getFilteredOrdersUc,
@@ -26,12 +27,12 @@ class OrdersCubit extends Cubit<OrdersState> {
     required GetOrderItemsUc getOrderItemsUc,
     required OrdersRepository repository,
     String? customerIdFilter,
-  })  : _getFilteredOrdersUc = getFilteredOrdersUc,
-        _saveOrderChangesUc = saveOrderChangesUc,
-        _cancelOrderUc = cancelOrderUc,
-        _getOrderItemsUc = getOrderItemsUc,
-        _repository = repository,
-        super(OrdersState(customerIdFilter: customerIdFilter));
+  }) : _getFilteredOrdersUc = getFilteredOrdersUc,
+       _saveOrderChangesUc = saveOrderChangesUc,
+       _cancelOrderUc = cancelOrderUc,
+       _getOrderItemsUc = getOrderItemsUc,
+       _repository = repository,
+       super(OrdersState(customerIdFilter: customerIdFilter));
 
   void init() {
     loadOrders(reset: true);
@@ -39,11 +40,7 @@ class OrdersCubit extends Cubit<OrdersState> {
 
   Future<void> loadOrders({bool reset = false, bool background = false}) async {
     if (reset) {
-      emit(state.copyWith(
-        currentPage: 0,
-        orders: [],
-        totalRecords: 0,
-      ));
+      emit(state.copyWith(currentPage: 0, orders: [], totalRecords: 0));
     }
 
     if (background) {
@@ -54,38 +51,45 @@ class OrdersCubit extends Cubit<OrdersState> {
 
     final startRow = state.currentPage * OrdersState.pageSize;
 
-    final result = await _getFilteredOrdersUc(GetFilteredOrdersParams(
-      customerIdFilter: state.customerIdFilter,
-      statusFilter: state.statusFilter,
-      paymentStatusFilter: state.paymentStatusFilter,
-      startDate: state.startDate,
-      endDate: state.endDate,
-      searchQuery: state.searchQuery,
-      limit: OrdersState.pageSize,
-      offset: startRow,
-    ));
+    final result = await _getFilteredOrdersUc(
+      GetFilteredOrdersParams(
+        customerIdFilter: state.customerIdFilter,
+        statusFilter: state.statusFilter,
+        paymentStatusFilter: state.paymentStatusFilter,
+        startDate: state.startDate,
+        endDate: state.endDate,
+        searchQuery: state.searchQuery,
+        limit: OrdersState.pageSize,
+        offset: startRow,
+      ),
+    );
 
     result.fold(
       (failure) {
-        emit(state.copyWith(
-          isLoading: false,
-          isBackgroundLoading: false,
-          errorMessage: failure.message,
-        ));
+        emit(
+          state.copyWith(
+            isLoading: false,
+            isBackgroundLoading: false,
+            errorMessage: failure.message,
+          ),
+        );
       },
       (data) {
-        emit(state.copyWith(
-          isLoading: false,
-          isBackgroundLoading: false,
-          orders: data.orders,
-          totalRecords: data.total,
-        ));
+        emit(
+          state.copyWith(
+            isLoading: false,
+            isBackgroundLoading: false,
+            orders: data.orders,
+            totalRecords: data.total,
+          ),
+        );
       },
     );
   }
 
   void goToPage(int page) {
-    if (page < 0 || page >= state.totalPages || page == state.currentPage) return;
+    if (page < 0 || page >= state.totalPages || page == state.currentPage)
+      return;
     emit(state.copyWith(currentPage: page));
     loadOrders();
   }
@@ -123,7 +127,7 @@ class OrdersCubit extends Cubit<OrdersState> {
 
   Future<void> updateOrderStatus(OrderEntity order, String newStatus) async {
     if (state.isOrderProcessing(order.id)) return;
-    
+
     final processing = Set<String>.from(state.processingOrders)..add(order.id);
     emit(state.copyWith(processingOrders: processing));
 
@@ -131,49 +135,55 @@ class OrdersCubit extends Cubit<OrdersState> {
       if (newStatus == 'COMPLETED' && order.status == 'PENDING') {
         // Fetch items first
         final itemsResult = await _getOrderItemsUc(order.id);
-        
+
         await itemsResult.fold(
           (failure) async {
             // Handle error fetching items
           },
           (items) async {
-            final currentProfileId = Supabase.instance.client.auth.currentUser?.id;
-            
-            await _saveOrderChangesUc(SaveOrderChangesParams(
-              orderId: order.id,
-              originalStatus: order.status,
-              newStatus: newStatus,
-              paymentMethod: order.paymentMethod,
-              selectedCustomerId: order.customerId,
-              customerNameToSave: order.customerName,
-              items: items,
-              pointsUsed: order.pointsUsed,
-              pointsEarned: order.pointsEarned,
-              totalAmount: order.totalAmount,
-              totalProfit: order.totalProfit,
-              batchOverrides: {},
-              currentProfileId: currentProfileId,
-            ));
-          }
+            final currentProfileId =
+                Supabase.instance.client.auth.currentUser?.id;
+
+            await _saveOrderChangesUc(
+              SaveOrderChangesParams(
+                orderId: order.id,
+                originalStatus: order.status,
+                newStatus: newStatus,
+                paymentMethod: order.paymentMethod,
+                selectedCustomerId: order.customerId,
+                customerNameToSave: order.customerName,
+                items: items,
+                pointsUsed: order.pointsUsed,
+                pointsEarned: order.pointsEarned,
+                totalAmount: order.totalAmount,
+                totalProfit: order.totalProfit,
+                batchOverrides: {},
+                currentProfileId: currentProfileId,
+              ),
+            );
+          },
         );
       } else if (newStatus == 'CANCELLED' || newStatus == 'RETURNED') {
         final currentProfileId = Supabase.instance.client.auth.currentUser?.id;
-        
-        await _cancelOrderUc(CancelOrderParams(
-          orderId: order.id,
-          customerId: order.customerId,
-          currentProfileId: currentProfileId,
-        ));
+
+        await _cancelOrderUc(
+          CancelOrderParams(
+            orderId: order.id,
+            customerId: order.customerId,
+            currentProfileId: currentProfileId,
+          ),
+        );
       } else {
         await Supabase.instance.client
             .from('orders')
             .update({'status': newStatus})
             .eq('id', order.id);
       }
-      
+
       await loadOrders(background: true);
     } finally {
-      final updatedProcessing = Set<String>.from(state.processingOrders)..remove(order.id);
+      final updatedProcessing = Set<String>.from(state.processingOrders)
+        ..remove(order.id);
       emit(state.copyWith(processingOrders: updatedProcessing));
     }
   }
@@ -184,18 +194,22 @@ class OrdersCubit extends Cubit<OrdersState> {
 
     try {
       final rawItemsResult = await _repository.fetchOrderItemsForPdf(order.id);
-      
+
       await rawItemsResult.fold(
         (failure) async {
           // Error handling
         },
         (rawItems) async {
-          final items = rawItems.map((row) {
-            return OrderItemModel.fromJson(Map<String, dynamic>.from(row));
-          }).toList();
+          final items =
+              rawItems.map((row) {
+                return OrderItemModel.fromJson(Map<String, dynamic>.from(row));
+              }).toList();
 
-          await OrderPdfGenerator.shareTicket(order as OrderModel, items: items.map((e) => e).toList());
-        }
+          await OrderPdfGenerator.shareTicket(
+            order as OrderModel,
+            items: items.map((e) => e).toList(),
+          );
+        },
       );
     } finally {
       emit(state.copyWith(generatingPdfOrderId: null));

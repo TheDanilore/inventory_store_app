@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
@@ -31,10 +31,7 @@ class CustomerCreditSection extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder:
-          (_) => RegisterPaymentModal(
-            onSaved: onPaymentRegistered,
-          ),
+      builder: (_) => RegisterPaymentModal(onSaved: onPaymentRegistered),
     );
   }
 
@@ -245,7 +242,10 @@ class _CreditMovementRow extends StatelessWidget {
                 ),
               ),
               Text(
-                DateFormat('d MMM', 'es').format(movement.createdAt ?? DateTime.now()),
+                DateFormat(
+                  'd MMM',
+                  'es',
+                ).format(movement.createdAt ?? DateTime.now()),
                 style: const TextStyle(
                   fontSize: 11,
                   color: AppColors.textMuted,

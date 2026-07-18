@@ -18,7 +18,9 @@ class NetworkCubit extends Cubit<NetworkState> {
     final result = await Connectivity().checkConnectivity();
     _updateStatus(result);
 
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((result) {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      result,
+    ) {
       _updateStatus(result);
     });
   }

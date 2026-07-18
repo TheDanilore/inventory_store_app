@@ -8,33 +8,39 @@ import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state
 class PosCubit extends Cubit<PosState> {
   final LoadInitialPosDataUseCase _loadInitialPosData;
 
-  PosCubit({
-    required LoadInitialPosDataUseCase loadInitialPosData,
-  })  : _loadInitialPosData = loadInitialPosData,
-        super(const PosState());
+  PosCubit({required LoadInitialPosDataUseCase loadInitialPosData})
+    : _loadInitialPosData = loadInitialPosData,
+      super(const PosState());
 
   Future<void> initPosData({bool forceRefresh = false}) async {
     emit(state.copyWith(isLoading: true, errorMessage: ''));
 
-    final res = await _loadInitialPosData(LoadInitialPosDataParams(forceRefresh: forceRefresh));
+    final res = await _loadInitialPosData(
+      LoadInitialPosDataParams(forceRefresh: forceRefresh),
+    );
     res.fold(
-      (failure) => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
+      (failure) =>
+          emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
       (data) {
-        emit(state.copyWith(
-          isLoading: false,
-          warehouses: data.warehouses,
-          accounts: data.accounts,
-        ));
-      }
+        emit(
+          state.copyWith(
+            isLoading: false,
+            warehouses: data.warehouses,
+            accounts: data.accounts,
+          ),
+        );
+      },
     );
   }
 
   void setClient(String id, String name, int saldo) {
-    emit(state.copyWith(
-      selectedClientId: id,
-      selectedClientName: name,
-      saldoActualCliente: saldo,
-    ));
+    emit(
+      state.copyWith(
+        selectedClientId: id,
+        selectedClientName: name,
+        saldoActualCliente: saldo,
+      ),
+    );
   }
 
   void removeClient() {
@@ -53,14 +59,21 @@ class PosCubit extends Cubit<PosState> {
     emit(state.copyWith(selectedWarehouseId: id));
   }
 
-  void setBatchOverride(String cartKey, List<BatchAssignmentModel> assignments) {
-    final overrides = Map<String, List<BatchAssignmentModel>>.from(state.batchOverrides);
+  void setBatchOverride(
+    String cartKey,
+    List<BatchAssignmentModel> assignments,
+  ) {
+    final overrides = Map<String, List<BatchAssignmentModel>>.from(
+      state.batchOverrides,
+    );
     overrides[cartKey] = assignments;
     emit(state.copyWith(batchOverrides: overrides));
   }
 
   void clearBatchOverride(String cartKey) {
-    final overrides = Map<String, List<BatchAssignmentModel>>.from(state.batchOverrides);
+    final overrides = Map<String, List<BatchAssignmentModel>>.from(
+      state.batchOverrides,
+    );
     overrides.remove(cartKey);
     emit(state.copyWith(batchOverrides: overrides));
   }

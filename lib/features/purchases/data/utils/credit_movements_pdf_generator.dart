@@ -41,14 +41,7 @@ class CreditMovementsPdfGenerator {
             ),
             pw.SizedBox(height: 20),
             pw.TableHelper.fromTextArray(
-              headers: [
-                'Fecha',
-                'Tipo',
-                'Monto',
-                'Método',
-                'Usuario',
-                'Notas',
-              ],
+              headers: ['Fecha', 'Tipo', 'Monto', 'Método', 'Usuario', 'Notas'],
               data:
                   allMovements.map((m) {
                     final dateStr =

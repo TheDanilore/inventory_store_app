@@ -22,11 +22,11 @@ class CartCubit extends Cubit<CartState> {
     required SaveCartUseCase saveCart,
     required SyncCartUseCase syncCart,
     required ClearCartUseCase clearCart,
-  })  : _loadCart = loadCart,
-        _saveCart = saveCart,
-        _syncCart = syncCart,
-        _clearCart = clearCart,
-        super(const CartState());
+  }) : _loadCart = loadCart,
+       _saveCart = saveCart,
+       _syncCart = syncCart,
+       _clearCart = clearCart,
+       super(const CartState());
 
   void setCartType(String cartType) {
     _cartType = cartType;
@@ -38,14 +38,15 @@ class CartCubit extends Cubit<CartState> {
 
     final localRes = await _loadCart(LoadCartParams(_cartType));
     localRes.fold(
-      (failure) => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
+      (failure) =>
+          emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
       (items) {
         emit(state.copyWith(isLoading: false, items: items));
-      }
+      },
     );
 
     // Sync if user is authenticated (Note: auth check can be delegated or done here)
-    // Actually, in Clean Architecture, we could pass the profile ID if known, 
+    // Actually, in Clean Architecture, we could pass the profile ID if known,
     // but we can let the caller trigger sync, or do a quick check here.
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
@@ -68,12 +69,19 @@ class CartCubit extends Cubit<CartState> {
     // Let's pass the auth user ID to the repo and let it translate it (or we can just leave it as is if repo does it).
     // I will assume `profileId` parameter in SyncCartParams is actually `authUserId` based on legacy.
 
-    final res = await _syncCart(SyncCartParams(cartType: _cartType, profileId: user.id, localItems: state.items));
+    final res = await _syncCart(
+      SyncCartParams(
+        cartType: _cartType,
+        profileId: user.id,
+        localItems: state.items,
+      ),
+    );
     res.fold(
-      (failure) => emit(state.copyWith(isSyncing: false, errorMessage: failure.message)),
+      (failure) =>
+          emit(state.copyWith(isSyncing: false, errorMessage: failure.message)),
       (items) {
         emit(state.copyWith(isSyncing: false, items: items));
-      }
+      },
     );
   }
 
@@ -83,7 +91,7 @@ class CartCubit extends Cubit<CartState> {
 
   void addItem(CartItemEntity item) {
     final newItems = Map<String, CartItemEntity>.from(state.items);
-    
+
     if (newItems.containsKey(item.cartKey)) {
       final existing = newItems[item.cartKey]!;
       newItems[item.cartKey] = CartItemEntity(
@@ -207,9 +215,12 @@ class CartCubit extends Cubit<CartState> {
 
   Future<void> clearCart() async {
     final user = Supabase.instance.client.auth.currentUser;
-    final profileId = user?.id; // Note: passed as authUserId to usecase/repository
+    final profileId =
+        user?.id; // Note: passed as authUserId to usecase/repository
 
-    await _clearCart(ClearCartParams(cartType: _cartType, profileId: profileId));
+    await _clearCart(
+      ClearCartParams(cartType: _cartType, profileId: profileId),
+    );
     emit(state.copyWith(items: {}));
   }
 

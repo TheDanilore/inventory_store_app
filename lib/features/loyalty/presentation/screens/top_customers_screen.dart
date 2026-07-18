@@ -738,8 +738,7 @@ class _GlassRouletteDialogState extends State<_GlassRouletteDialog> {
                 width: double.infinity,
                 height: 60,
                 child: FilledButton.icon(
-                  onPressed:
-                      state.isSpinning ? null : () => _spinWheel(),
+                  onPressed: state.isSpinning ? null : () => _spinWheel(),
                   icon: const Icon(Icons.play_arrow_rounded, size: 28),
                   label: const Text(
                     'GIRAR RULETA',

@@ -12,9 +12,9 @@ class PosState extends Equatable {
   final int puntosAUsar;
   final String paymentMethod;
   final String? selectedWarehouseId;
-  
+
   final Map<String, List<BatchAssignmentModel>> batchOverrides;
-  
+
   final List<WarehouseModel> warehouses;
   final List<Map<String, dynamic>> accounts;
 
@@ -49,9 +49,12 @@ class PosState extends Equatable {
     return PosState(
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage ?? this.errorMessage,
-      selectedClientId: clearClient ? null : (selectedClientId ?? this.selectedClientId),
-      selectedClientName: clearClient ? null : (selectedClientName ?? this.selectedClientName),
-      saldoActualCliente: clearClient ? 0 : (saldoActualCliente ?? this.saldoActualCliente),
+      selectedClientId:
+          clearClient ? null : (selectedClientId ?? this.selectedClientId),
+      selectedClientName:
+          clearClient ? null : (selectedClientName ?? this.selectedClientName),
+      saldoActualCliente:
+          clearClient ? 0 : (saldoActualCliente ?? this.saldoActualCliente),
       puntosAUsar: clearClient ? 0 : (puntosAUsar ?? this.puntosAUsar),
       paymentMethod: paymentMethod ?? this.paymentMethod,
       selectedWarehouseId: selectedWarehouseId ?? this.selectedWarehouseId,
@@ -63,16 +66,16 @@ class PosState extends Equatable {
 
   @override
   List<Object?> get props => [
-        isLoading,
-        errorMessage,
-        selectedClientId,
-        selectedClientName,
-        saldoActualCliente,
-        puntosAUsar,
-        paymentMethod,
-        selectedWarehouseId,
-        batchOverrides,
-        warehouses,
-        accounts,
-      ];
+    isLoading,
+    errorMessage,
+    selectedClientId,
+    selectedClientName,
+    saldoActualCliente,
+    puntosAUsar,
+    paymentMethod,
+    selectedWarehouseId,
+    batchOverrides,
+    warehouses,
+    accounts,
+  ];
 }

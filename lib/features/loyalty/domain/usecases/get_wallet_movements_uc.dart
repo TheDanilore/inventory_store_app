@@ -10,7 +10,15 @@ class GetWalletMovementsUC {
 
   GetWalletMovementsUC(this.repository);
 
-  Future<Either<Failure, List<WalletMovementEntity>>> call({required String profileId, required int limit, required int offset}) async {
-    return await repository.getWalletMovements(profileId: profileId, limit: limit, offset: offset);
+  Future<Either<Failure, List<WalletMovementEntity>>> call({
+    required String profileId,
+    required int limit,
+    required int offset,
+  }) async {
+    return await repository.getWalletMovements(
+      profileId: profileId,
+      limit: limit,
+      offset: offset,
+    );
   }
 }

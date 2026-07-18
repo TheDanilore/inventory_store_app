@@ -58,12 +58,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     this.isAdmin = isAdmin;
     this.initialVariantId = initialVariantId;
 
-    emit(
-      state.copyWith(
-        product: product,
-        selectedVariantId: initialVariantId,
-      ),
-    );
+    emit(state.copyWith(product: product, selectedVariantId: initialVariantId));
 
     _initData();
   }
@@ -300,7 +295,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
 
   Future<void> exportProductPdf() async {
     if (product == null) return;
-    
+
     emit(state.copyWith(viewState: ViewState.loading));
     final stockMap = <String, int>{};
     for (final row in state.warehouseStocks) {
@@ -320,7 +315,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
       variants: state.variants,
       stockByVariant: stockMap,
     );
-    
+
     result.fold(
       (failure) {
         // Handle failure if needed, maybe emit an error state

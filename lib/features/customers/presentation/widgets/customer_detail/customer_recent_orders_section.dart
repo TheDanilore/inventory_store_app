@@ -133,7 +133,10 @@ class _OrderRow extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: _isCancelled ? AppColors.dangerLight : AppColors.background,
+                  color:
+                      _isCancelled
+                          ? AppColors.dangerLight
+                          : AppColors.background,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

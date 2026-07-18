@@ -228,8 +228,11 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   Future<void> _fetchProductImages(String productId) async {
     final images = await _unwrap(_getProductImagesUC.call(productId));
-    final productImagesOnly = images.where((img) => img.variantId == null).toList();
-    _formImages.addAll(productImagesOnly.map((img) => FormImageItem(existing: img)));
+    final productImagesOnly =
+        images.where((img) => img.variantId == null).toList();
+    _formImages.addAll(
+      productImagesOnly.map((img) => FormImageItem(existing: img)),
+    );
     _syncState();
   }
 

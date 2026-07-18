@@ -27,11 +27,13 @@ class WarehousesCubit extends Cubit<WarehousesState> {
       emit(state.copyWith(currentPage: 0));
     }
 
-    emit(state.copyWith(
-      isLoading: true,
-      clearErrorMessage: true,
-      clearSuccessMessage: true,
-    ));
+    emit(
+      state.copyWith(
+        isLoading: true,
+        clearErrorMessage: true,
+        clearSuccessMessage: true,
+      ),
+    );
 
     try {
       final start = state.currentPage * state.pageSize;
@@ -46,16 +48,20 @@ class WarehousesCubit extends Cubit<WarehousesState> {
       final warehouses = response.data;
       final totalRecords = response.count;
 
-      emit(state.copyWith(
-        warehouses: warehouses,
-        totalRecords: totalRecords,
-        isLoading: false,
-      ));
+      emit(
+        state.copyWith(
+          warehouses: warehouses,
+          totalRecords: totalRecords,
+          isLoading: false,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(
-        errorMessage: 'Error al cargar almacenes',
-        isLoading: false,
-      ));
+      emit(
+        state.copyWith(
+          errorMessage: 'Error al cargar almacenes',
+          isLoading: false,
+        ),
+      );
     }
   }
 
@@ -84,11 +90,13 @@ class WarehousesCubit extends Cubit<WarehousesState> {
   }) async {
     if (state.isSaving) return false;
 
-    emit(state.copyWith(
-      isSaving: true,
-      clearErrorMessage: true,
-      clearSuccessMessage: true,
-    ));
+    emit(
+      state.copyWith(
+        isSaving: true,
+        clearErrorMessage: true,
+        clearSuccessMessage: true,
+      ),
+    );
 
     try {
       await saveWarehouseUseCase.call(
@@ -98,12 +106,15 @@ class WarehousesCubit extends Cubit<WarehousesState> {
         isActive: isActive,
       );
 
-      emit(state.copyWith(
-        isSaving: false,
-        successMessage: existingWarehouse == null
-            ? 'Almacén creado exitosamente'
-            : 'Almacén actualizado',
-      ));
+      emit(
+        state.copyWith(
+          isSaving: false,
+          successMessage:
+              existingWarehouse == null
+                  ? 'Almacén creado exitosamente'
+                  : 'Almacén actualizado',
+        ),
+      );
 
       await loadWarehouses(isRefresh: true);
       return true;
@@ -118,10 +129,7 @@ class WarehousesCubit extends Cubit<WarehousesState> {
         msg = 'Sin conexión a internet.';
       }
 
-      emit(state.copyWith(
-        isSaving: false,
-        errorMessage: msg,
-      ));
+      emit(state.copyWith(isSaving: false, errorMessage: msg));
       return false;
     }
   }
@@ -129,11 +137,13 @@ class WarehousesCubit extends Cubit<WarehousesState> {
   Future<void> toggleWarehouseStatus(WarehouseEntity wh, bool isActive) async {
     try {
       await toggleWarehouseStatusUseCase.call(wh, isActive);
-      
-      emit(state.copyWith(
-        successMessage: isActive ? 'Almacén activado' : 'Almacén desactivado',
-        clearErrorMessage: true,
-      ));
+
+      emit(
+        state.copyWith(
+          successMessage: isActive ? 'Almacén activado' : 'Almacén desactivado',
+          clearErrorMessage: true,
+        ),
+      );
 
       await loadWarehouses();
     } catch (e) {
@@ -145,10 +155,7 @@ class WarehousesCubit extends Cubit<WarehousesState> {
         msg = 'Sin conexión a internet.';
       }
 
-      emit(state.copyWith(
-        errorMessage: msg,
-        clearSuccessMessage: true,
-      ));
+      emit(state.copyWith(errorMessage: msg, clearSuccessMessage: true));
     }
   }
 }

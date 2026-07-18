@@ -31,7 +31,16 @@ class StockBatchEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id, variantId, warehouseId, batchNumber, expiryDate,
-        availableQuantity, createdAt, updatedAt, createdBy, updatedBy, productId,
-      ];
+    id,
+    variantId,
+    warehouseId,
+    batchNumber,
+    expiryDate,
+    availableQuantity,
+    createdAt,
+    updatedAt,
+    createdBy,
+    updatedBy,
+    productId,
+  ];
 }

@@ -1,4 +1,5 @@
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_entity.dart';
+
 class InventoryEntryModel {
   final String id;
   final String warehouseId;

@@ -26,16 +26,18 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
       debugPrint('Error cargando almacenes: $e');
     }
 
-    emit(InventoryEntriesLoaded(
-      entries: const [],
-      searchQuery: '',
-      warehouseFilter: 'Todos',
-      dateRange: null,
-      availableWarehouses: warehouses,
-      currentPage: 0,
-      totalCount: 0,
-      totalPages: 1,
-    ));
+    emit(
+      InventoryEntriesLoaded(
+        entries: const [],
+        searchQuery: '',
+        warehouseFilter: 'Todos',
+        dateRange: null,
+        availableWarehouses: warehouses,
+        currentPage: 0,
+        totalCount: 0,
+        totalPages: 1,
+      ),
+    );
 
     await loadEntries(page: 0);
   }
@@ -47,12 +49,16 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
     int? page,
     bool clearDateRange = false,
   }) async {
-    final currentState = state is InventoryEntriesLoaded ? state as InventoryEntriesLoaded : null;
+    final currentState =
+        state is InventoryEntriesLoaded
+            ? state as InventoryEntriesLoaded
+            : null;
     if (currentState == null) return;
 
     final currentQuery = searchQuery ?? currentState.searchQuery;
     final currentWarehouse = warehouseFilter ?? currentState.warehouseFilter;
-    final currentDateRange = clearDateRange ? null : (dateRange ?? currentState.dateRange);
+    final currentDateRange =
+        clearDateRange ? null : (dateRange ?? currentState.dateRange);
     final currentPage = page ?? currentState.currentPage;
 
     emit(InventoryEntriesLoading());
@@ -71,22 +77,27 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
       );
 
       final dataList = response.data;
-      final entries = dataList
-          .map((e) => InventoryEntryModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      final entries =
+          dataList
+              .map(
+                (e) => InventoryEntryModel.fromJson(e as Map<String, dynamic>),
+              )
+              .toList();
       final totalRecords = response.count;
       final totalPages = (totalRecords / pageSize).ceil();
 
-      emit(currentState.copyWith(
-        entries: entries,
-        searchQuery: currentQuery,
-        warehouseFilter: currentWarehouse,
-        dateRange: currentDateRange,
-        clearDateRange: clearDateRange,
-        currentPage: currentPage,
-        totalCount: totalRecords,
-        totalPages: totalPages == 0 ? 1 : totalPages,
-      ));
+      emit(
+        currentState.copyWith(
+          entries: entries,
+          searchQuery: currentQuery,
+          warehouseFilter: currentWarehouse,
+          dateRange: currentDateRange,
+          clearDateRange: clearDateRange,
+          currentPage: currentPage,
+          totalCount: totalRecords,
+          totalPages: totalPages == 0 ? 1 : totalPages,
+        ),
+      );
     } catch (e) {
       debugPrint('Error loading inventory entries: $e');
       final errStr = e.toString().toLowerCase();
@@ -103,12 +114,16 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
   }
 
   void setSearchQuery(String query) {
-    if (state is InventoryEntriesLoaded && (state as InventoryEntriesLoaded).searchQuery == query) return;
+    if (state is InventoryEntriesLoaded &&
+        (state as InventoryEntriesLoaded).searchQuery == query)
+      return;
     loadEntries(searchQuery: query, page: 0);
   }
 
   void setWarehouseFilter(String warehouse) {
-    if (state is InventoryEntriesLoaded && (state as InventoryEntriesLoaded).warehouseFilter == warehouse) return;
+    if (state is InventoryEntriesLoaded &&
+        (state as InventoryEntriesLoaded).warehouseFilter == warehouse)
+      return;
     loadEntries(warehouseFilter: warehouse, page: 0);
   }
 
@@ -128,7 +143,10 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
   void goToPage(int page) {
     if (state is InventoryEntriesLoaded) {
       final currentState = state as InventoryEntriesLoaded;
-      if (page < 0 || page >= currentState.totalPages || page == currentState.currentPage) return;
+      if (page < 0 ||
+          page >= currentState.totalPages ||
+          page == currentState.currentPage)
+        return;
       loadEntries(page: page);
     }
   }

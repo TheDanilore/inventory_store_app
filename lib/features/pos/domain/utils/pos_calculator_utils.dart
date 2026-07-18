@@ -2,7 +2,12 @@ import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state
 import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
 
 class PosCalculatorUtils {
-  static int clampPointsValue(int desired, PosState pos, CartState cart, double ratio) {
+  static int clampPointsValue(
+    int desired,
+    PosState pos,
+    CartState cart,
+    double ratio,
+  ) {
     if (pos.selectedClientId == null) return 0;
     if (pos.saldoActualCliente <= 0) return 0;
 
@@ -106,11 +111,18 @@ class PosCalculatorUtils {
     return disp > 0 ? disp : 0;
   }
 
-  static double getMaxCustomDiscount(CartState cart, double ratio, int puntosSeguros) {
+  static double getMaxCustomDiscount(
+    CartState cart,
+    double ratio,
+    int puntosSeguros,
+  ) {
     return cart.totalAmount - (puntosSeguros * ratio);
   }
 
-  static int calcularPuntosGanados({required double total, required double rate}) {
+  static int calcularPuntosGanados({
+    required double total,
+    required double rate,
+  }) {
     return (total * rate).floor();
   }
 }

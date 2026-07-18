@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+
 class MovementCard extends StatefulWidget {
   final CreditMovementEntity movement;
   final Function(String orderId) onOpenOrder;

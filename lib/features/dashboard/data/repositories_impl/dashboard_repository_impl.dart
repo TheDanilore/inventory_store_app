@@ -121,19 +121,23 @@ class DashboardRepositoryImpl implements DashboardRepository {
       final grossMargin =
           totalInvestment > 0 ? (grossProfit / retailValue) * 100 : 0.0;
 
-      return right(InventoryMetricsEntity(
-        totalStock: totalStock,
-        lowStockProducts: lowStockProducts,
-        totalInvestment: totalInvestment,
-        retailValue: retailValue,
-        grossProfit: grossProfit,
-        expectedMaxProfit: expectedMaxProfit,
-        expectedMinProfit: expectedMinProfit,
-        grossMargin: grossMargin,
-        totalProducts: totalProducts,
-      ));
+      return right(
+        InventoryMetricsEntity(
+          totalStock: totalStock,
+          lowStockProducts: lowStockProducts,
+          totalInvestment: totalInvestment,
+          retailValue: retailValue,
+          grossProfit: grossProfit,
+          expectedMaxProfit: expectedMaxProfit,
+          expectedMinProfit: expectedMinProfit,
+          grossMargin: grossMargin,
+          totalProducts: totalProducts,
+        ),
+      );
     } catch (e) {
-      return left(ServerFailure(message: 'Error al obtener métricas de inventario: $e'));
+      return left(
+        ServerFailure(message: 'Error al obtener métricas de inventario: $e'),
+      );
     }
   }
 
@@ -188,16 +192,20 @@ class DashboardRepositoryImpl implements DashboardRepository {
       final salesMargin =
           totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0.0;
 
-      return right(SalesMetricsEntity(
-        totalSales: totalSales,
-        totalRevenue: totalRevenue,
-        totalProfit: totalProfit,
-        replacementFund: replacementFund,
-        averageTicket: averageTicket,
-        salesMargin: salesMargin,
-      ));
+      return right(
+        SalesMetricsEntity(
+          totalSales: totalSales,
+          totalRevenue: totalRevenue,
+          totalProfit: totalProfit,
+          replacementFund: replacementFund,
+          averageTicket: averageTicket,
+          salesMargin: salesMargin,
+        ),
+      );
     } catch (e) {
-      return left(ServerFailure(message: 'Error al obtener métricas de ventas: $e'));
+      return left(
+        ServerFailure(message: 'Error al obtener métricas de ventas: $e'),
+      );
     }
   }
 
@@ -230,9 +238,9 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
       return right(List<Map<String, dynamic>>.from(response));
     } catch (e) {
-      return left(ServerFailure(message: 'Error al obtener lotes por vencer: $e'));
+      return left(
+        ServerFailure(message: 'Error al obtener lotes por vencer: $e'),
+      );
     }
   }
 }
-
-

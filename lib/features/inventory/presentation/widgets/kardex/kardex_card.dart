@@ -168,9 +168,18 @@ class KardexCard extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _Metric(label: 'Cantidad', value: item.quantity.toStringAsFixed(2)),
-                        _Metric(label: 'Costo Unit.', value: 'S/ ${item.unitCost.toStringAsFixed(2)}'),
-                        _Metric(label: 'Stock', value: item.balance.toStringAsFixed(2)),
+                        _Metric(
+                          label: 'Cantidad',
+                          value: item.quantity.toStringAsFixed(2),
+                        ),
+                        _Metric(
+                          label: 'Costo Unit.',
+                          value: 'S/ ${item.unitCost.toStringAsFixed(2)}',
+                        ),
+                        _Metric(
+                          label: 'Stock',
+                          value: item.balance.toStringAsFixed(2),
+                        ),
                       ],
                     ),
                   ],
@@ -216,10 +225,7 @@ class _Metric extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-          ),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
         ),
       ],
     );

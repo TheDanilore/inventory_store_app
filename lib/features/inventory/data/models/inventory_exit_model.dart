@@ -1,4 +1,5 @@
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
+
 class InventoryExitModel {
   final String id;
   final String warehouseId;

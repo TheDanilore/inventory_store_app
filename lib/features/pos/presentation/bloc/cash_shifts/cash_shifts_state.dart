@@ -58,27 +58,29 @@ class CashShiftsState extends Equatable {
       filterStatus: filterStatus ?? this.filterStatus,
       dateFrom: clearDates ? null : (dateFrom ?? this.dateFrom),
       dateTo: clearDates ? null : (dateTo ?? this.dateTo),
-      profileFilter: clearProfileFilter ? null : (profileFilter ?? this.profileFilter),
+      profileFilter:
+          clearProfileFilter ? null : (profileFilter ?? this.profileFilter),
     );
   }
 
   int get pageSize => 15;
   int get totalPages => totalCount == 0 ? 1 : (totalCount / pageSize).ceil();
-  int get openCount => shifts.where((s) => s.status == CashShiftStatus.open).length;
+  int get openCount =>
+      shifts.where((s) => s.status == CashShiftStatus.open).length;
 
   @override
   List<Object?> get props => [
-        shifts,
-        openAccountIds,
-        isLoading,
-        errorMessage,
-        currentPage,
-        totalCount,
-        totalOpenCount,
-        totalClosedCount,
-        filterStatus,
-        dateFrom,
-        dateTo,
-        profileFilter,
-      ];
+    shifts,
+    openAccountIds,
+    isLoading,
+    errorMessage,
+    currentPage,
+    totalCount,
+    totalOpenCount,
+    totalClosedCount,
+    filterStatus,
+    dateFrom,
+    dateTo,
+    profileFilter,
+  ];
 }

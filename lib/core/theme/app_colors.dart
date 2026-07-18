@@ -11,7 +11,7 @@ class AppColors {
   static const Color divider = Color(0xFFF1F5F9); // Separadores delgados
 
   // --- 2. TIPOGRAFÍA REFINADA (Slate Palette) ---
-    static const slate = Color(0xFF3D5168);
+  static const slate = Color(0xFF3D5168);
   static const slateLight = Color(0xFFDFE8F0);
 
   static const Color textPrimary = Color(0xFF0F172A); // Títulos (Slate 900)

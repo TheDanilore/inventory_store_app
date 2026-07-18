@@ -7,7 +7,8 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 class CustomersStatsCubit extends Cubit<CustomersStatsState> {
   final GetGlobalStatsUseCase _getGlobalStatsUseCase;
 
-  CustomersStatsCubit(this._getGlobalStatsUseCase) : super(CustomersStatsInitial());
+  CustomersStatsCubit(this._getGlobalStatsUseCase)
+    : super(CustomersStatsInitial());
 
   Future<void> loadStats() async {
     emit(CustomersStatsLoading());

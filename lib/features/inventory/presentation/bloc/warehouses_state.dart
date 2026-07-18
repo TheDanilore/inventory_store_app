@@ -7,7 +7,7 @@ class WarehousesState extends Equatable {
   final bool isSaving;
   final String? errorMessage;
   final String? successMessage;
-  
+
   final String searchQuery;
   final int currentPage;
   final int totalRecords;
@@ -46,8 +46,10 @@ class WarehousesState extends Equatable {
       warehouses: warehouses ?? this.warehouses,
       isLoading: isLoading ?? this.isLoading,
       isSaving: isSaving ?? this.isSaving,
-      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
-      successMessage: clearSuccessMessage ? null : (successMessage ?? this.successMessage),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      successMessage:
+          clearSuccessMessage ? null : (successMessage ?? this.successMessage),
       searchQuery: searchQuery ?? this.searchQuery,
       currentPage: currentPage ?? this.currentPage,
       totalRecords: totalRecords ?? this.totalRecords,
@@ -57,14 +59,14 @@ class WarehousesState extends Equatable {
 
   @override
   List<Object?> get props => [
-        warehouses,
-        isLoading,
-        isSaving,
-        errorMessage,
-        successMessage,
-        searchQuery,
-        currentPage,
-        totalRecords,
-        pageSize,
-      ];
+    warehouses,
+    isLoading,
+    isSaving,
+    errorMessage,
+    successMessage,
+    searchQuery,
+    currentPage,
+    totalRecords,
+    pageSize,
+  ];
 }

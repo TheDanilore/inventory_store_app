@@ -42,7 +42,10 @@ class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
         .range(start, end)
         .count(CountOption.exact);
 
-    final data = (resp.data as List<dynamic>).map((e) => InventoryExitModel.fromJson(e).toEntity()).toList();
+    final data =
+        (resp.data as List<dynamic>)
+            .map((e) => InventoryExitModel.fromJson(e).toEntity())
+            .toList();
     return (data: data, count: resp.count);
   }
 

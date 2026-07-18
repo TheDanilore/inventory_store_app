@@ -118,11 +118,12 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       documentNumber: documentNumber ?? this.documentNumber,
       notes: notes ?? this.notes,
       isSaving: isSaving ?? this.isSaving,
-      errorMessage: errorMessage, // We don't ?? so we can clear it with null. But wait, if we pass null it clears? We should use a specific wrapper if we want to clear.
+      errorMessage:
+          errorMessage, // We don't ?? so we can clear it with null. But wait, if we pass null it clears? We should use a specific wrapper if we want to clear.
       isDraftRestored: isDraftRestored ?? this.isDraftRestored,
     );
   }
-  
+
   PurchaseOrderFormLoaded clearError() {
     return PurchaseOrderFormLoaded(
       suppliers: suppliers,
@@ -147,24 +148,24 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
 
   @override
   List<Object?> get props => [
-        suppliers,
-        warehouses,
-        accounts,
-        items,
-        selectedSupplierId,
-        selectedWarehouseId,
-        dueDate,
-        documentDate,
-        documentType,
-        paymentMode,
-        paymentStatus,
-        selectedAccountId,
-        documentNumber,
-        notes,
-        isSaving,
-        errorMessage,
-        isDraftRestored,
-      ];
+    suppliers,
+    warehouses,
+    accounts,
+    items,
+    selectedSupplierId,
+    selectedWarehouseId,
+    dueDate,
+    documentDate,
+    documentType,
+    paymentMode,
+    paymentStatus,
+    selectedAccountId,
+    documentNumber,
+    notes,
+    isSaving,
+    errorMessage,
+    isDraftRestored,
+  ];
 }
 
 class PurchaseOrderFormSuccess extends PurchaseOrderFormState {}

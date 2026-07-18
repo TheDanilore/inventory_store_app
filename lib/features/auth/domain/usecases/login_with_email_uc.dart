@@ -18,16 +18,16 @@ class LoginWithEmailUseCase implements UseCase<UserEntity, LoginParams> {
 
   @override
   Future<Either<Failure, UserEntity>> call(LoginParams params) async {
-    final result = await repository.login(email: params.email, password: params.password);
-    return result.fold(
-      (failure) => left(failure),
-      (user) async {
-        if (!user.isActive) {
-          await repository.logout();
-          return left(Failure.from('Tu cuenta está inactiva o bloqueada.'));
-        }
-        return right(user);
-      },
+    final result = await repository.login(
+      email: params.email,
+      password: params.password,
     );
+    return result.fold((failure) => left(failure), (user) async {
+      if (!user.isActive) {
+        await repository.logout();
+        return left(Failure.from('Tu cuenta está inactiva o bloqueada.'));
+      }
+      return right(user);
+    });
   }
 }

@@ -65,9 +65,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     for (final item in selectedItems) {
       final variantLabel =
           item.variantLabel != null ? ' Modelo: ${item.variantLabel}' : '';
-      buffer.writeln(
-        '• ${item.quantity} x ${item.product.name}$variantLabel',
-      );
+      buffer.writeln('• ${item.quantity} x ${item.product.name}$variantLabel');
     }
 
     buffer.writeln();
@@ -121,7 +119,8 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
       cartCubit: cartCubit,
       profileId: profileId,
       pointsToSolesRatio: config.state.values['points_to_soles_ratio'] ?? 0.05,
-      conversionRate: (config.state.values['loyalty_earning_rate'] ?? 1.0).toInt(),
+      conversionRate:
+          (config.state.values['loyalty_earning_rate'] ?? 1.0).toInt(),
       saldoPuntos: walletState.balance ?? 0,
       activeWarehouseId: config.state.values['active_warehouse_id'] as String?,
     );
@@ -157,8 +156,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     } else if (result['error'] != null) {
       AppSnackbar.show(
         context,
-        message:
-            result['message'] ?? 'Ocurrió un error al procesar el pedido.',
+        message: result['message'] ?? 'Ocurrió un error al procesar el pedido.',
         backgroundColor: AppColors.error,
       );
     } else if (result['success'] == true) {
@@ -213,7 +211,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                     valueColor: AlwaysStoppedAnimation(AppColors.primary),
                   ),
                 )
-                 : cartState.items.isEmpty
+                : cartState.items.isEmpty
                 ? const AppEmptyState(
                   icon: Icons.shopping_bag_outlined,
                   title: 'Tu carrito está vacío',
@@ -236,8 +234,8 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                                   !config.loyaltyCustomerVisible) {
                                 return const SizedBox.shrink();
                               }
-                                return CartWalletSummary(
-                                  cartCubit: cartCubit,
+                              return CartWalletSummary(
+                                cartCubit: cartCubit,
                                 saldoPuntos: saldoPuntos,
                               );
                             }
@@ -247,11 +245,15 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                                 isLoading: checkout.isLoadingAddress,
                                 onTap: () async {
                                   final user =
-                                      context.read<AuthCubit>().state.currentUser;
+                                      context
+                                          .read<AuthCubit>()
+                                          .state
+                                          .currentUser;
                                   if (user == null || user.id.isEmpty) {
                                     AppSnackbar.show(
                                       context,
-                                      message: 'Inicia sesión para gestionar ubicaciones',
+                                      message:
+                                          'Inicia sesión para gestionar ubicaciones',
                                       backgroundColor: AppColors.warning,
                                     );
                                     Future.delayed(
@@ -274,7 +276,10 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                               );
                             }
                             if (i == 2) {
-                                return CartActionHeader(cartCubit: cartCubit, cartState: cartState);
+                              return CartActionHeader(
+                                cartCubit: cartCubit,
+                                cartState: cartState,
+                              );
                             }
 
                             final index = i - 3;

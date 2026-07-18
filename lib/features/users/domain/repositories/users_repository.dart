@@ -11,9 +11,7 @@ abstract class UsersRepository {
     required int pageSize,
   });
 
-  Future<Either<Failure, int>> getGlobalUsersCount({
-    required String role,
-  });
+  Future<Either<Failure, int>> getGlobalUsersCount({required String role});
 
   Future<Either<Failure, UserEntity>> getUserById(String id);
 
@@ -40,7 +38,9 @@ abstract class UsersRepository {
 
   Future<Either<Failure, void>> deleteUser(String id);
 
-  Future<Either<Failure, List<Map<String, dynamic>>>> getRecentMovements(String userId);
+  Future<Either<Failure, List<Map<String, dynamic>>>> getRecentMovements(
+    String userId,
+  );
 
   Future<Either<Failure, int>> adjustPoints({
     required String userId,

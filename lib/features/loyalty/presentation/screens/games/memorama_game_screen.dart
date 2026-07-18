@@ -207,7 +207,11 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
         return;
       }
       try {
-        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_MEMORY', _score, 'Recompensa por Memorama: Ganó $_score monedas');
+        await context.read<PointsCubit>().recordMiniGameResult(
+          'MINI_GAME_MEMORY',
+          _score,
+          'Recompensa por Memorama: Ganó $_score monedas',
+        );
         if (mounted) Navigator.pop(context, _score);
       } catch (e) {
         if (mounted) {
@@ -232,7 +236,11 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
         return;
       }
       try {
-        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_MEMORY', _score, 'Recompensa por Memorama: Ganó $_score monedas');
+        await context.read<PointsCubit>().recordMiniGameResult(
+          'MINI_GAME_MEMORY',
+          _score,
+          'Recompensa por Memorama: Ganó $_score monedas',
+        );
         if (mounted) _startGame();
       } catch (e) {
         if (mounted) {
@@ -758,4 +766,3 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
     );
   }
 }
-

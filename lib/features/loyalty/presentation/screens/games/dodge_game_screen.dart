@@ -259,7 +259,11 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
         return;
       }
       try {
-        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_DODGE', _score, 'Esquiva y Atrapa: Ganó $_score monedas');
+        await context.read<PointsCubit>().recordMiniGameResult(
+          'MINI_GAME_DODGE',
+          _score,
+          'Esquiva y Atrapa: Ganó $_score monedas',
+        );
       } catch (e) {
         if (mounted) {
           AppSnackbar.show(
@@ -610,4 +614,3 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
     );
   }
 }
-

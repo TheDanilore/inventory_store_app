@@ -98,7 +98,8 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                   final chipIcon = _typeIcons[type] ?? Icons.wallet_rounded;
                   final isSelected =
                       !isCredito && acc['id'] == selectedAccountId;
-                  final balance = (acc['balance'] as num?)?.toStringAsFixed(0) ?? '0';
+                  final balance =
+                      (acc['balance'] as num?)?.toStringAsFixed(0) ?? '0';
 
                   return GestureDetector(
                     onTap: () => onAccountChanged(acc['id'] as String),

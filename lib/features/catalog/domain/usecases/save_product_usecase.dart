@@ -232,7 +232,9 @@ class SaveProductUseCase {
             'concentration': ing.concentration,
             'unit': ing.unit,
           };
-          await _unwrap(ingredientsRepository.insertProductIngredient(ingPayload));
+          await _unwrap(
+            ingredientsRepository.insertProductIngredient(ingPayload),
+          );
         }
       } else {
         await _unwrap(ingredientsRepository.clearProductIngredients(productId));

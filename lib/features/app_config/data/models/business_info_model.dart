@@ -91,7 +91,8 @@ class BusinessInfoModel {
       phone: phone ?? this.phone,
       logoUrl: logoUrl ?? this.logoUrl,
       loyaltyGlobalEnabled: loyaltyGlobalEnabled ?? this.loyaltyGlobalEnabled,
-      loyaltyCustomerVisible: loyaltyCustomerVisible ?? this.loyaltyCustomerVisible,
+      loyaltyCustomerVisible:
+          loyaltyCustomerVisible ?? this.loyaltyCustomerVisible,
     );
   }
 }

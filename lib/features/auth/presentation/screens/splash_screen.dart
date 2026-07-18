@@ -33,7 +33,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
-    // Llamamos al Cubit para que verifique la sesin. 
+    // Llamamos al Cubit para que verifique la sesin.
     // GoRouter reaccionará automáticamente al cambio de estado gracias a GoRouterRefreshStream
     await context.read<AuthCubit>().checkSession();
   }

@@ -15,16 +15,18 @@ import 'package:inventory_store_app/features/purchases/presentation/screens/supp
 
 class PurchasesRoutes {
   static List<RouteBase> get adminRoutes => [
-        GoRoute(
-          path: 'purchase-order-form',
-          builder: (context, state) => BlocProvider(
+    GoRoute(
+      path: 'purchase-order-form',
+      builder:
+          (context, state) => BlocProvider(
             create: (_) => sl<PurchaseOrderFormCubit>(),
             child: const PurchaseOrderFormScreen(),
           ),
-        ),
-        GoRoute(
-          path: 'purchase-orders',
-          builder: (context, state) => BlocProvider(
+    ),
+    GoRoute(
+      path: 'purchase-orders',
+      builder:
+          (context, state) => BlocProvider(
             create: (_) => sl<PurchaseOrdersCubit>(),
             child: const AdminLayout(
               title: 'Órdenes de Compra',
@@ -32,36 +34,39 @@ class PurchasesRoutes {
               body: PurchaseOrdersScreen(),
             ),
           ),
-        ),
-        GoRoute(
-          path: 'supplier-credit-movements/:creditId',
-          builder: (context, state) {
-            final creditId = state.pathParameters['creditId'] ?? '';
-            final args = state.extra as Map<String, dynamic>? ?? {};
-            final supplierName = args['supplierName'] ??
-                state.uri.queryParameters['name'] ??
-                '';
-            return BlocProvider(
-              create: (_) => sl<SupplierCreditMovementsCubit>(
+    ),
+    GoRoute(
+      path: 'supplier-credit-movements/:creditId',
+      builder: (context, state) {
+        final creditId = state.pathParameters['creditId'] ?? '';
+        final args = state.extra as Map<String, dynamic>? ?? {};
+        final supplierName =
+            args['supplierName'] ?? state.uri.queryParameters['name'] ?? '';
+        return BlocProvider(
+          create:
+              (_) => sl<SupplierCreditMovementsCubit>(
                 param1: creditId,
                 param2: supplierName,
               ),
-              child: SupplierCreditMovementsScreen(
-                creditId: creditId,
-                supplierName: supplierName,
-                currentDebt: args['currentDebt'] ??
-                    double.tryParse(state.uri.queryParameters['debt'] ?? '0') ??
-                    0.0,
-                creditLimit: args['creditLimit'] ??
-                    double.tryParse(state.uri.queryParameters['limit'] ?? '0') ??
-                    0.0,
-              ),
-            );
-          },
-        ),
-        GoRoute(
-          path: 'supplier-credits',
-          builder: (context, state) => BlocProvider(
+          child: SupplierCreditMovementsScreen(
+            creditId: creditId,
+            supplierName: supplierName,
+            currentDebt:
+                args['currentDebt'] ??
+                double.tryParse(state.uri.queryParameters['debt'] ?? '0') ??
+                0.0,
+            creditLimit:
+                args['creditLimit'] ??
+                double.tryParse(state.uri.queryParameters['limit'] ?? '0') ??
+                0.0,
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: 'supplier-credits',
+      builder:
+          (context, state) => BlocProvider(
             create: (_) => sl<SupplierCreditsCubit>(),
             child: const AdminLayout(
               title: 'Cuentas por Pagar',
@@ -69,10 +74,11 @@ class PurchasesRoutes {
               body: SupplierCreditsScreen(),
             ),
           ),
-        ),
-        GoRoute(
-          path: 'suppliers',
-          builder: (context, state) => BlocProvider(
+    ),
+    GoRoute(
+      path: 'suppliers',
+      builder:
+          (context, state) => BlocProvider(
             create: (_) => sl<SuppliersCubit>(),
             child: const AdminLayout(
               title: 'Directorio de Proveedores',
@@ -80,6 +86,6 @@ class PurchasesRoutes {
               body: SuppliersScreen(),
             ),
           ),
-        ),
-      ];
+    ),
+  ];
 }

@@ -26,17 +26,21 @@ class CheckoutCubit extends Cubit<CheckoutState> {
 
   Future<void> loadAddress(String profileId) async {
     emit(state.copyWith(isLoadingAddress: true));
-    
+
     if (profileId.isEmpty) {
       emit(state.copyWith(isLoadingAddress: false, defaultAddress: null));
       return;
     }
 
     final result = await getDefaultAddressUc(profileId);
-    
+
     result.fold(
-      (failure) => emit(state.copyWith(isLoadingAddress: false, errorMessage: failure.message)),
-      (address) => emit(state.copyWith(isLoadingAddress: false, defaultAddress: address)),
+      (failure) => emit(
+        state.copyWith(isLoadingAddress: false, errorMessage: failure.message),
+      ),
+      (address) => emit(
+        state.copyWith(isLoadingAddress: false, defaultAddress: address),
+      ),
     );
   }
 
@@ -56,26 +60,45 @@ class CheckoutCubit extends Cubit<CheckoutState> {
     return total;
   }
 
-  int calculateApplicablePoints(CartCubit cartCubit, double pointsToSolesRatio, int saldoPuntos) {
+  int calculateApplicablePoints(
+    CartCubit cartCubit,
+    double pointsToSolesRatio,
+    int saldoPuntos,
+  ) {
     if (!state.usePoints) return 0;
     final maxSoles = maxDiscountSoles(cartCubit);
     final neededPoints = (maxSoles / pointsToSolesRatio).ceil();
     return saldoPuntos >= neededPoints ? neededPoints : saldoPuntos;
   }
 
-  double calculateFinalTotal(CartCubit cartCubit, double pointsToSolesRatio, int saldoPuntos) {
-    final discountSoles = calculateApplicablePoints(cartCubit, pointsToSolesRatio, saldoPuntos) * pointsToSolesRatio;
+  double calculateFinalTotal(
+    CartCubit cartCubit,
+    double pointsToSolesRatio,
+    int saldoPuntos,
+  ) {
+    final discountSoles =
+        calculateApplicablePoints(cartCubit, pointsToSolesRatio, saldoPuntos) *
+        pointsToSolesRatio;
     return cartCubit.state.selectedTotalAmount - discountSoles;
   }
 
-  int getAppliedPointsForItem(CartItemEntity item, CartCubit cartCubit, double pointsToSolesRatio, int saldoPuntos) {
+  int getAppliedPointsForItem(
+    CartItemEntity item,
+    CartCubit cartCubit,
+    double pointsToSolesRatio,
+    int saldoPuntos,
+  ) {
     if (!state.usePoints) return 0;
     if (!item.isSelected) return 0;
     final wPrice = wholesalePriceOf(item);
     final discountPerItemSoles = item.unitPrice - wPrice;
     if (discountPerItemSoles <= 0) return 0;
 
-    final usedPoints = calculateApplicablePoints(cartCubit, pointsToSolesRatio, saldoPuntos);
+    final usedPoints = calculateApplicablePoints(
+      cartCubit,
+      pointsToSolesRatio,
+      saldoPuntos,
+    );
     if (usedPoints <= 0) return 0;
 
     final totalDiscountPossible = maxDiscountSoles(cartCubit);
@@ -86,31 +109,47 @@ class CheckoutCubit extends Cubit<CheckoutState> {
     return (usedPoints * proportion).round();
   }
 
-  Future<List<String>> _verifyStock(List<CartItemEntity> itemsToBuy, CartCubit cartCubit) async {
+  Future<List<String>> _verifyStock(
+    List<CartItemEntity> itemsToBuy,
+    CartCubit cartCubit,
+  ) async {
     emit(state.copyWith(isVerifyingStock: true));
     List<String> outOfStockMessages = [];
 
-    final variantIds = itemsToBuy.map((i) => i.variantId).where((id) => id != null).cast<String>().toList();
-    
+    final variantIds =
+        itemsToBuy
+            .map((i) => i.variantId)
+            .where((id) => id != null)
+            .cast<String>()
+            .toList();
+
     final result = await verifyStockUc(variantIds);
-    
+
     result.fold(
       (failure) {
-        emit(state.copyWith(isVerifyingStock: false, errorMessage: failure.message));
+        emit(
+          state.copyWith(
+            isVerifyingStock: false,
+            errorMessage: failure.message,
+          ),
+        );
       },
       (stockMap) {
         for (final item in itemsToBuy) {
           if (item.variantId == null) continue;
           final currentStock = stockMap[item.variantId] ?? 0;
           cartCubit.updateAvailableStock(item.cartKey, currentStock);
-          
+
           if (currentStock < item.quantity) {
-            final variantLabel = item.variantLabel != null ? ' - ${item.variantLabel}' : '';
-            outOfStockMessages.add('• ${item.productName}$variantLabel (Stock disponible: $currentStock, Tu pedido: ${item.quantity})');
+            final variantLabel =
+                item.variantLabel != null ? ' - ${item.variantLabel}' : '';
+            outOfStockMessages.add(
+              '• ${item.productName}$variantLabel (Stock disponible: $currentStock, Tu pedido: ${item.quantity})',
+            );
           }
         }
         emit(state.copyWith(isVerifyingStock: false));
-      }
+      },
     );
 
     return outOfStockMessages;
@@ -126,20 +165,26 @@ class CheckoutCubit extends Cubit<CheckoutState> {
     required String? activeWarehouseId,
   }) async {
     if (state.isSending) return null;
-    
+
     final outOfStockMessages = await _verifyStock(itemsToBuy, cartCubit);
     if (outOfStockMessages.isNotEmpty) {
-      emit(state.copyWith(
-        errorMessage: 'STOCK',
-        successData: {'messages': outOfStockMessages}
-      ));
+      emit(
+        state.copyWith(
+          errorMessage: 'STOCK',
+          successData: {'messages': outOfStockMessages},
+        ),
+      );
       return {'error': 'STOCK', 'messages': outOfStockMessages};
     }
 
     emit(state.copyWith(isSending: true));
 
     final totalAmount = cartCubit.state.selectedTotalAmount;
-    final usedPoints = calculateApplicablePoints(cartCubit, pointsToSolesRatio, saldoPuntos);
+    final usedPoints = calculateApplicablePoints(
+      cartCubit,
+      pointsToSolesRatio,
+      saldoPuntos,
+    );
     final discountAmount = usedPoints * pointsToSolesRatio;
     final totalAPagar = totalAmount - discountAmount;
     final pointsEarned = (totalAPagar / conversionRate).floor();
@@ -147,7 +192,12 @@ class CheckoutCubit extends Cubit<CheckoutState> {
     double totalProfit = 0;
     for (var item in itemsToBuy) {
       double profitPerUnit = item.unitPrice - item.unitCost;
-      final usedPts = getAppliedPointsForItem(item, cartCubit, pointsToSolesRatio, saldoPuntos);
+      final usedPts = getAppliedPointsForItem(
+        item,
+        cartCubit,
+        pointsToSolesRatio,
+        saldoPuntos,
+      );
       profitPerUnit -= (usedPts * pointsToSolesRatio) / item.quantity;
       totalProfit += profitPerUnit * item.quantity;
     }
@@ -176,12 +226,9 @@ class CheckoutCubit extends Cubit<CheckoutState> {
           'totalAPagar': totalAPagar,
           'puntosUsados': usedPoints,
         };
-        emit(state.copyWith(
-          isSending: false, 
-          successData: successMap,
-        ));
+        emit(state.copyWith(isSending: false, successData: successMap));
         return successMap;
-      }
+      },
     );
   }
 }

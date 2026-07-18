@@ -69,15 +69,17 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
       currentPage = page ?? 0;
     }
 
-    emit(PurchaseOrdersLoading(
-      currentOrders: currentOrders,
-      searchText: currentSearchText,
-      statusFilter: currentStatusFilter,
-      startDate: currentStartDate,
-      endDate: currentEndDate,
-      currentPage: currentPage,
-      totalCount: currentTotalCount,
-    ));
+    emit(
+      PurchaseOrdersLoading(
+        currentOrders: currentOrders,
+        searchText: currentSearchText,
+        statusFilter: currentStatusFilter,
+        startDate: currentStartDate,
+        endDate: currentEndDate,
+        currentPage: currentPage,
+        totalCount: currentTotalCount,
+      ),
+    );
 
     final result = await fetchPurchaseOrdersUseCase(
       page: currentPage,
@@ -97,27 +99,31 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
             errStr.contains('failed host lookup')) {
           msg = 'Sin conexión a internet.';
         }
-        emit(PurchaseOrdersError(
-          message: msg,
-          currentOrders: currentOrders,
-          searchText: currentSearchText,
-          statusFilter: currentStatusFilter,
-          startDate: currentStartDate,
-          endDate: currentEndDate,
-          currentPage: currentPage,
-          totalCount: currentTotalCount,
-        ));
+        emit(
+          PurchaseOrdersError(
+            message: msg,
+            currentOrders: currentOrders,
+            searchText: currentSearchText,
+            statusFilter: currentStatusFilter,
+            startDate: currentStartDate,
+            endDate: currentEndDate,
+            currentPage: currentPage,
+            totalCount: currentTotalCount,
+          ),
+        );
       },
       (data) {
-        emit(PurchaseOrdersLoaded(
-          orders: data['data'] as List<dynamic>,
-          searchText: currentSearchText,
-          statusFilter: currentStatusFilter,
-          startDate: currentStartDate,
-          endDate: currentEndDate,
-          currentPage: currentPage,
-          totalCount: data['count'] as int,
-        ));
+        emit(
+          PurchaseOrdersLoaded(
+            orders: data['data'] as List<dynamic>,
+            searchText: currentSearchText,
+            statusFilter: currentStatusFilter,
+            startDate: currentStartDate,
+            endDate: currentEndDate,
+            currentPage: currentPage,
+            totalCount: data['count'] as int,
+          ),
+        );
       },
     );
   }
@@ -135,15 +141,17 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     // We can clear it by setting them inside the function
     final currentState = state;
     if (currentState is PurchaseOrdersLoaded) {
-      emit(PurchaseOrdersLoading(
-        currentOrders: [],
-        searchText: currentState.searchText,
-        statusFilter: currentState.statusFilter,
-        startDate: start,
-        endDate: end,
-        currentPage: 0,
-        totalCount: currentState.totalCount,
-      ));
+      emit(
+        PurchaseOrdersLoading(
+          currentOrders: [],
+          searchText: currentState.searchText,
+          statusFilter: currentState.statusFilter,
+          startDate: start,
+          endDate: end,
+          currentPage: 0,
+          totalCount: currentState.totalCount,
+        ),
+      );
     }
     loadOrders(page: 0, refresh: true, startDate: start, endDate: end);
   }
@@ -170,16 +178,18 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
             errStr.contains('failed host lookup')) {
           msg = 'Sin conexión a internet.';
         }
-        emit(PurchaseOrdersError(
-          message: msg,
-          currentOrders: currentState.orders,
-          searchText: currentState.searchText,
-          statusFilter: currentState.statusFilter,
-          startDate: currentState.startDate,
-          endDate: currentState.endDate,
-          currentPage: currentState.currentPage,
-          totalCount: currentState.totalCount,
-        ));
+        emit(
+          PurchaseOrdersError(
+            message: msg,
+            currentOrders: currentState.orders,
+            searchText: currentState.searchText,
+            statusFilter: currentState.statusFilter,
+            startDate: currentState.startDate,
+            endDate: currentState.endDate,
+            currentPage: currentState.currentPage,
+            totalCount: currentState.totalCount,
+          ),
+        );
       },
       (_) {
         loadOrders();
@@ -190,16 +200,17 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
   void clearError() {
     final currentState = state;
     if (currentState is PurchaseOrdersError) {
-      emit(PurchaseOrdersLoaded(
-        orders: currentState.currentOrders,
-        searchText: currentState.searchText,
-        statusFilter: currentState.statusFilter,
-        startDate: currentState.startDate,
-        endDate: currentState.endDate,
-        currentPage: currentState.currentPage,
-        totalCount: currentState.totalCount,
-      ));
+      emit(
+        PurchaseOrdersLoaded(
+          orders: currentState.currentOrders,
+          searchText: currentState.searchText,
+          statusFilter: currentState.statusFilter,
+          startDate: currentState.startDate,
+          endDate: currentState.endDate,
+          currentPage: currentState.currentPage,
+          totalCount: currentState.totalCount,
+        ),
+      );
     }
   }
 }
-

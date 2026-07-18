@@ -8,7 +8,8 @@ import 'package:inventory_store_app/features/loyalty/domain/usecases/get_top_cus
 class TopCustomersCubit extends Cubit<TopCustomersState> {
   final GetTopCustomersUC getTopCustomersUC;
 
-  TopCustomersCubit({required this.getTopCustomersUC}) : super(TopCustomersState()) {
+  TopCustomersCubit({required this.getTopCustomersUC})
+    : super(TopCustomersState()) {
     _fetchParticipants();
   }
 

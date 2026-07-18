@@ -4,12 +4,14 @@ import 'package:inventory_store_app/features/purchases/domain/entities/supplier_
 
 abstract class SuppliersRepository {
   Future<Either<Failure, ({List<SupplierEntity> suppliers, int totalCount})>>
-      fetchSuppliers({
+  fetchSuppliers({
     required int page,
     required int pageSize,
     String searchQuery = '',
   });
 
   Future<Either<Failure, void>> toggleSupplierStatus(
-      String supplierId, bool currentStatus);
+    String supplierId,
+    bool currentStatus,
+  );
 }

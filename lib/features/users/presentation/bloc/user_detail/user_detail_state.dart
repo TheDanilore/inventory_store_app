@@ -49,12 +49,12 @@ class UserDetailLoaded extends UserDetailState {
 
   @override
   List<Object?> get props => [
-        user,
-        recentMovements,
-        isSaving,
-        successMessage,
-        errorMessage,
-      ];
+    user,
+    recentMovements,
+    isSaving,
+    successMessage,
+    errorMessage,
+  ];
 }
 
 class UserDetailError extends UserDetailState {

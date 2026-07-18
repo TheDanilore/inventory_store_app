@@ -34,7 +34,9 @@ class CartItemCard extends StatelessWidget {
 
     final String? imageUrl = item.imageUrl;
 
-    final isWholesale = item.wholesaleMinQuantity > 0 && item.quantity >= item.wholesaleMinQuantity;
+    final isWholesale =
+        item.wholesaleMinQuantity > 0 &&
+        item.quantity >= item.wholesaleMinQuantity;
 
     final config = context.read<AppConfigCubit>();
     final isLoyaltyEnabled =
@@ -127,16 +129,19 @@ class CartItemCard extends StatelessWidget {
                       showDialog(
                         context: context,
                         barrierDismissible: false,
-                        builder: (_) => const Center(child: CircularProgressIndicator()),
+                        builder:
+                            (_) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
                       );
-                      
+
                       final repo = sl<ProductsRepository>();
                       final res = await repo.getProductById(item.productId);
-                      
+
                       if (context.mounted) {
                         Navigator.pop(context); // cerrar loader
                       }
-                      
+
                       res.fold((l) => null, (product) {
                         if (product != null && context.mounted) {
                           showModalBottomSheet(

@@ -11,15 +11,20 @@ class LoadInitialPosDataParams {
 
 /// Caso de uso para cargar los datos iniciales necesarios para arrancar el POS.
 @lazySingleton
-class LoadInitialPosDataUseCase extends UseCase<PosInitData, LoadInitialPosDataParams> {
+class LoadInitialPosDataUseCase
+    extends UseCase<PosInitData, LoadInitialPosDataParams> {
   final PosRepository repository;
 
   LoadInitialPosDataUseCase(this.repository);
 
   @override
-  Future<Either<Failure, PosInitData>> call(LoadInitialPosDataParams params) async {
+  Future<Either<Failure, PosInitData>> call(
+    LoadInitialPosDataParams params,
+  ) async {
     try {
-      return await repository.loadInitialData(forceRefresh: params.forceRefresh);
+      return await repository.loadInitialData(
+        forceRefresh: params.forceRefresh,
+      );
     } catch (e) {
       return left(Failure.from(e));
     }

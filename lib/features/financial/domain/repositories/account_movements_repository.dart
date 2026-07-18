@@ -22,10 +22,7 @@ class MovementTotals {
   final double totalIncome;
   final double totalExpense;
 
-  const MovementTotals({
-    required this.totalIncome,
-    required this.totalExpense,
-  });
+  const MovementTotals({required this.totalIncome, required this.totalExpense});
 }
 
 /// Contrato abstracto para la persistencia de Movimientos de Cuenta.

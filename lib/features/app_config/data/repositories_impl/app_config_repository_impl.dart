@@ -25,7 +25,7 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
   @override
   Future<Map<String, double>> fetchAppSettings() async {
     final response = await _supabase.from('app_settings').select('key, value');
-    
+
     final values = <String, double>{};
     for (final item in List<Map<String, dynamic>>.from(response)) {
       final key = item['key'] as String?;
@@ -68,11 +68,12 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
       throw CacheException(originalError: e);
     }
   }
-  
+
   @override
   Future<void> upsertAppSettings(List<AppSettingEntity> settings) async {
     if (settings.isEmpty) return;
-    final payloadList = settings.map((e) => AppSettingModel.fromEntity(e).toMap()).toList();
+    final payloadList =
+        settings.map((e) => AppSettingModel.fromEntity(e).toMap()).toList();
     await _supabase.from('app_settings').upsert(payloadList, onConflict: 'key');
   }
 
@@ -135,16 +136,17 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
   Future<BusinessInfoEntity> saveBusinessInfo(BusinessInfoEntity info) async {
     final payload = BusinessInfoModel.fromEntity(info).toMap();
     String? finalId = info.id;
-    
+
     // Si no tenemos ID, verificamos primero si existe alguno en DB para no duplicar
     if (finalId == null) {
       try {
-        final checkDb = await _supabase
-            .from('business_info')
-            .select('id')
-            .order('updated_at', ascending: false)
-            .limit(1)
-            .maybeSingle();
+        final checkDb =
+            await _supabase
+                .from('business_info')
+                .select('id')
+                .order('updated_at', ascending: false)
+                .limit(1)
+                .maybeSingle();
         if (checkDb != null) {
           finalId = checkDb['id']?.toString();
         }
@@ -152,25 +154,24 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
     }
 
     if (finalId != null) {
-      await _supabase
-          .from('business_info')
-          .update(payload)
-          .eq('id', finalId);
+      await _supabase.from('business_info').update(payload).eq('id', finalId);
     } else {
-      final inserted = await _supabase
-          .from('business_info')
-          .insert(payload)
-          .select('id')
-          .maybeSingle();
+      final inserted =
+          await _supabase
+              .from('business_info')
+              .insert(payload)
+              .select('id')
+              .maybeSingle();
       finalId = inserted?['id']?.toString();
     }
-    
+
     return BusinessInfoModel.fromEntity(info).copyWith(id: finalId).toEntity();
   }
 
   @override
   Future<String> uploadBusinessLogo(Uint8List bytes) async {
-    final fileName = 'logo_${DateTime.now().millisecondsSinceEpoch}_${bytes.hashCode}.jpg';
+    final fileName =
+        'logo_${DateTime.now().millisecondsSinceEpoch}_${bytes.hashCode}.jpg';
     final path = 'logos/$fileName';
     await _supabase.storage.from('business').uploadBinary(path, bytes);
     return _supabase.storage.from('business').getPublicUrl(path);
@@ -179,13 +180,17 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
   @override
   Future<void> changeConnection(String url, String key) async {
     final authHealthUrl = Uri.parse('$url/auth/v1/health');
-    final response = await http.get(authHealthUrl).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => throw Exception('Tiempo de espera agotado'),
-    );
+    final response = await http
+        .get(authHealthUrl)
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw Exception('Tiempo de espera agotado'),
+        );
 
     if (response.statusCode != 200) {
-      throw Exception('El servidor no respondió correctamente o la URL es inválida (Status: ${response.statusCode})');
+      throw Exception(
+        'El servidor no respondió correctamente o la URL es inválida (Status: ${response.statusCode})',
+      );
     }
 
     final prefs = await SharedPreferences.getInstance();

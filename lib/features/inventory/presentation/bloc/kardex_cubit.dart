@@ -11,10 +11,8 @@ class KardexCubit extends Cubit<KardexState> {
   final ExportKardexPdfUseCase exportKardexPdf;
   static const int pageSize = 12;
 
-  KardexCubit({
-    required this.getKardexMovements,
-    required this.exportKardexPdf,
-  }) : super(KardexInitial());
+  KardexCubit({required this.getKardexMovements, required this.exportKardexPdf})
+    : super(KardexInitial());
 
   Future<void> loadMovements({
     DateTime? startDate,
@@ -26,12 +24,14 @@ class KardexCubit extends Cubit<KardexState> {
   }) async {
     try {
       final currentState = state is KardexLoaded ? state as KardexLoaded : null;
-      
+
       final currentTypeFilter = typeFilter ?? currentState?.typeFilter ?? 'ALL';
       final currentSearchText = searchText ?? currentState?.searchText ?? '';
       final currentPage = page ?? currentState?.currentPage ?? 0;
-        final currentStartDate = clearDateRange ? null : (startDate ?? currentState?.startDate);
-        final currentEndDate = clearDateRange ? null : (endDate ?? currentState?.endDate);
+      final currentStartDate =
+          clearDateRange ? null : (startDate ?? currentState?.startDate);
+      final currentEndDate =
+          clearDateRange ? null : (endDate ?? currentState?.endDate);
 
       emit(KardexLoading());
 
@@ -53,17 +53,19 @@ class KardexCubit extends Cubit<KardexState> {
         pageSize: pageSize,
       );
 
-      emit(KardexLoaded(
-        movements: movements,
-        startDate: currentStartDate,
-        endDate: currentEndDate,
-        typeFilter: currentTypeFilter,
-        searchText: currentSearchText,
-        currentPage: currentPage,
-        totalCount: count,
-        totalPages: totalPages,
-        isExporting: false,
-      ));
+      emit(
+        KardexLoaded(
+          movements: movements,
+          startDate: currentStartDate,
+          endDate: currentEndDate,
+          typeFilter: currentTypeFilter,
+          searchText: currentSearchText,
+          currentPage: currentPage,
+          totalCount: count,
+          totalPages: totalPages,
+          isExporting: false,
+        ),
+      );
     } catch (e) {
       debugPrint('Error loading kardex: $e');
       final errStr = e.toString().toLowerCase();
@@ -87,19 +89,24 @@ class KardexCubit extends Cubit<KardexState> {
   }
 
   void setTypeFilter(String type) {
-    if (state is KardexLoaded && (state as KardexLoaded).typeFilter == type) return;
+    if (state is KardexLoaded && (state as KardexLoaded).typeFilter == type)
+      return;
     loadMovements(typeFilter: type, page: 0);
   }
 
   void setSearchText(String text) {
-    if (state is KardexLoaded && (state as KardexLoaded).searchText == text) return;
+    if (state is KardexLoaded && (state as KardexLoaded).searchText == text)
+      return;
     loadMovements(searchText: text, page: 0);
   }
 
   void changePage(int newPage) {
     if (state is KardexLoaded) {
       final currentState = state as KardexLoaded;
-      if (newPage < 0 || newPage >= currentState.totalPages || newPage == currentState.currentPage) return;
+      if (newPage < 0 ||
+          newPage >= currentState.totalPages ||
+          newPage == currentState.currentPage)
+        return;
       loadMovements(page: newPage);
     }
   }
@@ -107,7 +114,7 @@ class KardexCubit extends Cubit<KardexState> {
   Future<void> exportToPdf() async {
     if (state is! KardexLoaded) return;
     final currentState = state as KardexLoaded;
-    
+
     if (currentState.isExporting) return;
 
     emit(currentState.copyWith(isExporting: true));

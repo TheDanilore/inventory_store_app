@@ -31,7 +31,8 @@ class AuthRoutes {
       builder:
           (context, state) => const AdminLayout(
             title: 'Perfil',
-            showAppBar: false,
+            showAppBar: true,
+            showBackButton: true,
             body: ProfileScreen(openedFromAdmin: true),
           ),
     ),

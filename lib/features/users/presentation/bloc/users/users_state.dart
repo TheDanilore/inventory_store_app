@@ -24,15 +24,15 @@ abstract class UsersState extends Equatable {
 
   @override
   List<Object?> get props => [
-        currentUsers,
-        searchQuery,
-        onlyActive,
-        currentPage,
-        totalCount,
-        customerTotal,
-        adminTotal,
-        employeeTotal,
-      ];
+    currentUsers,
+    searchQuery,
+    onlyActive,
+    currentPage,
+    totalCount,
+    customerTotal,
+    adminTotal,
+    employeeTotal,
+  ];
 }
 
 class UsersInitial extends UsersState {

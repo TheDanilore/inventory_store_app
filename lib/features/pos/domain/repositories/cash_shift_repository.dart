@@ -4,7 +4,8 @@ import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_enti
 
 abstract class CashShiftRepository {
   /// Lista los turnos de caja con filtros y paginación.
-  Future<Either<Failure, ({List<CashShiftEntity> shifts, int totalCount})>> getShifts({
+  Future<Either<Failure, ({List<CashShiftEntity> shifts, int totalCount})>>
+  getShifts({
     required int limit,
     required int offset,
     String? status,
@@ -14,7 +15,8 @@ abstract class CashShiftRepository {
   });
 
   /// Obtiene los contadores totales de turnos abiertos y cerrados.
-  Future<Either<Failure, ({int openCount, int closedCount})>> getShiftsStatusCount({
+  Future<Either<Failure, ({int openCount, int closedCount})>>
+  getShiftsStatusCount({
     DateTime? dateFrom,
     DateTime? dateTo,
     String? profileId,

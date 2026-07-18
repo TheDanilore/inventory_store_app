@@ -11,13 +11,16 @@ class FetchSupplierCreditsUseCase {
   FetchSupplierCreditsUseCase(this.repository);
 
   Future<
-      Either<
-          Failure,
-          ({
-            List<SupplierCreditEntity> accounts,
-            int count,
-            Map<String, dynamic> stats
-          })>> call({
+    Either<
+      Failure,
+      ({
+        List<SupplierCreditEntity> accounts,
+        int count,
+        Map<String, dynamic> stats,
+      })
+    >
+  >
+  call({
     required int page,
     required int pageSize,
     String searchQuery = '',
@@ -31,4 +34,3 @@ class FetchSupplierCreditsUseCase {
     );
   }
 }
-

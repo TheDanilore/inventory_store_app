@@ -105,64 +105,91 @@ class _DashboardScreenContent extends StatelessWidget {
     final adminGoalCurrent = config.getDouble('admin_goal_current', 0.0);
 
     return RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: () async {
-          if (!kIsWeb) {
-            Vibration.vibrate(duration: 50, amplitude: 128);
+      color: AppColors.primary,
+      onRefresh: () async {
+        if (!kIsWeb) {
+          Vibration.vibrate(duration: 50, amplitude: 128);
+        }
+        await context.read<DashboardCubit>().loadDashboardData();
+      },
+      child: BlocBuilder<DashboardCubit, DashboardState>(
+        builder: (context, state) {
+          if (state is DashboardInitial || state is DashboardLoading) {
+            return const SingleChildScrollView(
+              physics: AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
+              child: DashboardSkeleton(),
+            );
           }
-          await context.read<DashboardCubit>().loadDashboardData();
-        },
-        child: BlocBuilder<DashboardCubit, DashboardState>(
-          builder: (context, state) {
-            if (state is DashboardInitial || state is DashboardLoading) {
-              return const SingleChildScrollView(
-                physics: AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
-                child: DashboardSkeleton(),
-              );
-            }
 
-            if (state is DashboardError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, size: 48, color: AppColors.error),
-                      const SizedBox(height: 16),
-                      Text(state.message, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.error)),
-                      const SizedBox(height: 24),
-                      FilledButton.icon(
-                        onPressed: () => context.read<DashboardCubit>().loadDashboardData(),
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Reintentar'),
-                      )
-                    ],
-                  ),
+          if (state is DashboardError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: AppColors.error,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      state.message,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.error),
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed:
+                          () =>
+                              context
+                                  .read<DashboardCubit>()
+                                  .loadDashboardData(),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reintentar'),
+                    ),
+                  ],
                 ),
-              );
-            }
+              ),
+            );
+          }
 
-            if (state is DashboardLoaded) {
-              return LayoutBuilder(
-                builder: (context, constraints) {
-                  final isTablet = constraints.maxWidth >= 720;
-                  if (isTablet) {
-                    return _buildTabletLayout(context, adminGoalCurrent, adminGoalTarget, state);
-                  }
-                  return _buildMobileLayout(context, adminGoalCurrent, adminGoalTarget, state);
-                },
-              );
-            }
-            
-            return const SizedBox.shrink();
-          },
-        ),
-      );
+          if (state is DashboardLoaded) {
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final isTablet = constraints.maxWidth >= 720;
+                if (isTablet) {
+                  return _buildTabletLayout(
+                    context,
+                    adminGoalCurrent,
+                    adminGoalTarget,
+                    state,
+                  );
+                }
+                return _buildMobileLayout(
+                  context,
+                  adminGoalCurrent,
+                  adminGoalTarget,
+                  state,
+                );
+              },
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
+      ),
+    );
   }
 
-  Widget _buildTabletLayout(BuildContext context, double goalCurrent, double goalTarget, DashboardLoaded state) {
+  Widget _buildTabletLayout(
+    BuildContext context,
+    double goalCurrent,
+    double goalTarget,
+    DashboardLoaded state,
+  ) {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -185,7 +212,12 @@ class _DashboardScreenContent extends StatelessWidget {
                       AdminGoalCard(
                         currentAmount: goalCurrent,
                         targetAmount: goalTarget,
-                        onAddPressed: () => _openGoalDialog(context, goalCurrent, goalTarget),
+                        onAddPressed:
+                            () => _openGoalDialog(
+                              context,
+                              goalCurrent,
+                              goalTarget,
+                            ),
                       ),
                       const SizedBox(height: 24),
                       if (state.criticalBatches.isNotEmpty) ...[
@@ -228,7 +260,12 @@ class _DashboardScreenContent extends StatelessWidget {
     );
   }
 
-  Widget _buildMobileLayout(BuildContext context, double goalCurrent, double goalTarget, DashboardLoaded state) {
+  Widget _buildMobileLayout(
+    BuildContext context,
+    double goalCurrent,
+    double goalTarget,
+    DashboardLoaded state,
+  ) {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -244,7 +281,8 @@ class _DashboardScreenContent extends StatelessWidget {
               AdminGoalCard(
                 currentAmount: goalCurrent,
                 targetAmount: goalTarget,
-                onAddPressed: () => _openGoalDialog(context, goalCurrent, goalTarget),
+                onAddPressed:
+                    () => _openGoalDialog(context, goalCurrent, goalTarget),
               ),
               const SizedBox(height: 24),
               if (state.criticalBatches.isNotEmpty) ...[
@@ -354,7 +392,10 @@ class _DashboardScreenContent extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+                  colors: [
+                    AppColors.primary,
+                    AppColors.primary.withValues(alpha: 0.8),
+                  ],
                 ),
               ),
             ),
@@ -369,7 +410,10 @@ class _DashboardScreenContent extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [AppColors.teal, AppColors.teal.withValues(alpha: 0.8)],
+                  colors: [
+                    AppColors.teal,
+                    AppColors.teal.withValues(alpha: 0.8),
+                  ],
                 ),
               ),
             ),
@@ -396,7 +440,7 @@ class _DashboardScreenContent extends StatelessWidget {
           gananciaBruta: sales.totalProfit,
           inversion: sales.replacementFund,
           margenPct: sales.salesMargin,
-          sparklineData: const [], 
+          sparklineData: const [],
         ),
       ],
     );
@@ -416,7 +460,10 @@ class _DashboardScreenContent extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+                  colors: [
+                    AppColors.primary,
+                    AppColors.primary.withValues(alpha: 0.8),
+                  ],
                 ),
               ),
             ),
@@ -430,7 +477,10 @@ class _DashboardScreenContent extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [AppColors.teal, AppColors.teal.withValues(alpha: 0.8)],
+                  colors: [
+                    AppColors.teal,
+                    AppColors.teal.withValues(alpha: 0.8),
+                  ],
                 ),
               ),
             ),
@@ -451,7 +501,18 @@ class _DashboardScreenContent extends StatelessWidget {
           gananciaBruta: inventory.expectedMaxProfit,
           inversion: inventory.totalInvestment,
           margenPct: inventory.grossMargin,
-          sparklineData: const [1.0, 1.5, 1.2, 2.0, 2.8, 2.4, 3.5, 4.0, 3.8, 5.0],
+          sparklineData: const [
+            1.0,
+            1.5,
+            1.2,
+            2.0,
+            2.8,
+            2.4,
+            3.5,
+            4.0,
+            3.8,
+            5.0,
+          ],
         ),
         const SizedBox(height: 12),
         Row(
@@ -465,7 +526,10 @@ class _DashboardScreenContent extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [AppColors.teal, AppColors.teal.withValues(alpha: 0.8)],
+                  colors: [
+                    AppColors.teal,
+                    AppColors.teal.withValues(alpha: 0.8),
+                  ],
                 ),
               ),
             ),

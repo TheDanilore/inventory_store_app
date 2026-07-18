@@ -25,7 +25,14 @@ class InventoryExitEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id, warehouseId, reason, notes, createdBy, createdAt,
-        warehouseName, totalCost, itemCount,
-      ];
+    id,
+    warehouseId,
+    reason,
+    notes,
+    createdBy,
+    createdAt,
+    warehouseName,
+    totalCost,
+    itemCount,
+  ];
 }

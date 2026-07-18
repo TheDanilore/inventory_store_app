@@ -49,7 +49,12 @@ class _MovementsTabState extends State<MovementsTab> {
     super.dispose();
   }
 
-  void _showFiltersSheet(BuildContext context, AccountMovementsCubit movCubit, MovementFilters filters, List<FinancialAccountEntity> accounts) {
+  void _showFiltersSheet(
+    BuildContext context,
+    AccountMovementsCubit movCubit,
+    MovementFilters filters,
+    List<FinancialAccountEntity> accounts,
+  ) {
     // Solo vibrar si no es web para evitar MissingPluginException
     if (!kIsWeb) {
       Vibration.vibrate(duration: 50, amplitude: 128);
@@ -72,7 +77,9 @@ class _MovementsTabState extends State<MovementsTab> {
               ),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.95),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -89,9 +96,23 @@ class _MovementsTabState extends State<MovementsTab> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text('Filtros', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                  const Text(
+                    'Filtros',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  const Text('Tipo de Movimiento', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                  const Text(
+                    'Tipo de Movimiento',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -104,12 +125,29 @@ class _MovementsTabState extends State<MovementsTab> {
                       child: DropdownButton<String>(
                         value: filters.filterType,
                         isExpanded: true,
-                        icon: const Icon(Icons.expand_more_rounded, size: 20, color: AppColors.textSecondary),
-                        style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                        icon: const Icon(
+                          Icons.expand_more_rounded,
+                          size: 20,
+                          color: AppColors.textSecondary,
+                        ),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
                         items: const [
-                          DropdownMenuItem(value: 'Todos', child: Text('Todos los tipos')),
-                          DropdownMenuItem(value: 'INCOME', child: Text('Ingresos')),
-                          DropdownMenuItem(value: 'EXPENSE', child: Text('Egresos')),
+                          DropdownMenuItem(
+                            value: 'Todos',
+                            child: Text('Todos los tipos'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'INCOME',
+                            child: Text('Ingresos'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'EXPENSE',
+                            child: Text('Egresos'),
+                          ),
                         ],
                         onChanged: (v) {
                           if (v != null) {
@@ -121,7 +159,14 @@ class _MovementsTabState extends State<MovementsTab> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Cuenta Financiera', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                  const Text(
+                    'Cuenta Financiera',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -134,11 +179,27 @@ class _MovementsTabState extends State<MovementsTab> {
                       child: DropdownButton<String>(
                         value: filters.filterAccountId,
                         isExpanded: true,
-                        icon: const Icon(Icons.expand_more_rounded, size: 20, color: AppColors.textSecondary),
-                        style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                        icon: const Icon(
+                          Icons.expand_more_rounded,
+                          size: 20,
+                          color: AppColors.textSecondary,
+                        ),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
                         items: [
-                          const DropdownMenuItem(value: 'Todas', child: Text('Todas las cuentas')),
-                          ...accounts.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))),
+                          const DropdownMenuItem(
+                            value: 'Todas',
+                            child: Text('Todas las cuentas'),
+                          ),
+                          ...accounts.map(
+                            (a) => DropdownMenuItem(
+                              value: a.id,
+                              child: Text(a.name),
+                            ),
+                          ),
                         ],
                         onChanged: (v) {
                           if (v != null) {
@@ -150,17 +211,35 @@ class _MovementsTabState extends State<MovementsTab> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Rango de Fechas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                  const Text(
+                    'Rango de Fechas',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   DateFilterCalendar(
                     isExpanded: true,
-                    dateRange: filters.dateFrom != null && filters.dateTo != null
-                        ? DateTimeRange(start: filters.dateFrom!, end: filters.dateTo!)
-                        : null,
+                    dateRange:
+                        filters.dateFrom != null && filters.dateTo != null
+                            ? DateTimeRange(
+                              start: filters.dateFrom!,
+                              end: filters.dateTo!,
+                            )
+                            : null,
                     onDateRangeSelected: (picked) {
                       movCubit.setDateRange(
                         picked.start,
-                        DateTime(picked.end.year, picked.end.month, picked.end.day, 23, 59, 59),
+                        DateTime(
+                          picked.end.year,
+                          picked.end.month,
+                          picked.end.day,
+                          23,
+                          59,
+                          59,
+                        ),
                       );
                       Navigator.pop(ctx);
                     },
@@ -184,17 +263,27 @@ class _MovementsTabState extends State<MovementsTab> {
     return BlocBuilder<AccountMovementsCubit, AccountMovementsState>(
       builder: (context, movState) {
         final movCubit = context.read<AccountMovementsCubit>();
-        final movements = movState is AccountMovementsLoaded ? movState.movements : <AccountMovementEntity>[];
+        final movements =
+            movState is AccountMovementsLoaded
+                ? movState.movements
+                : <AccountMovementEntity>[];
         final isLoading = movState is AccountMovementsLoading;
-        final totalIncome = movState is AccountMovementsLoaded ? movState.totalIncome : 0.0;
-        final totalExpense = movState is AccountMovementsLoaded ? movState.totalExpense : 0.0;
-        final filters = movState is AccountMovementsLoaded ? movState.filters : const MovementFilters();
+        final totalIncome =
+            movState is AccountMovementsLoaded ? movState.totalIncome : 0.0;
+        final totalExpense =
+            movState is AccountMovementsLoaded ? movState.totalExpense : 0.0;
+        final filters =
+            movState is AccountMovementsLoaded
+                ? movState.filters
+                : const MovementFilters();
 
-        final accounts = context.select<FinancialAccountsCubit, List<FinancialAccountEntity>>(
-          (cubit) => cubit.state is FinancialAccountsLoaded
-              ? (cubit.state as FinancialAccountsLoaded).accounts
-              : <FinancialAccountEntity>[],
-        );
+        final accounts = context
+            .select<FinancialAccountsCubit, List<FinancialAccountEntity>>(
+              (cubit) =>
+                  cubit.state is FinancialAccountsLoaded
+                      ? (cubit.state as FinancialAccountsLoaded).accounts
+                      : <FinancialAccountEntity>[],
+            );
 
         return Stack(
           children: [
@@ -220,17 +309,28 @@ class _MovementsTabState extends State<MovementsTab> {
                                 color: Colors.black.withValues(alpha: 0.03),
                                 blurRadius: 10,
                                 offset: const Offset(0, 2),
-                              )
+                              ),
                             ],
                           ),
                           child: TextField(
                             onChanged: (val) => movCubit.setSearchText(val),
                             decoration: InputDecoration(
                               hintText: 'Buscar movimientos...',
-                              hintStyle: TextStyle(fontSize: 14, color: AppColors.textSecondary.withValues(alpha: 0.8)),
-                              prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textSecondary),
+                              hintStyle: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.textSecondary.withValues(
+                                  alpha: 0.8,
+                                ),
+                              ),
+                              prefixIcon: const Icon(
+                                Icons.search_rounded,
+                                size: 20,
+                                color: AppColors.textSecondary,
+                              ),
                               border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                              ),
                             ),
                           ),
                         ),
@@ -238,7 +338,13 @@ class _MovementsTabState extends State<MovementsTab> {
                       const SizedBox(width: 8),
                       // Filter Button
                       InkWell(
-                        onTap: () => _showFiltersSheet(context, movCubit, filters, accounts),
+                        onTap:
+                            () => _showFiltersSheet(
+                              context,
+                              movCubit,
+                              filters,
+                              accounts,
+                            ),
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
                           height: 48,
@@ -252,21 +358,30 @@ class _MovementsTabState extends State<MovementsTab> {
                                 color: Colors.black.withValues(alpha: 0.03),
                                 blurRadius: 10,
                                 offset: const Offset(0, 2),
-                              )
+                              ),
                             ],
                           ),
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
-                              const Icon(Icons.tune_rounded, size: 22, color: AppColors.textPrimary),
-                              if (filters.filterType != 'Todos' || filters.filterAccountId != 'Todas' || filters.dateFrom != null)
+                              const Icon(
+                                Icons.tune_rounded,
+                                size: 22,
+                                color: AppColors.textPrimary,
+                              ),
+                              if (filters.filterType != 'Todos' ||
+                                  filters.filterAccountId != 'Todas' ||
+                                  filters.dateFrom != null)
                                 Positioned(
                                   top: 12,
                                   right: 12,
                                   child: Container(
                                     width: 8,
                                     height: 8,
-                                    decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
                                 ),
                             ],
@@ -278,40 +393,61 @@ class _MovementsTabState extends State<MovementsTab> {
                 ),
                 const SizedBox(height: 10),
                 Expanded(
-                  child: isLoading && movements.isEmpty
-                      ? const _MovementsSkeleton()
-                      : movements.isEmpty
-                          ? const AppEmptyState(icon: Icons.sync_alt_rounded, title: 'Sin movimientos', message: 'No se encontraron movimientos financieros.')
+                  child:
+                      isLoading && movements.isEmpty
+                          ? const _MovementsSkeleton()
+                          : movements.isEmpty
+                          ? const AppEmptyState(
+                            icon: Icons.sync_alt_rounded,
+                            title: 'Sin movimientos',
+                            message:
+                                'No se encontraron movimientos financieros.',
+                          )
                           : Column(
-                              children: [
-                                Expanded(
-                                  child: RefreshIndicator(
-                                    onRefresh: () async => movCubit.fetchMovements(),
-                                    child: AnimationLimiter(
-                                      child: ListView.separated(
-                                        controller: _scrollController,
-                                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                                        itemCount: movements.length,
-                                        separatorBuilder: (_, _) => const SizedBox(height: 8),
-                                        itemBuilder: (_, i) => AnimationConfiguration.staggeredList(
-                                          position: i,
-                                          duration: const Duration(milliseconds: 375),
-                                          child: SlideAnimation(
-                                            verticalOffset: 50.0,
-                                            child: FadeInAnimation(
-                                              child: _MovementCard(movement: movements[i]),
-                                            ),
-                                          ),
-                                        ),
+                            children: [
+                              Expanded(
+                                child: RefreshIndicator(
+                                  onRefresh:
+                                      () async => movCubit.fetchMovements(),
+                                  child: AnimationLimiter(
+                                    child: ListView.separated(
+                                      controller: _scrollController,
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        4,
+                                        16,
+                                        16,
                                       ),
+                                      itemCount: movements.length,
+                                      separatorBuilder:
+                                          (_, _) => const SizedBox(height: 8),
+                                      itemBuilder:
+                                          (_, i) =>
+                                              AnimationConfiguration.staggeredList(
+                                                position: i,
+                                                duration: const Duration(
+                                                  milliseconds: 375,
+                                                ),
+                                                child: SlideAnimation(
+                                                  verticalOffset: 50.0,
+                                                  child: FadeInAnimation(
+                                                    child: _MovementCard(
+                                                      movement: movements[i],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
                                     ),
                                   ),
                                 ),
-                                ],
-                            ),
+                              ),
+                            ],
+                          ),
                 ),
                 // --- PAGINACIÓN ANCLADA ---
-                if (movState is AccountMovementsLoaded && movState.totalPages > 1 && !isLoading)
+                if (movState is AccountMovementsLoaded &&
+                    movState.totalPages > 1 &&
+                    !isLoading)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -341,26 +477,36 @@ class _MovementsTabState extends State<MovementsTab> {
               right: 16,
               child: FloatingActionButton.extended(
                 heroTag: 'fab_movements',
-                onPressed: isLoading ? null : () {
-                  // Solo vibrar si no es web para evitar MissingPluginException
-                  if (!kIsWeb) {
-                    Vibration.vibrate(duration: 50, amplitude: 128);
-                  }
-                  MovementFormSheet.show(context);
-                },
+                onPressed:
+                    isLoading
+                        ? null
+                        : () {
+                          // Solo vibrar si no es web para evitar MissingPluginException
+                          if (!kIsWeb) {
+                            Vibration.vibrate(duration: 50, amplitude: 128);
+                          }
+                          MovementFormSheet.show(context);
+                        },
                 backgroundColor: AppColors.primary,
                 icon: const Icon(Icons.add_rounded, color: Colors.white),
                 label: ValueListenableBuilder<bool>(
-                          valueListenable: _isFabExtended,
-                          builder: (context, isExtended, _) {
-                            return AnimatedSize(
-                  duration: const Duration(milliseconds: 200),
-                  child: isExtended 
-                      ? const Text('Registrar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))
-                      : const SizedBox.shrink(),
-                );
-                          },
-                        ),
+                  valueListenable: _isFabExtended,
+                  builder: (context, isExtended, _) {
+                    return AnimatedSize(
+                      duration: const Duration(milliseconds: 200),
+                      child:
+                          isExtended
+                              ? const Text(
+                                'Registrar',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              )
+                              : const SizedBox.shrink(),
+                    );
+                  },
+                ),
               ),
             ),
           ],
@@ -374,7 +520,10 @@ class _DashboardSummary extends StatelessWidget {
   final double totalIncome;
   final double totalExpense;
 
-  const _DashboardSummary({required this.totalIncome, required this.totalExpense});
+  const _DashboardSummary({
+    required this.totalIncome,
+    required this.totalExpense,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -386,7 +535,13 @@ class _DashboardSummary extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -452,7 +607,12 @@ class _DashItem extends StatelessWidget {
   final Color color;
   final IconData icon;
 
-  const _DashItem({required this.title, required this.amount, required this.color, required this.icon});
+  const _DashItem({
+    required this.title,
+    required this.amount,
+    required this.color,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -463,13 +623,24 @@ class _DashItem extends StatelessWidget {
           children: [
             Icon(icon, size: 14, color: color),
             const SizedBox(width: 4),
-            Text(title, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
           'S/ ${amount.abs().toStringAsFixed(2)}',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: color),
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+            color: color,
+          ),
           textAlign: TextAlign.center,
         ),
       ],
@@ -486,7 +657,8 @@ class _MovementCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isIncome = movement.movementType == 'INCOME';
     final color = isIncome ? AppColors.success : AppColors.danger;
-    final icon = isIncome ? Icons.add_circle_rounded : Icons.remove_circle_rounded;
+    final icon =
+        isIncome ? Icons.add_circle_rounded : Icons.remove_circle_rounded;
 
     return Container(
       decoration: BoxDecoration(
@@ -499,7 +671,7 @@ class _MovementCard extends StatelessWidget {
             blurRadius: 15,
             spreadRadius: -2,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Padding(
@@ -508,7 +680,10 @@ class _MovementCard extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(width: 16),
@@ -518,27 +693,47 @@ class _MovementCard extends StatelessWidget {
                 children: [
                   Text(
                     movement.description,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.account_balance_wallet_rounded, size: 12, color: AppColors.textSecondary.withValues(alpha: 0.8)),
+                      Icon(
+                        Icons.account_balance_wallet_rounded,
+                        size: 12,
+                        color: AppColors.textSecondary.withValues(alpha: 0.8),
+                      ),
                       Flexible(
                         child: Text(
                           movement.accountName ?? 'Sin cuenta',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Icon(Icons.access_time_rounded, size: 12, color: AppColors.textSecondary.withValues(alpha: 0.8)),
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: 12,
+                        color: AppColors.textSecondary.withValues(alpha: 0.8),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         DateFormat('dd MMM HH:mm').format(movement.createdAt),
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -550,12 +745,20 @@ class _MovementCard extends StatelessWidget {
               children: [
                 Text(
                   '${isIncome ? '+' : '-'} S/ ${movement.amount.toStringAsFixed(2)}',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: color),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: color,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   movement.createdByName?.split(' ').first ?? 'Sistema',
-                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -565,8 +768,6 @@ class _MovementCard extends StatelessWidget {
     );
   }
 }
-
-
 
 class _MovementsSkeleton extends StatelessWidget {
   const _MovementsSkeleton();

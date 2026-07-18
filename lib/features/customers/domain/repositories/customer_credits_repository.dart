@@ -1,4 +1,4 @@
-﻿import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 
 abstract class CustomerCreditsRepository {
@@ -37,4 +37,3 @@ abstract class CustomerCreditsRepository {
     String? notes,
   });
 }
-

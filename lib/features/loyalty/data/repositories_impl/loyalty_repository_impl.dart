@@ -25,15 +25,19 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
   }
 
   @override
-  Future<Either<Failure, LoyaltyProfileEntity>> getProfileSummary(String authUserId) async {
+  Future<Either<Failure, LoyaltyProfileEntity>> getProfileSummary(
+    String authUserId,
+  ) async {
     try {
-      final response = await _supabase
-          .from('profiles')
-          .select('id, wallet_balance')
-          .eq('auth_user_id', authUserId)
-          .maybeSingle();
+      final response =
+          await _supabase
+              .from('profiles')
+              .select('id, wallet_balance')
+              .eq('auth_user_id', authUserId)
+              .maybeSingle();
 
-      if (response == null) return left(Failure.from('No se encontró el perfil'));
+      if (response == null)
+        return left(Failure.from('No se encontró el perfil'));
       return right(LoyaltyProfileModel.fromJson(response).toEntity());
     } catch (e) {
       return _handleError(e);
@@ -43,13 +47,15 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
   @override
   Future<Either<Failure, int>> getWalletBalance(String authUserId) async {
     try {
-      final response = await _supabase
-          .from('profiles')
-          .select('wallet_balance')
-          .eq('auth_user_id', authUserId)
-          .maybeSingle();
+      final response =
+          await _supabase
+              .from('profiles')
+              .select('wallet_balance')
+              .eq('auth_user_id', authUserId)
+              .maybeSingle();
 
-      if (response == null) return left(Failure.from('No se encontró el saldo'));
+      if (response == null)
+        return left(Failure.from('No se encontró el saldo'));
       final balance = (response['wallet_balance'] as num?)?.toInt() ?? 0;
       return right(balance);
     } catch (e) {
@@ -58,14 +64,18 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
   }
 
   @override
-  Future<Either<Failure, DailyCheckinEntity?>> getTodayCheckin(String profileId, String todayDate) async {
+  Future<Either<Failure, DailyCheckinEntity?>> getTodayCheckin(
+    String profileId,
+    String todayDate,
+  ) async {
     try {
-      final response = await _supabase
-          .from('daily_checkins')
-          .select()
-          .eq('profile_id', profileId)
-          .eq('checkin_date', todayDate)
-          .maybeSingle();
+      final response =
+          await _supabase
+              .from('daily_checkins')
+              .select()
+              .eq('profile_id', profileId)
+              .eq('checkin_date', todayDate)
+              .maybeSingle();
 
       if (response == null) return right(null);
       return right(DailyCheckinModel.fromJson(response).toEntity());
@@ -75,15 +85,18 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
   }
 
   @override
-  Future<Either<Failure, DailyCheckinEntity?>> getLatestCheckin(String profileId) async {
+  Future<Either<Failure, DailyCheckinEntity?>> getLatestCheckin(
+    String profileId,
+  ) async {
     try {
-      final response = await _supabase
-          .from('daily_checkins')
-          .select()
-          .eq('profile_id', profileId)
-          .order('checkin_date', ascending: false)
-          .limit(1)
-          .maybeSingle();
+      final response =
+          await _supabase
+              .from('daily_checkins')
+              .select()
+              .eq('profile_id', profileId)
+              .order('checkin_date', ascending: false)
+              .limit(1)
+              .maybeSingle();
 
       if (response == null) return right(null);
       return right(DailyCheckinModel.fromJson(response).toEntity());
@@ -93,7 +106,10 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
   }
 
   @override
-  Future<Either<Failure, List<WalletMovementEntity>>> getTodayMiniGames(String profileId, String currentDayUtcIso) async {
+  Future<Either<Failure, List<WalletMovementEntity>>> getTodayMiniGames(
+    String profileId,
+    String currentDayUtcIso,
+  ) async {
     try {
       final response = await _supabase
           .from('wallet_movements')
@@ -102,9 +118,10 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
           .like('movement_type', 'MINI_GAME_%')
           .gte('created_at', currentDayUtcIso);
 
-      final models = List<Map<String, dynamic>>.from(response)
-          .map(WalletMovementModel.fromJson)
-          .toList();
+      final models =
+          List<Map<String, dynamic>>.from(
+            response,
+          ).map(WalletMovementModel.fromJson).toList();
       return right(models.map((m) => m.toEntity()).toList());
     } catch (e) {
       return _handleError(e);
@@ -125,9 +142,10 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
           .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);
 
-      final models = List<Map<String, dynamic>>.from(response)
-          .map(WalletMovementModel.fromJson)
-          .toList();
+      final models =
+          List<Map<String, dynamic>>.from(
+            response,
+          ).map(WalletMovementModel.fromJson).toList();
       return right(models.map((m) => m.toEntity()).toList());
     } catch (e) {
       return _handleError(e);
@@ -143,13 +161,16 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
     required String actionByProfileId,
   }) async {
     try {
-      await _supabase.rpc('claim_daily_checkin', params: {
-        'p_profile_id': profileId,
-        'p_checkin_date': todayDate,
-        'p_points': points,
-        'p_streak_day': streakDay,
-        'p_action_by': actionByProfileId,
-      });
+      await _supabase.rpc(
+        'claim_daily_checkin',
+        params: {
+          'p_profile_id': profileId,
+          'p_checkin_date': todayDate,
+          'p_points': points,
+          'p_streak_day': streakDay,
+          'p_action_by': actionByProfileId,
+        },
+      );
       return right(null);
     } catch (e) {
       return _handleError(e);
@@ -164,12 +185,15 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
     required String description,
   }) async {
     try {
-      await _supabase.rpc('award_mini_game_points', params: {
-        'p_profile_id': profileId,
-        'p_movement_type': movementType,
-        'p_points': points,
-        'p_description': description,
-      });
+      await _supabase.rpc(
+        'award_mini_game_points',
+        params: {
+          'p_profile_id': profileId,
+          'p_movement_type': movementType,
+          'p_points': points,
+          'p_description': description,
+        },
+      );
       return right(null);
     } catch (e) {
       return _handleError(e);
@@ -177,7 +201,9 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
   }
 
   @override
-  Future<Either<Failure, List<CustomerEntity>>> getTopCustomers(int limit) async {
+  Future<Either<Failure, List<CustomerEntity>>> getTopCustomers(
+    int limit,
+  ) async {
     try {
       final ordersRes = await _supabase
           .from('orders')
@@ -192,35 +218,42 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
         spentByCustomer[cid] = (spentByCustomer[cid] ?? 0) + amount;
       }
 
-      final sortedEntries = spentByCustomer.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
-        
+      final sortedEntries =
+          spentByCustomer.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
+
       final topIds = sortedEntries.take(limit).map((e) => e.key).toList();
 
       if (topIds.isEmpty) return right([]);
 
       final profilesRes = await _supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, is_active, wallet_balance, created_at')
+          .select(
+            'id, full_name, avatar_url, is_active, wallet_balance, created_at',
+          )
           .inFilter('id', topIds);
 
       final Map<String, dynamic> profilesMap = {
         for (var p in profilesRes) p['id'] as String: p,
       };
 
-      final customers = topIds.map((id) {
-        final p = profilesMap[id];
-        if (p == null) return null;
-        return CustomerEntity(
-          id: p['id'],
-          fullName: p['full_name'] ?? 'Desconocido',
-          avatarUrl: p['avatar_url'],
-          isActive: p['is_active'] ?? true,
-          walletBalance: p['wallet_balance'] ?? 0,
-          createdAt: DateTime.parse(p['created_at']),
-          totalRevenue: spentByCustomer[id] ?? 0,
-        );
-      }).whereType<CustomerEntity>().toList();
+      final customers =
+          topIds
+              .map((id) {
+                final p = profilesMap[id];
+                if (p == null) return null;
+                return CustomerEntity(
+                  id: p['id'],
+                  fullName: p['full_name'] ?? 'Desconocido',
+                  avatarUrl: p['avatar_url'],
+                  isActive: p['is_active'] ?? true,
+                  walletBalance: p['wallet_balance'] ?? 0,
+                  createdAt: DateTime.parse(p['created_at']),
+                  totalRevenue: spentByCustomer[id] ?? 0,
+                );
+              })
+              .whereType<CustomerEntity>()
+              .toList();
 
       return right(customers);
     } catch (e) {

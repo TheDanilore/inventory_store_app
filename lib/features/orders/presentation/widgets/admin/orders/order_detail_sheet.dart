@@ -51,11 +51,14 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   void initState() {
     super.initState();
     context.read<OrderDetailCubit>().setInitialOrder(widget.order);
-    _pointsUsedCtrl.text = context.read<OrderDetailCubit>().state.pointsUsed.toString();
+    _pointsUsedCtrl.text =
+        context.read<OrderDetailCubit>().state.pointsUsed.toString();
     _manualNameCtrl.text = widget.order.customerName.trim();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OrderDetailCubit>().fetchData(_manualNameCtrl.text).then((_) {
+      context.read<OrderDetailCubit>().fetchData(_manualNameCtrl.text).then((
+        _,
+      ) {
         if (mounted) {
           final state = context.read<OrderDetailCubit>().state;
           setState(() {
@@ -148,7 +151,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             totalRequired: item.quantity,
             batches: batches,
           ),
-        );
+    );
 
     if (result != null && mounted) {
       context.read<OrderDetailCubit>().updateBatchOverrides(item.id, result);
@@ -200,7 +203,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               ),
             ],
           ),
-        );
+    );
   }
 
   Future<void> _saveChanges(double pointsToSolesRatio) async {
@@ -236,7 +239,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     } else {
       AppSnackbar.show(
         context,
-        message: context.read<OrderDetailCubit>().state.errorMessage ?? 'Error desconocido',
+        message:
+            context.read<OrderDetailCubit>().state.errorMessage ??
+            'Error desconocido',
         type: SnackbarType.error,
       );
     }
@@ -255,7 +260,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     } else {
       AppSnackbar.show(
         context,
-        message: context.read<OrderDetailCubit>().state.errorMessage ?? 'Error al procesar devolución',
+        message:
+            context.read<OrderDetailCubit>().state.errorMessage ??
+            'Error al procesar devolución',
         type: SnackbarType.error,
       );
     }
@@ -313,7 +320,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               ),
             ],
           ),
-        );
+    );
 
     if (confirmed == true && mounted) {
       await _processReturn(notes.isNotEmpty ? notes : null);
@@ -328,474 +335,459 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
     return BlocBuilder<OrderDetailCubit, OrderDetailState>(
       builder: (context, state) {
-        if (state.order == null && !state.isLoading) return const SizedBox.shrink();
+        if (state.order == null && !state.isLoading)
+          return const SizedBox.shrink();
         final cubit = context.read<OrderDetailCubit>();
-          final isEditing = cubit.canToggleEdit();
-          final isCompleted = cubit.isCompleted();
-          final maxPtsUser =
-              state.selectedCustomerId != null
-                  ? state.profiles.firstWhere(
-                            (p) => p['id'] == state.selectedCustomerId,
-                            orElse: () => {'wallet_balance': 0},
-                          )['wallet_balance']
-                          as int? ??
-                      0
-                  : 0;
+        final isEditing = cubit.canToggleEdit();
+        final isCompleted = cubit.isCompleted();
+        final maxPtsUser =
+            state.selectedCustomerId != null
+                ? state.profiles.firstWhere(
+                          (p) => p['id'] == state.selectedCustomerId,
+                          orElse: () => {'wallet_balance': 0},
+                        )['wallet_balance']
+                        as int? ??
+                    0
+                : 0;
 
-          final subtotal = state.items.fold(
-            0.0,
-            (sum, i) => sum + i.subtotal,
-          );
+        final subtotal = state.items.fold(0.0, (sum, i) => sum + i.subtotal);
 
-          final rawDiscount = state.pointsUsed * pointsToSolesRatio;
-          final maxDiscount = subtotal * 0.5;
-          final appliedDiscount =
-              rawDiscount > maxDiscount ? maxDiscount : rawDiscount;
-          final totalFinal =
-              subtotal - appliedDiscount - state.order!.discountAmount;
-          final actualTotal = totalFinal < 0 ? 0.0 : totalFinal;
+        final rawDiscount = state.pointsUsed * pointsToSolesRatio;
+        final maxDiscount = subtotal * 0.5;
+        final appliedDiscount =
+            rawDiscount > maxDiscount ? maxDiscount : rawDiscount;
+        final totalFinal =
+            subtotal - appliedDiscount - state.order!.discountAmount;
+        final actualTotal = totalFinal < 0 ? 0.0 : totalFinal;
 
-          List<Map<String, dynamic>> profiles = state.profiles;
+        List<Map<String, dynamic>> profiles = state.profiles;
 
-          String getCustomerLabel(String? customerId) {
-            if (customerId == null) {
-              final manualName = _manualNameCtrl.text.trim();
-              return manualName.isNotEmpty ? manualName : 'Cliente mostrador';
-            }
-            try {
-              final profile = state.profiles.firstWhere(
-                (p) => p['id'] == customerId,
-              );
-              final name = (profile['full_name'] as String?)?.trim();
-              if (name != null && name.isNotEmpty) return name;
-            } catch (_) {}
-            return state.order!.customerName.isNotEmpty
-                ? state.order!.customerName
-                : 'Cliente mostrador';
+        String getCustomerLabel(String? customerId) {
+          if (customerId == null) {
+            final manualName = _manualNameCtrl.text.trim();
+            return manualName.isNotEmpty ? manualName : 'Cliente mostrador';
           }
+          try {
+            final profile = state.profiles.firstWhere(
+              (p) => p['id'] == customerId,
+            );
+            final name = (profile['full_name'] as String?)?.trim();
+            if (name != null && name.isNotEmpty) return name;
+          } catch (_) {}
+          return state.order!.customerName.isNotEmpty
+              ? state.order!.customerName
+              : 'Cliente mostrador';
+        }
 
-          Widget child = Container(
-            height:
+        Widget child = Container(
+          height:
+              widget.isEmbedded
+                  ? null
+                  : MediaQuery.of(context).size.height * 0.9,
+          decoration: BoxDecoration(
+            color: widget.isEmbedded ? Colors.transparent : Colors.grey.shade50,
+            borderRadius:
                 widget.isEmbedded
-                    ? null
-                    : MediaQuery.of(context).size.height * 0.9,
-            decoration: BoxDecoration(
-              color:
-                  widget.isEmbedded ? Colors.transparent : Colors.grey.shade50,
-              borderRadius:
-                  widget.isEmbedded
-                      ? BorderRadius.zero
-                      : const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: SafeArea(
-              child: Column(
-                children: [
-                  if (!widget.isEmbedded)
-                    Center(
-                      child: Container(
-                        margin: const EdgeInsets.only(top: 10, bottom: 5),
-                        width: 40,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                    ? BorderRadius.zero
+                    : const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                if (!widget.isEmbedded)
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 10, bottom: 5),
+                      width: 40,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                  Expanded(
-                    child:
-                        state.isLoading
-                            ? const Padding(
-                              padding: EdgeInsets.all(16.0),
-                              child: OrderDetailSkeleton(),
-                            )
-                            : state.hasError
-                            ? AppEmptyState(
-                              icon: Icons.error_outline_rounded,
-                              color: Colors.red,
-                              title: 'Ocurrió un error al cargar el pedido',
-                              message:
-                                  'Verifica tu conexión a internet o intenta nuevamente.',
-                              action: ElevatedButton.icon(
-                                onPressed:
-                                    () => cubit.fetchData(state.order!.id),
-                                icon: const Icon(Icons.refresh_rounded),
-                                label: const Text('Reintentar'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.teal,
-                                  foregroundColor: Colors.white,
-                                ),
+                  ),
+                Expanded(
+                  child:
+                      state.isLoading
+                          ? const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: OrderDetailSkeleton(),
+                          )
+                          : state.hasError
+                          ? AppEmptyState(
+                            icon: Icons.error_outline_rounded,
+                            color: Colors.red,
+                            title: 'Ocurrió un error al cargar el pedido',
+                            message:
+                                'Verifica tu conexión a internet o intenta nuevamente.',
+                            action: ElevatedButton.icon(
+                              onPressed: () => cubit.fetchData(state.order!.id),
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Reintentar'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.teal,
+                                foregroundColor: Colors.white,
                               ),
-                            )
-                            : ListView(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                              children: [
-                                OrderDetailHeaderRow(
+                            ),
+                          )
+                          : ListView(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                            children: [
+                              OrderDetailHeaderRow(
+                                orderId: state.order!.id,
+                                isCompleted: isCompleted,
+                                isEditing: _isEditing,
+                                canToggleEdit: cubit.canToggleEdit(),
+                                onToggleEditing: () {
+                                  if (_isEditing) {
+                                    cubit.resetEditState();
+                                    _pointsUsedCtrl.text =
+                                        state.pointsUsed.toString();
+                                    _manualNameCtrl.text =
+                                        state.order!.customerName.trim();
+                                  }
+                                  setState(() {
+                                    _isEditing = !_isEditing;
+                                  });
+                                },
+                                onShare:
+                                    () => OrderPdfGenerator.shareTicket(
+                                      state.order!,
+                                      items: state.items,
+                                    ),
+                              ),
+                              const SizedBox(height: 16),
+                              OrderDetailStatusSection(
+                                originalStatus: state.order!.status,
+                                currentStatus: state.currentStatus,
+                                isEditing: false, // Siempre en modo lectura
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    cubit.updateStatus(val);
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              OrderDetailCustomerSection(
+                                isEditing: _isEditing,
+                                isCompleted: isCompleted,
+                                hasManualName: _manualNameCtrl.text.isNotEmpty,
+                                manualNameController: _manualNameCtrl,
+                                profiles: profiles,
+                                selectedCustomerLabel: getCustomerLabel(
+                                  state.selectedCustomerId,
+                                ),
+                                selectedCustomerId: state.selectedCustomerId,
+                                onSelectCustomer: (id) {
+                                  cubit.selectCustomer(
+                                    id,
+                                    pointsToSolesRatio,
+                                    earningRate,
+                                  );
+                                },
+                                onClearCustomer: () {
+                                  cubit.selectCustomer(
+                                    null,
+                                    pointsToSolesRatio,
+                                    earningRate,
+                                  );
+                                  _manualNameCtrl.text = '';
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              OrderDetailPaymentSection(
+                                isEditing: _isEditing,
+                                isCompleted: isCompleted,
+                                accounts: state.accounts,
+                                currentPaymentMethod: state.paymentMethod,
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    cubit.updatePaymentMethod(
+                                      val,
+                                      pointsToSolesRatio,
+                                      earningRate,
+                                    );
+                                    if (val == 'CRÉDITO') {
+                                      _pointsUsedCtrl.text = '0';
+                                    }
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              if (state.order!.paymentStatus != 'PAID')
+                                PaymentStatusSection(
                                   orderId: state.order!.id,
-                                  isCompleted: isCompleted,
-                                  isEditing: _isEditing,
-                                  canToggleEdit: cubit.canToggleEdit(),
-                                  onToggleEditing: () {
-                                    if (_isEditing) {
-                                      cubit.resetEditState();
-                                      _pointsUsedCtrl.text =
-                                          state.pointsUsed.toString();
-                                      _manualNameCtrl.text =
-                                          state.order!.customerName
-                                              .trim();
-                                    }
-                                    setState(() {
-                                      _isEditing = !_isEditing;
-                                    });
-                                  },
-                                  onShare:
-                                      () => OrderPdfGenerator.shareTicket(
-                                        state.order!,
-                                        items: state.items,
-                                      ),
-                                ),
-                                const SizedBox(height: 16),
-                                OrderDetailStatusSection(
-                                  originalStatus: state.order!.status,
-                                  currentStatus: state.currentStatus,
-                                  isEditing: false, // Siempre en modo lectura
-                                  onChanged: (val) {
-                                    if (val != null) {
-                                      cubit.updateStatus(val);
-                                    }
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                OrderDetailCustomerSection(
-                                  isEditing: _isEditing,
-                                  isCompleted: isCompleted,
-                                  hasManualName:
-                                      _manualNameCtrl.text.isNotEmpty,
-                                  manualNameController: _manualNameCtrl,
-                                  profiles: profiles,
-                                  selectedCustomerLabel: getCustomerLabel(
-                                    state.selectedCustomerId,
-                                  ),
-                                  selectedCustomerId:
-                                      state.selectedCustomerId,
-                                  onSelectCustomer: (id) {
-                                    cubit.selectCustomer(
-                                      id,
-                                      pointsToSolesRatio,
-                                      earningRate,
-                                    );
-                                  },
-                                  onClearCustomer: () {
-                                    cubit.selectCustomer(
-                                      null,
-                                      pointsToSolesRatio,
-                                      earningRate,
-                                    );
-                                    _manualNameCtrl.text = '';
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                OrderDetailPaymentSection(
-                                  isEditing: _isEditing,
-                                  isCompleted: isCompleted,
+                                  paymentStatus: state.order!.paymentStatus,
+                                  totalAmount: state.order!.totalAmount,
+                                  amountPaid: state.order!.amountPaid,
+                                  paymentMethod: state.paymentMethod,
+                                  creditInfo: state.creditInfo,
+                                  supabase: Supabase.instance.client,
                                   accounts: state.accounts,
-                                  currentPaymentMethod: state.paymentMethod,
-                                  onChanged: (val) {
-                                    if (val != null) {
-                                      cubit.updatePaymentMethod(
-                                        val,
-                                        pointsToSolesRatio,
-                                        earningRate,
-                                      );
-                                      if (val == 'CRÉDITO') {
-                                        _pointsUsedCtrl.text = '0';
-                                      }
-                                    }
+                                  customerId: state.selectedCustomerId,
+                                  pointsEarned: state.pointsEarned,
+                                  onPaymentRegistered: () {
+                                    cubit.setWasModified();
+                                    cubit.fetchData(state.order!.id);
                                   },
+                                  isLoyaltyEnabled: config.loyaltyGlobalEnabled,
                                 ),
-                                const SizedBox(height: 16),
-                                if (state.order!.paymentStatus != 'PAID')
-                                  PaymentStatusSection(
-                                    orderId: state.order!.id,
-                                    paymentStatus: state.order!.paymentStatus,
-                                    totalAmount: state.order!.totalAmount,
-                                    amountPaid: state.order!.amountPaid,
-                                    paymentMethod: state.paymentMethod,
-                                    creditInfo: state.creditInfo,
-                                    supabase: Supabase.instance.client,
-                                    accounts: state.accounts,
-                                    customerId: state.selectedCustomerId,
-                                    pointsEarned: state.pointsEarned,
-                                    onPaymentRegistered: () {
-                                      cubit.setWasModified();
-                                      cubit.fetchData(state.order!.id);
-                                    },
-                                    isLoyaltyEnabled:
-                                        config.loyaltyGlobalEnabled,
-                                  ),
-                                const SizedBox(height: 16),
-                                if (state.selectedCustomerId != null &&
-                                    state.selectedCustomerId!.isNotEmpty &&
-                                    state.creditInfo != null) ...[
-                                  OrderDetailCreditSection(
-                                    creditInfo: state.creditInfo!,
-                                    customerId: state.selectedCustomerId!,
-                                  ),
-                                ],
-                                const SizedBox(height: 16),
-                                OrderDetailItemsSection(
-                                  items: state.items,
-                                  isLoading: state.isLoading,
-                                  isEditing: _isEditing,
-                                  isLocked:
-                                      state.currentStatus.toUpperCase() !=
-                                      'PENDING',
-                                  batchesByVariant: state.batchesByVariant,
-                                  usesBatchesMap: state.usesBatchesMap,
-                                  batchOverrides: state.batchOverrides,
-                                  quantityControllers: _quantityControllers,
-                                  onDecrease: (idx) {
-                                    if (state.items[idx].quantity > 1) {
-                                      cubit.updateItemQuantity(
-                                        idx,
-                                        state.items[idx].quantity - 1,
-                                        pointsToSolesRatio,
-                                        earningRate,
-                                      );
-                                      _quantityControllers[idx].text =
-                                          state.items[idx].quantity
-                                              .toString();
-                                    }
-                                  },
-                                  onIncrease: (idx) {
+                              const SizedBox(height: 16),
+                              if (state.selectedCustomerId != null &&
+                                  state.selectedCustomerId!.isNotEmpty &&
+                                  state.creditInfo != null) ...[
+                                OrderDetailCreditSection(
+                                  creditInfo: state.creditInfo!,
+                                  customerId: state.selectedCustomerId!,
+                                ),
+                              ],
+                              const SizedBox(height: 16),
+                              OrderDetailItemsSection(
+                                items: state.items,
+                                isLoading: state.isLoading,
+                                isEditing: _isEditing,
+                                isLocked:
+                                    state.currentStatus.toUpperCase() !=
+                                    'PENDING',
+                                batchesByVariant: state.batchesByVariant,
+                                usesBatchesMap: state.usesBatchesMap,
+                                batchOverrides: state.batchOverrides,
+                                quantityControllers: _quantityControllers,
+                                onDecrease: (idx) {
+                                  if (state.items[idx].quantity > 1) {
                                     cubit.updateItemQuantity(
                                       idx,
-                                      state.items[idx].quantity + 1,
+                                      state.items[idx].quantity - 1,
                                       pointsToSolesRatio,
                                       earningRate,
                                     );
                                     _quantityControllers[idx].text =
                                         state.items[idx].quantity.toString();
-                                  },
-                                  onQuantityChanged: (idx, val) {
-                                    final qty = int.tryParse(val) ?? 1;
-                                    if (qty > 0) {
-                                      cubit.updateItemQuantity(
-                                        idx,
-                                        qty,
-                                        pointsToSolesRatio,
-                                        earningRate,
-                                      );
+                                  }
+                                },
+                                onIncrease: (idx) {
+                                  cubit.updateItemQuantity(
+                                    idx,
+                                    state.items[idx].quantity + 1,
+                                    pointsToSolesRatio,
+                                    earningRate,
+                                  );
+                                  _quantityControllers[idx].text =
+                                      state.items[idx].quantity.toString();
+                                },
+                                onQuantityChanged: (idx, val) {
+                                  final qty = int.tryParse(val) ?? 1;
+                                  if (qty > 0) {
+                                    cubit.updateItemQuantity(
+                                      idx,
+                                      qty,
+                                      pointsToSolesRatio,
+                                      earningRate,
+                                    );
+                                  }
+                                },
+                                onEditBatches:
+                                    (item) => _showBatchEditSheet(item),
+                              ),
+                              const SizedBox(height: 16),
+                              if (config.loyaltyGlobalEnabled &&
+                                  state.selectedCustomerId != null &&
+                                  state.selectedCustomerId!.isNotEmpty &&
+                                  state.paymentMethod != 'CRÉDITO') ...[
+                                OrderDetailPointsSection(
+                                  isEditing: _isEditing,
+                                  pointsUsed: state.pointsUsed,
+                                  pointsUsedCtrl: _pointsUsedCtrl,
+                                  maxPointsAvailable: maxPtsUser,
+                                  pointsToSolesRatio: pointsToSolesRatio,
+                                  onPointsChanged: (val) {
+                                    final pts = int.tryParse(val) ?? 0;
+                                    cubit.updatePointsUsed(
+                                      pts <= maxPtsUser ? pts : maxPtsUser,
+                                      pointsToSolesRatio,
+                                      earningRate,
+                                    );
+                                    if (pts > maxPtsUser) {
+                                      _pointsUsedCtrl.text =
+                                          maxPtsUser.toString();
                                     }
                                   },
-                                  onEditBatches:
-                                      (item) => _showBatchEditSheet(item),
                                 ),
                                 const SizedBox(height: 16),
-                                if (config.loyaltyGlobalEnabled &&
-                                    state.selectedCustomerId != null &&
-                                    state.selectedCustomerId!.isNotEmpty &&
-                                    state.paymentMethod != 'CRÉDITO') ...[
-                                  OrderDetailPointsSection(
-                                    isEditing: _isEditing,
-                                    pointsUsed: state.pointsUsed,
-                                    pointsUsedCtrl: _pointsUsedCtrl,
-                                    maxPointsAvailable: maxPtsUser,
-                                    pointsToSolesRatio: pointsToSolesRatio,
-                                    onPointsChanged: (val) {
-                                      final pts = int.tryParse(val) ?? 0;
-                                      cubit.updatePointsUsed(
-                                        pts <= maxPtsUser ? pts : maxPtsUser,
-                                        pointsToSolesRatio,
-                                        earningRate,
-                                      );
-                                      if (pts > maxPtsUser) {
-                                        _pointsUsedCtrl.text =
-                                            maxPtsUser.toString();
-                                      }
-                                    },
-                                  ),
-                                  const SizedBox(height: 16),
-                                ],
-                                OrderDetailAuditSection(
-                                  order: state.order!,
-                                  updaterName: state.updaterName,
-                                ),
-                                const SizedBox(height: 16),
-                                OrderDetailTotalSummarySection(
-                                  subtotal: subtotal,
-                                  pointsUsed: state.pointsUsed,
-                                  pointsEarned: state.pointsEarned,
-                                  pointsToSolesRatio: pointsToSolesRatio,
-                                  discountAmount: state.order!.discountAmount,
-                                  isCompleted:
-                                      isCompleted &&
-                                      state.order!.paymentStatus == 'PAID',
-                                  isLoyaltyEnabled: config.loyaltyGlobalEnabled,
-                                ),
                               ],
-                            ),
-                  ),
-                  if (!state.isLoading && !state.hasError)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border(
-                          top: BorderSide(color: Colors.grey.shade200),
+                              OrderDetailAuditSection(
+                                order: state.order!,
+                                updaterName: state.updaterName,
+                              ),
+                              const SizedBox(height: 16),
+                              OrderDetailTotalSummarySection(
+                                subtotal: subtotal,
+                                pointsUsed: state.pointsUsed,
+                                pointsEarned: state.pointsEarned,
+                                pointsToSolesRatio: pointsToSolesRatio,
+                                discountAmount: state.order!.discountAmount,
+                                isCompleted:
+                                    isCompleted &&
+                                    state.order!.paymentStatus == 'PAID',
+                                isLoyaltyEnabled: config.loyaltyGlobalEnabled,
+                              ),
+                            ],
+                          ),
+                ),
+                if (!state.isLoading && !state.hasError)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        top: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, -5),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, -5),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Total',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                Text(
-                                  'S/ ${actualTotal.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.teal,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          if (isEditing)
-                            Expanded(
-                              flex: 5,
-                              child: ElevatedButton(
-                                onPressed:
-                                    state.isSaving
-                                        ? null
-                                        : () =>
-                                            _saveChanges(pointsToSolesRatio),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child:
-                                    state.isSaving
-                                        ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                        : const Text(
-                                          'Guardar',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                              ),
-                            )
-                          else if (isCompleted)
-                            Expanded(
-                              flex: 5,
-                              child: ElevatedButton.icon(
-                                onPressed:
-                                    state.isReturning
-                                        ? null
-                                        : _confirmReturn,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red.shade50,
-                                  foregroundColor: Colors.red.shade700,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    side: BorderSide(
-                                      color: Colors.red.shade200,
-                                    ),
-                                  ),
-                                ),
-                                icon:
-                                    state.isReturning
-                                        ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.red,
-                                          ),
-                                        )
-                                        : const Icon(
-                                          Icons.assignment_return_rounded,
-                                        ),
-                                label: const Text(
-                                  'Devolución',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            )
-                          else
-                            Expanded(
-                              flex: 5,
-                              child: TextButton(
-                                onPressed:
-                                    () => _handlePop(state.wasModified),
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Cerrar',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
+                      ],
                     ),
-                ],
-              ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Total',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                'S/ ${actualTotal.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.teal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        if (isEditing)
+                          Expanded(
+                            flex: 5,
+                            child: ElevatedButton(
+                              onPressed:
+                                  state.isSaving
+                                      ? null
+                                      : () => _saveChanges(pointsToSolesRatio),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child:
+                                  state.isSaving
+                                      ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                      : const Text(
+                                        'Guardar',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                            ),
+                          )
+                        else if (isCompleted)
+                          Expanded(
+                            flex: 5,
+                            child: ElevatedButton.icon(
+                              onPressed:
+                                  state.isReturning ? null : _confirmReturn,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red.shade50,
+                                foregroundColor: Colors.red.shade700,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(color: Colors.red.shade200),
+                                ),
+                              ),
+                              icon:
+                                  state.isReturning
+                                      ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.red,
+                                        ),
+                                      )
+                                      : const Icon(
+                                        Icons.assignment_return_rounded,
+                                      ),
+                              label: const Text(
+                                'Devolución',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          )
+                        else
+                          Expanded(
+                            flex: 5,
+                            child: TextButton(
+                              onPressed: () => _handlePop(state.wasModified),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                              ),
+                              child: const Text(
+                                'Cerrar',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
-          );
+          ),
+        );
 
-          if (widget.isEmbedded) {
-            return child;
-          }
+        if (widget.isEmbedded) {
+          return child;
+        }
 
-          return PopScope(
-            canPop: false,
-            onPopInvokedWithResult: (didPop, dynamic result) {
-              if (didPop) return;
-              _handlePop(state.wasModified);
-            },
-            child: child,
-          );
-        },
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, dynamic result) {
+            if (didPop) return;
+            _handlePop(state.wasModified);
+          },
+          child: child,
+        );
+      },
     );
   }
 }

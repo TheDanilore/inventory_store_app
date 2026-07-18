@@ -1,4 +1,4 @@
-﻿import 'package:injectable/injectable.dart';
+import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customers_repository.dart';
 
@@ -12,4 +12,3 @@ class GetCustomerRecentOrdersUseCase {
     return await repository.getCustomerRecentOrders(customerId);
   }
 }
-

@@ -40,8 +40,12 @@ class CustomersLoaded extends CustomersState {
   }
 
   @override
-  List<Object?> get props =>
-      [customers, hasReachedMax, query, showOnlyWithDebt];
+  List<Object?> get props => [
+    customers,
+    hasReachedMax,
+    query,
+    showOnlyWithDebt,
+  ];
 }
 
 class CustomersError extends CustomersState {

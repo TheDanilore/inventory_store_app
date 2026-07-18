@@ -25,9 +25,13 @@ class CloseCashShiftUseCase implements UseCase<Unit, CloseCashShiftParams> {
   @override
   Future<Either<Failure, Unit>> call(CloseCashShiftParams params) async {
     if (params.closingBalance < 0) {
-      return left(const ValidationFailure(message: 'El saldo de cierre no puede ser negativo.'));
+      return left(
+        const ValidationFailure(
+          message: 'El saldo de cierre no puede ser negativo.',
+        ),
+      );
     }
-    
+
     return await repository.closeShift(
       shiftId: params.shiftId,
       closingBalance: params.closingBalance,

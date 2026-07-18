@@ -14,17 +14,19 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
     final user = _supabase.auth.currentUser;
     if (user == null) return null;
 
-    final profile = await _supabase
-        .from('profiles')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
+    final profile =
+        await _supabase
+            .from('profiles')
+            .select('id')
+            .eq('auth_user_id', user.id)
+            .maybeSingle();
 
     return profile?['id'] as String?;
   }
 
   @override
-  Future<Either<Failure, ({List<CashShiftEntity> shifts, int totalCount})>> getShifts({
+  Future<Either<Failure, ({List<CashShiftEntity> shifts, int totalCount})>>
+  getShifts({
     required int limit,
     required int offset,
     String? status,
@@ -61,9 +63,15 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
           .count(CountOption.exact);
 
       final data = response.data as List;
-      final shifts = data
-          .map((e) => CashShiftModel.fromJson(Map<String, dynamic>.from(e)).toEntity())
-          .toList();
+      final shifts =
+          data
+              .map(
+                (e) =>
+                    CashShiftModel.fromJson(
+                      Map<String, dynamic>.from(e),
+                    ).toEntity(),
+              )
+              .toList();
 
       return right((shifts: shifts, totalCount: response.count));
     } catch (e) {
@@ -72,14 +80,21 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
   }
 
   @override
-  Future<Either<Failure, ({int openCount, int closedCount})>> getShiftsStatusCount({
+  Future<Either<Failure, ({int openCount, int closedCount})>>
+  getShiftsStatusCount({
     DateTime? dateFrom,
     DateTime? dateTo,
     String? profileId,
   }) async {
     try {
-      var openQuery = _supabase.from('cash_shifts').select('id').eq('status', 'OPEN');
-      var closedQuery = _supabase.from('cash_shifts').select('id').eq('status', 'CLOSED');
+      var openQuery = _supabase
+          .from('cash_shifts')
+          .select('id')
+          .eq('status', 'OPEN');
+      var closedQuery = _supabase
+          .from('cash_shifts')
+          .select('id')
+          .eq('status', 'CLOSED');
 
       if (profileId != null) {
         openQuery = openQuery.eq('opened_by', profileId);
@@ -104,34 +119,51 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
     try {
       final profileId = await _getProfileId();
       if (profileId == null) {
-        return left(const ServerFailure(message: 'No se pudo obtener el perfil de usuario.'));
+        return left(
+          const ServerFailure(
+            message: 'No se pudo obtener el perfil de usuario.',
+          ),
+        );
       }
 
-      final existing = await _supabase
-          .from('cash_shifts')
-          .select('id')
-          .eq('account_id', accountId)
-          .eq('status', 'OPEN')
-          .maybeSingle();
+      final existing =
+          await _supabase
+              .from('cash_shifts')
+              .select('id')
+              .eq('account_id', accountId)
+              .eq('status', 'OPEN')
+              .maybeSingle();
 
       if (existing != null) {
-        return left(const ValidationFailure(message: 'Esta caja ya tiene un turno abierto.'));
+        return left(
+          const ValidationFailure(
+            message: 'Esta caja ya tiene un turno abierto.',
+          ),
+        );
       }
 
-      final inserted = await _supabase.from('cash_shifts').insert({
-        'account_id': accountId,
-        'opening_amount': openingBalance,
-        'notes': notes,
-        'opened_by': profileId,
-      }).select('''
+      final inserted =
+          await _supabase
+              .from('cash_shifts')
+              .insert({
+                'account_id': accountId,
+                'opening_amount': openingBalance,
+                'notes': notes,
+                'opened_by': profileId,
+              })
+              .select('''
         id, status, opening_amount, expected_amount, actual_amount,
         difference_amount, notes, opened_at, closed_at, account_id,
         financial_accounts(id, name, type),
         opened_by_profile:profiles!cash_shifts_opened_by_fkey(full_name),
         closed_by_profile:profiles!cash_shifts_closed_by_fkey(full_name)
-      ''').single();
+      ''')
+              .single();
 
-      final shift = CashShiftModel.fromJson(Map<String, dynamic>.from(inserted)).toEntity();
+      final shift =
+          CashShiftModel.fromJson(
+            Map<String, dynamic>.from(inserted),
+          ).toEntity();
       return right(shift);
     } catch (e) {
       return left(Failure.from(e));
@@ -147,17 +179,22 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
     try {
       final profileId = await _getProfileId();
       if (profileId == null) {
-        return left(const ServerFailure(message: 'No se pudo obtener el perfil de usuario.'));
+        return left(
+          const ServerFailure(
+            message: 'No se pudo obtener el perfil de usuario.',
+          ),
+        );
       }
 
       // We should calculate the expected amount. Wait, maybe that's done by a database function or trigger?
       // Legacy calcExpected was just querying account_movements. Let's do that.
-      final shiftRes = await _supabase
-          .from('cash_shifts')
-          .select('account_id, opening_amount')
-          .eq('id', shiftId)
-          .single();
-          
+      final shiftRes =
+          await _supabase
+              .from('cash_shifts')
+              .select('account_id, opening_amount')
+              .eq('id', shiftId)
+              .single();
+
       final accountId = shiftRes['account_id'];
       final openingAmount = (shiftRes['opening_amount'] as num).toDouble();
 
@@ -174,19 +211,22 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         if (m['movement_type'] == 'INCOME') income += amt;
         if (m['movement_type'] == 'EXPENSE') expense += amt;
       }
-      
+
       final expectedAmount = openingAmount + income - expense;
       final differenceAmount = closingBalance - expectedAmount;
 
-      await _supabase.from('cash_shifts').update({
-        'status': 'CLOSED',
-        'closed_at': DateTime.now().toIso8601String(),
-        'closed_by': profileId,
-        'actual_amount': closingBalance,
-        'expected_amount': expectedAmount,
-        'difference_amount': differenceAmount,
-        if (notes != null && notes.isNotEmpty) 'notes': notes,
-      }).eq('id', shiftId);
+      await _supabase
+          .from('cash_shifts')
+          .update({
+            'status': 'CLOSED',
+            'closed_at': DateTime.now().toIso8601String(),
+            'closed_by': profileId,
+            'actual_amount': closingBalance,
+            'expected_amount': expectedAmount,
+            'difference_amount': differenceAmount,
+            if (notes != null && notes.isNotEmpty) 'notes': notes,
+          })
+          .eq('id', shiftId);
 
       return right(unit);
     } catch (e) {
@@ -214,7 +254,7 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         if (m['movement_type'] == 'INCOME') income += amt;
         if (m['movement_type'] == 'EXPENSE') expense += amt;
       }
-      
+
       final expectedAmount = openingAmount + income - expense;
       return right(expectedAmount);
     } catch (e) {

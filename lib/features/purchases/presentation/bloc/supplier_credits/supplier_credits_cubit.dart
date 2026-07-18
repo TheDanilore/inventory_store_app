@@ -60,14 +60,16 @@ class SupplierCreditsCubit extends Cubit<SupplierCreditsState> {
       currentPage = page ?? 0;
     }
 
-    emit(SupplierCreditsLoading(
-      currentAccounts: currentAccounts,
-      searchQuery: currentQuery,
-      withDebtOnly: currentWithDebt,
-      currentPage: currentPage,
-      totalCount: currentTotalCount,
-      stats: currentStats,
-    ));
+    emit(
+      SupplierCreditsLoading(
+        currentAccounts: currentAccounts,
+        searchQuery: currentQuery,
+        withDebtOnly: currentWithDebt,
+        currentPage: currentPage,
+        totalCount: currentTotalCount,
+        stats: currentStats,
+      ),
+    );
 
     final result = await fetchSupplierCreditsUseCase(
       page: currentPage,
@@ -85,25 +87,29 @@ class SupplierCreditsCubit extends Cubit<SupplierCreditsState> {
             errStr.contains('failed host lookup')) {
           msg = 'Sin conexión a internet.';
         }
-        emit(SupplierCreditsError(
-          message: msg,
-          currentAccounts: currentAccounts,
-          searchQuery: currentQuery,
-          withDebtOnly: currentWithDebt,
-          currentPage: currentPage,
-          totalCount: currentTotalCount,
-          stats: currentStats,
-        ));
+        emit(
+          SupplierCreditsError(
+            message: msg,
+            currentAccounts: currentAccounts,
+            searchQuery: currentQuery,
+            withDebtOnly: currentWithDebt,
+            currentPage: currentPage,
+            totalCount: currentTotalCount,
+            stats: currentStats,
+          ),
+        );
       },
       (data) {
-        emit(SupplierCreditsLoaded(
-          accounts: data.accounts,
-          searchQuery: currentQuery,
-          withDebtOnly: currentWithDebt,
-          currentPage: currentPage,
-          totalCount: data.count,
-          stats: data.stats,
-        ));
+        emit(
+          SupplierCreditsLoaded(
+            accounts: data.accounts,
+            searchQuery: currentQuery,
+            withDebtOnly: currentWithDebt,
+            currentPage: currentPage,
+            totalCount: data.count,
+            stats: data.stats,
+          ),
+        );
       },
     );
   }
@@ -125,7 +131,9 @@ class SupplierCreditsCubit extends Cubit<SupplierCreditsState> {
     if (currentState is! SupplierCreditsLoaded) return;
 
     final result = await toggleSupplierCreditUseCase(
-        account.creditId, account.isActive);
+      account.creditId,
+      account.isActive,
+    );
 
     result.fold(
       (failure) {
@@ -136,15 +144,17 @@ class SupplierCreditsCubit extends Cubit<SupplierCreditsState> {
             errStr.contains('failed host lookup')) {
           msg = 'Sin conexión a internet.';
         }
-        emit(SupplierCreditsError(
-          message: msg,
-          currentAccounts: currentState.accounts,
-          searchQuery: currentState.searchQuery,
-          withDebtOnly: currentState.withDebtOnly,
-          currentPage: currentState.currentPage,
-          totalCount: currentState.totalCount,
-          stats: currentState.stats,
-        ));
+        emit(
+          SupplierCreditsError(
+            message: msg,
+            currentAccounts: currentState.accounts,
+            searchQuery: currentState.searchQuery,
+            withDebtOnly: currentState.withDebtOnly,
+            currentPage: currentState.currentPage,
+            totalCount: currentState.totalCount,
+            stats: currentState.stats,
+          ),
+        );
       },
       (_) {
         loadAccounts();
@@ -155,15 +165,16 @@ class SupplierCreditsCubit extends Cubit<SupplierCreditsState> {
   void clearError() {
     final currentState = state;
     if (currentState is SupplierCreditsError) {
-      emit(SupplierCreditsLoaded(
-        accounts: currentState.currentAccounts,
-        searchQuery: currentState.searchQuery,
-        withDebtOnly: currentState.withDebtOnly,
-        currentPage: currentState.currentPage,
-        totalCount: currentState.totalCount,
-        stats: currentState.stats,
-      ));
+      emit(
+        SupplierCreditsLoaded(
+          accounts: currentState.currentAccounts,
+          searchQuery: currentState.searchQuery,
+          withDebtOnly: currentState.withDebtOnly,
+          currentPage: currentState.currentPage,
+          totalCount: currentState.totalCount,
+          stats: currentState.stats,
+        ),
+      );
     }
   }
 }
-

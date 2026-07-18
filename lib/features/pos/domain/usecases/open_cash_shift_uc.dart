@@ -18,17 +18,24 @@ class OpenCashShiftParams {
 }
 
 @lazySingleton
-class OpenCashShiftUseCase implements UseCase<CashShiftEntity, OpenCashShiftParams> {
+class OpenCashShiftUseCase
+    implements UseCase<CashShiftEntity, OpenCashShiftParams> {
   final CashShiftRepository repository;
 
   OpenCashShiftUseCase(this.repository);
 
   @override
-  Future<Either<Failure, CashShiftEntity>> call(OpenCashShiftParams params) async {
+  Future<Either<Failure, CashShiftEntity>> call(
+    OpenCashShiftParams params,
+  ) async {
     if (params.openingBalance < 0) {
-      return left(const ValidationFailure(message: 'El saldo inicial no puede ser negativo.'));
+      return left(
+        const ValidationFailure(
+          message: 'El saldo inicial no puede ser negativo.',
+        ),
+      );
     }
-    
+
     return await repository.openShift(
       accountId: params.accountId,
       openingBalance: params.openingBalance,

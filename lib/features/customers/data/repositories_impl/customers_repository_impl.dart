@@ -217,11 +217,12 @@ class CustomersRepositoryImpl implements CustomersRepository {
     String? adminProfileId;
     final authUserId = _supabase.auth.currentUser?.id;
     if (authUserId != null) {
-      final adminResp = await _supabase
-          .from('profiles')
-          .select('id')
-          .eq('auth_user_id', authUserId)
-          .maybeSingle();
+      final adminResp =
+          await _supabase
+              .from('profiles')
+              .select('id')
+              .eq('auth_user_id', authUserId)
+              .maybeSingle();
       if (adminResp != null) adminProfileId = adminResp['id'] as String;
     }
 
@@ -243,36 +244,44 @@ class CustomersRepositoryImpl implements CustomersRepository {
       if (walletAdjustDelta != 0) {
         await _supabase
             .from('profiles')
-            .update({'wallet_balance': currentWalletBalance + walletAdjustDelta})
+            .update({
+              'wallet_balance': currentWalletBalance + walletAdjustDelta,
+            })
             .eq('id', finalProfileId);
 
         await _supabase.from('wallet_movements').insert({
           'profile_id': finalProfileId,
           'points': walletAdjustDelta,
-          'movement_type': walletAdjustDelta > 0 ? 'ADMIN_ADD' : 'ADMIN_SUBTRACT',
-          'description': walletAdjustDelta > 0
-              ? 'Ajuste manual (+$walletAdjustDelta monedas)'
-              : 'Ajuste manual ($walletAdjustDelta monedas)',
+          'movement_type':
+              walletAdjustDelta > 0 ? 'ADMIN_ADD' : 'ADMIN_SUBTRACT',
+          'description':
+              walletAdjustDelta > 0
+                  ? 'Ajuste manual (+$walletAdjustDelta monedas)'
+                  : 'Ajuste manual ($walletAdjustDelta monedas)',
         });
       }
     } else {
       // Crear
-      final inserted = await _supabase
-          .from('profiles')
-          .insert({...profileData, 'role': 'customer'})
-          .select('id')
-          .single();
+      final inserted =
+          await _supabase
+              .from('profiles')
+              .insert({...profileData, 'role': 'customer'})
+              .select('id')
+              .single();
       finalProfileId = inserted['id'] as String;
     }
 
     // Creditos
     if (hasCredit) {
       if (creditExistsInDb && creditId != null) {
-        await _supabase.from('customer_credits').update({
-          'credit_limit': newCreditLimit,
-          'is_active': true,
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', creditId);
+        await _supabase
+            .from('customer_credits')
+            .update({
+              'credit_limit': newCreditLimit,
+              'is_active': true,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', creditId);
       } else {
         await _supabase.from('customer_credits').insert({
           'profile_id': finalProfileId,
@@ -283,10 +292,13 @@ class CustomersRepositoryImpl implements CustomersRepository {
         });
       }
     } else if (creditExistsInDb && creditId != null && creditIsActive) {
-      await _supabase.from('customer_credits').update({
-        'is_active': false,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', creditId);
+      await _supabase
+          .from('customer_credits')
+          .update({
+            'is_active': false,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', creditId);
     }
   }
 

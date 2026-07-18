@@ -52,15 +52,20 @@ class _WarehousesManagementScreenState
     super.dispose();
   }
 
-  void _showWarehouseForm(BuildContext context, WarehousesCubit cubit, [WarehouseEntity? warehouse]) {
+  void _showWarehouseForm(
+    BuildContext context,
+    WarehousesCubit cubit, [
+    WarehouseEntity? warehouse,
+  ]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => BlocProvider.value(
-        value: cubit,
-        child: WarehouseFormSheet(warehouse: warehouse),
-      ),
+      builder:
+          (_) => BlocProvider.value(
+            value: cubit,
+            child: WarehouseFormSheet(warehouse: warehouse),
+          ),
     );
   }
 
@@ -77,7 +82,8 @@ class _WarehousesManagementScreenState
               type: SnackbarType.error,
             );
           }
-          if (state.successMessage != null && state.successMessage!.isNotEmpty) {
+          if (state.successMessage != null &&
+              state.successMessage!.isNotEmpty) {
             AppSnackbar.show(
               context,
               message: state.successMessage!,
@@ -93,304 +99,286 @@ class _WarehousesManagementScreenState
     );
   }
 
-  Widget _buildContent(BuildContext context, WarehousesCubit cubit, WarehousesState state) {
+  Widget _buildContent(
+    BuildContext context,
+    WarehousesCubit cubit,
+    WarehousesState state,
+  ) {
     return AdminLayout(
       title: 'Almacenes',
       showBackButton: true,
       body: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ─── BUSCADOR ───────────────────────────────────────────────────────
-              Container(
-                margin: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ─── BUSCADOR ───────────────────────────────────────────────────────
+          Container(
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-                child: TextField(
-                  controller: _searchCtrl,
-                  onChanged: cubit.updateSearch,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar almacén por nombre o dirección...',
-                    hintStyle: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 14,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      color: Colors.grey.shade400,
-                    ),
-                    suffixIcon:
-                        state.searchQuery.isNotEmpty
-                            ? IconButton(
-                              icon: const Icon(
-                                Icons.clear_rounded,
-                                color: Colors.grey,
-                              ),
-                              onPressed: () {
-                                _searchCtrl.clear();
-                                cubit.clearSearch();
-                              },
-                            )
-                            : null,
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 0,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(
-                        color: AppColors.primary,
-                        width: 1.5,
-                      ),
-                    ),
+              ],
+            ),
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: cubit.updateSearch,
+              decoration: InputDecoration(
+                hintText: 'Buscar almacén por nombre o dirección...',
+                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: Colors.grey.shade400,
+                ),
+                suffixIcon:
+                    state.searchQuery.isNotEmpty
+                        ? IconButton(
+                          icon: const Icon(
+                            Icons.clear_rounded,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            cubit.clearSearch();
+                          },
+                        )
+                        : null,
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 0,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.5,
                   ),
                 ),
               ),
+            ),
+          ),
 
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 4,
-                ),
-                child: Text(
-                  'Total: ${state.totalRecords} almacenes',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            child: Text(
+              'Total: ${state.totalRecords} almacenes',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
+            ),
+          ),
 
-              // ─── LISTA DE ALMACENES ─────────────────────────────────────────────
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () => cubit.loadWarehouses(),
-                  color: AppColors.primary,
-                  child:
-                      state.isLoading
-                          ? const WarehousesSkeleton(itemCount: 5)
-                          : state.warehouses.isEmpty
-                          ? ListView(
-                              controller: _scrollController,
+          // ─── LISTA DE ALMACENES ─────────────────────────────────────────────
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () => cubit.loadWarehouses(),
+              color: AppColors.primary,
+              child:
+                  state.isLoading
+                      ? const WarehousesSkeleton(itemCount: 5)
+                      : state.warehouses.isEmpty
+                      ? ListView(
+                        controller: _scrollController,
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.2,
+                          ),
+                          Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                              SizedBox(
-                                height:
-                                    MediaQuery.of(context).size.height * 0.2,
-                              ),
-                              Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                Icon(
+                                  Icons.warehouse_outlined,
+                                  size: 60,
+                                  color: Colors.grey.shade300,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  state.searchQuery.isNotEmpty
+                                      ? 'No se encontraron almacenes'
+                                      : 'No hay almacenes registrados',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                      : ListView.builder(
+                        controller: _scrollController,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        itemCount: state.warehouses.length,
+                        itemBuilder: (context, index) {
+                          final wh = state.warehouses[index];
+                          return Card(
+                            elevation: 4,
+                            shadowColor: Colors.black.withValues(alpha: 0.2),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(color: Colors.grey.shade100),
+                            ),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap:
+                                  () => _showWarehouseForm(context, cubit, wh),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
                                   children: [
-                                    Icon(
-                                      Icons.warehouse_outlined,
-                                      size: 60,
-                                      color: Colors.grey.shade300,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      state.searchQuery.isNotEmpty
-                                          ? 'No se encontraron almacenes'
-                                          : 'No hay almacenes registrados',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade500,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
+                                    Container(
+                                      width: 46,
+                                      height: 46,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
+                                      child: const Icon(
+                                        Icons.store_mall_directory_rounded,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            wh.name,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 15,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.location_on_rounded,
+                                                size: 12,
+                                                color: Colors.grey.shade500,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Expanded(
+                                                child: Text(
+                                                  wh.address?.isNotEmpty == true
+                                                      ? wh.address!
+                                                      : 'Sin dirección registrada',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey.shade600,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                wh.isActive
+                                                    ? Colors.green.shade50
+                                                    : Colors.red.shade50,
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                            border: Border.all(
+                                              color:
+                                                  wh.isActive
+                                                      ? Colors.green.shade200
+                                                      : Colors.red.shade200,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            wh.isActive ? 'ACTIVO' : 'INACTIVO',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800,
+                                              color:
+                                                  wh.isActive
+                                                      ? Colors.green.shade700
+                                                      : Colors.red.shade700,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Switch(
+                                          value: wh.isActive,
+                                          onChanged: (val) {
+                                            cubit.toggleWarehouseStatus(
+                                              wh,
+                                              val,
+                                            );
+                                          },
+                                          activeThumbColor: AppColors.primary,
+                                          materialTapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
                               ),
-                            ],
-                          )
-                          : ListView.builder(
-                            controller: _scrollController,
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
                             ),
-                            itemCount: state.warehouses.length,
-                            itemBuilder: (context, index) {
-                              final wh = state.warehouses[index];
-                              return Card(
-                                elevation: 4,
-                                shadowColor: Colors.black.withValues(
-                                  alpha: 0.2,
-                                ),
-                                margin: const EdgeInsets.only(bottom: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  side: BorderSide(color: Colors.grey.shade100),
-                                ),
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(16),
-                                  onTap: () => _showWarehouseForm(context, cubit, wh),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 46,
-                                          height: 46,
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary.withValues(
-                                              alpha: 0.1,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: const Icon(
-                                            Icons.store_mall_directory_rounded,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                wh.name,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 15,
-                                                  color: Colors.black87,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.location_on_rounded,
-                                                    size: 12,
-                                                    color: Colors.grey.shade500,
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Expanded(
-                                                    child: Text(
-                                                      wh.address?.isNotEmpty ==
-                                                              true
-                                                          ? wh.address!
-                                                          : 'Sin dirección registrada',
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        color:
-                                                            Colors
-                                                                .grey
-                                                                .shade600,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
-                                          children: [
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 4,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color:
-                                                    wh.isActive
-                                                        ? Colors.green.shade50
-                                                        : Colors.red.shade50,
-                                                borderRadius:
-                                                    BorderRadius.circular(6),
-                                                border: Border.all(
-                                                  color:
-                                                      wh.isActive
-                                                          ? Colors
-                                                              .green
-                                                              .shade200
-                                                          : Colors.red.shade200,
-                                                ),
-                                              ),
-                                              child: Text(
-                                                wh.isActive
-                                                    ? 'ACTIVO'
-                                                    : 'INACTIVO',
-                                                style: TextStyle(
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w800,
-                                                  color:
-                                                      wh.isActive
-                                                          ? Colors
-                                                              .green
-                                                              .shade700
-                                                          : Colors.red.shade700,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Switch(
-                                              value: wh.isActive,
-                                              onChanged: (val) {
-                                                cubit.toggleWarehouseStatus(
-                                                  wh,
-                                                  val,
-                                                );
-                                              },
-                                              activeThumbColor:
-                                                  AppColors.primary,
-                                              materialTapTargetSize:
-                                                  MaterialTapTargetSize
-                                                      .shrinkWrap,
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                ),
-              ),
-
-              if (state.warehouses.isNotEmpty && state.totalPages > 1)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                  child: AdminPageBlocks(
-                    currentPage: state.currentPage,
-                    totalPages: state.totalPages,
-                    onPageChanged: (page) => cubit.changePage(page),
-                  ),
-                ),
-            ],
+                          );
+                        },
+                      ),
+            ),
           ),
+
+          if (state.warehouses.isNotEmpty && state.totalPages > 1)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+              child: AdminPageBlocks(
+                currentPage: state.currentPage,
+                totalPages: state.totalPages,
+                onPageChanged: (page) => cubit.changePage(page),
+              ),
+            ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showWarehouseForm(context, cubit),
         backgroundColor: AppColors.primary,
@@ -417,4 +405,3 @@ class _WarehousesManagementScreenState
     );
   }
 }
-

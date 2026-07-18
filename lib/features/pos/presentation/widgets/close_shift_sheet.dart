@@ -11,14 +11,23 @@ class CloseShiftSheet extends StatefulWidget {
   final CashShiftEntity shift;
   final double expectedAmount;
 
-  const CloseShiftSheet({super.key, required this.shift, required this.expectedAmount});
+  const CloseShiftSheet({
+    super.key,
+    required this.shift,
+    required this.expectedAmount,
+  });
 
-  static Future<bool?> show(BuildContext context, {required CashShiftEntity shift, required double expectedAmount}) {
+  static Future<bool?> show(
+    BuildContext context, {
+    required CashShiftEntity shift,
+    required double expectedAmount,
+  }) {
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => CloseShiftSheet(shift: shift, expectedAmount: expectedAmount),
+      builder:
+          (_) => CloseShiftSheet(shift: shift, expectedAmount: expectedAmount),
     );
   }
 
@@ -49,7 +58,12 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('No hay sesión activa');
 
-      final profileRes = await _supabase.from('profiles').select('id').eq('auth_user_id', user.id).maybeSingle();
+      final profileRes =
+          await _supabase
+              .from('profiles')
+              .select('id')
+              .eq('auth_user_id', user.id)
+              .maybeSingle();
       final profileId = profileRes?['id'] as String? ?? user.id;
 
       final actual = double.parse(_actualCtrl.text.replaceAll(',', '.'));
@@ -64,7 +78,10 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
             'expected_amount': widget.expectedAmount,
             'actual_amount': actual,
             'difference_amount': diff,
-            'notes': _notesCtrl.text.trim().isNotEmpty ? _notesCtrl.text.trim() : null,
+            'notes':
+                _notesCtrl.text.trim().isNotEmpty
+                    ? _notesCtrl.text.trim()
+                    : null,
           })
           .eq('id', widget.shift.id);
 
@@ -73,7 +90,11 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        AppSnackbar.show(context, message: 'Error al cerrar turno: $e', type: SnackbarType.error);
+        AppSnackbar.show(
+          context,
+          message: 'Error al cerrar turno: $e',
+          type: SnackbarType.error,
+        );
         setState(() => _saving = false);
       }
     }
@@ -124,30 +145,49 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
                 width: 40,
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(color: AppColors.textSecondary.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(
+                  color: AppColors.textSecondary.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
             Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: AppColors.danger.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.lock_clock_rounded, color: AppColors.danger, size: 22),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lock_clock_rounded,
+                    color: AppColors.danger,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 10),
-                const Text('Cerrar turno de caja', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                const Text(
+                  'Cerrar turno de caja',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                ),
               ],
             ),
             const SizedBox(height: 20),
 
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 children: [
                   _SummaryRow('Cuenta:', accountName),
                   const SizedBox(height: 8),
-                  _SummaryRow('Monto inicial:', 'S/ ${openingAmount.toStringAsFixed(2)}'),
+                  _SummaryRow(
+                    'Monto inicial:',
+                    'S/ ${openingAmount.toStringAsFixed(2)}',
+                  ),
                   const Divider(height: 16),
                   _SummaryRow(
                     'Saldo Esperado:',
@@ -163,22 +203,39 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
             _FieldLabel('Monto Físico/Real (S/)'),
             TextFormField(
               controller: _actualCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+              ],
               onChanged: _onAmountChanged,
               decoration: InputDecoration(
                 prefixText: 'S/ ',
                 isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 filled: true,
                 fillColor: AppColors.background,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.primary, width: 1.5)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+                ),
               ),
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Requerido';
-                if (double.tryParse(v.replaceAll(',', '.')) == null) return 'Inválido';
+                if (double.tryParse(v.replaceAll(',', '.')) == null)
+                  return 'Inválido';
                 return null;
               },
             ),
@@ -189,11 +246,26 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: _difference != null ? diffColor.withValues(alpha: 0.08) : AppColors.background,
+                color:
+                    _difference != null
+                        ? diffColor.withValues(alpha: 0.08)
+                        : AppColors.background,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _difference != null ? diffColor.withValues(alpha: 0.3) : AppColors.border),
+                border: Border.all(
+                  color:
+                      _difference != null
+                          ? diffColor.withValues(alpha: 0.3)
+                          : AppColors.border,
+                ),
               ),
-              child: Text(diffLabel, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: diffColor)),
+              child: Text(
+                diffLabel,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: diffColor,
+                ),
+              ),
             ),
             const SizedBox(height: 14),
 
@@ -205,12 +277,24 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
               decoration: InputDecoration(
                 hintText: 'Ej. Faltante por pago de pasajes...',
                 isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 filled: true,
                 fillColor: AppColors.background,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.primary, width: 1.5)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -223,11 +307,27 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
                   backgroundColor: AppColors.danger,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: _saving
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('Cerrar turno', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                child:
+                    _saving
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Text(
+                          'Cerrar turno',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
               ),
             ),
           ],
@@ -239,9 +339,12 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
 
 // ignore: non_constant_identifier_names
 Widget _FieldLabel(String text) => Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-    );
+  padding: const EdgeInsets.only(bottom: 6),
+  child: Text(
+    text,
+    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+  ),
+);
 
 class _SummaryRow extends StatelessWidget {
   final String label;
@@ -249,7 +352,12 @@ class _SummaryRow extends StatelessWidget {
   final bool isHighlight;
   final Color? color;
 
-  const _SummaryRow(this.label, this.value, {this.isHighlight = false, this.color});
+  const _SummaryRow(
+    this.label,
+    this.value, {
+    this.isHighlight = false,
+    this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -259,7 +367,8 @@ class _SummaryRow extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: isHighlight ? AppColors.textPrimary : AppColors.textSecondary,
+            color:
+                isHighlight ? AppColors.textPrimary : AppColors.textSecondary,
             fontWeight: isHighlight ? FontWeight.w700 : FontWeight.w500,
             fontSize: isHighlight ? 15 : 14,
           ),

@@ -7,7 +7,11 @@ class CartActionHeader extends StatelessWidget {
   final CartCubit cartCubit;
   final CartState cartState;
 
-  const CartActionHeader({super.key, required this.cartCubit, required this.cartState});
+  const CartActionHeader({
+    super.key,
+    required this.cartCubit,
+    required this.cartState,
+  });
 
   @override
   Widget build(BuildContext context) {

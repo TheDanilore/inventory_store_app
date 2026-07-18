@@ -111,18 +111,19 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                               Icons.search_rounded,
                               color: Colors.grey.shade400,
                             ),
-                            suffixIcon: _searchCtrl.text.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(
-                                      Icons.clear_rounded,
-                                      color: Colors.grey,
-                                    ),
-                                    onPressed: () {
-                                      _searchCtrl.clear();
-                                      setState(() {});
-                                    },
-                                  )
-                                : null,
+                            suffixIcon:
+                                _searchCtrl.text.isNotEmpty
+                                    ? IconButton(
+                                      icon: const Icon(
+                                        Icons.clear_rounded,
+                                        color: Colors.grey,
+                                      ),
+                                      onPressed: () {
+                                        _searchCtrl.clear();
+                                        setState(() {});
+                                      },
+                                    )
+                                    : null,
                             filled: true,
                             fillColor: Colors.grey.shade50,
                             contentPadding: const EdgeInsets.symmetric(
@@ -131,11 +132,15 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide(color: Colors.grey.shade200),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade200,
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide(color: Colors.grey.shade200),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade200,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -195,7 +200,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                 ],
               ),
             ),
-  
+
             // ─── TABS ──────────────────────────────────────────────────────────
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -233,7 +238,10 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                         tabs: [
                           Tab(
                             iconMargin: const EdgeInsets.only(bottom: 6),
-                            icon: const Icon(Icons.people_outline_rounded, size: 20),
+                            icon: const Icon(
+                              Icons.people_outline_rounded,
+                              size: 20,
+                            ),
                             text: 'Clientes (${state.customerTotal})',
                           ),
                           Tab(
@@ -256,7 +264,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                 ),
               ),
             ),
-  
+
             // ─── LISTAS ────────────────────────────────────────────────────────
             Expanded(
               child: TabBarView(
@@ -303,7 +311,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
             String initialRole = AppRoles.customer;
             if (_tabController.index == 1) initialRole = AppRoles.admin;
             if (_tabController.index == 2) initialRole = AppRoles.employee;
-  
+
             final changed = await context.push<bool?>(
               '/admin/user-form',
               extra: {'initialRole': initialRole},
@@ -319,15 +327,16 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
             builder: (context, isExtended, _) {
               return AnimatedSize(
                 duration: const Duration(milliseconds: 200),
-                child: isExtended
-                    ? const Text(
-                        'Nuevo',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+                child:
+                    isExtended
+                        ? const Text(
+                          'Nuevo',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                        : const SizedBox.shrink(),
               );
             },
           ),

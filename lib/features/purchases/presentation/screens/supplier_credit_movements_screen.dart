@@ -34,13 +34,15 @@ class SupplierCreditMovementsScreen extends StatefulWidget {
 
 class _SupplierCreditMovementsScreenState
     extends State<SupplierCreditMovementsScreen> {
-  
   bool _sameDay(DateTime? a, DateTime? b) {
     if (a == null || b == null) return false;
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  void _showFilterSheet(BuildContext context, MovementDateFilter currentFilter) {
+  void _showFilterSheet(
+    BuildContext context,
+    MovementDateFilter currentFilter,
+  ) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -61,33 +63,42 @@ class _SupplierCreditMovementsScreenState
               ListTile(
                 leading: const Icon(Icons.date_range),
                 title: const Text('Este mes'),
-                trailing: currentFilter == MovementDateFilter.thisMonth
-                    ? const Icon(Icons.check, color: AppColors.primary)
-                    : null,
+                trailing:
+                    currentFilter == MovementDateFilter.thisMonth
+                        ? const Icon(Icons.check, color: AppColors.primary)
+                        : null,
                 onTap: () {
-                  context.read<SupplierCreditMovementsCubit>().setDateFilter(MovementDateFilter.thisMonth);
+                  context.read<SupplierCreditMovementsCubit>().setDateFilter(
+                    MovementDateFilter.thisMonth,
+                  );
                   Navigator.pop(context);
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.history),
                 title: const Text('Mes pasado'),
-                trailing: currentFilter == MovementDateFilter.lastMonth
-                    ? const Icon(Icons.check, color: AppColors.primary)
-                    : null,
+                trailing:
+                    currentFilter == MovementDateFilter.lastMonth
+                        ? const Icon(Icons.check, color: AppColors.primary)
+                        : null,
                 onTap: () {
-                  context.read<SupplierCreditMovementsCubit>().setDateFilter(MovementDateFilter.lastMonth);
+                  context.read<SupplierCreditMovementsCubit>().setDateFilter(
+                    MovementDateFilter.lastMonth,
+                  );
                   Navigator.pop(context);
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.all_inclusive),
                 title: const Text('Todo el historial'),
-                trailing: currentFilter == MovementDateFilter.allTime
-                    ? const Icon(Icons.check, color: AppColors.primary)
-                    : null,
+                trailing:
+                    currentFilter == MovementDateFilter.allTime
+                        ? const Icon(Icons.check, color: AppColors.primary)
+                        : null,
                 onTap: () {
-                  context.read<SupplierCreditMovementsCubit>().setDateFilter(MovementDateFilter.allTime);
+                  context.read<SupplierCreditMovementsCubit>().setDateFilter(
+                    MovementDateFilter.allTime,
+                  );
                   Navigator.pop(context);
                 },
               ),
@@ -100,7 +111,10 @@ class _SupplierCreditMovementsScreenState
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<SupplierCreditMovementsCubit, SupplierCreditMovementsState>(
+    return BlocListener<
+      SupplierCreditMovementsCubit,
+      SupplierCreditMovementsState
+    >(
       listener: (context, state) {
         if (state is SupplierCreditMovementsError) {
           AppSnackbar.show(
@@ -112,7 +126,8 @@ class _SupplierCreditMovementsScreenState
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.transparent, // Inherited from AdminLayout in app_router
+        backgroundColor:
+            Colors.transparent, // Inherited from AdminLayout in app_router
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -126,15 +141,23 @@ class _SupplierCreditMovementsScreenState
             ),
           ),
           actions: [
-            BlocBuilder<SupplierCreditMovementsCubit, SupplierCreditMovementsState>(
+            BlocBuilder<
+              SupplierCreditMovementsCubit,
+              SupplierCreditMovementsState
+            >(
               builder: (context, state) {
-                final isExporting = state is SupplierCreditMovementsLoading && state.currentMovements.isNotEmpty; // Roughly indicates working if not initial load
-                final currentFilter = state is SupplierCreditMovementsLoaded 
-                    ? state.dateFilter 
-                    : (state is SupplierCreditMovementsLoading 
-                        ? state.dateFilter 
-                        : MovementDateFilter.thisMonth);
-                
+                final isExporting =
+                    state is SupplierCreditMovementsLoading &&
+                    state
+                        .currentMovements
+                        .isNotEmpty; // Roughly indicates working if not initial load
+                final currentFilter =
+                    state is SupplierCreditMovementsLoaded
+                        ? state.dateFilter
+                        : (state is SupplierCreditMovementsLoading
+                            ? state.dateFilter
+                            : MovementDateFilter.thisMonth);
+
                 if (isExporting) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16.0),
@@ -147,33 +170,51 @@ class _SupplierCreditMovementsScreenState
                     ),
                   );
                 }
-                
+
                 return PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: AppColors.textPrimary),
+                  icon: const Icon(
+                    Icons.more_vert,
+                    color: AppColors.textPrimary,
+                  ),
                   onSelected: (value) {
                     if (value == 'export') {
-                      context.read<SupplierCreditMovementsCubit>().exportToPdf();
+                      context
+                          .read<SupplierCreditMovementsCubit>()
+                          .exportToPdf();
                     } else if (value == 'filter') {
                       _showFilterSheet(context, currentFilter);
                     }
                   },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'export', child: Text('Exportar a PDF')),
-                    const PopupMenuItem(value: 'filter', child: Text('Filtrar por fecha')),
-                  ],
+                  itemBuilder:
+                      (context) => [
+                        const PopupMenuItem(
+                          value: 'export',
+                          child: Text('Exportar a PDF'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'filter',
+                          child: Text('Filtrar por fecha'),
+                        ),
+                      ],
                 );
               },
             ),
           ],
         ),
-        body: BlocBuilder<SupplierCreditMovementsCubit, SupplierCreditMovementsState>(
+        body: BlocBuilder<
+          SupplierCreditMovementsCubit,
+          SupplierCreditMovementsState
+        >(
           builder: (context, state) {
-            final debtPercent = widget.creditLimit > 0
-                ? (widget.currentDebt / widget.creditLimit).clamp(0.0, 1.0)
-                : 0.0;
+            final debtPercent =
+                widget.creditLimit > 0
+                    ? (widget.currentDebt / widget.creditLimit).clamp(0.0, 1.0)
+                    : 0.0;
 
-            final isLoading = state is SupplierCreditMovementsLoading || state is SupplierCreditMovementsInitial;
-            
+            final isLoading =
+                state is SupplierCreditMovementsLoading ||
+                state is SupplierCreditMovementsInitial;
+
             List<SupplierCreditMovementEntity> movements = [];
             double totalCharged = 0.0;
             double totalPaid = 0.0;
@@ -191,17 +232,22 @@ class _SupplierCreditMovementsScreenState
               totalCharged = state.totalCharged;
               totalPaid = state.totalPaid;
               currentPage = state.currentPage;
-              totalPages = state.totalCount == 0 ? 1 : (state.totalCount / 10).ceil();
+              totalPages =
+                  state.totalCount == 0 ? 1 : (state.totalCount / 10).ceil();
             } else if (state is SupplierCreditMovementsError) {
               movements = state.currentMovements;
               totalCharged = state.totalCharged;
               totalPaid = state.totalPaid;
               currentPage = state.currentPage;
-              totalPages = state.totalCount == 0 ? 1 : (state.totalCount / 10).ceil();
+              totalPages =
+                  state.totalCount == 0 ? 1 : (state.totalCount / 10).ceil();
             }
 
             return RefreshIndicator(
-              onRefresh: () => context.read<SupplierCreditMovementsCubit>().loadMovements(refresh: true),
+              onRefresh:
+                  () => context
+                      .read<SupplierCreditMovementsCubit>()
+                      .loadMovements(refresh: true),
               child: Column(
                 children: [
                   Expanded(
@@ -247,9 +293,13 @@ class _SupplierCreditMovementsScreenState
                           SliverPadding(
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                             sliver: SliverList(
-                              delegate: SliverChildBuilderDelegate((context, index) {
+                              delegate: SliverChildBuilderDelegate((
+                                context,
+                                index,
+                              ) {
                                 final movement = movements[index];
-                                final showDateLabel = index == 0 ||
+                                final showDateLabel =
+                                    index == 0 ||
                                     !_sameDay(
                                       movement.createdAt,
                                       movements[index - 1].createdAt,
@@ -281,7 +331,10 @@ class _SupplierCreditMovementsScreenState
                       child: AdminPageBlocks(
                         currentPage: currentPage,
                         totalPages: totalPages,
-                        onPageChanged: context.read<SupplierCreditMovementsCubit>().setPage,
+                        onPageChanged:
+                            context
+                                .read<SupplierCreditMovementsCubit>()
+                                .setPage,
                       ),
                     ),
                 ],
@@ -404,6 +457,3 @@ class _MovementsSkeleton extends StatelessWidget {
     );
   }
 }
-
-
-

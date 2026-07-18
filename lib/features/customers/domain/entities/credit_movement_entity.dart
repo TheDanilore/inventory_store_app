@@ -36,19 +36,19 @@ class CreditMovementEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        customerCreditId,
-        orderId,
-        movementType,
-        amount,
-        paymentMethod,
-        notes,
-        createdAt,
-        createdBy,
-        createdByName,
-        customerName,
-        orderPaymentMethod,
-        orderTotalAmount,
-        orderNumber,
-      ];
+    id,
+    customerCreditId,
+    orderId,
+    movementType,
+    amount,
+    paymentMethod,
+    notes,
+    createdAt,
+    createdBy,
+    createdByName,
+    customerName,
+    orderPaymentMethod,
+    orderTotalAmount,
+    orderNumber,
+  ];
 }

@@ -35,16 +35,16 @@ class VariantDraftFormModel {
     List<String>? urlsExistentes,
     List<Uint8List>? nuevasImagenes,
     this.isActive = true,
-  })  : sku = sku ?? '',
-        barcode = barcode ?? '',
-        price = price ?? '',
-        wholesalePrice = wholesalePrice ?? '',
-        wholesaleMinQuantity = wholesaleMinQuantity ?? '',
-        reorderPoint = reorderPoint ?? '3',
-        unitCost = unitCost ?? '',
-        selectedAttributes = selectedAttributes ?? const [],
-        urlsExistentes = urlsExistentes ?? const [],
-        nuevasImagenes = nuevasImagenes ?? const [];
+  }) : sku = sku ?? '',
+       barcode = barcode ?? '',
+       price = price ?? '',
+       wholesalePrice = wholesalePrice ?? '',
+       wholesaleMinQuantity = wholesaleMinQuantity ?? '',
+       reorderPoint = reorderPoint ?? '3',
+       unitCost = unitCost ?? '',
+       selectedAttributes = selectedAttributes ?? const [],
+       urlsExistentes = urlsExistentes ?? const [],
+       nuevasImagenes = nuevasImagenes ?? const [];
 
   factory VariantDraftFormModel.fromEntity(VariantDraftEntity variant) {
     return VariantDraftFormModel(
@@ -85,7 +85,8 @@ class VariantDraftFormModel {
       wholesaleMinQuantity: wholesaleMinQuantity ?? this.wholesaleMinQuantity,
       reorderPoint: reorderPoint ?? this.reorderPoint,
       unitCost: unitCost ?? this.unitCost,
-      selectedAttributes: selectedAttributes ?? List.of(this.selectedAttributes),
+      selectedAttributes:
+          selectedAttributes ?? List.of(this.selectedAttributes),
       isActive: isActive ?? this.isActive,
       nuevasImagenes: nuevasImagenes ?? List.of(this.nuevasImagenes),
       urlsExistentes: urlsExistentes ?? List.of(this.urlsExistentes),

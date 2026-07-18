@@ -10,7 +10,10 @@ class GetTodayCheckinUC {
 
   GetTodayCheckinUC(this.repository);
 
-  Future<Either<Failure, DailyCheckinEntity?>> call(String profileId, String todayDate) async {
+  Future<Either<Failure, DailyCheckinEntity?>> call(
+    String profileId,
+    String todayDate,
+  ) async {
     return await repository.getTodayCheckin(profileId, todayDate);
   }
 }

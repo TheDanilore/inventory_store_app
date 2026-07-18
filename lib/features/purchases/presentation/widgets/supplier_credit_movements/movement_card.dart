@@ -162,4 +162,3 @@ class _MethodChip extends StatelessWidget {
     );
   }
 }
-

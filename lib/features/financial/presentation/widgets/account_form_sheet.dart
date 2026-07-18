@@ -10,7 +10,10 @@ class AccountFormSheet extends StatefulWidget {
   final FinancialAccountEntity? account;
   const AccountFormSheet({super.key, this.account});
 
-  static Future<bool?> show(BuildContext context, {FinancialAccountEntity? account}) {
+  static Future<bool?> show(
+    BuildContext context, {
+    FinancialAccountEntity? account,
+  }) {
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -58,8 +61,9 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     setState(() => _saving = true);
 
     try {
-      final balance = double.tryParse(_balanceCtrl.text.replaceAll(',', '.')) ?? 0.0;
-      
+      final balance =
+          double.tryParse(_balanceCtrl.text.replaceAll(',', '.')) ?? 0.0;
+
       await context.read<FinancialAccountsCubit>().saveAccount(
         name: _nameCtrl.text.trim(),
         type: _type,
@@ -119,47 +123,66 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
               controller: _nameCtrl,
               decoration: _inputDeco('Ej: Caja principal'),
               textCapitalization: TextCapitalization.sentences,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+              validator:
+                  (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
             ),
             const SizedBox(height: 14),
 
             _FieldLabel('Tipo'),
             Wrap(
               spacing: 8,
-              children: _types.map((t) {
-                final selected = _type == t;
-                return GestureDetector(
-                  onTap: () => setState(() => _type = t),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: selected ? AppColors.primary : AppColors.surface,
-                      borderRadius: BorderRadius.circular(10),
-                      border: selected ? null : Border.all(color: AppColors.textSecondary.withValues(alpha: 0.2)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _accountTypeIcon(t),
-                          size: 14,
-                          color: selected ? Colors.white : AppColors.textSecondary,
+              children:
+                  _types.map((t) {
+                    final selected = _type == t;
+                    return GestureDetector(
+                      onTap: () => setState(() => _type = t),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
                         ),
-                        const SizedBox(width: 5),
-                        Text(
-                          t,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color: selected ? Colors.white : AppColors.textSecondary,
-                          ),
+                        decoration: BoxDecoration(
+                          color:
+                              selected ? AppColors.primary : AppColors.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border:
+                              selected
+                                  ? null
+                                  : Border.all(
+                                    color: AppColors.textSecondary.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                  ),
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _accountTypeIcon(t),
+                              size: 14,
+                              color:
+                                  selected
+                                      ? Colors.white
+                                      : AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              t,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color:
+                                    selected
+                                        ? Colors.white
+                                        : AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
             ),
             const SizedBox(height: 14),
 
@@ -168,8 +191,12 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
               TextFormField(
                 controller: _balanceCtrl,
                 decoration: _inputDeco('0.00'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                ],
               ),
               const SizedBox(height: 14),
             ],
@@ -183,11 +210,17 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                       children: [
                         const Text(
                           'Estado',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
                         ),
                         Text(
                           _isActive ? 'Cuenta activa' : 'Cuenta inactiva',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -210,18 +243,27 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: _saving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : Text(
-                        _isEditing ? 'Guardar cambios' : 'Crear cuenta',
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                      ),
+                child:
+                    _saving
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : Text(
+                          _isEditing ? 'Guardar cambios' : 'Crear cuenta',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
               ),
             ),
           ],
@@ -244,23 +286,23 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   }
 
   InputDecoration _inputDeco(String hint) => InputDecoration(
-        hintText: hint,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        filled: true,
-        fillColor: AppColors.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      );
+    hintText: hint,
+    isDense: true,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    filled: true,
+    fillColor: AppColors.surface,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+  );
 }
 
 // ignore: non_constant_identifier_names
 Widget _FieldLabel(String text) => Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-      ),
-    );
+  padding: const EdgeInsets.only(bottom: 6),
+  child: Text(
+    text,
+    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+  ),
+);

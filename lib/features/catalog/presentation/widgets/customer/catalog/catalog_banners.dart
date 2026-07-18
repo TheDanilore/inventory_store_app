@@ -13,7 +13,6 @@ class CatalogWelcomeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       height: 160,

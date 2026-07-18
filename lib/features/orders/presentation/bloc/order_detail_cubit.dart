@@ -19,14 +19,16 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
   }) : super(const OrderDetailState());
 
   void setInitialOrder(OrderEntity order) {
-    emit(state.copyWith(
-      order: order,
-      selectedCustomerId: order.customerId,
-      currentStatus: order.status,
-      pointsUsed: order.pointsUsed,
-      pointsEarned: order.pointsEarned,
-      paymentMethod: order.paymentMethod,
-    ));
+    emit(
+      state.copyWith(
+        order: order,
+        selectedCustomerId: order.customerId,
+        currentStatus: order.status,
+        pointsUsed: order.pointsUsed,
+        pointsEarned: order.pointsEarned,
+        paymentMethod: order.paymentMethod,
+      ),
+    );
   }
 
   void setWasModified() {
@@ -214,9 +216,6 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     final s = state.currentStatus.toUpperCase();
     return s != 'CANCELLED' && s != 'COMPLETED' && s != 'RETURNED';
   }
-
-
-  
 
   Future<List<BatchAssignmentModel>> fetchAvailableBatches(
     String variantId,

@@ -11,14 +11,17 @@ class FetchSupplierCreditMovementsUseCase {
   FetchSupplierCreditMovementsUseCase(this.repository);
 
   Future<
-      Either<
-          Failure,
-          ({
-            List<SupplierCreditMovementEntity> movements,
-            int totalCount,
-            double totalCharged,
-            double totalPaid,
-          })>> call({
+    Either<
+      Failure,
+      ({
+        List<SupplierCreditMovementEntity> movements,
+        int totalCount,
+        double totalCharged,
+        double totalPaid,
+      })
+    >
+  >
+  call({
     required String creditId,
     required int page,
     required int pageSize,
@@ -32,4 +35,3 @@ class FetchSupplierCreditMovementsUseCase {
     );
   }
 }
-

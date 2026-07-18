@@ -20,15 +20,15 @@ class ClearCartUseCase extends UseCase<Unit, ClearCartParams> {
   Future<Either<Failure, Unit>> call(ClearCartParams params) async {
     // Primero limpiar local
     final localResult = await repository.clearLocalCart(params.cartType);
-    
-    return localResult.fold(
-      (l) => left(l),
-      (r) async {
-        if (params.profileId != null) {
-          return await repository.clearCloudCart(params.cartType, params.profileId!);
-        }
-        return right(unit);
-      },
-    );
+
+    return localResult.fold((l) => left(l), (r) async {
+      if (params.profileId != null) {
+        return await repository.clearCloudCart(
+          params.cartType,
+          params.profileId!,
+        );
+      }
+      return right(unit);
+    });
   }
 }

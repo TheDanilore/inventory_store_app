@@ -39,7 +39,7 @@ class _UserCardState extends State<UserCard> {
     if (mounted) {
       setState(() => _isToggling = false);
       // We rely on the Bloc Listener in the parent screen to show snackbars if needed,
-      // or we could show them here if we had a way to wait for the exact result, 
+      // or we could show them here if we had a way to wait for the exact result,
       // but toggleUserStatus handles the error emitting.
     }
   }

@@ -39,11 +39,14 @@ class UsersRepositoryImpl implements UsersRepository {
       final start = page * pageSize;
       final end = start + pageSize - 1;
 
-      final response = await query.order('created_at', ascending: false).range(start, end);
+      final response = await query
+          .order('created_at', ascending: false)
+          .range(start, end);
 
-      final List<UserEntity> users = (response as List)
-          .map((json) => UserModel.fromJson(json as Map<String, dynamic>))
-          .toList();
+      final List<UserEntity> users =
+          (response as List)
+              .map((json) => UserModel.fromJson(json as Map<String, dynamic>))
+              .toList();
 
       return Right(users);
     } catch (e) {
@@ -55,7 +58,9 @@ class UsersRepositoryImpl implements UsersRepository {
   }
 
   @override
-  Future<Either<Failure, int>> getGlobalUsersCount({required String role}) async {
+  Future<Either<Failure, int>> getGlobalUsersCount({
+    required String role,
+  }) async {
     try {
       final response = await _supabase
           .from('profiles_with_email')
@@ -65,22 +70,27 @@ class UsersRepositoryImpl implements UsersRepository {
 
       return Right(response.count);
     } catch (e) {
-      return Left(ServerFailure(message: 'Error al cargar conteo de usuarios.'));
+      return Left(
+        ServerFailure(message: 'Error al cargar conteo de usuarios.'),
+      );
     }
   }
 
   @override
   Future<Either<Failure, UserEntity>> getUserById(String id) async {
     try {
-      final response = await _supabase
-          .from('profiles_with_email')
-          .select('*')
-          .eq('id', id)
-          .single();
+      final response =
+          await _supabase
+              .from('profiles_with_email')
+              .select('*')
+              .eq('id', id)
+              .single();
 
       return Right(UserModel.fromJson(response));
     } catch (e) {
-      return Left(ServerFailure(message: 'Error al cargar detalles del usuario.'));
+      return Left(
+        ServerFailure(message: 'Error al cargar detalles del usuario.'),
+      );
     }
   }
 
@@ -109,13 +119,19 @@ class UsersRepositoryImpl implements UsersRepository {
       );
 
       if (response.status != 200) {
-        return Left(ServerFailure(message: 'Error al crear usuario: ${response.data}'));
+        return Left(
+          ServerFailure(message: 'Error al crear usuario: ${response.data}'),
+        );
       }
 
       return const Right(null);
     } catch (e) {
       if (e.toString().contains('already been registered')) {
-        return Left(ServerFailure(message: 'Este correo ya está registrado en el sistema.'));
+        return Left(
+          ServerFailure(
+            message: 'Este correo ya está registrado en el sistema.',
+          ),
+        );
       }
       return Left(ServerFailure(message: 'Error al crear usuario.'));
     }
@@ -133,26 +149,30 @@ class UsersRepositoryImpl implements UsersRepository {
     String? newPassword,
   }) async {
     try {
-      await _supabase.from('profiles').update({
-        'full_name': fullName,
-        'phone': phone,
-        'document_type': documentType,
-        'document_number': documentNumber,
-        'role': role,
-        'is_active': isActive,
-      }).eq('id', id);
+      await _supabase
+          .from('profiles')
+          .update({
+            'full_name': fullName,
+            'phone': phone,
+            'document_type': documentType,
+            'document_number': documentNumber,
+            'role': role,
+            'is_active': isActive,
+          })
+          .eq('id', id);
 
       if (newPassword != null && newPassword.trim().isNotEmpty) {
         final passResponse = await _supabase.functions.invoke(
           'actualizar-password',
-          body: {
-            'user_id': id,
-            'new_password': newPassword.trim(),
-          },
+          body: {'user_id': id, 'new_password': newPassword.trim()},
         );
 
         if (passResponse.status != 200) {
-          return Left(ServerFailure(message: 'Perfil actualizado pero falló la contraseña.'));
+          return Left(
+            ServerFailure(
+              message: 'Perfil actualizado pero falló la contraseña.',
+            ),
+          );
         }
       }
 
@@ -166,11 +186,15 @@ class UsersRepositoryImpl implements UsersRepository {
   Future<Either<Failure, void>> deleteUser(String id) async {
     // Lógica para deshabilitar o eliminar, asumo que aquí no se borra duro
     // O tal vez no había, lo pondré como no implementado por ahora
-    return Left(ServerFailure(message: 'Eliminación dura no permitida. Inactívalo.'));
+    return Left(
+      ServerFailure(message: 'Eliminación dura no permitida. Inactívalo.'),
+    );
   }
 
   @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> getRecentMovements(String userId) async {
+  Future<Either<Failure, List<Map<String, dynamic>>>> getRecentMovements(
+    String userId,
+  ) async {
     try {
       final res = await _supabase
           .from('wallet_movements')

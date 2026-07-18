@@ -29,15 +29,15 @@ class SupplierCreditEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        creditId,
-        supplierId,
-        supplierName,
-        supplierTaxId,
-        supplierPhone,
-        creditLimit,
-        currentDebt,
-        isActive,
-      ];
+    creditId,
+    supplierId,
+    supplierName,
+    supplierTaxId,
+    supplierPhone,
+    creditLimit,
+    currentDebt,
+    isActive,
+  ];
 }
 
 class SupplierFinancialAccountOption {

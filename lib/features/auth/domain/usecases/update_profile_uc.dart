@@ -19,6 +19,9 @@ class UpdateProfileUseCase implements UseCase<UserEntity, UpdateProfileParams> {
 
   @override
   Future<Either<Failure, UserEntity>> call(UpdateProfileParams params) async {
-    return repository.updateProfile(user: params.user, imageBytes: params.imageBytes);
+    return repository.updateProfile(
+      user: params.user,
+      imageBytes: params.imageBytes,
+    );
   }
 }

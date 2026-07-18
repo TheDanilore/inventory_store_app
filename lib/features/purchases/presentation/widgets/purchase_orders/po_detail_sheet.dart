@@ -583,6 +583,3 @@ class _StickyFooter extends StatelessWidget {
     return const SizedBox.shrink(key: ValueKey('none'));
   }
 }
-
-
-

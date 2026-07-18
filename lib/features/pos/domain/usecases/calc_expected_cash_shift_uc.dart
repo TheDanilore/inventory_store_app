@@ -17,7 +17,8 @@ class CalcExpectedCashShiftParams {
 }
 
 @lazySingleton
-class CalcExpectedCashShiftUseCase implements UseCase<double, CalcExpectedCashShiftParams> {
+class CalcExpectedCashShiftUseCase
+    implements UseCase<double, CalcExpectedCashShiftParams> {
   final CashShiftRepository repository;
 
   CalcExpectedCashShiftUseCase(this.repository);

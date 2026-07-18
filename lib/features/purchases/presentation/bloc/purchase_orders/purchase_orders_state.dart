@@ -30,14 +30,14 @@ class PurchaseOrdersLoading extends PurchaseOrdersState {
 
   @override
   List<Object?> get props => [
-        currentOrders,
-        searchText,
-        statusFilter,
-        startDate,
-        endDate,
-        currentPage,
-        totalCount,
-      ];
+    currentOrders,
+    searchText,
+    statusFilter,
+    startDate,
+    endDate,
+    currentPage,
+    totalCount,
+  ];
 }
 
 class PurchaseOrdersLoaded extends PurchaseOrdersState {
@@ -83,14 +83,14 @@ class PurchaseOrdersLoaded extends PurchaseOrdersState {
 
   @override
   List<Object?> get props => [
-        orders,
-        searchText,
-        statusFilter,
-        startDate,
-        endDate,
-        currentPage,
-        totalCount,
-      ];
+    orders,
+    searchText,
+    statusFilter,
+    startDate,
+    endDate,
+    currentPage,
+    totalCount,
+  ];
 }
 
 class PurchaseOrdersError extends PurchaseOrdersState {
@@ -116,13 +116,13 @@ class PurchaseOrdersError extends PurchaseOrdersState {
 
   @override
   List<Object?> get props => [
-        message,
-        currentOrders,
-        searchText,
-        statusFilter,
-        startDate,
-        endDate,
-        currentPage,
-        totalCount,
-      ];
+    message,
+    currentOrders,
+    searchText,
+    statusFilter,
+    startDate,
+    endDate,
+    currentPage,
+    totalCount,
+  ];
 }

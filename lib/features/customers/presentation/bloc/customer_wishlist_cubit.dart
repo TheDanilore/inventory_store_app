@@ -47,10 +47,12 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
         offset: currentItems.length,
       );
 
-      emit(CustomerWishlistLoaded(
-        items: reset ? fetched : [...currentItems, ...fetched],
-        hasReachedMax: fetched.length < _limit,
-      ));
+      emit(
+        CustomerWishlistLoaded(
+          items: reset ? fetched : [...currentItems, ...fetched],
+          hasReachedMax: fetched.length < _limit,
+        ),
+      );
     } catch (e) {
       emit(CustomerWishlistError('No se pudo cargar la lista de deseos: $e'));
     }
@@ -59,9 +61,9 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
   Future<void> removeFromWishlist(WishlistEntryEntity entry) async {
     final profileIdResult = await _getCurrentProfileIdUseCase();
     final profileId = profileIdResult.fold((l) => null, (r) => r);
-    
+
     if (profileId == null) return;
-    
+
     final currentState = state;
     if (currentState is CustomerWishlistLoaded) {
       try {
@@ -69,9 +71,10 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
           profileId: profileId,
           productId: entry.product.id,
         );
-        final updated = currentState.items
-            .where((i) => i.wishlistId != entry.wishlistId)
-            .toList();
+        final updated =
+            currentState.items
+                .where((i) => i.wishlistId != entry.wishlistId)
+                .toList();
         emit(currentState.copyWith(items: updated));
       } catch (e) {
         emit(CustomerWishlistError(e.toString()));

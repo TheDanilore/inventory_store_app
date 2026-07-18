@@ -12,7 +12,7 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
 
   @override
   Future<Either<Failure, ({List<SupplierEntity> suppliers, int totalCount})>>
-      fetchSuppliers({
+  fetchSuppliers({
     required int page,
     required int pageSize,
     String searchQuery = '',
@@ -36,9 +36,10 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
           .count(CountOption.exact);
 
       final totalCount = response.count;
-      final list = (response.data as List)
-          .map((e) => SupplierModel.fromJson(e))
-          .toList();
+      final list =
+          (response.data as List)
+              .map((e) => SupplierModel.fromJson(e))
+              .toList();
 
       return Right((suppliers: list, totalCount: totalCount));
     } catch (e) {
@@ -48,7 +49,9 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
 
   @override
   Future<Either<Failure, void>> toggleSupplierStatus(
-      String supplierId, bool currentStatus) async {
+    String supplierId,
+    bool currentStatus,
+  ) async {
     try {
       await _supabase
           .from('suppliers')
@@ -60,6 +63,3 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
     }
   }
 }
-
-
-

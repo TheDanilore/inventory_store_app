@@ -138,8 +138,12 @@ class AppRouter {
           builder:
               (context, state, child) => MultiBlocProvider(
                 providers: [
-                  BlocProvider(create: (_) => sl<AdminCatalogCubit>()..loadInitialData()),
-                  BlocProvider(create: (_) => sl<CartCubit>()..initCart(cartType: 'pos')),
+                  BlocProvider(
+                    create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
+                  ),
+                  BlocProvider(
+                    create: (_) => sl<CartCubit>()..initCart(cartType: 'pos'),
+                  ),
                 ],
                 child: child,
               ),
@@ -185,12 +189,17 @@ class AppRouter {
           builder:
               (context, state, navigationShell) => MultiBlocProvider(
                 providers: [
-                  BlocProvider(create: (_) => sl<CartCubit>()..initCart(cartType: 'customer')),
+                  BlocProvider(
+                    create:
+                        (_) => sl<CartCubit>()..initCart(cartType: 'customer'),
+                  ),
                 ],
                 child: CustomerLayout(
-                  title: 'Danilore Store', 
-                  body: navigationShell, 
-                  showAppBar: navigationShell.currentIndex == 1, // Only show for Cart
+                  title: 'Danilore Store',
+                  body: navigationShell,
+                  showAppBar:
+                      navigationShell.currentIndex !=
+                      0, // Show for all except Catalog
                   showWalletChip: true,
                   showCartIcon: false,
                   showProfileIcon: false,
@@ -216,15 +225,19 @@ class AppRouter {
                             context: context,
                             isScrollControlled: true,
                             backgroundColor: Colors.transparent,
-                            builder: (_) => Padding(
-                              padding: EdgeInsets.only(
-                                bottom: MediaQuery.of(context).viewInsets.bottom,
-                              ),
-                              child: CartVariantPickerSheet(
-                                cartCubit: context.read<CartCubit>(),
-                                product: product,
-                              ),
-                            ),
+                            builder:
+                                (_) => Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom:
+                                        MediaQuery.of(
+                                          context,
+                                        ).viewInsets.bottom,
+                                  ),
+                                  child: CartVariantPickerSheet(
+                                    cartCubit: context.read<CartCubit>(),
+                                    product: product,
+                                  ),
+                                ),
                           );
                         },
                       ),

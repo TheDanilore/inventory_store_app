@@ -72,9 +72,10 @@ class CartItemModel {
   }
 
   factory CartItemModel.fromJson(Map<String, dynamic> json) {
-    final product = ProductModel.fromJson(
-      json['product'] as Map<String, dynamic>,
-    ).toEntity();
+    final product =
+        ProductModel.fromJson(
+          json['product'] as Map<String, dynamic>,
+        ).toEntity();
     return CartItemModel(
       product: product,
       quantity: (json['quantity'] as num).toInt(),
@@ -124,6 +125,7 @@ class CartItemModel {
       isSelected: isSelected ?? this.isSelected,
     );
   }
+
   CartItemEntity toEntity() {
     return CartItemEntity(
       productId: product.id,

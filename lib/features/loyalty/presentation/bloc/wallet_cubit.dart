@@ -9,11 +9,7 @@ class WalletState {
   final bool isLoading;
   final String? error;
 
-  const WalletState({
-    this.balance,
-    this.isLoading = false,
-    this.error,
-  });
+  const WalletState({this.balance, this.isLoading = false, this.error});
 
   bool get hasBalance => balance != null;
 
@@ -42,8 +38,8 @@ class WalletCubit extends Cubit<WalletState> {
   WalletCubit({
     required this.getWalletBalanceUC,
     required SupabaseClient supabase,
-  })  : _supabase = supabase,
-        super(const WalletState()) {
+  }) : _supabase = supabase,
+       super(const WalletState()) {
     _init();
 
     _authSub = _supabase.auth.onAuthStateChange.listen((event) {
@@ -71,11 +67,13 @@ class WalletCubit extends Cubit<WalletState> {
     result.fold(
       (failure) {
         if (isClosed) return;
-        emit(state.copyWith(
-          isLoading: false,
-          error: 'No se pudo cargar el saldo.',
-          balance: state.balance ?? 0,
-        ));
+        emit(
+          state.copyWith(
+            isLoading: false,
+            error: 'No se pudo cargar el saldo.',
+            balance: state.balance ?? 0,
+          ),
+        );
       },
       (balance) {
         if (isClosed) return;
@@ -89,33 +87,38 @@ class WalletCubit extends Cubit<WalletState> {
     _walletChannel?.unsubscribe();
     _walletChannel = null;
     if (!isClosed) {
-      emit(state.copyWith(clearBalance: true, isLoading: false, clearError: true));
+      emit(
+        state.copyWith(clearBalance: true, isLoading: false, clearError: true),
+      );
     }
   }
 
   void _listenToWalletChanges(String userId) {
     _walletChannel?.unsubscribe();
-    _walletChannel = _supabase
-        .channel('public:profiles_wallet_$userId')
-        .onPostgresChanges(
-            event: PostgresChangeEvent.update,
-            schema: 'public',
-            table: 'profiles',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'auth_user_id',
-              value: userId,
-            ),
-            callback: (payload) {
-              final newRow = payload.newRecord;
-              if (newRow.isNotEmpty && !isClosed) {
-                 final newBalance = (newRow['wallet_balance'] as num?)?.toInt() ?? 0;
-                 if (state.balance != newBalance) {
-                   emit(state.copyWith(balance: newBalance));
-                 }
-              }
-            })
-        .subscribe();
+    _walletChannel =
+        _supabase
+            .channel('public:profiles_wallet_$userId')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.update,
+              schema: 'public',
+              table: 'profiles',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'auth_user_id',
+                value: userId,
+              ),
+              callback: (payload) {
+                final newRow = payload.newRecord;
+                if (newRow.isNotEmpty && !isClosed) {
+                  final newBalance =
+                      (newRow['wallet_balance'] as num?)?.toInt() ?? 0;
+                  if (state.balance != newBalance) {
+                    emit(state.copyWith(balance: newBalance));
+                  }
+                }
+              },
+            )
+            .subscribe();
   }
 
   @override

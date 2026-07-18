@@ -33,40 +33,61 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
       final warehousesData = await getActiveWarehousesUseCase.call();
       final productsData = await getActiveProductsAndVariantsUseCase.call();
 
-      final warehouses = warehousesData
-          .map((w) => WarehouseModel(id: w.id, name: w.name))
-          .toList();
-      String? initialWarehouseId = warehouses.isNotEmpty ? warehouses.first.id : null;
+      final warehouses =
+          warehousesData
+              .map((w) => WarehouseModel(id: w.id, name: w.name))
+              .toList();
+      String? initialWarehouseId =
+          warehouses.isNotEmpty ? warehouses.first.id : null;
 
-      final allProducts = (productsData['products'] as List)
-          .map((p) => ProductModel.fromJson(p))
-          .toList();
+      final allProducts =
+          (productsData['products'] as List)
+              .map((p) => ProductModel.fromJson(p))
+              .toList();
 
-      final variants = (productsData['variants'] as List)
-          .map((v) => ProductVariantModel.fromJson(Map<String, dynamic>.from(v)))
-          .toList();
+      final variants =
+          (productsData['variants'] as List)
+              .map(
+                (v) =>
+                    ProductVariantModel.fromJson(Map<String, dynamic>.from(v)),
+              )
+              .toList();
 
       final variantsByProduct = <String, List<ProductVariantModel>>{};
       for (final v in variants) {
         variantsByProduct.putIfAbsent(v.productId, () => []).add(v);
       }
 
-      emit(state.copyWith(
-        warehouses: warehouses,
-        selectedWarehouseId: initialWarehouseId,
-        allProducts: allProducts,
-        variantsByProduct: variantsByProduct,
-      ));
+      emit(
+        state.copyWith(
+          warehouses: warehouses,
+          selectedWarehouseId: initialWarehouseId,
+          allProducts: allProducts,
+          variantsByProduct: variantsByProduct,
+        ),
+      );
 
       await _loadDraft();
       emit(state.copyWith(isLoading: false));
     } catch (e) {
       debugPrint('Error loading form data: $e');
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
-        emit(state.copyWith(errorMessage: 'Sin conexión a internet.', isLoading: false));
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
+        emit(
+          state.copyWith(
+            errorMessage: 'Sin conexión a internet.',
+            isLoading: false,
+          ),
+        );
       } else {
-        emit(state.copyWith(errorMessage: 'Error cargando datos.', isLoading: false));
+        emit(
+          state.copyWith(
+            errorMessage: 'Error cargando datos.',
+            isLoading: false,
+          ),
+        );
       }
     }
   }
@@ -125,26 +146,28 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
       String? createdByProfileId;
       final currentUser = _supabase.auth.currentUser;
       if (currentUser != null) {
-        final profile = await _supabase
-            .from('profiles')
-            .select('id')
-            .eq('auth_user_id', currentUser.id)
-            .maybeSingle();
+        final profile =
+            await _supabase
+                .from('profiles')
+                .select('id')
+                .eq('auth_user_id', currentUser.id)
+                .maybeSingle();
         createdByProfileId = profile?['id'] as String?;
       }
 
-      final itemsData = state.items.map((item) {
-        return {
-          'batch_id': item.selectedBatch!['id'],
-          'batch_number': item.selectedBatch!['batch_number'] ?? 'DEFAULT',
-          'quantity': item.quantity,
-          'variant_id': item.variant.id,
-          'product_id': item.product.id,
-          'unit_cost': item.unitCost,
-          'total_cost': item.totalCost,
-          'product_name': item.product.name,
-        };
-      }).toList();
+      final itemsData =
+          state.items.map((item) {
+            return {
+              'batch_id': item.selectedBatch!['id'],
+              'batch_number': item.selectedBatch!['batch_number'] ?? 'DEFAULT',
+              'quantity': item.quantity,
+              'variant_id': item.variant.id,
+              'product_id': item.product.id,
+              'unit_cost': item.unitCost,
+              'total_cost': item.totalCost,
+              'product_name': item.product.name,
+            };
+          }).toList();
 
       await createInventoryExitUseCase.call(
         warehouseId: state.selectedWarehouseId!,
@@ -160,10 +183,22 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
     } catch (e) {
       debugPrint('Error saving exit: $e');
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
-        emit(state.copyWith(errorMessage: 'Sin conexión a internet.', isSaving: false));
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
+        emit(
+          state.copyWith(
+            errorMessage: 'Sin conexión a internet.',
+            isSaving: false,
+          ),
+        );
       } else {
-        emit(state.copyWith(errorMessage: 'Error registrando salida: $e', isSaving: false));
+        emit(
+          state.copyWith(
+            errorMessage: 'Error registrando salida: $e',
+            isSaving: false,
+          ),
+        );
       }
     }
   }
@@ -194,10 +229,11 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
       try {
         final draftData = jsonDecode(draftStr) as Map<String, dynamic>;
         final itemsJson = draftData['items'] as List<dynamic>? ?? [];
-        
-        final draftItems = itemsJson
-            .map((e) => ExitItemUI.fromJson(e as Map<String, dynamic>))
-            .toList();
+
+        final draftItems =
+            itemsJson
+                .map((e) => ExitItemUI.fromJson(e as Map<String, dynamic>))
+                .toList();
 
         final draftWarehouseId = draftData['warehouseId'] as String?;
         final draftReason = draftData['reason'] as String?;
@@ -208,11 +244,13 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
           finalWarehouseId = draftWarehouseId;
         }
 
-        emit(state.copyWith(
-          selectedWarehouseId: finalWarehouseId,
-          selectedReason: draftReason ?? state.selectedReason,
-          items: draftItems,
-        ));
+        emit(
+          state.copyWith(
+            selectedWarehouseId: finalWarehouseId,
+            selectedReason: draftReason ?? state.selectedReason,
+            items: draftItems,
+          ),
+        );
       } catch (e) {
         debugPrint('Error loading draft: $e');
         await clearDraft();

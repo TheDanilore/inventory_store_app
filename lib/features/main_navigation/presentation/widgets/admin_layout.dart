@@ -335,7 +335,9 @@ class AdminProfileAvatar extends StatelessWidget {
                       fit: BoxFit.cover,
                       width: 38,
                       height: 38,
-                      errorBuilder: (context, error, stackTrace) => _initialsWidget(currentUser),
+                      errorBuilder:
+                          (context, error, stackTrace) =>
+                              _initialsWidget(currentUser),
                     );
                   }
                   return _initialsWidget(currentUser);

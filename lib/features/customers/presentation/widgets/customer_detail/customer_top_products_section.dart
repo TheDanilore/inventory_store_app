@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
-    
+
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'customer_section_card.dart';
 

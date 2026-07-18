@@ -283,4 +283,3 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
     );
   }
 }
-

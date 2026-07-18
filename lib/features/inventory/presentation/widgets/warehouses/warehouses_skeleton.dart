@@ -25,49 +25,29 @@ class WarehousesSkeleton extends StatelessWidget {
             child: Row(
               children: [
                 // Icon Shimmer
-                const AppShimmer(
-                  width: 46,
-                  height: 46,
-                  borderRadius: 12,
-                ),
+                const AppShimmer(width: 46, height: 46, borderRadius: 12),
                 const SizedBox(width: 16),
-                
+
                 // Text Shimmer
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const AppShimmer(
-                        width: 160,
-                        height: 18,
-                        borderRadius: 4,
-                      ),
+                      const AppShimmer(width: 160, height: 18, borderRadius: 4),
                       const SizedBox(height: 8),
-                      const AppShimmer(
-                        width: 120,
-                        height: 12,
-                        borderRadius: 4,
-                      ),
+                      const AppShimmer(width: 120, height: 12, borderRadius: 4),
                     ],
                   ),
                 ),
                 const SizedBox(width: 12),
-                
+
                 // Status Shimmer
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const AppShimmer(
-                      width: 50,
-                      height: 16,
-                      borderRadius: 6,
-                    ),
+                    const AppShimmer(width: 50, height: 16, borderRadius: 6),
                     const SizedBox(height: 8),
-                    const AppShimmer(
-                      width: 36,
-                      height: 20,
-                      borderRadius: 10,
-                    ),
+                    const AppShimmer(width: 36, height: 20, borderRadius: 10),
                   ],
                 ),
               ],

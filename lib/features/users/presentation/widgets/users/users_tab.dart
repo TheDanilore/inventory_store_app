@@ -33,10 +33,10 @@ class _UsersTabState extends State<UsersTab> {
     // Fetch initial data for this tab
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<UsersCubit>().fetchUsers(
-            searchQuery: widget.searchQuery,
-            onlyActive: widget.onlyActive,
-            page: 0,
-          );
+        searchQuery: widget.searchQuery,
+        onlyActive: widget.onlyActive,
+        page: 0,
+      );
     });
   }
 
@@ -46,10 +46,10 @@ class _UsersTabState extends State<UsersTab> {
     if (oldWidget.searchQuery != widget.searchQuery ||
         oldWidget.onlyActive != widget.onlyActive) {
       context.read<UsersCubit>().fetchUsers(
-            searchQuery: widget.searchQuery,
-            onlyActive: widget.onlyActive,
-            page: 0,
-          );
+        searchQuery: widget.searchQuery,
+        onlyActive: widget.onlyActive,
+        page: 0,
+      );
     }
   }
 
@@ -58,20 +58,21 @@ class _UsersTabState extends State<UsersTab> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.90,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: UserDetailSheet(
-          userId: userId,
-          onUserUpdated: () {
-            // Re-fetch users if a user was updated
-            context.read<UsersCubit>().fetchUsers();
-          },
-        ),
-      ),
+      builder:
+          (context) => Container(
+            height: MediaQuery.of(context).size.height * 0.90,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: UserDetailSheet(
+              userId: userId,
+              onUserUpdated: () {
+                // Re-fetch users if a user was updated
+                context.read<UsersCubit>().fetchUsers();
+              },
+            ),
+          ),
     );
   }
 
@@ -79,7 +80,8 @@ class _UsersTabState extends State<UsersTab> {
   Widget build(BuildContext context) {
     return BlocBuilder<UsersCubit, UsersState>(
       builder: (context, state) {
-        if (state is UsersInitial || (state is UsersLoading && state.currentUsers.isEmpty)) {
+        if (state is UsersInitial ||
+            (state is UsersLoading && state.currentUsers.isEmpty)) {
           return const UsersSkeleton();
         }
 
@@ -129,7 +131,10 @@ class _UsersTabState extends State<UsersTab> {
                 children: [
                   ListView.builder(
                     controller: widget.scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     itemCount: state.currentUsers.length,
                     itemBuilder: (context, index) {
                       final user = state.currentUsers[index];

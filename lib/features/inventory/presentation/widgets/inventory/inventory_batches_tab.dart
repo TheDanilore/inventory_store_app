@@ -27,8 +27,6 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
   @override
   bool get wantKeepAlive => true;
 
-
-
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -65,27 +63,45 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
     super.build(context);
     return BlocBuilder<InventoryCubit, InventoryState>(
       builder: (context, state) {
-        if (state is InventoryInitial || state is InventoryLoading && state is! InventoryLoaded) {
+        if (state is InventoryInitial ||
+            state is InventoryLoading && state is! InventoryLoaded) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final loadedState = state is InventoryLoaded 
-          ? state 
-          : (state is InventoryLoading 
-              ? context.read<InventoryCubit>().state as InventoryLoaded?
-              : null);
+        final loadedState =
+            state is InventoryLoaded
+                ? state
+                : (state is InventoryLoading
+                    ? context.read<InventoryCubit>().state as InventoryLoaded?
+                    : null);
 
         if (loadedState == null && state is InventoryError) {
           return Center(child: Text('Error: ${state.message}'));
         }
 
-        final currentState = loadedState ?? const InventoryLoaded(
-          stockItems: [], batchItems: [], currentStockPage: 0, totalStockPages: 1, 
-          stockSearchText: '', stockCategoryFilter: 'Todos', categories: ['Todos'], 
-          globalTotalVariants: 0, globalTotalStock: 0, globalLowStockCount: 0, globalTotalCost: 0.0, 
-          currentBatchPage: 0, totalBatchPages: 1, batchSearchText: '', batchStatusFilter: 'Todos', 
-          countVencido: 0, countCritico: 0, countProximo: 0, countNormal: 0,
-        );
+        final currentState =
+            loadedState ??
+            const InventoryLoaded(
+              stockItems: [],
+              batchItems: [],
+              currentStockPage: 0,
+              totalStockPages: 1,
+              stockSearchText: '',
+              stockCategoryFilter: 'Todos',
+              categories: ['Todos'],
+              globalTotalVariants: 0,
+              globalTotalStock: 0,
+              globalLowStockCount: 0,
+              globalTotalCost: 0.0,
+              currentBatchPage: 0,
+              totalBatchPages: 1,
+              batchSearchText: '',
+              batchStatusFilter: 'Todos',
+              countVencido: 0,
+              countCritico: 0,
+              countProximo: 0,
+              countNormal: 0,
+            );
 
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -105,7 +121,11 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                           ),
                         ),
                       ),
-                      child: _buildListContent(currentState, state is InventoryLoading, isTablet: true),
+                      child: _buildListContent(
+                        currentState,
+                        state is InventoryLoading,
+                        isTablet: true,
+                      ),
                     ),
                   ),
                   Expanded(
@@ -146,7 +166,11 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
               );
             }
 
-            return _buildListContent(currentState, state is InventoryLoading, isTablet: false);
+            return _buildListContent(
+              currentState,
+              state is InventoryLoading,
+              isTablet: false,
+            );
           },
         );
       },
@@ -229,35 +253,50 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                         _StatusPill(
                           label: 'Todos',
                           isSelected: state.batchStatusFilter == 'Todos',
-                          onTap: () => context.read<InventoryCubit>().setBatchStatus('Todos'),
+                          onTap:
+                              () => context
+                                  .read<InventoryCubit>()
+                                  .setBatchStatus('Todos'),
                           color: AppColors.primary,
                         ),
                         const SizedBox(width: 8),
                         _StatusPill(
                           label: 'Vencidos',
                           isSelected: state.batchStatusFilter == 'vencido',
-                          onTap: () => context.read<InventoryCubit>().setBatchStatus('vencido'),
+                          onTap:
+                              () => context
+                                  .read<InventoryCubit>()
+                                  .setBatchStatus('vencido'),
                           color: AppColors.danger,
                         ),
                         const SizedBox(width: 8),
                         _StatusPill(
                           label: 'Críticos',
                           isSelected: state.batchStatusFilter == 'critico',
-                          onTap: () => context.read<InventoryCubit>().setBatchStatus('critico'),
+                          onTap:
+                              () => context
+                                  .read<InventoryCubit>()
+                                  .setBatchStatus('critico'),
                           color: AppColors.warning,
                         ),
                         const SizedBox(width: 8),
                         _StatusPill(
                           label: 'Próximos',
                           isSelected: state.batchStatusFilter == 'proximo',
-                          onTap: () => context.read<InventoryCubit>().setBatchStatus('proximo'),
+                          onTap:
+                              () => context
+                                  .read<InventoryCubit>()
+                                  .setBatchStatus('proximo'),
                           color: Colors.blue.shade400,
                         ),
                         const SizedBox(width: 8),
                         _StatusPill(
                           label: 'Normales',
                           isSelected: state.batchStatusFilter == 'normal',
-                          onTap: () => context.read<InventoryCubit>().setBatchStatus('normal'),
+                          onTap:
+                              () => context
+                                  .read<InventoryCubit>()
+                                  .setBatchStatus('normal'),
                           color: AppColors.success,
                         ),
                       ],
@@ -349,7 +388,8 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
               child: AdminPageBlocks(
                 currentPage: state.currentBatchPage,
                 totalPages: state.totalBatchPages,
-                onPageChanged: (page) => context.read<InventoryCubit>().setBatchPage(page),
+                onPageChanged:
+                    (page) => context.read<InventoryCubit>().setBatchPage(page),
               ),
             ),
           ),

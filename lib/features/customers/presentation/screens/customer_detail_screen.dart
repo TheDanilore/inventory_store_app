@@ -83,8 +83,6 @@ class _CustomerDetailContent extends StatelessWidget {
         final error = state is CustomerDetailError ? state.message : null;
         final c = state is CustomerDetailLoaded ? state.customer : null;
 
-
-
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: RefreshIndicator(
@@ -417,4 +415,3 @@ class _CustomerDetailSkeleton extends StatelessWidget {
     );
   }
 }
-

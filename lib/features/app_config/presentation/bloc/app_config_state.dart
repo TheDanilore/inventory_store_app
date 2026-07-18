@@ -38,18 +38,19 @@ class AppConfigState extends Equatable {
       saveStatus: saveStatus ?? this.saveStatus,
       connectionStatus: connectionStatus ?? this.connectionStatus,
       connectionUrl: connectionUrl ?? this.connectionUrl,
-      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
     );
   }
 
   @override
   List<Object?> get props => [
-        values,
-        businessInfo,
-        status,
-        saveStatus,
-        connectionStatus,
-        connectionUrl,
-        errorMessage,
-      ];
+    values,
+    businessInfo,
+    status,
+    saveStatus,
+    connectionStatus,
+    connectionUrl,
+    errorMessage,
+  ];
 }

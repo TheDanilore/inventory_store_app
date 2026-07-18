@@ -29,7 +29,16 @@ class KardexMovementEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id, date, type, reference, description, quantity,
-        balance, unitCost, totalCost, variantId, warehouseId,
-      ];
+    id,
+    date,
+    type,
+    reference,
+    description,
+    quantity,
+    balance,
+    unitCost,
+    totalCost,
+    variantId,
+    warehouseId,
+  ];
 }

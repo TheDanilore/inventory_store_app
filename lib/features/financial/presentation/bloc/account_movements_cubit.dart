@@ -25,11 +25,11 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
     required SaveAccountMovementUseCase saveMovement,
     required TransferFundsUseCase transferFunds,
     required GetCurrentUserUseCase getCurrentUser,
-  })  : _getMovements = getMovements,
-        _saveMovement = saveMovement,
-        _transferFunds = transferFunds,
-        _getCurrentUser = getCurrentUser,
-        super(const AccountMovementsInitial());
+  }) : _getMovements = getMovements,
+       _saveMovement = saveMovement,
+       _transferFunds = transferFunds,
+       _getCurrentUser = getCurrentUser,
+       super(const AccountMovementsInitial());
 
   MovementFilters get filters => _filters;
 
@@ -57,14 +57,16 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
         if (m.movementType == 'EXPENSE') totalExpense += m.amount;
       }
 
-      emit(AccountMovementsLoaded(
-        movements: movements,
-        currentPage: _currentPage,
-        totalPages: _totalPages,
-        totalIncome: totalIncome,
-        totalExpense: totalExpense,
-        filters: _filters,
-      ));
+      emit(
+        AccountMovementsLoaded(
+          movements: movements,
+          currentPage: _currentPage,
+          totalPages: _totalPages,
+          totalIncome: totalIncome,
+          totalExpense: totalExpense,
+          filters: _filters,
+        ),
+      );
     } catch (e) {
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||

@@ -109,26 +109,26 @@ class InventoryLoaded extends InventoryState {
 
   @override
   List<Object?> get props => [
-        stockItems,
-        batchItems,
-        currentStockPage,
-        totalStockPages,
-        stockSearchText,
-        stockCategoryFilter,
-        categories,
-        globalTotalVariants,
-        globalTotalStock,
-        globalLowStockCount,
-        globalTotalCost,
-        currentBatchPage,
-        totalBatchPages,
-        batchSearchText,
-        batchStatusFilter,
-        countVencido,
-        countCritico,
-        countProximo,
-        countNormal,
-      ];
+    stockItems,
+    batchItems,
+    currentStockPage,
+    totalStockPages,
+    stockSearchText,
+    stockCategoryFilter,
+    categories,
+    globalTotalVariants,
+    globalTotalStock,
+    globalLowStockCount,
+    globalTotalCost,
+    currentBatchPage,
+    totalBatchPages,
+    batchSearchText,
+    batchStatusFilter,
+    countVencido,
+    countCritico,
+    countProximo,
+    countNormal,
+  ];
 }
 
 class InventoryError extends InventoryState {

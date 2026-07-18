@@ -68,7 +68,10 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
     if (widget.onAddToCart != null) {
       widget.onAddToCart!(context, entry.product);
     } else {
-      AppSnackbar.show(context, message: 'Función añadir al carrito no disponible.');
+      AppSnackbar.show(
+        context,
+        message: 'Función añadir al carrito no disponible.',
+      );
     }
   }
 
@@ -141,7 +144,9 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () async {
-          await context.read<CustomerWishlistCubit>().fetchWishlist(reset: true);
+          await context.read<CustomerWishlistCubit>().fetchWishlist(
+            reset: true,
+          );
         },
         child: CustomScrollView(
           controller: _scrollController,
@@ -180,7 +185,9 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 24),
                       child: Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
                       ),
                     ),
                   );
@@ -197,7 +204,10 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
   }
 
   Widget _buildHeaderBanner(List<WishlistEntryEntity> items) {
-    final availableCount = items.where((e) => e.product.totalStock > 0 && e.product.isActive).length;
+    final availableCount =
+        items
+            .where((e) => e.product.totalStock > 0 && e.product.isActive)
+            .length;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -344,4 +354,3 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
     return const SliverToBoxAdapter(child: SizedBox.shrink());
   }
 }
-

@@ -11,8 +11,6 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-
-
 class AddEntryProductSheet extends StatefulWidget {
   final String? warehouseId;
 
@@ -35,7 +33,6 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   // cuando cambia el producto/variante, reseteando su controller interno.
   Key _batchAutocompleteKey = UniqueKey();
 
-  
   Future<void> _fetchExistingBatches(String variantId) async {
     if (widget.warehouseId == null) {
       return;
@@ -51,9 +48,10 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
 
       if (mounted) {
         setState(() {
-          _existingBatches = response
-              .map((e) => WarehouseStockBatchModel.fromJson(e))
-              .toList();
+          _existingBatches =
+              response
+                  .map((e) => WarehouseStockBatchModel.fromJson(e))
+                  .toList();
         });
       }
     } catch (e) {
@@ -96,28 +94,34 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
 
     if (val != null) {
       try {
-        final variantsData = await Supabase.instance.client.from('product_variants').select().eq('product_id', val.id).eq('is_active', true).order('label');
+        final variantsData = await Supabase.instance.client
+            .from('product_variants')
+            .select()
+            .eq('product_id', val.id)
+            .eq('is_active', true)
+            .order('label');
         if (mounted) {
           setState(() {
-            _availableVariants = variantsData.map((v) {
-              if (v['variant_attribute_values'] is List) {
-                final Map<String, dynamic> flatAttributes = {};
-                for (final vav in v['variant_attribute_values'] as List) {
-                  if (vav is Map && vav['attribute_values'] is Map) {
-                    final av = vav['attribute_values'] as Map;
-                    if (av['attributes'] is Map) {
-                      final attr = av['attributes'] as Map;
-                      if (attr['name'] != null) {
-                        flatAttributes[attr['name'].toString()] =
-                            av['value']?.toString() ?? '';
+            _availableVariants =
+                variantsData.map((v) {
+                  if (v['variant_attribute_values'] is List) {
+                    final Map<String, dynamic> flatAttributes = {};
+                    for (final vav in v['variant_attribute_values'] as List) {
+                      if (vav is Map && vav['attribute_values'] is Map) {
+                        final av = vav['attribute_values'] as Map;
+                        if (av['attributes'] is Map) {
+                          final attr = av['attributes'] as Map;
+                          if (attr['name'] != null) {
+                            flatAttributes[attr['name'].toString()] =
+                                av['value']?.toString() ?? '';
+                          }
+                        }
                       }
                     }
+                    v['attributes'] = flatAttributes;
                   }
-                }
-                v['attributes'] = flatAttributes;
-              }
-              return ProductVariantModel.fromJson(v);
-            }).toList();
+                  return ProductVariantModel.fromJson(v);
+                }).toList();
           });
 
           // FIX BUG #1: Si el producto NO tiene variantes extras (variante única/default),
@@ -153,51 +157,52 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
     final qtyCtrl = TextEditingController(text: _quantity.toStringAsFixed(0));
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text(
-          'Cantidad exacta',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        content: TextField(
-          controller: qtyCtrl,
-          keyboardType: const TextInputType.numberWithOptions(
-            decimal: true,
-          ),
-          autofocus: true,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
-          decoration: InputDecoration(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text(
+              'Cantidad exacta',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            contentPadding: const EdgeInsets.symmetric(vertical: 20),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: AppColors.textSecondary),
+            content: TextField(
+              controller: qtyCtrl,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              autofocus: true,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 20),
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  final newQty = double.tryParse(qtyCtrl.text.trim());
+                  if (newQty != null && newQty > 0) {
+                    setState(() => _quantity = newQty);
+                  }
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text('Guardar'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              final newQty = double.tryParse(qtyCtrl.text.trim());
-              if (newQty != null && newQty > 0) {
-                setState(() => _quantity = newQty);
-              }
-              Navigator.pop(dialogContext);
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
     );
     qtyCtrl.dispose();
   }
@@ -249,7 +254,8 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       return;
     }
 
-    final variantToUse = _selectedVariant ??
+    final variantToUse =
+        _selectedVariant ??
         ProductVariantModel(
           id: '',
           productId: _selectedProduct!.id,
@@ -305,7 +311,9 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
             ),
             decoration: BoxDecoration(
               color: colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
+              ),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -350,7 +358,12 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                           return const Iterable<ProductModel>.empty();
                         }
                         try {
-                          final res = await Supabase.instance.client.from('products').select().ilike('name', '%${textEditingValue.text}%').eq('is_active', true).limit(20);
+                          final res = await Supabase.instance.client
+                              .from('products')
+                              .select()
+                              .ilike('name', '%${textEditingValue.text}%')
+                              .eq('is_active', true)
+                              .limit(20);
                           return res.map((p) => ProductModel.fromJson(p));
                         } catch (e) {
                           debugPrint('Error en autocomplete: $e');
@@ -381,25 +394,26 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                               Icons.search_rounded,
                               color: AppColors.textMuted,
                             ),
-                            suffixIcon: _selectedProduct != null
-                                ? GestureDetector(
-                                    onTap: () {
-                                      HapticFeedback.lightImpact();
-                                      textEditingController.clear();
-                                      _onProductChanged(null);
-                                    },
-                                    behavior: HitTestBehavior.opaque,
-                                    child: const SizedBox(
-                                      width: 48,
-                                      height: 48,
-                                      child: Icon(
-                                        Icons.clear_rounded,
-                                        size: 20,
-                                        color: AppColors.textMuted,
+                            suffixIcon:
+                                _selectedProduct != null
+                                    ? GestureDetector(
+                                      onTap: () {
+                                        HapticFeedback.lightImpact();
+                                        textEditingController.clear();
+                                        _onProductChanged(null);
+                                      },
+                                      behavior: HitTestBehavior.opaque,
+                                      child: const SizedBox(
+                                        width: 48,
+                                        height: 48,
+                                        child: Icon(
+                                          Icons.clear_rounded,
+                                          size: 20,
+                                          color: AppColors.textMuted,
+                                        ),
                                       ),
-                                    ),
-                                  )
-                                : null,
+                                    )
+                                    : null,
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
@@ -426,22 +440,25 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                                 padding: EdgeInsets.zero,
                                 shrinkWrap: true,
                                 itemCount: options.length,
-                                separatorBuilder: (_, _) =>
-                                    const Divider(height: 1),
+                                separatorBuilder:
+                                    (_, _) => const Divider(height: 1),
                                 itemBuilder: (context, index) {
                                   final p = options.elementAt(index);
                                   String? imgUrl;
                                   if (p.images.isNotEmpty) {
-                                    imgUrl = p.images
-                                        .firstWhere(
-                                          (img) => img.isMain,
-                                          orElse: () => p.images.first,
-                                        )
-                                        .imageUrl;
+                                    imgUrl =
+                                        p.images
+                                            .firstWhere(
+                                              (img) => img.isMain,
+                                              orElse: () => p.images.first,
+                                            )
+                                            .imageUrl;
                                   }
                                   return ListTile(
                                     contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 4),
+                                      horizontal: 16,
+                                      vertical: 4,
+                                    ),
                                     leading: _ProductThumbnail(
                                       imageUrl: imgUrl,
                                       size: 40,
@@ -476,19 +493,20 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                       decoration: _dropdownDecoration(
                         'Selecciona la Variante (Obligatorio)',
                       ),
-                      items: availableVariants
-                          .map(
-                            (v) => DropdownMenuItem(
-                              value: v,
-                              child: Text(
-                                v.label,
-                                style: textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
+                      items:
+                          availableVariants
+                              .map(
+                                (v) => DropdownMenuItem(
+                                  value: v,
+                                  child: Text(
+                                    v.label,
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          )
-                          .toList(),
+                              )
+                              .toList(),
                       onChanged: (val) {
                         HapticFeedback.lightImpact();
                         _onVariantChanged(val);
@@ -513,8 +531,8 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                                 controller: _costCtrl,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                                      decimal: true,
+                                    ),
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(
                                     RegExp(r'^\d+\.?\d{0,2}'),
@@ -527,13 +545,15 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                                 decoration: InputDecoration(
                                   labelText: 'Costo de Compra (S/)',
                                   labelStyle: textTheme.bodyMedium?.copyWith(
-                                    color: isZeroCost
-                                        ? AppColors.warning
-                                        : AppColors.textSecondary,
+                                    color:
+                                        isZeroCost
+                                            ? AppColors.warning
+                                            : AppColors.textSecondary,
                                   ),
-                                  helperText: isZeroCost
-                                      ? '⚠ Verifica el costo — está en S/ 0.00'
-                                      : null,
+                                  helperText:
+                                      isZeroCost
+                                          ? '⚠ Verifica el costo — está en S/ 0.00'
+                                          : null,
                                   helperStyle: textTheme.bodySmall?.copyWith(
                                     color: AppColors.warning,
                                     fontWeight: FontWeight.w600,
@@ -548,25 +568,28 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(14),
                                     borderSide: BorderSide(
-                                      color: isZeroCost
-                                          ? AppColors.warning
-                                          : AppColors.border,
+                                      color:
+                                          isZeroCost
+                                              ? AppColors.warning
+                                              : AppColors.border,
                                     ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(14),
                                     borderSide: BorderSide(
-                                      color: isZeroCost
-                                          ? AppColors.warning
-                                          : AppColors.border,
+                                      color:
+                                          isZeroCost
+                                              ? AppColors.warning
+                                              : AppColors.border,
                                     ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(14),
                                     borderSide: BorderSide(
-                                      color: isZeroCost
-                                          ? AppColors.warning
-                                          : AppColors.primary,
+                                      color:
+                                          isZeroCost
+                                              ? AppColors.warning
+                                              : AppColors.primary,
                                       width: 1.5,
                                     ),
                                   ),
@@ -587,12 +610,13 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                         HapticFeedback.lightImpact();
                         setState(() => _quantity++);
                       },
-                      onRemove: _quantity > 1
-                          ? () {
-                              HapticFeedback.lightImpact();
-                              setState(() => _quantity--);
-                            }
-                          : null,
+                      onRemove:
+                          _quantity > 1
+                              ? () {
+                                HapticFeedback.lightImpact();
+                                setState(() => _quantity--);
+                              }
+                              : null,
                       onTapValue: _showQuantityDialog,
                     ),
                   ],
@@ -629,35 +653,41 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                             labelStyle: textTheme.bodyMedium?.copyWith(
                               color: AppColors.textSecondary,
                             ),
-                            hintText: _existingBatches.isEmpty
-                                ? 'Ej: LOTE-2024-001'
-                                : 'Escribe o toca para ver lotes existentes...',
+                            hintText:
+                                _existingBatches.isEmpty
+                                    ? 'Ej: LOTE-2024-001'
+                                    : 'Escribe o toca para ver lotes existentes...',
                             filled: true,
                             fillColor: AppColors.background,
                             prefixIcon: const Icon(
                               Icons.qr_code_scanner,
                               color: AppColors.textMuted,
                             ),
-                            suffixIcon: _existingBatches.isNotEmpty
-                                ? Tooltip(
-                                    message:
-                                        '${_existingBatches.length} lote(s) existente(s) en este almacén',
-                                    child: Icon(
-                                      Icons.layers_rounded,
-                                      color: AppColors.primary.withValues(
-                                        alpha: 0.7,
+                            suffixIcon:
+                                _existingBatches.isNotEmpty
+                                    ? Tooltip(
+                                      message:
+                                          '${_existingBatches.length} lote(s) existente(s) en este almacén',
+                                      child: Icon(
+                                        Icons.layers_rounded,
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                        size: 20,
                                       ),
-                                      size: 20,
-                                    ),
-                                  )
-                                : null,
+                                    )
+                                    : null,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(color: AppColors.border),
+                              borderSide: const BorderSide(
+                                color: AppColors.border,
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(color: AppColors.border),
+                              borderSide: const BorderSide(
+                                color: AppColors.border,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -687,21 +717,25 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                                 padding: EdgeInsets.zero,
                                 shrinkWrap: true,
                                 itemCount: options.length,
-                                separatorBuilder: (_, _) =>
-                                    const Divider(height: 1),
+                                separatorBuilder:
+                                    (_, _) => const Divider(height: 1),
                                 itemBuilder: (BuildContext context, int index) {
                                   final option = options.elementAt(index);
-                                  final dateStr = option.expiryDate != null
-                                      ? '${option.expiryDate!.day.toString().padLeft(2, '0')}/${option.expiryDate!.month.toString().padLeft(2, '0')}/${option.expiryDate!.year}'
-                                      : 'Sin vencimiento';
+                                  final dateStr =
+                                      option.expiryDate != null
+                                          ? '${option.expiryDate!.day.toString().padLeft(2, '0')}/${option.expiryDate!.month.toString().padLeft(2, '0')}/${option.expiryDate!.year}'
+                                          : 'Sin vencimiento';
                                   return ListTile(
                                     contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 8),
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
                                     leading: Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary
-                                            .withValues(alpha: 0.1),
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.1,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: const Icon(
@@ -735,8 +769,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                                         Text(
                                           option.availableQuantity
                                               .toStringAsFixed(0),
-                                          style:
-                                              textTheme.titleSmall?.copyWith(
+                                          style: textTheme.titleSmall?.copyWith(
                                             color: AppColors.primary,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -828,13 +861,13 @@ class _FieldLabel extends StatelessWidget {
   const _FieldLabel(this.text);
   @override
   Widget build(BuildContext context) => Text(
-        text,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.textSecondary,
-              letterSpacing: 0.5,
-            ),
-      );
+    text,
+    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+      color: AppColors.textSecondary,
+      letterSpacing: 0.5,
+    ),
+  );
 }
 
 class _HorizontalStepper extends StatelessWidget {
@@ -887,21 +920,24 @@ class _HorizontalStepper extends StatelessWidget {
                   // AnimatedSwitcher con curva elástica para feedback visual al cambiar valor
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 220),
-                    transitionBuilder: (child, animation) => ScaleTransition(
-                      scale: CurvedAnimation(
-                        parent: animation,
-                        curve: Curves.elasticOut,
-                      ),
-                      child: child,
-                    ),
+                    transitionBuilder:
+                        (child, animation) => ScaleTransition(
+                          scale: CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.elasticOut,
+                          ),
+                          child: child,
+                        ),
                     child: Text(
                       _displayValue,
                       key: ValueKey(_displayValue),
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
                 ),
@@ -979,9 +1015,10 @@ class _DatePickerField extends StatelessWidget {
                       ? label
                       : 'Vence: ${value!.day.toString().padLeft(2, '0')}/${value!.month.toString().padLeft(2, '0')}/${value!.year}',
                   style: textTheme.bodyMedium?.copyWith(
-                    color: value == null
-                        ? AppColors.textSecondary
-                        : AppColors.textPrimary,
+                    color:
+                        value == null
+                            ? AppColors.textSecondary
+                            : AppColors.textPrimary,
                     fontWeight:
                         value == null ? FontWeight.normal : FontWeight.w600,
                   ),
@@ -1032,9 +1069,10 @@ class _QtyButton extends StatelessWidget {
           width: 48, // mínimo 48dp según Material Design
           height: 48,
           decoration: BoxDecoration(
-            color: enabled
-                ? AppColors.primary.withValues(alpha: 0.1)
-                : Theme.of(context).colorScheme.surfaceContainerHighest,
+            color:
+                enabled
+                    ? AppColors.primary.withValues(alpha: 0.1)
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
@@ -1065,10 +1103,7 @@ InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(
-        color: AppColors.primary,
-        width: 1.5,
-      ),
+      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
     ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
   );
@@ -1091,33 +1126,34 @@ class _ProductThumbnail extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(11),
-        child: imageUrl != null
-            ? CachedNetworkImage(
-                imageUrl: imageUrl!,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => const Center(
-                  child: SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-                errorWidget: (context, url, error) => const Icon(
-                  Icons.image_not_supported_rounded,
+        child:
+            imageUrl != null
+                ? CachedNetworkImage(
+                  imageUrl: imageUrl!,
+                  fit: BoxFit.cover,
+                  placeholder:
+                      (context, url) => const Center(
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                  errorWidget:
+                      (context, url, error) => const Icon(
+                        Icons.image_not_supported_rounded,
+                        color: AppColors.textMuted,
+                      ),
+                )
+                : const Icon(
+                  Icons.inventory_2_rounded,
                   color: AppColors.textMuted,
+                  size: 28,
                 ),
-              )
-            : const Icon(
-                Icons.inventory_2_rounded,
-                color: AppColors.textMuted,
-                size: 28,
-              ),
       ),
     );
   }
 }
-
-

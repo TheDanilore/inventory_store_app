@@ -42,8 +42,7 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
 
       if (startDate != null && endDate != null) {
         final startIso = startDate.toIso8601String();
-        final endIso =
-            endDate.add(const Duration(days: 1)).toIso8601String();
+        final endIso = endDate.add(const Duration(days: 1)).toIso8601String();
         query = query.gte('created_at', startIso).lt('created_at', endIso);
       }
 
@@ -77,7 +76,8 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
 
   @override
   Future<Either<Failure, List<PurchaseOrderItemEntity>>> fetchOrderItems(
-      String poId) async {
+    String poId,
+  ) async {
     try {
       final response = await _supabase
           .from('purchase_order_items')
@@ -97,91 +97,94 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           ''')
           .eq('purchase_order_id', poId);
 
-      final list = (response as List).map((r) {
-        final prod = r['products'] as Map<String, dynamic>?;
-        final variant = r['product_variants'] as Map<String, dynamic>?;
-        final variantId = r['variant_id'] as String;
+      final list =
+          (response as List).map((r) {
+            final prod = r['products'] as Map<String, dynamic>?;
+            final variant = r['product_variants'] as Map<String, dynamic>?;
+            final variantId = r['variant_id'] as String;
 
-        final List<VariantAttributeValueModel> parsedAttrs = [];
-        if (variant != null && variant['variant_attribute_values'] is List) {
-          for (final vav in variant['variant_attribute_values'] as List) {
-            try {
-              parsedAttrs.add(
-                VariantAttributeValueModel.fromJson(
-                  Map<String, dynamic>.from(vav as Map),
-                ),
-              );
-            } catch (_) {}
-          }
-        }
-        final attrsText =
-            parsedAttrs.isNotEmpty
-                ? parsedAttrs
-                    .map(
-                      (a) =>
-                          a.attributeName.isNotEmpty
-                              ? '${a.attributeName}: ${a.value}'
-                              : a.value,
-                    )
-                    .join(' · ')
-                : 'Única';
+            final List<VariantAttributeValueModel> parsedAttrs = [];
+            if (variant != null &&
+                variant['variant_attribute_values'] is List) {
+              for (final vav in variant['variant_attribute_values'] as List) {
+                try {
+                  parsedAttrs.add(
+                    VariantAttributeValueModel.fromJson(
+                      Map<String, dynamic>.from(vav as Map),
+                    ),
+                  );
+                } catch (_) {}
+              }
+            }
+            final attrsText =
+                parsedAttrs.isNotEmpty
+                    ? parsedAttrs
+                        .map(
+                          (a) =>
+                              a.attributeName.isNotEmpty
+                                  ? '${a.attributeName}: ${a.value}'
+                                  : a.value,
+                        )
+                        .join(' · ')
+                    : 'Única';
 
-        String? imageUrl;
-        final variantImages = variant?['product_images'] as List?;
-        if (variantImages != null && variantImages.isNotEmpty) {
-          final main = variantImages.firstWhere(
-            (img) => img['is_main'] == true,
-            orElse: () => variantImages.first,
-          );
-          imageUrl = main['image_url'] as String?;
-        }
-
-        if (imageUrl == null) {
-          final productImages = prod?['product_images'] as List?;
-          if (productImages != null && productImages.isNotEmpty) {
-            final forVariant =
-                productImages
-                    .where((img) => img['variant_id'] == variantId)
-                    .toList();
-            if (forVariant.isNotEmpty) {
-              final main = forVariant.firstWhere(
+            String? imageUrl;
+            final variantImages = variant?['product_images'] as List?;
+            if (variantImages != null && variantImages.isNotEmpty) {
+              final main = variantImages.firstWhere(
                 (img) => img['is_main'] == true,
-                orElse: () => forVariant.first,
-              );
-              imageUrl = main['image_url'] as String?;
-            } else {
-              final generic =
-                  productImages
-                      .where((img) => img['variant_id'] == null)
-                      .toList();
-              final pool = generic.isNotEmpty ? generic : productImages;
-              final main = pool.firstWhere(
-                (img) => img['is_main'] == true,
-                orElse: () => pool.first,
+                orElse: () => variantImages.first,
               );
               imageUrl = main['image_url'] as String?;
             }
-          }
-        }
 
-        return PurchaseOrderItemModel(
-          productId: r['product_id'] as String,
-          variantId: variantId,
-          productName: prod?['name'] as String?,
-          variantAttrs: attrsText,
-          sku: variant?['sku'] as String?,
-          quantityOrdered: (r['quantity_ordered'] as num).toDouble(),
-          quantityReceived: (r['quantity_received'] as num?)?.toDouble() ?? 0,
-          unitCost: (r['unit_cost'] as num).toDouble(),
-          batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
-          expiryDate:
-              r['expiry_date'] != null
-                  ? DateTime.tryParse(r['expiry_date'] as String)
-                  : null,
-          usesBatches: prod?['uses_batches'] as bool? ?? false,
-          imageUrl: imageUrl,
-        );
-      }).toList();
+            if (imageUrl == null) {
+              final productImages = prod?['product_images'] as List?;
+              if (productImages != null && productImages.isNotEmpty) {
+                final forVariant =
+                    productImages
+                        .where((img) => img['variant_id'] == variantId)
+                        .toList();
+                if (forVariant.isNotEmpty) {
+                  final main = forVariant.firstWhere(
+                    (img) => img['is_main'] == true,
+                    orElse: () => forVariant.first,
+                  );
+                  imageUrl = main['image_url'] as String?;
+                } else {
+                  final generic =
+                      productImages
+                          .where((img) => img['variant_id'] == null)
+                          .toList();
+                  final pool = generic.isNotEmpty ? generic : productImages;
+                  final main = pool.firstWhere(
+                    (img) => img['is_main'] == true,
+                    orElse: () => pool.first,
+                  );
+                  imageUrl = main['image_url'] as String?;
+                }
+              }
+            }
+
+            return PurchaseOrderItemModel(
+              productId: r['product_id'] as String,
+              variantId: variantId,
+              productName: prod?['name'] as String?,
+              variantAttrs: attrsText,
+              sku: variant?['sku'] as String?,
+              quantityOrdered: (r['quantity_ordered'] as num).toDouble(),
+              quantityReceived:
+                  (r['quantity_received'] as num?)?.toDouble() ?? 0,
+              unitCost: (r['unit_cost'] as num).toDouble(),
+              batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
+              expiryDate:
+                  r['expiry_date'] != null
+                      ? DateTime.tryParse(r['expiry_date'] as String)
+                      : null,
+              usesBatches: prod?['uses_batches'] as bool? ?? false,
+              imageUrl: imageUrl,
+            );
+          }).toList();
 
       return Right(list);
     } catch (e) {
@@ -191,7 +194,9 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
 
   @override
   Future<Either<Failure, void>> updateOrderStatus(
-      String poId, String status) async {
+    String poId,
+    String status,
+  ) async {
     try {
       await _supabase
           .from('purchase_orders')
@@ -251,7 +256,8 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
                 'due_date': dueDate?.toIso8601String().split('T').first,
                 'document_type': documentType,
                 'document_number': documentNumber,
-                'document_date': documentDate?.toIso8601String().split('T').first,
+                'document_date':
+                    documentDate?.toIso8601String().split('T').first,
                 'notes': notes,
                 'created_by': profileId,
               })
@@ -284,7 +290,8 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         String? creditId;
         if (creditData != null) {
           creditId = creditData['id'] as String;
-          final newDebt = (creditData['current_debt'] as num).toDouble() + totalAmount;
+          final newDebt =
+              (creditData['current_debt'] as num).toDouble() + totalAmount;
           await _supabase
               .from('supplier_credits')
               .update({'current_debt': newDebt})
@@ -417,7 +424,8 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           await _supabase
               .from('inventory_stock')
               .update({
-                'quantity': (invStock['quantity'] as num).toDouble() + toReceive,
+                'quantity':
+                    (invStock['quantity'] as num).toDouble() + toReceive,
               })
               .eq('id', invStock['id']);
         } else {
@@ -444,6 +452,3 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
     }
   }
 }
-
-
-

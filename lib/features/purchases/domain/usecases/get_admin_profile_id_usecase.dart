@@ -13,4 +13,3 @@ class GetAdminProfileIdUseCase {
     return repository.getAdminProfileId();
   }
 }
-

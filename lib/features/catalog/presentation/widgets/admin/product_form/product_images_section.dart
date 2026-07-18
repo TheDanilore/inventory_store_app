@@ -229,9 +229,7 @@ class ProductImagesSection extends StatelessWidget {
                                       onTap:
                                           state.isSaving
                                               ? null
-                                              : () => cubit.removeImage(
-                                                index,
-                                              ),
+                                              : () => cubit.removeImage(index),
                                       child: Container(
                                         padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(

@@ -25,14 +25,14 @@ class UserEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        email,
-        role,
-        fullName,
-        phone,
-        documentType,
-        documentNumber,
-        avatarUrl,
-        isActive,
-      ];
+    id,
+    email,
+    role,
+    fullName,
+    phone,
+    documentType,
+    documentNumber,
+    avatarUrl,
+    isActive,
+  ];
 }

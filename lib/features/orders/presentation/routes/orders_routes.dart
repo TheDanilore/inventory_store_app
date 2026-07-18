@@ -8,23 +8,21 @@ import 'package:inventory_store_app/features/orders/presentation/screens/custome
 
 class OrdersRoutes {
   static List<RouteBase> get adminRoutes => [
-        GoRoute(
-          path: 'orders',
-          builder: (context, state) => const OrdersScreen(),
-        ),
-      ];
+    GoRoute(path: 'orders', builder: (context, state) => const OrdersScreen()),
+  ];
 
   static List<RouteBase> get customerRoutes => [
-        GoRoute(
-          path: '/customer/orders',
-          builder: (context, state) => const CustomerOrdersScreen(),
-        ),
-        GoRoute(
-          path: '/customer/cart',
-          builder: (context, state) => BlocProvider(
+    GoRoute(
+      path: '/customer/orders',
+      builder: (context, state) => const CustomerOrdersScreen(),
+    ),
+    GoRoute(
+      path: '/customer/cart',
+      builder:
+          (context, state) => BlocProvider(
             create: (_) => sl<CheckoutCubit>(),
             child: const CustomerCartScreen(),
           ),
-        ),
-      ];
+    ),
+  ];
 }

@@ -22,11 +22,14 @@ class AuthRepositoryImpl implements AuthRepository {
         return left(Failure.from('No hay sesión activa.'));
       }
 
-      final data = await _supabase
-          .from('profiles')
-          .select('auth_user_id, role, is_active, full_name, phone, document_type, document_number, avatar_url')
-          .eq('auth_user_id', session.user.id)
-          .maybeSingle();
+      final data =
+          await _supabase
+              .from('profiles')
+              .select(
+                'auth_user_id, role, is_active, full_name, phone, document_type, document_number, avatar_url',
+              )
+              .eq('auth_user_id', session.user.id)
+              .maybeSingle();
 
       if (data == null) {
         return left(Failure.from('Perfil no encontrado.'));
@@ -55,10 +58,13 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     try {
-      final res = await _supabase.auth.signInWithPassword(email: email, password: password);
-      
+      final res = await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
       if (res.user == null) {
-         return left(Failure.from('Credenciales inválidas.'));
+        return left(Failure.from('Credenciales inválidas.'));
       }
 
       return getCurrentUser();
@@ -75,15 +81,14 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     try {
-      final res = await _supabase.auth.signUp(
-        email: email,
-        password: password,
-      );
+      final res = await _supabase.auth.signUp(email: email, password: password);
 
       if (res.user != null) {
         return right(res.user!.id);
       }
-      return left(Failure.from('Error al crear cuenta en el servidor de autenticación.'));
+      return left(
+        Failure.from('Error al crear cuenta en el servidor de autenticación.'),
+      );
     } on sb.AuthException catch (e) {
       return left(Failure.from(_authErrorMessage(e)));
     } catch (e) {
@@ -106,12 +111,15 @@ class AuthRepositoryImpl implements AuthRepository {
         'role': role,
         'is_active': isActive,
       }, onConflict: 'auth_user_id');
-      
-      final data = await _supabase
-          .from('profiles')
-          .select('auth_user_id, role, is_active, full_name, phone, document_type, document_number, avatar_url')
-          .eq('auth_user_id', authUserId)
-          .maybeSingle();
+
+      final data =
+          await _supabase
+              .from('profiles')
+              .select(
+                'auth_user_id, role, is_active, full_name, phone, document_type, document_number, avatar_url',
+              )
+              .eq('auth_user_id', authUserId)
+              .maybeSingle();
 
       if (data == null) {
         return left(Failure.from('Perfil creado pero no pudo ser recuperado.'));
@@ -160,9 +168,13 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, void>> deleteAccount(String password) async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null || user.email == null) return left(Failure.from('No hay sesión.'));
+      if (user == null || user.email == null)
+        return left(Failure.from('No hay sesión.'));
 
-      final res = await _supabase.auth.signInWithPassword(email: user.email!, password: password);
+      final res = await _supabase.auth.signInWithPassword(
+        email: user.email!,
+        password: password,
+      );
       if (res.user == null) return left(Failure.from('Contraseña incorrecta.'));
 
       await _supabase.rpc('delete_user_account');
@@ -191,15 +203,24 @@ class AuthRepositoryImpl implements AuthRepository {
       String? finalAvatarUrl = user.avatarUrl;
 
       if (imageBytes != null) {
-        final fileName = '${authUserId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        await _supabase.storage.from('avatars').uploadBinary(
-          fileName,
-          imageBytes,
-          fileOptions: const sb.FileOptions(contentType: 'image/jpeg', upsert: true),
-        );
-        finalAvatarUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
+        final fileName =
+            '${authUserId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        await _supabase.storage
+            .from('avatars')
+            .uploadBinary(
+              fileName,
+              imageBytes,
+              fileOptions: const sb.FileOptions(
+                contentType: 'image/jpeg',
+                upsert: true,
+              ),
+            );
+        finalAvatarUrl = _supabase.storage
+            .from('avatars')
+            .getPublicUrl(fileName);
 
-        if (user.avatarUrl != null && user.avatarUrl!.contains('/public/avatars/')) {
+        if (user.avatarUrl != null &&
+            user.avatarUrl!.contains('/public/avatars/')) {
           final oldPath = user.avatarUrl!.split('/public/avatars/').last;
           if (oldPath.isNotEmpty) {
             try {
@@ -209,13 +230,16 @@ class AuthRepositoryImpl implements AuthRepository {
         }
       }
 
-      await _supabase.from('profiles').update({
-        'full_name': user.fullName.trim(),
-        'phone': user.phone.trim(),
-        'document_type': user.documentType,
-        'document_number': user.documentNumber.trim(),
-        if (finalAvatarUrl != null) 'avatar_url': finalAvatarUrl,
-      }).eq('auth_user_id', authUserId);
+      await _supabase
+          .from('profiles')
+          .update({
+            'full_name': user.fullName.trim(),
+            'phone': user.phone.trim(),
+            'document_type': user.documentType,
+            'document_number': user.documentNumber.trim(),
+            if (finalAvatarUrl != null) 'avatar_url': finalAvatarUrl,
+          })
+          .eq('auth_user_id', authUserId);
 
       final updatedUser = AuthUserModel.fromEntity(user).copyWith(
         avatarUrl: finalAvatarUrl,
@@ -233,13 +257,16 @@ class AuthRepositoryImpl implements AuthRepository {
   String _authErrorMessage(sb.AuthException e) {
     final code = (e.code ?? '').toLowerCase();
     final message = e.message.toLowerCase();
-    if (code.contains('invalid_credentials') || message.contains('invalid login credentials')) {
+    if (code.contains('invalid_credentials') ||
+        message.contains('invalid login credentials')) {
       return 'Correo o contraseña incorrectos.';
     }
-    if (code.contains('email_not_confirmed') || message.contains('email not confirmed')) {
+    if (code.contains('email_not_confirmed') ||
+        message.contains('email not confirmed')) {
       return 'Tu correo aún no está confirmado. Revisa tu bandeja.';
     }
-    if (code.contains('user_already_exists') || message.contains('already registered')) {
+    if (code.contains('user_already_exists') ||
+        message.contains('already registered')) {
       return 'Este correo ya está registrado.';
     }
     return 'Error de autenticación.';

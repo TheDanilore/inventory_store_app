@@ -25,12 +25,12 @@ class InventoryCubit extends Cubit<InventoryState> {
     required GetGeneralStockPaginatedUseCase getGeneralStockPaginated,
     required GetBatchMetricsUseCase getBatchMetrics,
     required GetBatchesPaginatedUseCase getBatchesPaginated,
-  })  : _getGeneralStockMetrics = getGeneralStockMetrics,
-        _getCategories = getCategories,
-        _getGeneralStockPaginated = getGeneralStockPaginated,
-        _getBatchMetrics = getBatchMetrics,
-        _getBatchesPaginated = getBatchesPaginated,
-        super(const InventoryInitial()) {
+  }) : _getGeneralStockMetrics = getGeneralStockMetrics,
+       _getCategories = getCategories,
+       _getGeneralStockPaginated = getGeneralStockPaginated,
+       _getBatchMetrics = getBatchMetrics,
+       _getBatchesPaginated = getBatchesPaginated,
+       super(const InventoryInitial()) {
     initStockTab();
   }
 
@@ -70,15 +70,16 @@ class InventoryCubit extends Cubit<InventoryState> {
         (r) => <String>['Todos', ...r.map((c) => c.name)],
       );
       final metrics = await _getGeneralStockMetrics(NoParams());
-      
+
       final currentState = _getLoadedState();
-      
+
       final totalStockCount = await _getGeneralStockPaginated.getTotalCount(
         search: currentState.stockSearchText,
         categoryName: currentState.stockCategoryFilter,
       );
 
-      final totalPages = totalStockCount == 0 ? 1 : (totalStockCount / _stockPageSize).ceil();
+      final totalPages =
+          totalStockCount == 0 ? 1 : (totalStockCount / _stockPageSize).ceil();
 
       final stockItems = await _getGeneralStockPaginated(
         page: 0,
@@ -87,16 +88,18 @@ class InventoryCubit extends Cubit<InventoryState> {
         categoryName: currentState.stockCategoryFilter,
       );
 
-      emit(currentState.copyWith(
-        categories: categoriesNames,
-        globalTotalVariants: metrics['totalVariants'] ?? 0,
-        globalTotalStock: metrics['totalStock'] ?? 0,
-        globalLowStockCount: metrics['lowStockCount'] ?? 0,
-        globalTotalCost: (metrics['totalCost'] as num?)?.toDouble() ?? 0.0,
-        currentStockPage: 0,
-        totalStockPages: totalPages,
-        stockItems: stockItems,
-      ));
+      emit(
+        currentState.copyWith(
+          categories: categoriesNames,
+          globalTotalVariants: metrics['totalVariants'] ?? 0,
+          globalTotalStock: metrics['totalStock'] ?? 0,
+          globalLowStockCount: metrics['lowStockCount'] ?? 0,
+          globalTotalCost: (metrics['totalCost'] as num?)?.toDouble() ?? 0.0,
+          currentStockPage: 0,
+          totalStockPages: totalPages,
+          stockItems: stockItems,
+        ),
+      );
     } catch (e) {
       emit(InventoryError(e.toString()));
     }
@@ -105,15 +108,16 @@ class InventoryCubit extends Cubit<InventoryState> {
   Future<void> fetchStockPage({int? page}) async {
     final currentState = _getLoadedState();
     final targetPage = page ?? currentState.currentStockPage;
-    
+
     emit(const InventoryLoading());
     try {
       final totalStockCount = await _getGeneralStockPaginated.getTotalCount(
         search: currentState.stockSearchText,
         categoryName: currentState.stockCategoryFilter,
       );
-      
-      int totalPages = totalStockCount == 0 ? 1 : (totalStockCount / _stockPageSize).ceil();
+
+      int totalPages =
+          totalStockCount == 0 ? 1 : (totalStockCount / _stockPageSize).ceil();
       int validPage = targetPage >= totalPages ? 0 : targetPage;
 
       final stockItems = await _getGeneralStockPaginated(
@@ -123,18 +127,22 @@ class InventoryCubit extends Cubit<InventoryState> {
         categoryName: currentState.stockCategoryFilter,
       );
 
-      emit(currentState.copyWith(
-        currentStockPage: validPage,
-        totalStockPages: totalPages,
-        stockItems: stockItems,
-      ));
+      emit(
+        currentState.copyWith(
+          currentStockPage: validPage,
+          totalStockPages: totalPages,
+          stockItems: stockItems,
+        ),
+      );
     } catch (e) {
       emit(InventoryError(e.toString()));
     }
   }
 
   void setStockPage(int page) {
-    if (state is InventoryLoaded && page == (state as InventoryLoaded).currentStockPage) return;
+    if (state is InventoryLoaded &&
+        page == (state as InventoryLoaded).currentStockPage)
+      return;
     fetchStockPage(page: page);
   }
 
@@ -154,14 +162,17 @@ class InventoryCubit extends Cubit<InventoryState> {
     final currentState = _getLoadedState();
     emit(const InventoryLoading());
     try {
-      final metrics = await _getBatchMetrics(search: currentState.batchSearchText);
-      
+      final metrics = await _getBatchMetrics(
+        search: currentState.batchSearchText,
+      );
+
       final totalBatchCount = await _getBatchesPaginated.getTotalCount(
         search: currentState.batchSearchText,
         statusFilter: currentState.batchStatusFilter,
       );
 
-      final totalPages = totalBatchCount == 0 ? 1 : (totalBatchCount / _batchPageSize).ceil();
+      final totalPages =
+          totalBatchCount == 0 ? 1 : (totalBatchCount / _batchPageSize).ceil();
 
       final batchItems = await _getBatchesPaginated(
         page: 0,
@@ -170,15 +181,17 @@ class InventoryCubit extends Cubit<InventoryState> {
         statusFilter: currentState.batchStatusFilter,
       );
 
-      emit(currentState.copyWith(
-        countVencido: metrics['vencido'] ?? 0,
-        countCritico: metrics['critico'] ?? 0,
-        countProximo: metrics['proximo'] ?? 0,
-        countNormal: metrics['normal'] ?? 0,
-        currentBatchPage: 0,
-        totalBatchPages: totalPages,
-        batchItems: batchItems,
-      ));
+      emit(
+        currentState.copyWith(
+          countVencido: metrics['vencido'] ?? 0,
+          countCritico: metrics['critico'] ?? 0,
+          countProximo: metrics['proximo'] ?? 0,
+          countNormal: metrics['normal'] ?? 0,
+          currentBatchPage: 0,
+          totalBatchPages: totalPages,
+          batchItems: batchItems,
+        ),
+      );
     } catch (e) {
       emit(InventoryError(e.toString()));
     }
@@ -187,15 +200,16 @@ class InventoryCubit extends Cubit<InventoryState> {
   Future<void> fetchBatchPage({int? page}) async {
     final currentState = _getLoadedState();
     final targetPage = page ?? currentState.currentBatchPage;
-    
+
     emit(const InventoryLoading());
     try {
       final totalBatchCount = await _getBatchesPaginated.getTotalCount(
         search: currentState.batchSearchText,
         statusFilter: currentState.batchStatusFilter,
       );
-      
-      int totalPages = totalBatchCount == 0 ? 1 : (totalBatchCount / _batchPageSize).ceil();
+
+      int totalPages =
+          totalBatchCount == 0 ? 1 : (totalBatchCount / _batchPageSize).ceil();
       int validPage = targetPage >= totalPages ? 0 : targetPage;
 
       final batchItems = await _getBatchesPaginated(
@@ -205,39 +219,45 @@ class InventoryCubit extends Cubit<InventoryState> {
         statusFilter: currentState.batchStatusFilter,
       );
 
-      emit(currentState.copyWith(
-        currentBatchPage: validPage,
-        totalBatchPages: totalPages,
-        batchItems: batchItems,
-      ));
+      emit(
+        currentState.copyWith(
+          currentBatchPage: validPage,
+          totalBatchPages: totalPages,
+          batchItems: batchItems,
+        ),
+      );
     } catch (e) {
       emit(InventoryError(e.toString()));
     }
   }
 
   void setBatchPage(int page) {
-    if (state is InventoryLoaded && page == (state as InventoryLoaded).currentBatchPage) return;
+    if (state is InventoryLoaded &&
+        page == (state as InventoryLoaded).currentBatchPage)
+      return;
     fetchBatchPage(page: page);
   }
 
   void setBatchSearch(String text) async {
     final currentState = _getLoadedState();
     emit(currentState.copyWith(batchSearchText: text, currentBatchPage: 0));
-    
+
     // Al buscar, se actualizan las metricas ademas de la pagina
     emit(const InventoryLoading());
     try {
       final metrics = await _getBatchMetrics(search: text);
       final updatedState = _getLoadedState();
-      emit(updatedState.copyWith(
-        countVencido: metrics['vencido'] ?? 0,
-        countCritico: metrics['critico'] ?? 0,
-        countProximo: metrics['proximo'] ?? 0,
-        countNormal: metrics['normal'] ?? 0,
-      ));
+      emit(
+        updatedState.copyWith(
+          countVencido: metrics['vencido'] ?? 0,
+          countCritico: metrics['critico'] ?? 0,
+          countProximo: metrics['proximo'] ?? 0,
+          countNormal: metrics['normal'] ?? 0,
+        ),
+      );
       await fetchBatchPage(page: 0);
-    } catch(e) {
-       emit(InventoryError(e.toString()));
+    } catch (e) {
+      emit(InventoryError(e.toString()));
     }
   }
 

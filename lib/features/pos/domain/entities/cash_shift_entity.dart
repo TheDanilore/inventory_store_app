@@ -46,8 +46,7 @@ class CashShiftEntity {
           : null;
 
   /// Indica si hubo un faltante de caja al cierre.
-  bool get hasCashShortage =>
-      cashDifference != null && cashDifference! < 0;
+  bool get hasCashShortage => cashDifference != null && cashDifference! < 0;
 
   Duration get shiftDuration =>
       (closedAt ?? DateTime.now()).difference(openedAt);

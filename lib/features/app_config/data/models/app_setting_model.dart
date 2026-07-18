@@ -28,18 +28,11 @@ class AppSettingModel {
   }
 
   AppSettingEntity toEntity() {
-    return AppSettingEntity(
-      key: key,
-      value: value,
-      description: description,
-    );
+    return AppSettingEntity(key: key, value: value, description: description);
   }
 
   Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{
-      'key': key,
-      'value': value,
-    };
+    final map = <String, dynamic>{'key': key, 'value': value};
     if (description != null && description!.isNotEmpty) {
       map['description'] = description;
     }

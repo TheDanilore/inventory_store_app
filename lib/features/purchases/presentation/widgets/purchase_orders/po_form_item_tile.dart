@@ -65,9 +65,7 @@ class POFormItemTile extends StatelessWidget {
     if (confirm == true) onRemove();
   }
 
-  Future<void> _showQuantityDialog(
-    BuildContext context,
-  ) async {
+  Future<void> _showQuantityDialog(BuildContext context) async {
     final qtyCtrl = TextEditingController(
       text: item.quantity.toStringAsFixed(0),
     );
@@ -120,7 +118,6 @@ class POFormItemTile extends StatelessWidget {
     );
     qtyCtrl.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -256,7 +253,10 @@ class POFormItemTile extends StatelessWidget {
                   children: [
                     _StepperButton(
                       icon: Icons.remove_rounded,
-                      onTap: item.quantity > 1 ? () => onUpdateQuantity(item.quantity - 1) : null,
+                      onTap:
+                          item.quantity > 1
+                              ? () => onUpdateQuantity(item.quantity - 1)
+                              : null,
                     ),
                     InkWell(
                       onTap: () => _showQuantityDialog(context),
@@ -264,10 +264,16 @@ class POFormItemTile extends StatelessWidget {
                       child: Container(
                         constraints: const BoxConstraints(minWidth: 32),
                         alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 4,
+                        ),
                         child: Text(
                           quantityText.replaceAll('x', ''),
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ),
@@ -349,8 +355,8 @@ class _StepperButton extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(6.0),
           child: Icon(
-            icon, 
-            size: 18, 
+            icon,
+            size: 18,
             color: onTap == null ? AppColors.textMuted : AppColors.primary,
           ),
         ),

@@ -300,8 +300,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                         widget.product.name,
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
-                          fontSize:
-                              13,
+                          fontSize: 13,
                           color:
                               isDesactivado
                                   ? AppColors.textMuted

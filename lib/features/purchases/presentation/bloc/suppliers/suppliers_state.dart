@@ -24,7 +24,12 @@ class SuppliersLoading extends SuppliersState {
   });
 
   @override
-  List<Object?> get props => [currentSuppliers, searchQuery, currentPage, totalCount];
+  List<Object?> get props => [
+    currentSuppliers,
+    searchQuery,
+    currentPage,
+    totalCount,
+  ];
 }
 
 class SuppliersLoaded extends SuppliersState {
@@ -76,5 +81,11 @@ class SuppliersError extends SuppliersState {
   });
 
   @override
-  List<Object?> get props => [message, currentSuppliers, searchQuery, currentPage, totalCount];
+  List<Object?> get props => [
+    message,
+    currentSuppliers,
+    searchQuery,
+    currentPage,
+    totalCount,
+  ];
 }

@@ -64,7 +64,10 @@ class CustomerLocationsSection extends StatelessWidget {
     }
   }
 
-  Future<void> _editLocation(BuildContext context, CustomerLocationEntity loc) async {
+  Future<void> _editLocation(
+    BuildContext context,
+    CustomerLocationEntity loc,
+  ) async {
     final cubit = context.read<CustomerDetailCubit>();
     final messenger = ScaffoldMessenger.of(context);
     final result = await CustomerLocationFormSheet.show(

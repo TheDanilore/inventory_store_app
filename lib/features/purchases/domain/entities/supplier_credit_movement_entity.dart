@@ -29,15 +29,15 @@ class SupplierCreditMovementEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        creditId,
-        purchaseOrderId,
-        movementType,
-        amount,
-        paymentMethod,
-        notes,
-        createdAt,
-        createdByName,
-        orderTotalAmount,
-      ];
+    id,
+    creditId,
+    purchaseOrderId,
+    movementType,
+    amount,
+    paymentMethod,
+    notes,
+    createdAt,
+    createdByName,
+    orderTotalAmount,
+  ];
 }

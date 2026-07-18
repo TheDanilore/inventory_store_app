@@ -221,7 +221,7 @@ class ProductPdfGenerator {
                                   : pw.SizedBox(width: 36, height: 36),
                         ),
                       ),
-                      
+
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
                         child: pw.Text(

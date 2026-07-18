@@ -10,25 +10,28 @@ class PosInitData {
   final List<WarehouseModel> warehouses;
   final List<Map<String, dynamic>> accounts;
 
-  const PosInitData({
-    required this.warehouses,
-    required this.accounts,
-  });
+  const PosInitData({required this.warehouses, required this.accounts});
 }
 
 /// Contrato del repositorio para el módulo POS.
 abstract class PosRepository {
   /// Carga los datos iniciales necesarios para el POS (almacenes, cuentas).
-  Future<Either<Failure, PosInitData>> loadInitialData({bool forceRefresh = false});
+  Future<Either<Failure, PosInitData>> loadInitialData({
+    bool forceRefresh = false,
+  });
 
   /// Verifica si existe un turno de caja abierto para la cuenta dada.
   Future<Either<Failure, CashShiftEntity?>> checkActiveShift(String accountId);
 
   /// Busca clientes por nombre, documento o teléfono.
-  Future<Either<Failure, List<Map<String, dynamic>>>> searchClients(String text);
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchClients(
+    String text,
+  );
 
   /// Obtiene la información de crédito de un cliente.
-  Future<Either<Failure, Map<String, dynamic>?>> fetchClientCredit(String clientId);
+  Future<Either<Failure, Map<String, dynamic>?>> fetchClientCredit(
+    String clientId,
+  );
 
   /// Obtiene los lotes disponibles para una variante en un almacén.
   Future<Either<Failure, List<BatchAssignmentModel>>> fetchBatchesForVariant(

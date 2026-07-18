@@ -9,12 +9,9 @@ class GetExistingCreditSupplierIdsUseCase {
 
   GetExistingCreditSupplierIdsUseCase(this.repository);
 
-  Future<Either<Failure, Set<String>>> call({
-    String? excludeSupplierId,
-  }) {
+  Future<Either<Failure, Set<String>>> call({String? excludeSupplierId}) {
     return repository.getExistingCreditSupplierIds(
       excludeSupplierId: excludeSupplierId,
     );
   }
 }
-

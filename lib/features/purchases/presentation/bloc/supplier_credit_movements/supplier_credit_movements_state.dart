@@ -32,14 +32,14 @@ class SupplierCreditMovementsLoading extends SupplierCreditMovementsState {
 
   @override
   List<Object?> get props => [
-        currentMovements,
-        dateFilter,
-        currentPage,
-        totalCount,
-        totalCharged,
-        totalPaid,
-        isExporting,
-      ];
+    currentMovements,
+    dateFilter,
+    currentPage,
+    totalCount,
+    totalCharged,
+    totalPaid,
+    isExporting,
+  ];
 }
 
 class SupplierCreditMovementsLoaded extends SupplierCreditMovementsState {
@@ -85,14 +85,14 @@ class SupplierCreditMovementsLoaded extends SupplierCreditMovementsState {
 
   @override
   List<Object?> get props => [
-        movements,
-        dateFilter,
-        currentPage,
-        totalCount,
-        totalCharged,
-        totalPaid,
-        isExporting,
-      ];
+    movements,
+    dateFilter,
+    currentPage,
+    totalCount,
+    totalCharged,
+    totalPaid,
+    isExporting,
+  ];
 }
 
 class SupplierCreditMovementsError extends SupplierCreditMovementsState {
@@ -116,12 +116,12 @@ class SupplierCreditMovementsError extends SupplierCreditMovementsState {
 
   @override
   List<Object?> get props => [
-        message,
-        currentMovements,
-        dateFilter,
-        currentPage,
-        totalCount,
-        totalCharged,
-        totalPaid,
-      ];
+    message,
+    currentMovements,
+    dateFilter,
+    currentPage,
+    totalCount,
+    totalCharged,
+    totalPaid,
+  ];
 }

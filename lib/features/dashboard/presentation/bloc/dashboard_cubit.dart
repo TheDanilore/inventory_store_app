@@ -25,36 +25,35 @@ class DashboardCubit extends Cubit<DashboardState> {
     final salesResult = await getSalesMetrics(filter: SalesTimeFilter.today);
     final batchesResult = await getCriticalBatches(daysThreshold: 30);
 
-    inventoryResult.fold(
-      (failure) => emit(DashboardError(failure.message)),
-      (inventory) {
-        salesResult.fold(
-          (failure) => emit(DashboardError(failure.message)),
-          (sales) {
-            batchesResult.fold(
-              (failure) => emit(DashboardError(failure.message)),
-              (batches) {
-                emit(DashboardLoaded(
-                  inventory: inventory,
-                  sales: sales,
-                  criticalBatches: batches,
-                  salesFilter: SalesTimeFilter.today,
-                ));
-              },
-            );
-          },
-        );
-      },
-    );
+    inventoryResult.fold((failure) => emit(DashboardError(failure.message)), (
+      inventory,
+    ) {
+      salesResult.fold((failure) => emit(DashboardError(failure.message)), (
+        sales,
+      ) {
+        batchesResult.fold((failure) => emit(DashboardError(failure.message)), (
+          batches,
+        ) {
+          emit(
+            DashboardLoaded(
+              inventory: inventory,
+              sales: sales,
+              criticalBatches: batches,
+              salesFilter: SalesTimeFilter.today,
+            ),
+          );
+        });
+      });
+    });
   }
 
   Future<void> updateSalesFilter(SalesTimeFilter filter) async {
     final currentState = state;
     if (currentState is DashboardLoaded) {
       emit(currentState.copyWith(isSalesLoading: true));
-      
+
       final salesResult = await getSalesMetrics(filter: filter);
-      
+
       salesResult.fold(
         (failure) {
           emit(currentState.copyWith(isSalesLoading: false));
@@ -62,11 +61,13 @@ class DashboardCubit extends Cubit<DashboardState> {
           // solo devolvemos el loading a false.
         },
         (sales) {
-          emit(currentState.copyWith(
-            sales: sales,
-            salesFilter: filter,
-            isSalesLoading: false,
-          ));
+          emit(
+            currentState.copyWith(
+              sales: sales,
+              salesFilter: filter,
+              isSalesLoading: false,
+            ),
+          );
         },
       );
     }

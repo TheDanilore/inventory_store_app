@@ -98,8 +98,7 @@ class CustomersRoutes {
   static List<RouteBase> get customerRoutes => [
     GoRoute(
       path: '/customer/profile',
-      builder:
-          (context, state) => const ProfileScreen(openedFromAdmin: false),
+      builder: (context, state) => const ProfileScreen(openedFromAdmin: false),
     ),
     GoRoute(
       path: '/customer/locations',

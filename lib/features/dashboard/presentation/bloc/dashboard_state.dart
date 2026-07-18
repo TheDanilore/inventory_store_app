@@ -47,12 +47,12 @@ class DashboardLoaded extends DashboardState {
 
   @override
   List<Object?> get props => [
-        inventory,
-        sales,
-        criticalBatches,
-        salesFilter,
-        isSalesLoading,
-      ];
+    inventory,
+    sales,
+    criticalBatches,
+    salesFilter,
+    isSalesLoading,
+  ];
 }
 
 class DashboardError extends DashboardState {

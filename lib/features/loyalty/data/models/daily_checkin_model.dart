@@ -24,9 +24,10 @@ class DailyCheckinModel {
       checkinDate: json['checkin_date'] as String? ?? '',
       streakDay: (json['streak_day'] as num?)?.toInt() ?? 1,
       pointsReceived: (json['points_received'] as num?)?.toInt() ?? 0,
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'].toString()) 
-          : DateTime.now(),
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.parse(json['created_at'].toString())
+              : DateTime.now(),
     );
   }
 

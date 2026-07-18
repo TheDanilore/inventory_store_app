@@ -23,13 +23,13 @@ class BusinessInfoEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        businessName,
-        taxId,
-        address,
-        phone,
-        logoUrl,
-        loyaltyGlobalEnabled,
-        loyaltyCustomerVisible,
-      ];
+    id,
+    businessName,
+    taxId,
+    address,
+    phone,
+    logoUrl,
+    loyaltyGlobalEnabled,
+    loyaltyCustomerVisible,
+  ];
 }

@@ -34,19 +34,20 @@ class CheckoutState extends Equatable {
       isLoadingAddress: isLoadingAddress ?? this.isLoadingAddress,
       usePoints: usePoints ?? this.usePoints,
       defaultAddress: defaultAddress ?? this.defaultAddress,
-      errorMessage: errorMessage, // Notice we don't persist error message unless explicitly passed
+      errorMessage:
+          errorMessage, // Notice we don't persist error message unless explicitly passed
       successData: successData,
     );
   }
 
   @override
   List<Object?> get props => [
-        isSending,
-        isVerifyingStock,
-        isLoadingAddress,
-        usePoints,
-        defaultAddress,
-        errorMessage,
-        successData,
-      ];
+    isSending,
+    isVerifyingStock,
+    isLoadingAddress,
+    usePoints,
+    defaultAddress,
+    errorMessage,
+    successData,
+  ];
 }

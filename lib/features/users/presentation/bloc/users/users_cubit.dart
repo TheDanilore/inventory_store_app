@@ -15,11 +15,8 @@ class UsersCubit extends Cubit<UsersState> {
   static const int pageSize = 8;
   String _currentRole = AppRoles.customer;
 
-  UsersCubit(
-    this._getUsers,
-    this._getCounts,
-    this._updateUser,
-  ) : super(const UsersInitial());
+  UsersCubit(this._getUsers, this._getCounts, this._updateUser)
+    : super(const UsersInitial());
 
   Future<void> init(String role) async {
     _currentRole = role;
@@ -45,20 +42,23 @@ class UsersCubit extends Cubit<UsersState> {
     adminRes.fold((l) => null, (r) => aTotal = r);
     employeeRes.fold((l) => null, (r) => eTotal = r);
 
-    emit(UsersLoading(
-      currentUsers: state.currentUsers,
-      searchQuery: state.searchQuery,
-      onlyActive: state.onlyActive,
-      currentPage: state.currentPage,
-      totalCount: state.totalCount,
-      customerTotal: cTotal,
-      adminTotal: aTotal,
-      employeeTotal: eTotal,
-    ));
-    
+    emit(
+      UsersLoading(
+        currentUsers: state.currentUsers,
+        searchQuery: state.searchQuery,
+        onlyActive: state.onlyActive,
+        currentPage: state.currentPage,
+        totalCount: state.totalCount,
+        customerTotal: cTotal,
+        adminTotal: aTotal,
+        employeeTotal: eTotal,
+      ),
+    );
+
     // We emit Loading but don't fetch users here, fetchUsers should be called separately or we emit Loaded if we were already loaded
     if (state is UsersLoaded) {
-       emit(UsersLoaded(
+      emit(
+        UsersLoaded(
           users: state.currentUsers,
           searchQuery: state.searchQuery,
           onlyActive: state.onlyActive,
@@ -67,7 +67,8 @@ class UsersCubit extends Cubit<UsersState> {
           customerTotal: cTotal,
           adminTotal: aTotal,
           employeeTotal: eTotal,
-        ));
+        ),
+      );
     }
   }
 
@@ -78,22 +79,24 @@ class UsersCubit extends Cubit<UsersState> {
   }) async {
     final q = searchQuery ?? state.searchQuery;
     final act = onlyActive ?? state.onlyActive;
-    
+
     // Si cambian los filtros, volvemos a la página 0
     int p = page ?? state.currentPage;
     if (searchQuery != null && searchQuery != state.searchQuery) p = 0;
     if (onlyActive != null && onlyActive != state.onlyActive) p = 0;
 
-    emit(UsersLoading(
-      currentUsers: state.currentUsers,
-      searchQuery: q,
-      onlyActive: act,
-      currentPage: p,
-      totalCount: state.totalCount,
-      customerTotal: state.customerTotal,
-      adminTotal: state.adminTotal,
-      employeeTotal: state.employeeTotal,
-    ));
+    emit(
+      UsersLoading(
+        currentUsers: state.currentUsers,
+        searchQuery: q,
+        onlyActive: act,
+        currentPage: p,
+        totalCount: state.totalCount,
+        customerTotal: state.customerTotal,
+        adminTotal: state.adminTotal,
+        employeeTotal: state.employeeTotal,
+      ),
+    );
 
     final res = await _getUsers(
       role: _currentRole,
@@ -105,17 +108,19 @@ class UsersCubit extends Cubit<UsersState> {
 
     res.fold(
       (failure) {
-        emit(UsersError(
-          message: failure.message,
-          currentUsers: state.currentUsers,
-          searchQuery: q,
-          onlyActive: act,
-          currentPage: p,
-          totalCount: state.totalCount,
-          customerTotal: state.customerTotal,
-          adminTotal: state.adminTotal,
-          employeeTotal: state.employeeTotal,
-        ));
+        emit(
+          UsersError(
+            message: failure.message,
+            currentUsers: state.currentUsers,
+            searchQuery: q,
+            onlyActive: act,
+            currentPage: p,
+            totalCount: state.totalCount,
+            customerTotal: state.customerTotal,
+            adminTotal: state.adminTotal,
+            employeeTotal: state.employeeTotal,
+          ),
+        );
       },
       (users) async {
         // Need to update the count for the CURRENT role to calculate totalPages correctly
@@ -123,16 +128,25 @@ class UsersCubit extends Cubit<UsersState> {
         int newTotal = state.totalCount;
         countRes.fold((l) => null, (r) => newTotal = r);
 
-        emit(UsersLoaded(
-          users: users,
-          searchQuery: q,
-          onlyActive: act,
-          currentPage: p,
-          totalCount: newTotal,
-          customerTotal: _currentRole == AppRoles.customer ? newTotal : state.customerTotal,
-          adminTotal: _currentRole == AppRoles.admin ? newTotal : state.adminTotal,
-          employeeTotal: _currentRole == AppRoles.employee ? newTotal : state.employeeTotal,
-        ));
+        emit(
+          UsersLoaded(
+            users: users,
+            searchQuery: q,
+            onlyActive: act,
+            currentPage: p,
+            totalCount: newTotal,
+            customerTotal:
+                _currentRole == AppRoles.customer
+                    ? newTotal
+                    : state.customerTotal,
+            adminTotal:
+                _currentRole == AppRoles.admin ? newTotal : state.adminTotal,
+            employeeTotal:
+                _currentRole == AppRoles.employee
+                    ? newTotal
+                    : state.employeeTotal,
+          ),
+        );
       },
     );
   }
@@ -154,17 +168,19 @@ class UsersCubit extends Cubit<UsersState> {
 
     res.fold(
       (failure) {
-        emit(UsersError(
-          message: failure.message,
-          currentUsers: state.currentUsers,
-          searchQuery: state.searchQuery,
-          onlyActive: state.onlyActive,
-          currentPage: state.currentPage,
-          totalCount: state.totalCount,
-          customerTotal: state.customerTotal,
-          adminTotal: state.adminTotal,
-          employeeTotal: state.employeeTotal,
-        ));
+        emit(
+          UsersError(
+            message: failure.message,
+            currentUsers: state.currentUsers,
+            searchQuery: state.searchQuery,
+            onlyActive: state.onlyActive,
+            currentPage: state.currentPage,
+            totalCount: state.totalCount,
+            customerTotal: state.customerTotal,
+            adminTotal: state.adminTotal,
+            employeeTotal: state.employeeTotal,
+          ),
+        );
       },
       (r) {
         // Fetch users again to ensure state is in sync

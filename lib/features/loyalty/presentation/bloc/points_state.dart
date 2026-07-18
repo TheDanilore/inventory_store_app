@@ -110,7 +110,8 @@ class PointsState extends Equatable {
       isPlayingMiniGame: isPlayingMiniGame ?? this.isPlayingMiniGame,
       isPreparingBoxes: isPreparingBoxes ?? this.isPreparingBoxes,
       boxesRoundReady: boxesRoundReady ?? this.boxesRoundReady,
-      showBoxesPreviewValues: showBoxesPreviewValues ?? this.showBoxesPreviewValues,
+      showBoxesPreviewValues:
+          showBoxesPreviewValues ?? this.showBoxesPreviewValues,
       hasMoreMovements: hasMoreMovements ?? this.hasMoreMovements,
       profileId: profileId ?? this.profileId,
       currentBalance: currentBalance ?? this.currentBalance,
@@ -133,18 +134,42 @@ class PointsState extends Equatable {
       streakStepReward: streakStepReward ?? this.streakStepReward,
       nextCheckinReward: nextCheckinReward ?? this.nextCheckinReward,
       movements: movements ?? this.movements,
-      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
     );
   }
 
   @override
   List<Object?> get props => [
-        isLoading, isLoadingMore, isClaimingCheckin, isPlayingMiniGame,
-        isPreparingBoxes, boxesRoundReady, showBoxesPreviewValues, hasMoreMovements,
-        profileId, currentBalance, currentStreak, hasTodayCheckin, lastCheckinDate,
-        boxesPlaysToday, memoramaPlaysToday, catcherPlaysToday, pinataPlaysToday,
-        superSaltoPlaysToday, clawPlaysToday, stackPlaysToday, dodgePlaysToday,
-        lastBoxesReward, boxesShuffleSeed, miniGamePreviewBoxes, miniGameBoxes,
-        baseCheckinReward, streakStepReward, nextCheckinReward, movements, errorMessage,
-      ];
+    isLoading,
+    isLoadingMore,
+    isClaimingCheckin,
+    isPlayingMiniGame,
+    isPreparingBoxes,
+    boxesRoundReady,
+    showBoxesPreviewValues,
+    hasMoreMovements,
+    profileId,
+    currentBalance,
+    currentStreak,
+    hasTodayCheckin,
+    lastCheckinDate,
+    boxesPlaysToday,
+    memoramaPlaysToday,
+    catcherPlaysToday,
+    pinataPlaysToday,
+    superSaltoPlaysToday,
+    clawPlaysToday,
+    stackPlaysToday,
+    dodgePlaysToday,
+    lastBoxesReward,
+    boxesShuffleSeed,
+    miniGamePreviewBoxes,
+    miniGameBoxes,
+    baseCheckinReward,
+    streakStepReward,
+    nextCheckinReward,
+    movements,
+    errorMessage,
+  ];
 }

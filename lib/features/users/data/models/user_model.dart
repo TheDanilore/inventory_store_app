@@ -24,7 +24,10 @@ class UserModel extends UserEntity {
       documentType: json['document_type'] as String? ?? 'DNI',
       documentNumber: json['document_number'] as String?,
       isActive: json['is_active'] as bool? ?? true,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at']) : null,
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.tryParse(json['created_at'])
+              : null,
       walletBalance: json['wallet_balance'] as int? ?? 0,
     );
   }

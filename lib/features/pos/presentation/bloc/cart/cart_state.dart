@@ -25,7 +25,8 @@ class CartState extends Equatable {
       items: items ?? this.items,
       isLoading: isLoading ?? this.isLoading,
       isSyncing: isSyncing ?? this.isSyncing,
-      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
     );
   }
 
@@ -56,10 +57,5 @@ class CartState extends Equatable {
       items.isNotEmpty && items.values.every((item) => item.isSelected);
 
   @override
-  List<Object?> get props => [
-        items,
-        isLoading,
-        isSyncing,
-        errorMessage,
-      ];
+  List<Object?> get props => [items, isLoading, isSyncing, errorMessage];
 }

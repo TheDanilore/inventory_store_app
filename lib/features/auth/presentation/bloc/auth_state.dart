@@ -31,17 +31,18 @@ class AuthState extends Equatable {
       authStatus: authStatus ?? this.authStatus,
       viewState: viewState ?? this.viewState,
       currentUser: currentUser ?? this.currentUser,
-      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
       isLoginMode: isLoginMode ?? this.isLoginMode,
     );
   }
 
   @override
   List<Object?> get props => [
-        authStatus,
-        viewState,
-        currentUser,
-        errorMessage,
-        isLoginMode,
-      ];
+    authStatus,
+    viewState,
+    currentUser,
+    errorMessage,
+    isLoginMode,
+  ];
 }

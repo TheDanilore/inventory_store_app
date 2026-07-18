@@ -20,9 +20,10 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 
 class InventoryRoutes {
   static List<RouteBase> get adminRoutes => [
-        GoRoute(
-          path: 'inventory-entries',
-          builder: (context, state) => BlocProvider(
+    GoRoute(
+      path: 'inventory-entries',
+      builder:
+          (context, state) => BlocProvider(
             create: (_) => sl<InventoryEntriesCubit>()..init(),
             child: const AdminLayout(
               title: 'Historial de Entradas',
@@ -30,60 +31,63 @@ class InventoryRoutes {
               body: InventoryEntriesScreen(),
             ),
           ),
-        ),
-        GoRoute(
-          path: 'inventory-entry-form',
-          builder: (context, state) {
-            final args = state.extra as Map<String, dynamic>? ?? {};
-            return BlocProvider(
-              create: (_) => sl<InventoryEntryFormCubit>(),
-              child: InventoryEntryFormScreen(
-                purchaseOrderId: args['purchaseOrderId'] ??
-                    state.uri.queryParameters['purchaseOrderId'],
-              ),
-            );
-          },
-        ),
-        GoRoute(
-          path: 'inventory-exit-form',
-          builder: (context, state) => BlocProvider(
+    ),
+    GoRoute(
+      path: 'inventory-entry-form',
+      builder: (context, state) {
+        final args = state.extra as Map<String, dynamic>? ?? {};
+        return BlocProvider(
+          create: (_) => sl<InventoryEntryFormCubit>(),
+          child: InventoryEntryFormScreen(
+            purchaseOrderId:
+                args['purchaseOrderId'] ??
+                state.uri.queryParameters['purchaseOrderId'],
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: 'inventory-exit-form',
+      builder:
+          (context, state) => BlocProvider(
             create: (_) => sl<InventoryExitFormCubit>(),
             child: const InventoryExitFormScreen(),
           ),
-        ),
-        GoRoute(
-          path: 'inventory-exits',
-          builder: (context, state) => BlocProvider(
+    ),
+    GoRoute(
+      path: 'inventory-exits',
+      builder:
+          (context, state) => BlocProvider(
             create: (_) => sl<InventoryExitsCubit>()..initLoad(),
             child: Builder(
-              builder: (innerContext) => AdminLayout(
-                title: 'Salidas de Inventario',
-                onSettingsSelected: (val) {
-                  if (val != 'pdf') return;
-                  final cubit = innerContext.read<InventoryExitsCubit>();
-                  if (cubit.state.exits.isNotEmpty) {
-                    final startDate = cubit.state.startDate;
-                    final endDate = cubit.state.endDate;
-                    final selectedRange = (startDate != null && endDate != null)
-                        ? DateTimeRange(
-                            start: startDate,
-                            end: endDate,
-                          )
-                        : null;
-                    InventoryExitsPdfGenerator.shareReport(
-                      exits: cubit.state.exits,
-                      dateRange: selectedRange,
-                    );
-                  }
-                },
-                body: const InventoryExitsScreen(),
-              ),
+              builder:
+                  (innerContext) => AdminLayout(
+                    title: 'Salidas de Inventario',
+                    onSettingsSelected: (val) {
+                      if (val != 'pdf') return;
+                      final cubit = innerContext.read<InventoryExitsCubit>();
+                      if (cubit.state.exits.isNotEmpty) {
+                        final startDate = cubit.state.startDate;
+                        final endDate = cubit.state.endDate;
+                        final selectedRange =
+                            (startDate != null && endDate != null)
+                                ? DateTimeRange(start: startDate, end: endDate)
+                                : null;
+                        InventoryExitsPdfGenerator.shareReport(
+                          exits: cubit.state.exits,
+                          dateRange: selectedRange,
+                        );
+                      }
+                    },
+                    body: const InventoryExitsScreen(),
+                  ),
             ),
           ),
-        ),
-        GoRoute(
-          path: 'inventory',
-          builder: (context, state) => BlocProvider(
+    ),
+    GoRoute(
+      path: 'inventory',
+      builder:
+          (context, state) => BlocProvider(
             create: (_) => sl<InventoryCubit>(),
             child: const AdminLayout(
               title: 'Inventario',
@@ -91,10 +95,11 @@ class InventoryRoutes {
               body: InventoryScreen(),
             ),
           ),
-        ),
-        GoRoute(
-          path: 'kardex',
-          builder: (context, state) => BlocProvider(
+    ),
+    GoRoute(
+      path: 'kardex',
+      builder:
+          (context, state) => BlocProvider(
             create: (_) => sl<KardexCubit>(),
             child: const AdminLayout(
               title: 'Kardex',
@@ -102,14 +107,15 @@ class InventoryRoutes {
               body: KardexScreen(),
             ),
           ),
-        ),
-        GoRoute(
-          path: 'warehouses',
-          builder: (context, state) => const AdminLayout(
+    ),
+    GoRoute(
+      path: 'warehouses',
+      builder:
+          (context, state) => const AdminLayout(
             title: 'Almacenes',
             showBackButton: true,
             body: WarehousesManagementScreen(),
           ),
-        ),
-      ];
+    ),
+  ];
 }

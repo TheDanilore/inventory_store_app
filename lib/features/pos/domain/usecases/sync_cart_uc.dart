@@ -18,13 +18,20 @@ class SyncCartParams {
 }
 
 @lazySingleton
-class SyncCartUseCase implements UseCase<Map<String, CartItemEntity>, SyncCartParams> {
+class SyncCartUseCase
+    implements UseCase<Map<String, CartItemEntity>, SyncCartParams> {
   final CartRepository repository;
 
   SyncCartUseCase(this.repository);
 
   @override
-  Future<Either<Failure, Map<String, CartItemEntity>>> call(SyncCartParams params) async {
-    return await repository.syncCloudCart(params.cartType, params.profileId, params.localItems);
+  Future<Either<Failure, Map<String, CartItemEntity>>> call(
+    SyncCartParams params,
+  ) async {
+    return await repository.syncCloudCart(
+      params.cartType,
+      params.profileId,
+      params.localItems,
+    );
   }
 }

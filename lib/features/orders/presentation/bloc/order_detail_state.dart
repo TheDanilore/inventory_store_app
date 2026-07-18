@@ -10,16 +10,16 @@ class OrderDetailState extends Equatable {
   final bool isReturning;
   final bool wasModified;
   final String? errorMessage;
-  
+
   final OrderEntity? order;
   final List<OrderItemEntity> items;
   final List<Map<String, dynamic>> profiles;
   final List<Map<String, dynamic>> accounts;
-  
+
   final Map<String, List<Map<String, dynamic>>> batchesByVariant;
   final Map<String, bool> usesBatchesMap;
   final Map<String, List<BatchAssignmentModel>> batchOverrides;
-  
+
   final String? selectedCustomerId;
   final String currentStatus;
   final int pointsUsed;
@@ -35,16 +35,16 @@ class OrderDetailState extends Equatable {
     this.isReturning = false,
     this.wasModified = false,
     this.errorMessage,
-    
+
     this.order,
     this.items = const [],
     this.profiles = const [],
     this.accounts = const [],
-    
+
     this.batchesByVariant = const {},
     this.usesBatchesMap = const {},
     this.batchOverrides = const {},
-    
+
     this.selectedCustomerId,
     this.currentStatus = 'PENDING',
     this.pointsUsed = 0,
@@ -102,25 +102,25 @@ class OrderDetailState extends Equatable {
 
   @override
   List<Object?> get props => [
-        isLoading,
-        hasError,
-        isSaving,
-        isReturning,
-        wasModified,
-        errorMessage,
-        order,
-        items,
-        profiles,
-        accounts,
-        batchesByVariant,
-        usesBatchesMap,
-        batchOverrides,
-        selectedCustomerId,
-        currentStatus,
-        pointsUsed,
-        pointsEarned,
-        paymentMethod,
-        creditInfo,
-        updaterName,
-      ];
+    isLoading,
+    hasError,
+    isSaving,
+    isReturning,
+    wasModified,
+    errorMessage,
+    order,
+    items,
+    profiles,
+    accounts,
+    batchesByVariant,
+    usesBatchesMap,
+    batchOverrides,
+    selectedCustomerId,
+    currentStatus,
+    pointsUsed,
+    pointsEarned,
+    paymentMethod,
+    creditInfo,
+    updaterName,
+  ];
 }

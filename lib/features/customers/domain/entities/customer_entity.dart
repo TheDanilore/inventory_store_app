@@ -36,19 +36,19 @@ class CustomerEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        fullName,
-        phone,
-        documentNumber,
-        documentType,
-        avatarUrl,
-        walletBalance,
-        isActive,
-        createdAt,
-        currentDebt,
-        creditLimit,
-        totalRevenue,
-        orderCount,
-        lastOrderAt,
-      ];
+    id,
+    fullName,
+    phone,
+    documentNumber,
+    documentType,
+    avatarUrl,
+    walletBalance,
+    isActive,
+    createdAt,
+    currentDebt,
+    creditLimit,
+    totalRevenue,
+    orderCount,
+    lastOrderAt,
+  ];
 }

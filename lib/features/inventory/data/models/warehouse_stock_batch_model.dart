@@ -1,4 +1,5 @@
 import 'package:inventory_store_app/features/inventory/domain/entities/stock_batch_entity.dart';
+
 class WarehouseStockBatchModel {
   final String id;
   final String variantId;

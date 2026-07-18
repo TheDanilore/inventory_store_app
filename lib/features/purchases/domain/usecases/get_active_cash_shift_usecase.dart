@@ -13,4 +13,3 @@ class GetActiveCashShiftUseCase {
     return repository.getActiveCashShift(accountId);
   }
 }
-

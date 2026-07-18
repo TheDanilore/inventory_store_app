@@ -13,10 +13,8 @@ class CustomersCubit extends Cubit<CustomersState> {
 
   static const int _limit = 20;
 
-  CustomersCubit(
-    this._getCustomersUseCase,
-    this._exportPdfUseCase,
-  ) : super(CustomersInitial());
+  CustomersCubit(this._getCustomersUseCase, this._exportPdfUseCase)
+    : super(CustomersInitial());
 
   Future<void> fetchCustomers({
     bool reset = false,

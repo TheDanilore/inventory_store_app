@@ -13,7 +13,7 @@ class GetActiveProductsAndVariantsUseCase {
         .select('*, product_variants(*)')
         .eq('is_active', true)
         .eq('product_variants.is_active', true);
-        
+
     final products = <Map<String, dynamic>>[];
     final variants = <Map<String, dynamic>>[];
 
@@ -21,7 +21,8 @@ class GetActiveProductsAndVariantsUseCase {
       final pVariants = product['product_variants'] as List<dynamic>? ?? [];
       products.add({
         ...product,
-        'product_variants': null, // Remueve los anidados para limpiar el modelo de producto
+        'product_variants':
+            null, // Remueve los anidados para limpiar el modelo de producto
       });
       variants.addAll(pVariants.map((v) => Map<String, dynamic>.from(v)));
     }

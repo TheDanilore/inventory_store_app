@@ -52,7 +52,10 @@ class _AppShimmerState extends State<AppShimmer>
           height: widget.height,
           decoration: BoxDecoration(
             shape: widget.isCircular ? BoxShape.circle : BoxShape.rectangle,
-            borderRadius: widget.isCircular ? null : BorderRadius.circular(widget.borderRadius),
+            borderRadius:
+                widget.isCircular
+                    ? null
+                    : BorderRadius.circular(widget.borderRadius),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,

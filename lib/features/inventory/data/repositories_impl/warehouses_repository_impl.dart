@@ -10,7 +10,6 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
 
   WarehousesRepositoryImpl() : _supabase = Supabase.instance.client;
 
-  
   @override
   Future<List<WarehouseEntity>> getActiveWarehouses() async {
     final response = await _supabase
@@ -18,7 +17,7 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
         .select('*')
         .eq('is_active', true)
         .order('name');
-        
+
     return (response as List<dynamic>)
         .map((e) => WarehouseModel.fromJson(e).toEntity())
         .toList();
@@ -34,8 +33,12 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
     var countQuery = _supabase.from('warehouses').select('id');
 
     if (searchQuery.isNotEmpty) {
-      selectQuery = selectQuery.or('name.ilike.%$searchQuery%,address.ilike.%$searchQuery%');
-      countQuery = countQuery.or('name.ilike.%$searchQuery%,address.ilike.%$searchQuery%');
+      selectQuery = selectQuery.or(
+        'name.ilike.%$searchQuery%,address.ilike.%$searchQuery%',
+      );
+      countQuery = countQuery.or(
+        'name.ilike.%$searchQuery%,address.ilike.%$searchQuery%',
+      );
     }
 
     final countRes = await countQuery.count(CountOption.exact);
@@ -45,9 +48,13 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
         .order('name', ascending: true)
         .range(start, end);
 
-    final data = (res as List<dynamic>)
-        .map((e) => WarehouseModel.fromJson(e as Map<String, dynamic>).toEntity())
-        .toList();
+    final data =
+        (res as List<dynamic>)
+            .map(
+              (e) =>
+                  WarehouseModel.fromJson(e as Map<String, dynamic>).toEntity(),
+            )
+            .toList();
 
     return (data: data, count: totalRecords);
   }
@@ -62,11 +69,12 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
     final authUserId = _supabase.auth.currentUser?.id;
     String? profileId;
     if (authUserId != null) {
-      final p = await _supabase
-          .from('profiles')
-          .select('id')
-          .eq('auth_user_id', authUserId)
-          .maybeSingle();
+      final p =
+          await _supabase
+              .from('profiles')
+              .select('id')
+              .eq('auth_user_id', authUserId)
+              .maybeSingle();
       profileId = p?['id'] as String?;
     }
 
@@ -93,17 +101,21 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
     final authUserId = _supabase.auth.currentUser?.id;
     String? profileId;
     if (authUserId != null) {
-      final p = await _supabase
-          .from('profiles')
-          .select('id')
-          .eq('auth_user_id', authUserId)
-          .maybeSingle();
+      final p =
+          await _supabase
+              .from('profiles')
+              .select('id')
+              .eq('auth_user_id', authUserId)
+              .maybeSingle();
       profileId = p?['id'] as String?;
     }
 
-    await _supabase.from('warehouses').update({
-      'is_active': isActive,
-      if (profileId != null) 'updated_by': profileId,
-    }).eq('id', wh.id);
+    await _supabase
+        .from('warehouses')
+        .update({
+          'is_active': isActive,
+          if (profileId != null) 'updated_by': profileId,
+        })
+        .eq('id', wh.id);
   }
 }

@@ -6,13 +6,16 @@ import 'package:inventory_store_app/features/app_config/domain/entities/business
 import 'package:inventory_store_app/features/app_config/domain/repositories/app_config_repository.dart';
 
 @lazySingleton
-class SaveBusinessInfoUseCase extends UseCase<BusinessInfoEntity, BusinessInfoEntity> {
+class SaveBusinessInfoUseCase
+    extends UseCase<BusinessInfoEntity, BusinessInfoEntity> {
   final AppConfigRepository repository;
 
   SaveBusinessInfoUseCase(this.repository);
 
   @override
-  Future<Either<Failure, BusinessInfoEntity>> call(BusinessInfoEntity params) async {
+  Future<Either<Failure, BusinessInfoEntity>> call(
+    BusinessInfoEntity params,
+  ) async {
     try {
       final savedInfo = await repository.saveBusinessInfo(params);
       await repository.cacheBusinessInfo(savedInfo);

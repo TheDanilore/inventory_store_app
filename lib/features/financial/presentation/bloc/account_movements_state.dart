@@ -36,13 +36,13 @@ class AccountMovementsLoaded extends AccountMovementsState {
 
   @override
   List<Object?> get props => [
-        movements,
-        currentPage,
-        totalPages,
-        totalIncome,
-        totalExpense,
-        filters,
-      ];
+    movements,
+    currentPage,
+    totalPages,
+    totalIncome,
+    totalExpense,
+    filters,
+  ];
 }
 
 class AccountMovementsError extends AccountMovementsState {

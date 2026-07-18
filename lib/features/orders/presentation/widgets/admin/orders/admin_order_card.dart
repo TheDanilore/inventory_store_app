@@ -225,7 +225,8 @@ class AdminOrderCard extends StatelessWidget {
                             ],
                           ),
 
-                          if (warehouseName != null && warehouseName.isNotEmpty) ...[
+                          if (warehouseName != null &&
+                              warehouseName.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Row(
                               children: [

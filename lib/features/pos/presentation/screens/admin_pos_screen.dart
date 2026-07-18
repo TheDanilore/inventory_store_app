@@ -58,7 +58,10 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     try {
       final repo = sl<ProductsRepository>();
       final variantsMapRes = await repo.fetchVariantsByProductIds([product.id]);
-        final variantsMap = variantsMapRes.fold((l) => <String, List<ProductVariantEntity>>{}, (r) => r);
+      final variantsMap = variantsMapRes.fold(
+        (l) => <String, List<ProductVariantEntity>>{},
+        (r) => r,
+      );
       final variants = variantsMap[product.id] ?? [];
 
       if (!mounted) return;
@@ -85,24 +88,29 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
         if (stock > 0 || !product.stockControl) {
           if (!mounted) return;
           final cart = context.read<CartCubit>();
-          
+
           final cartKey = variant?.id ?? product.id;
-          cart.addItem(CartItemEntity(
-            productId: product.id,
-            productName: product.name,
-            cartKey: cartKey,
-            quantity: 1,
-            unitPrice: variant?.salePrice ?? product.salePrice,
-            unitCost: variant?.unitCost ?? product.unitCost,
-            availableStock: product.stockControl ? stock : 999999,
-            usesBatches: product.usesBatches,
-            variantId: variant?.id,
-            variantLabel: variant?.label,
-            wholesalePrice: variant?.wholesalePrice ?? product.wholesalePrice,
-            imageUrl: (variant != null && variant.images.isNotEmpty) ? variant.images.first.imageUrl : product.primaryImageUrl,
-            sku: variant?.sku,
-            isSelected: true,
-          ));
+          cart.addItem(
+            CartItemEntity(
+              productId: product.id,
+              productName: product.name,
+              cartKey: cartKey,
+              quantity: 1,
+              unitPrice: variant?.salePrice ?? product.salePrice,
+              unitCost: variant?.unitCost ?? product.unitCost,
+              availableStock: product.stockControl ? stock : 999999,
+              usesBatches: product.usesBatches,
+              variantId: variant?.id,
+              variantLabel: variant?.label,
+              wholesalePrice: variant?.wholesalePrice ?? product.wholesalePrice,
+              imageUrl:
+                  (variant != null && variant.images.isNotEmpty)
+                      ? variant.images.first.imageUrl
+                      : product.primaryImageUrl,
+              sku: variant?.sku,
+              isSelected: true,
+            ),
+          );
 
           AppSnackbar.show(
             context,
@@ -155,7 +163,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       body: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
         builder: (context, state) {
           final cubit = context.read<AdminCatalogCubit>();
-          
+
           Widget catalogContent = Column(
             children: [
               Container(
@@ -172,8 +180,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                       onExport: () {},
                       onSearchChanged: cubit.setSearchTerm,
                       searchByIngredient: state.searchByIngredient,
-                      onToggleIngredientSearch:
-                          cubit.toggleSearchByIngredient,
+                      onToggleIngredientSearch: cubit.toggleSearchByIngredient,
                       isPosMode: true,
                       onBack: () => context.go('/admin'),
                       onAddProduct: () async {
@@ -255,13 +262,14 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
           }
         },
       ),
-      floatingActionButton: MediaQuery.of(context).size.width >= 800 
-          ? null 
-          : FloatingActionButton.extended(
-              onPressed: () => context.push('/admin/pos-checkout'),
-              label: const Text('Ir a Caja'),
-              icon: const Icon(Icons.shopping_cart_checkout),
-            ),
+      floatingActionButton:
+          MediaQuery.of(context).size.width >= 800
+              ? null
+              : FloatingActionButton.extended(
+                onPressed: () => context.push('/admin/pos-checkout'),
+                label: const Text('Ir a Caja'),
+                icon: const Icon(Icons.shopping_cart_checkout),
+              ),
     );
   }
 

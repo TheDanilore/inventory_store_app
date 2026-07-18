@@ -24,7 +24,6 @@ class SupplierPaymentModal extends StatefulWidget {
 }
 
 class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
-  
   final _amountCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   bool _isSaving = false;
@@ -70,7 +69,10 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
   Future<void> _loadAccounts() async {
     try {
       final respResult = await sl<GetFinancialAccountsUseCase>().call();
-      final resp = respResult.fold((l) => <SupplierFinancialAccountOption>[], (r) => r);
+      final resp = respResult.fold(
+        (l) => <SupplierFinancialAccountOption>[],
+        (r) => r,
+      );
       if (mounted) {
         setState(() {
           _accounts = resp;
@@ -354,7 +356,8 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
                 final orderId = order['id'] as String;
                 final shortId = orderId.substring(0, 8).toUpperCase();
                 final pending =
-                    (order['total_amount'] as num) - (order['amount_paid'] as num);
+                    (order['total_amount'] as num) -
+                    (order['amount_paid'] as num);
                 final isParcial = order['payment_status'] == 'PARTIAL';
 
                 return _OrderSelectionTile(
@@ -670,7 +673,8 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
             const SizedBox(height: 24),
             AnimatedSize(
               duration: const Duration(milliseconds: 200),
-              child: showSummary ? _buildSummary(amountToPay) : const SizedBox(),
+              child:
+                  showSummary ? _buildSummary(amountToPay) : const SizedBox(),
             ),
             const Text(
               'Notas (opcional)',
@@ -918,12 +922,3 @@ class _QuickAmountChip extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-
-
-

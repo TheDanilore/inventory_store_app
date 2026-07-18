@@ -7,14 +7,17 @@ enum MovementDateFilter { allTime, thisMonth, lastMonth }
 
 abstract class SupplierCreditMovementsRepository {
   Future<
-      Either<
-          Failure,
-          ({
-            List<SupplierCreditMovementEntity> movements,
-            int totalCount,
-            double totalCharged,
-            double totalPaid,
-          })>> fetchMovementsPaginated({
+    Either<
+      Failure,
+      ({
+        List<SupplierCreditMovementEntity> movements,
+        int totalCount,
+        double totalCharged,
+        double totalPaid,
+      })
+    >
+  >
+  fetchMovementsPaginated({
     required String creditId,
     required int page,
     required int pageSize,

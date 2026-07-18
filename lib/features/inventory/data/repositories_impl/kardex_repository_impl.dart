@@ -21,9 +21,10 @@ class KardexRepositoryImpl implements KardexRepository {
       query = query.gte('created_at', startDate.toIso8601String());
     }
     if (endDate != null) {
-      final endStr = endDate
-          .add(const Duration(hours: 23, minutes: 59, seconds: 59))
-          .toIso8601String();
+      final endStr =
+          endDate
+              .add(const Duration(hours: 23, minutes: 59, seconds: 59))
+              .toIso8601String();
       query = query.lte('created_at', endStr);
     }
 
@@ -145,5 +146,4 @@ class KardexRepositoryImpl implements KardexRepository {
         .map((row) => KardexMovementModel.fromSupabaseRow(row).toEntity())
         .toList();
   }
-
 }

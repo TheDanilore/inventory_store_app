@@ -425,10 +425,9 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                                 end: cubit.state.endDate!,
                               )
                               : null,
-                      onDateRangeSelected: (picked) => cubit.updateDateRange(
-                        picked.start,
-                        picked.end,
-                      ),
+                      onDateRangeSelected:
+                          (picked) =>
+                              cubit.updateDateRange(picked.start, picked.end),
                       onClear: () => cubit.updateDateRange(null, null),
                     ),
                   ],
@@ -462,9 +461,9 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                 icon: Icons.inventory_2_outlined,
                 title: 'Sin Resultados',
                 message:
-                      cubit.state.searchQuery.isEmpty &&
-                              cubit.state.startDate == null &&
-                              cubit.state.endDate == null
+                    cubit.state.searchQuery.isEmpty &&
+                            cubit.state.startDate == null &&
+                            cubit.state.endDate == null
                         ? 'No hay salidas registradas'
                         : 'Sin resultados para los filtros',
               ),

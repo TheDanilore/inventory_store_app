@@ -33,7 +33,9 @@ class ExitItemUI {
   factory ExitItemUI.fromJson(Map<String, dynamic> json) {
     return ExitItemUI(
       product: ProductModel.fromJson(json['product'] as Map<String, dynamic>),
-      variant: ProductVariantModel.fromJson(json['variant'] as Map<String, dynamic>),
+      variant: ProductVariantModel.fromJson(
+        json['variant'] as Map<String, dynamic>,
+      ),
       selectedBatch: json['selectedBatch'] as Map<String, dynamic>?,
       quantity: (json['quantity'] as num).toDouble(),
       unitCost: (json['unit_cost'] as num).toDouble(),
@@ -46,11 +48,11 @@ class InventoryExitFormState extends Equatable {
   final bool isSaving;
   final String errorMessage;
   final bool isSuccess;
-  
+
   final List<WarehouseModel> warehouses;
   final List<ProductModel> allProducts;
   final Map<String, List<ProductVariantModel>> variantsByProduct;
-  
+
   final String? selectedWarehouseId;
   final String selectedReason;
   final List<ExitItemUI> items;
@@ -68,8 +70,10 @@ class InventoryExitFormState extends Equatable {
     this.items = const [],
   });
 
-  double get totalLossCost => items.fold(0, (sum, item) => sum + item.totalCost);
-  int get totalUnits => items.fold(0, (sum, item) => sum + item.quantity.toInt());
+  double get totalLossCost =>
+      items.fold(0, (sum, item) => sum + item.totalCost);
+  int get totalUnits =>
+      items.fold(0, (sum, item) => sum + item.quantity.toInt());
 
   InventoryExitFormState copyWith({
     bool? isLoading,
@@ -99,15 +103,15 @@ class InventoryExitFormState extends Equatable {
 
   @override
   List<Object?> get props => [
-        isLoading,
-        isSaving,
-        errorMessage,
-        isSuccess,
-        warehouses,
-        allProducts,
-        variantsByProduct,
-        selectedWarehouseId,
-        selectedReason,
-        items,
-      ];
+    isLoading,
+    isSaving,
+    errorMessage,
+    isSuccess,
+    warehouses,
+    allProducts,
+    variantsByProduct,
+    selectedWarehouseId,
+    selectedReason,
+    items,
+  ];
 }

@@ -177,9 +177,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
         final supabaseUrl = state.connectionUrl ?? 'Desconocida';
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Información del Negocio'),
-          ),
+          appBar: AppBar(title: const Text('Información del Negocio')),
           bottomNavigationBar:
               (!isLoading && !hasError)
                   ? SafeArea(
@@ -811,4 +809,3 @@ class _ConnectionSection extends StatelessWidget {
     );
   }
 }
-

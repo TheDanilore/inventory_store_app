@@ -5,9 +5,14 @@ import 'package:inventory_store_app/features/orders/domain/entities/order_entity
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
 
 abstract class OrdersRepository {
-  Future<Either<Failure, List<OrderEntity>>> getCustomerOrders(String profileId, {int limit = 10, int offset = 0});
-  
-  Future<Either<Failure, ({List<OrderEntity> orders, int total})>> getFilteredOrders({
+  Future<Either<Failure, List<OrderEntity>>> getCustomerOrders(
+    String profileId, {
+    int limit = 10,
+    int offset = 0,
+  });
+
+  Future<Either<Failure, ({List<OrderEntity> orders, int total})>>
+  getFilteredOrders({
     String? customerIdFilter,
     required String statusFilter,
     required String paymentStatusFilter,
@@ -52,5 +57,7 @@ abstract class OrdersRepository {
     String? notesOverride,
   });
 
-  Future<Either<Failure, List<Map<String, dynamic>>>> fetchOrderItemsForPdf(String orderId);
+  Future<Either<Failure, List<Map<String, dynamic>>>> fetchOrderItemsForPdf(
+    String orderId,
+  );
 }

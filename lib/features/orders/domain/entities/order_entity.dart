@@ -19,7 +19,7 @@ class OrderEntity extends Equatable {
   final String? updatedBy;
   final DateTime? updatedAt;
   final double discountAmount;
-  
+
   final String? warehouseName; // Extracted from warehouse relation if needed
   final String? profileFullName;
   final String? profilePhone;
@@ -50,28 +50,28 @@ class OrderEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        customerId,
-        totalAmount,
-        totalProfit,
-        paymentMethod,
-        status,
-        createdAt,
-        warehouseId,
-        pointsUsed,
-        pointsEarned,
-        customerName,
-        paymentStatus,
-        amountPaid,
-        dueDate,
-        createdBy,
-        updatedBy,
-        updatedAt,
-        discountAmount,
-        warehouseName,
-        profileFullName,
-        profilePhone,
-      ];
+    id,
+    customerId,
+    totalAmount,
+    totalProfit,
+    paymentMethod,
+    status,
+    createdAt,
+    warehouseId,
+    pointsUsed,
+    pointsEarned,
+    customerName,
+    paymentStatus,
+    amountPaid,
+    dueDate,
+    createdBy,
+    updatedBy,
+    updatedAt,
+    discountAmount,
+    warehouseName,
+    profileFullName,
+    profilePhone,
+  ];
 
   OrderEntity copyWith({
     String? id,

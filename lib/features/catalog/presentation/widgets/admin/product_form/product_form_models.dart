@@ -5,7 +5,10 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ima
 /// Genera un ID único de 16 caracteres hexadecimales. Reemplaza UniqueKey() de Flutter.
 String _generateId() {
   final rng = Random.secure();
-  return List.generate(16, (_) => rng.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+  return List.generate(
+    16,
+    (_) => rng.nextInt(256).toRadixString(16).padLeft(2, '0'),
+  ).join();
 }
 
 /// Modelo inmutable de una fila de detalle clave/valor del formulario de producto.
@@ -16,7 +19,7 @@ class DetailModel {
   final String value;
 
   DetailModel({String? id, this.key = '', this.value = ''})
-      : id = id ?? _generateId();
+    : id = id ?? _generateId();
 
   DetailModel copyWith({String? key, String? value}) =>
       DetailModel(id: id, key: key ?? this.key, value: value ?? this.value);
@@ -45,15 +48,14 @@ class IngredientRowModel {
     String? name,
     String? concentration,
     String? unit,
-  }) =>
-      IngredientRowModel(
-        id: id,
-        ingredientId:
-            clearIngredientId ? null : (ingredientId ?? this.ingredientId),
-        name: name ?? this.name,
-        concentration: concentration ?? this.concentration,
-        unit: unit ?? this.unit,
-      );
+  }) => IngredientRowModel(
+    id: id,
+    ingredientId:
+        clearIngredientId ? null : (ingredientId ?? this.ingredientId),
+    name: name ?? this.name,
+    concentration: concentration ?? this.concentration,
+    unit: unit ?? this.unit,
+  );
 }
 
 /// Modelo de un ítem de imagen en el formulario de producto.
@@ -66,7 +68,7 @@ class FormImageItem {
   final String? newName;
 
   FormImageItem({String? id, this.existing, this.newBytes, this.newName})
-      : id = id ?? _generateId();
+    : id = id ?? _generateId();
 
   bool get isExisting => existing != null;
 }

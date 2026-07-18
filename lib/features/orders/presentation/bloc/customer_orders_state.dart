@@ -50,14 +50,14 @@ class CustomerOrdersState extends Equatable {
 
   @override
   List<Object?> get props => [
-        orders,
-        isLoading,
-        isLoadingMore,
-        hasMore,
-        isBackgroundLoading,
-        statusFilter,
-        searchQuery,
-        profileId,
-        errorMessage,
-      ];
+    orders,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    isBackgroundLoading,
+    statusFilter,
+    searchQuery,
+    profileId,
+    errorMessage,
+  ];
 }

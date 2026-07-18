@@ -16,6 +16,7 @@ import 'package:inventory_store_app/features/auth/presentation/widgets/profile_e
 import 'package:inventory_store_app/features/auth/presentation/widgets/profile_read_only_info_section.dart';
 
 import 'package:inventory_store_app/features/auth/presentation/widgets/profile_action_buttons_section.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/profile_quick_access_section.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool openedFromAdmin;
@@ -164,79 +165,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         return Scaffold(
           backgroundColor: AppColors.background,
-          extendBodyBehindAppBar: true,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 16,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              onPressed:
-                  () =>
-                      context.canPop()
-                          ? context.pop()
-                          : context.go(
-                            widget.openedFromAdmin ? '/admin' : '/customer',
-                          ),
-            ),
-            actions: [
-              if (user != null)
-                Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: _isEditing
-                        ? IconButton(
-                            key: const ValueKey('cancelBtn'),
-                            icon: const Icon(
-                              Icons.close_rounded,
-                              color: AppColors.error,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _isEditing = false;
-                                _selectedImage = null;
-                                _populateFields();
-                              });
-                            },
-                          )
-                        : IconButton(
-                            key: const ValueKey('editBtn'),
-                            icon: const Icon(
-                              Icons.edit_rounded,
-                              color: AppColors.primary,
-                            ),
-                            onPressed: () {
-                              setState(() => _isEditing = true);
-                            },
-                          ),
-                  ),
-                ),
-            ],
-          ),
-          body: (isLoading || state.authStatus == AuthStatus.initial)
-              ? const Center(child: CircularProgressIndicator())
-              : user == null
+
+          body:
+              (isLoading || state.authStatus == AuthStatus.initial)
+                  ? const Center(child: CircularProgressIndicator())
+                  : user == null
                   ? const Center(
-                      child: Text('Inicia sesión para ver tu perfil'),
-                    )
+                    child: Text('Inicia sesión para ver tu perfil'),
+                  )
                   : SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Column(
@@ -252,8 +188,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           isEditing: _isEditing,
                           isLoyaltyEnabled: false,
                           onPickImage: _pickImage,
+                          onEditToggle: () {
+                            if (_isEditing) {
+                              setState(() {
+                                _isEditing = false;
+                                _selectedImage = null;
+                                _populateFields();
+                              });
+                            } else {
+                              setState(() => _isEditing = true);
+                            }
+                          },
                         ),
                         const SizedBox(height: 12),
+                        if (!widget.openedFromAdmin && !_isEditing) ...[
+                          const ProfileQuickAccessSection(),
+                          const SizedBox(height: 16),
+                        ],
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: AnimatedSwitcher(

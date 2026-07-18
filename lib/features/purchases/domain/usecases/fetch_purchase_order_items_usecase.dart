@@ -14,4 +14,3 @@ class FetchPurchaseOrderItemsUseCase {
     return repository.fetchOrderItems(poId);
   }
 }
-

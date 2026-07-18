@@ -84,9 +84,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
               context.read<SupplierCreditsCubit>().loadAccounts();
             },
             onToggleStatus: (acc) async {
-              context.read<SupplierCreditsCubit>().toggleAccountStatus(
-                acc,
-              );
+              context.read<SupplierCreditsCubit>().toggleAccountStatus(acc);
               if (context.mounted) {
                 AppSnackbar.show(
                   context,
@@ -142,14 +140,14 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
 
             if (state is SupplierCreditsLoaded) {
               accounts = state.accounts;
-              
+
               withDebtOnly = state.withDebtOnly;
               currentPage = state.currentPage;
               totalPages = state.totalPages;
               stats = state.stats;
             } else if (state is SupplierCreditsLoading) {
               accounts = state.currentAccounts;
-              
+
               withDebtOnly = state.withDebtOnly;
               currentPage = state.currentPage;
               totalPages =
@@ -157,7 +155,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
               stats = state.stats;
             } else if (state is SupplierCreditsError) {
               accounts = state.currentAccounts;
-              
+
               withDebtOnly = state.withDebtOnly;
               currentPage = state.currentPage;
               totalPages =
@@ -409,6 +407,3 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
     );
   }
 }
-
-
-

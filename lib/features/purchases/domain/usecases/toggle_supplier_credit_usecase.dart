@@ -13,4 +13,3 @@ class ToggleSupplierCreditUseCase {
     return repository.toggleAccountStatus(creditId, currentStatus);
   }
 }
-

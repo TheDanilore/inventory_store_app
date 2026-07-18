@@ -11,13 +11,16 @@ class LoadCartParams {
 }
 
 @lazySingleton
-class LoadCartUseCase implements UseCase<Map<String, CartItemEntity>, LoadCartParams> {
+class LoadCartUseCase
+    implements UseCase<Map<String, CartItemEntity>, LoadCartParams> {
   final CartRepository repository;
 
   LoadCartUseCase(this.repository);
 
   @override
-  Future<Either<Failure, Map<String, CartItemEntity>>> call(LoadCartParams params) async {
+  Future<Either<Failure, Map<String, CartItemEntity>>> call(
+    LoadCartParams params,
+  ) async {
     return await repository.loadLocalCart(params.cartType);
   }
 }

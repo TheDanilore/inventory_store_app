@@ -9,7 +9,7 @@ abstract class CategoriesRepository {
     required bool isActive,
     String? profileId,
   });
-  
+
   Future<Either<Failure, void>> updateCategory({
     required String id,
     required String name,
@@ -17,9 +17,9 @@ abstract class CategoriesRepository {
     required bool isActive,
     String? profileId,
   });
-  
+
   Future<Either<Failure, void>> deleteCategory(String id);
-  
+
   Future<Either<Failure, List<CategoryEntity>>> getCategories({
     bool activeOnly = false,
   });

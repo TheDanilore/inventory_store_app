@@ -21,6 +21,12 @@ class WarehouseEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id, name, address, isActive, createdAt, createdBy, updatedBy,
-      ];
+    id,
+    name,
+    address,
+    isActive,
+    createdAt,
+    createdBy,
+    updatedBy,
+  ];
 }

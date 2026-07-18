@@ -7,10 +7,7 @@ class TransferFundsUseCase {
   final AccountMovementsRepository _repository;
   final FinancialAccountsRepository _accountsRepository;
 
-  TransferFundsUseCase(
-    this._repository,
-    this._accountsRepository,
-  );
+  TransferFundsUseCase(this._repository, this._accountsRepository);
 
   Future<void> call({
     required String profileId,
@@ -27,7 +24,9 @@ class TransferFundsUseCase {
       throw Exception('No puedes transferir a la misma cuenta.');
     }
 
-    final sourceAccount = await _accountsRepository.getAccountById(sourceAccountId);
+    final sourceAccount = await _accountsRepository.getAccountById(
+      sourceAccountId,
+    );
     if (sourceAccount == null) {
       throw Exception('La cuenta origen no existe.');
     }

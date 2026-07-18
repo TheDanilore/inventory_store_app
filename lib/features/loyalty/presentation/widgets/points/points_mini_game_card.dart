@@ -348,7 +348,9 @@ class _PointsMiniGameCardState extends State<PointsMiniGameCard> {
                                                       locked
                                                           ? PointsDS.textMuted
                                                           : PointsDS.goldDark
-                                                              .withValues(alpha: 0.7),
+                                                              .withValues(
+                                                                alpha: 0.7,
+                                                              ),
                                                 ),
                                       ),
                                     ),
@@ -434,4 +436,3 @@ class _StatusPill extends StatelessWidget {
     ),
   );
 }
-

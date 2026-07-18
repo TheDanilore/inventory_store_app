@@ -35,8 +35,19 @@ class InventoryEntryEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id, warehouseId, supplierId, purchaseOrderId, notes,
-        totalAmount, documentType, documentNumber, documentDate,
-        createdBy, createdAt, warehouseName, supplierName, itemCount,
-      ];
+    id,
+    warehouseId,
+    supplierId,
+    purchaseOrderId,
+    notes,
+    totalAmount,
+    documentType,
+    documentNumber,
+    documentDate,
+    createdBy,
+    createdAt,
+    warehouseName,
+    supplierName,
+    itemCount,
+  ];
 }

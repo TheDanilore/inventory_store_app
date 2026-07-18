@@ -16,4 +16,3 @@ class SearchSuppliersUseCase {
     return repository.searchSuppliers(query, existingSupplierIds);
   }
 }
-

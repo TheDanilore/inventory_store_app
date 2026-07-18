@@ -71,7 +71,8 @@ class _UserDetailContentState extends State<_UserDetailContent> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoyaltyEnabled = context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
+    final isLoyaltyEnabled =
+        context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
 
     return BlocConsumer<UserDetailCubit, UserDetailState>(
       listener: (context, state) {
@@ -94,11 +95,11 @@ class _UserDetailContentState extends State<_UserDetailContent> {
             context.read<UserDetailCubit>().clearMessages();
           }
         } else if (state is UserDetailError) {
-           AppSnackbar.show(
-              context,
-              message: state.message,
-              type: SnackbarType.error,
-            );
+          AppSnackbar.show(
+            context,
+            message: state.message,
+            type: SnackbarType.error,
+          );
         }
       },
       builder: (context, state) {
@@ -158,9 +159,10 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                           width: 64,
                           height: 64,
                           decoration: BoxDecoration(
-                            color: role == 'admin'
-                                ? Colors.indigo.withValues(alpha: 0.1)
-                                : AppColors.primary.withValues(alpha: 0.1),
+                            color:
+                                role == 'admin'
+                                    ? Colors.indigo.withValues(alpha: 0.1)
+                                    : AppColors.primary.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: Center(
@@ -169,9 +171,10 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w800,
-                                color: role == 'admin'
-                                    ? Colors.indigo.shade700
-                                    : AppColors.primary,
+                                color:
+                                    role == 'admin'
+                                        ? Colors.indigo.shade700
+                                        : AppColors.primary,
                               ),
                             ),
                           ),
@@ -198,24 +201,29 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: role == 'admin'
-                                          ? Colors.indigo.shade50
-                                          : AppColors.surface,
+                                      color:
+                                          role == 'admin'
+                                              ? Colors.indigo.shade50
+                                              : AppColors.surface,
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
-                                        color: role == 'admin'
-                                            ? Colors.indigo.shade200
-                                            : AppColors.border,
+                                        color:
+                                            role == 'admin'
+                                                ? Colors.indigo.shade200
+                                                : AppColors.border,
                                       ),
                                     ),
                                     child: Text(
-                                      role == 'admin' ? 'Administrador' : 'Cliente',
+                                      role == 'admin'
+                                          ? 'Administrador'
+                                          : 'Cliente',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        color: role == 'admin'
-                                            ? Colors.indigo.shade700
-                                            : AppColors.textSecondary,
+                                        color:
+                                            role == 'admin'
+                                                ? Colors.indigo.shade700
+                                                : AppColors.textSecondary,
                                       ),
                                     ),
                                   ),
@@ -226,14 +234,16 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: isActive
-                                          ? Colors.green.shade50
-                                          : Colors.red.shade50,
+                                      color:
+                                          isActive
+                                              ? Colors.green.shade50
+                                              : Colors.red.shade50,
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
-                                        color: isActive
-                                            ? Colors.green.shade200
-                                            : Colors.red.shade200,
+                                        color:
+                                            isActive
+                                                ? Colors.green.shade200
+                                                : Colors.red.shade200,
                                       ),
                                     ),
                                     child: Text(
@@ -241,9 +251,10 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        color: isActive
-                                            ? Colors.green.shade700
-                                            : Colors.red.shade700,
+                                        color:
+                                            isActive
+                                                ? Colors.green.shade700
+                                                : Colors.red.shade700,
                                       ),
                                     ),
                                   ),
@@ -258,7 +269,9 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                           onPressed: () => _openEditForm(context, state),
                           tooltip: 'Editar usuario',
                           style: IconButton.styleFrom(
-                            backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+                            backgroundColor: AppColors.primary.withValues(
+                              alpha: 0.08,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -324,14 +337,17 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                               child: Divider(height: 1),
                             ),
                           ],
-                          if (documentNumber != null && documentNumber.isNotEmpty) ...[
+                          if (documentNumber != null &&
+                              documentNumber.isNotEmpty) ...[
                             _buildInfoRow(
                               context,
                               icon: Icons.badge_outlined,
                               label: 'Documento ($documentType)',
                               value: documentNumber,
                               onCopy: () {
-                                Clipboard.setData(ClipboardData(text: documentNumber));
+                                Clipboard.setData(
+                                  ClipboardData(text: documentNumber),
+                                );
                                 AppSnackbar.show(
                                   context,
                                   message: 'Documento copiado',
@@ -348,7 +364,9 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                             context,
                             icon: Icons.calendar_today_outlined,
                             label: 'Fecha de registro',
-                            value: _formatDate(state.user.createdAt?.toIso8601String()),
+                            value: _formatDate(
+                              state.user.createdAt?.toIso8601String(),
+                            ),
                           ),
                         ],
                       ),
@@ -427,7 +445,9 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.grey.shade300),
+                                      border: Border.all(
+                                        color: Colors.grey.shade300,
+                                      ),
                                     ),
                                     child: TextField(
                                       controller: _pointsCtrl,
@@ -437,7 +457,9 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       ],
                                       decoration: const InputDecoration(
                                         hintText: 'Cantidad...',
-                                        hintStyle: TextStyle(color: Colors.grey),
+                                        hintStyle: TextStyle(
+                                          color: Colors.grey,
+                                        ),
                                         border: InputBorder.none,
                                         contentPadding: EdgeInsets.symmetric(
                                           horizontal: 16,
@@ -457,23 +479,34 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                         foregroundColor: Colors.white,
                                         elevation: 0,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                       ),
-                                      onPressed: state.isSaving
-                                          ? null
-                                          : () {
-                                              if (_pointsCtrl.text.trim().isEmpty) {
-                                                AppSnackbar.show(
-                                                  context,
-                                                  message: 'Ingresa un monto',
-                                                  type: SnackbarType.warning,
-                                                );
-                                                return;
-                                              }
-                                              final amount = int.tryParse(_pointsCtrl.text.trim()) ?? 0;
-                                              context.read<UserDetailCubit>().adjustPoints(-amount);
-                                            },
+                                      onPressed:
+                                          state.isSaving
+                                              ? null
+                                              : () {
+                                                if (_pointsCtrl.text
+                                                    .trim()
+                                                    .isEmpty) {
+                                                  AppSnackbar.show(
+                                                    context,
+                                                    message: 'Ingresa un monto',
+                                                    type: SnackbarType.warning,
+                                                  );
+                                                  return;
+                                                }
+                                                final amount =
+                                                    int.tryParse(
+                                                      _pointsCtrl.text.trim(),
+                                                    ) ??
+                                                    0;
+                                                context
+                                                    .read<UserDetailCubit>()
+                                                    .adjustPoints(-amount);
+                                              },
                                       child: const Icon(Icons.remove_rounded),
                                     ),
                                   ),
@@ -489,23 +522,34 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                         foregroundColor: Colors.white,
                                         elevation: 0,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                       ),
-                                      onPressed: state.isSaving
-                                          ? null
-                                          : () {
-                                              if (_pointsCtrl.text.trim().isEmpty) {
-                                                AppSnackbar.show(
-                                                  context,
-                                                  message: 'Ingresa un monto',
-                                                  type: SnackbarType.warning,
-                                                );
-                                                return;
-                                              }
-                                              final amount = int.tryParse(_pointsCtrl.text.trim()) ?? 0;
-                                              context.read<UserDetailCubit>().adjustPoints(amount);
-                                            },
+                                      onPressed:
+                                          state.isSaving
+                                              ? null
+                                              : () {
+                                                if (_pointsCtrl.text
+                                                    .trim()
+                                                    .isEmpty) {
+                                                  AppSnackbar.show(
+                                                    context,
+                                                    message: 'Ingresa un monto',
+                                                    type: SnackbarType.warning,
+                                                  );
+                                                  return;
+                                                }
+                                                final amount =
+                                                    int.tryParse(
+                                                      _pointsCtrl.text.trim(),
+                                                    ) ??
+                                                    0;
+                                                context
+                                                    .read<UserDetailCubit>()
+                                                    .adjustPoints(amount);
+                                              },
                                       child: const Icon(Icons.add_rounded),
                                     ),
                                   ),
@@ -515,7 +559,7 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                           ],
                         ),
                       ),
-                      
+
                       const SizedBox(height: 24),
                       if (state.recentMovements.isNotEmpty) ...[
                         const Text(
@@ -549,7 +593,8 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         mov['description'] ?? 'Movimiento',
@@ -573,9 +618,10 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                   '${isPositive ? '+' : ''}${mov['points']}',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w800,
-                                    color: isPositive
-                                        ? Colors.green.shade700
-                                        : Colors.red.shade700,
+                                    color:
+                                        isPositive
+                                            ? Colors.green.shade700
+                                            : Colors.red.shade700,
                                     fontSize: 14,
                                   ),
                                 ),

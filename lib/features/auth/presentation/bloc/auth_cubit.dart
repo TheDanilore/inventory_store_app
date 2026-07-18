@@ -42,18 +42,18 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> checkSession() async {
     final result = await getCurrentUserUseCase(const NoParams());
-    
+
     result.fold(
       (failure) {
-        emit(state.copyWith(
-          authStatus: AuthStatus.unauthenticated,
-        ));
+        emit(state.copyWith(authStatus: AuthStatus.unauthenticated));
       },
       (user) {
-        emit(state.copyWith(
-          authStatus: AuthStatus.authenticated,
-          currentUser: user,
-        ));
+        emit(
+          state.copyWith(
+            authStatus: AuthStatus.authenticated,
+            currentUser: user,
+          ),
+        );
       },
     );
   }
@@ -61,21 +61,27 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> login(String email, String password) async {
     emit(state.copyWith(viewState: ViewState.loading, clearErrorMessage: true));
 
-    final result = await loginUseCase(LoginParams(email: email, password: password));
+    final result = await loginUseCase(
+      LoginParams(email: email, password: password),
+    );
 
     result.fold(
       (failure) {
-        emit(state.copyWith(
-          viewState: ViewState.error,
-          errorMessage: failure.message,
-        ));
+        emit(
+          state.copyWith(
+            viewState: ViewState.error,
+            errorMessage: failure.message,
+          ),
+        );
       },
       (user) {
-        emit(state.copyWith(
-          viewState: ViewState.success,
-          authStatus: AuthStatus.authenticated,
-          currentUser: user,
-        ));
+        emit(
+          state.copyWith(
+            viewState: ViewState.success,
+            authStatus: AuthStatus.authenticated,
+            currentUser: user,
+          ),
+        );
       },
     );
   }
@@ -83,21 +89,27 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> register(String email, String password, String fullName) async {
     emit(state.copyWith(viewState: ViewState.loading, clearErrorMessage: true));
 
-    final result = await registerUseCase(RegisterParams(email: email, password: password, fullName: fullName));
+    final result = await registerUseCase(
+      RegisterParams(email: email, password: password, fullName: fullName),
+    );
 
     result.fold(
       (failure) {
-        emit(state.copyWith(
-          viewState: ViewState.error,
-          errorMessage: failure.message,
-        ));
+        emit(
+          state.copyWith(
+            viewState: ViewState.error,
+            errorMessage: failure.message,
+          ),
+        );
       },
       (user) {
-        emit(state.copyWith(
-          viewState: ViewState.success,
-          authStatus: AuthStatus.authenticated,
-          currentUser: user,
-        ));
+        emit(
+          state.copyWith(
+            viewState: ViewState.success,
+            authStatus: AuthStatus.authenticated,
+            currentUser: user,
+          ),
+        );
       },
     );
   }
@@ -105,10 +117,12 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> logout() async {
     emit(state.copyWith(viewState: ViewState.loading));
     await logoutUseCase(const NoParams());
-    emit(const AuthState(
-      authStatus: AuthStatus.unauthenticated,
-      viewState: ViewState.initial,
-    ));
+    emit(
+      const AuthState(
+        authStatus: AuthStatus.unauthenticated,
+        viewState: ViewState.initial,
+      ),
+    );
   }
 
   Future<String?> resetPassword(String email) async {
@@ -116,7 +130,12 @@ class AuthCubit extends Cubit<AuthState> {
     final result = await resetPasswordUseCase(email);
     return result.fold(
       (failure) {
-        emit(state.copyWith(viewState: ViewState.error, errorMessage: failure.message));
+        emit(
+          state.copyWith(
+            viewState: ViewState.error,
+            errorMessage: failure.message,
+          ),
+        );
         return failure.message;
       },
       (_) {
@@ -131,7 +150,12 @@ class AuthCubit extends Cubit<AuthState> {
     final result = await changePasswordUseCase(newPassword);
     return result.fold(
       (failure) {
-        emit(state.copyWith(viewState: ViewState.error, errorMessage: failure.message));
+        emit(
+          state.copyWith(
+            viewState: ViewState.error,
+            errorMessage: failure.message,
+          ),
+        );
         return false;
       },
       (_) {
@@ -146,7 +170,12 @@ class AuthCubit extends Cubit<AuthState> {
     final result = await deleteAccountUseCase(password);
     return result.fold(
       (failure) {
-        emit(state.copyWith(viewState: ViewState.error, errorMessage: failure.message));
+        emit(
+          state.copyWith(
+            viewState: ViewState.error,
+            errorMessage: failure.message,
+          ),
+        );
         return false;
       },
       (_) {
@@ -158,14 +187,26 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<bool> updateProfile(UserEntity user, {Uint8List? imageBytes}) async {
     emit(state.copyWith(viewState: ViewState.loading, clearErrorMessage: true));
-    final result = await updateProfileUseCase(UpdateProfileParams(user: user, imageBytes: imageBytes));
+    final result = await updateProfileUseCase(
+      UpdateProfileParams(user: user, imageBytes: imageBytes),
+    );
     return result.fold(
       (failure) {
-        emit(state.copyWith(viewState: ViewState.error, errorMessage: failure.message));
+        emit(
+          state.copyWith(
+            viewState: ViewState.error,
+            errorMessage: failure.message,
+          ),
+        );
         return false;
       },
       (updatedUser) {
-        emit(state.copyWith(viewState: ViewState.success, currentUser: updatedUser));
+        emit(
+          state.copyWith(
+            viewState: ViewState.success,
+            currentUser: updatedUser,
+          ),
+        );
         return true;
       },
     );
