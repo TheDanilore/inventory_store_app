@@ -4,12 +4,18 @@ import 'package:inventory_store_app/features/inventory/domain/entities/inventory
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_inventory_exits_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits_state.dart';
 
+import 'package:inventory_store_app/features/inventory/domain/usecases/get_exit_items_usecase.dart';
+import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_item_model.dart';
+
 @injectable
 class InventoryExitsCubit extends Cubit<InventoryExitsState> {
   final GetInventoryExitsUseCase getExitsUseCase;
+  final GetExitItemsUseCase getItemsUseCase;
 
-  InventoryExitsCubit({required this.getExitsUseCase})
-    : super(const InventoryExitsState());
+  InventoryExitsCubit({
+    required this.getExitsUseCase,
+    required this.getItemsUseCase,
+  }) : super(const InventoryExitsState());
 
   void initLoad() {
     loadExits(isRefresh: true);
@@ -104,5 +110,64 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
   void clearFilters() {
     emit(state.copyWith(searchQuery: '', clearDateRange: true));
     loadExits(isRefresh: true);
+  }
+
+  Future<List<InventoryExitItemModel>> loadExitItems(String exitId) async {
+    try {
+      final itemsList = await getItemsUseCase.call(exitId);
+      return itemsList.map((r) {
+        final prod = r['products'] as Map<String, dynamic>?;
+        final variant = r['product_variants'] as Map<String, dynamic>?;
+        final variantId = r['variant_id'] as String?;
+
+        final vavList =
+            variant?['variant_attribute_values'] as List<dynamic>? ?? [];
+        final List<String> attrValues = [];
+        for (var vav in vavList) {
+          final av = vav['attribute_values'] as Map<String, dynamic>?;
+          if (av != null && av['value'] != null) {
+            attrValues.add(av['value'].toString());
+          }
+        }
+        final attrsText = attrValues.join(' · ');
+
+        final bool usesBatches = prod?['uses_batches'] == true;
+
+        String? finalImageUrl;
+        final imagesList = prod?['product_images'] as List<dynamic>? ?? [];
+        if (imagesList.isNotEmpty) {
+          final variantImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
+            (img) => img['variant_id'] == variantId,
+            orElse: () => <String, dynamic>{},
+          );
+          if (variantImage.isNotEmpty && variantImage['image_url'] != null) {
+            finalImageUrl = variantImage['image_url'] as String;
+          } else {
+            final mainImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
+              (img) => img['is_main'] == true,
+              orElse: () => imagesList.first as Map<String, dynamic>,
+            );
+            finalImageUrl = mainImage['image_url'] as String?;
+          }
+        }
+
+        return InventoryExitItemModel(
+          id: r['id'] as String? ?? '',
+          exitId: exitId,
+          productId: prod?['id'] as String? ?? '',
+          variantId: variantId ?? '',
+          productName: prod?['name'] as String? ?? '—',
+          variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
+          quantity: (r['quantity'] as num).toDouble(),
+          unitCost: (r['unit_cost'] as num).toDouble(),
+          batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
+          usesBatches: usesBatches,
+          imageUrl: finalImageUrl,
+          sku: variant?['sku'] as String?,
+        );
+      }).toList();
+    } catch (e) {
+      return [];
+    }
   }
 }

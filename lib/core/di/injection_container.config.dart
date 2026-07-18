@@ -1289,6 +1289,12 @@ extension GetItInjectableX on _i174.GetIt {
         clearCart: gh<_i776.ClearCartUseCase>(),
       ),
     );
+    gh.factory<_i5.InventoryExitsCubit>(
+      () => _i5.InventoryExitsCubit(
+        getExitsUseCase: gh<_i136.GetInventoryExitsUseCase>(),
+        getItemsUseCase: gh<_i441.GetExitItemsUseCase>(),
+      ),
+    );
     gh.factory<_i679.FinancialAccountsCubit>(
       () => _i679.FinancialAccountsCubit(
         getAccounts: gh<_i425.GetFinancialAccountsUseCase>(),
@@ -1414,11 +1420,6 @@ extension GetItInjectableX on _i174.GetIt {
         claimDailyCheckinUC: gh<_i380.ClaimDailyCheckinUC>(),
         recordMiniGameUC: gh<_i626.RecordMiniGameUC>(),
         supabase: gh<_i454.SupabaseClient>(),
-      ),
-    );
-    gh.factory<_i5.InventoryExitsCubit>(
-      () => _i5.InventoryExitsCubit(
-        getExitsUseCase: gh<_i136.GetInventoryExitsUseCase>(),
       ),
     );
     gh.factory<_i1039.ProductDetailCubit>(
