@@ -28,7 +28,7 @@ import 'package:inventory_store_app/features/catalog/presentation/screens/admin/
 import 'package:inventory_store_app/features/catalog/presentation/screens/customer/customer_catalog_screen.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
 );
 
@@ -48,7 +48,7 @@ class AppRouter {
 
   static GoRouter createRouter(AuthCubit authCubit) {
     return GoRouter(
-      navigatorKey: _rootNavigatorKey,
+      navigatorKey: rootNavigatorKey,
       restorationScopeId: 'router',
       initialLocation: '/splash',
       refreshListenable: GoRouterRefreshStream(authCubit.stream),
