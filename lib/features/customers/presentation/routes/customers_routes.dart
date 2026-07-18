@@ -105,6 +105,7 @@ class CustomersRoutes {
     ),
     GoRoute(
       path: '/wishlist',
+      parentNavigatorKey: rootNavigatorKey,
       builder:
           (context, state) => WishlistScreen(
             onAddToCart: (ctx, product) {

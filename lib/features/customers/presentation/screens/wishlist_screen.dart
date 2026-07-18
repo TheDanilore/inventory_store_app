@@ -11,6 +11,7 @@ import 'package:inventory_store_app/features/customers/presentation/widgets/wish
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/wishlist_entry_entity.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 
 class WishlistScreen extends StatelessWidget {
   final void Function(BuildContext context, ProductEntity product)? onAddToCart;
@@ -133,14 +134,11 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Mis Deseos'),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+    return CustomerLayout(
+      title: 'Mis Deseos',
+      showBackButton: true,
+      showBottomNav: false,
+      showCartIcon: true,
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () async {
