@@ -859,19 +859,20 @@ class _ProductDetailScreenContentState
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),
                     onTap: () {
+                      final s = context.read<ProductDetailCubit>().state;
                       final effectiveImageUrl =
-                          state.selectedVariantImageUrl ??
-                          (state.images.isNotEmpty
-                              ? state.images[0].imageUrl
+                          s.selectedVariantImageUrl ??
+                          (s.images.isNotEmpty
+                              ? s.images[0].imageUrl
                               : widget.product.primaryImageUrl);
                       if (widget.onAddToCart != null) {
                         widget.onAddToCart?.call(
                           context,
                           widget.product,
-                          state.selectedQty,
-                          null, // null = mostrar selector de variante en el caller
+                          s.selectedQty,
+                          null,
                           effectiveImageUrl,
-                          state.effectivePrice,
+                          s.effectivePrice,
                         );
                       } else {
                         final cartCubit = context.read<CartCubit>();
