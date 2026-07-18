@@ -792,11 +792,10 @@ class _ProductDetailScreenContentState
                 ),
               ),
             ] else ...[
-              if (!isAdmin)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0, top: 8, bottom: 8),
-                  child: _buildWishlistButton(),
-                ),
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0, top: 8, bottom: 8),
+                child: _buildWishlistButton(),
+              ),
               if (widget.cartActionWidget != null)
                 Padding(
                   padding: const EdgeInsets.only(
@@ -1075,10 +1074,6 @@ class _ProductDetailScreenContentState
 
     if (widget.isEmbedded) {
       return Container(color: AppColors.background, child: content);
-    }
-
-    if (isAdmin) {
-      return Scaffold(backgroundColor: AppColors.background, body: content);
     }
 
     return Scaffold(

@@ -9,7 +9,7 @@ class ProductVariantEntity {
     if (attributeValues.isNotEmpty) {
       return attributeValues.map((av) => av.value).join(' / ');
     }
-    return 'Variante ';
+    return 'Variante Estándar';
   }
 
   Map<String, String> get attributeMap {

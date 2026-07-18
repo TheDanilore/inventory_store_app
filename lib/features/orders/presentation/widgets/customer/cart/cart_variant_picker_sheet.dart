@@ -178,60 +178,68 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
     final bool isSelected = variant.id == widget.selectedVariantId;
 
     return InkWell(
-      onTap:
-          isAgotado
-              ? null
-              : () {
-                if (!kIsWeb) Vibration.vibrate(duration: 50, amplitude: 128);
+      onTap: () {
+        if (!kIsWeb) Vibration.vibrate(duration: 30, amplitude: 80);
 
-                final int quantity =
-                    widget.existingCartItem?.quantity ?? widget.initialQuantity;
+        final int quantity =
+            widget.existingCartItem?.quantity ?? widget.initialQuantity;
 
-                if (widget.onVariantSelected != null) {
-                  widget.onVariantSelected!(variant);
-                  Navigator.pop(context);
-                  return;
-                }
+        // Si solo queremos seleccionar la variante (vista de detalle de producto)
+        if (widget.onVariantSelected != null) {
+          widget.onVariantSelected!(variant);
+          Navigator.pop(context);
+          return;
+        }
 
-                // Si estamos cambiando una variante desde el carrito
-                if (widget.existingCartItem != null &&
-                    widget.existingCartItem!.variantId != variant.id) {
-                  widget.cartCubit.removeItem(widget.existingCartItem!.cartKey);
-                }
+        // Si está agotado, no permitir agregar al carrito
+        if (isAgotado) {
+          AppSnackbar.show(
+            context,
+            message: '${variant.label} está agotado, no se puede añadir.',
+            backgroundColor: Colors.red.shade700,
+          );
+          return;
+        }
 
-                widget.cartCubit.addItem(
-                  CartItemEntity(
-                    productId: widget.product.id,
-                    productName: widget.product.name,
-                    cartKey: '${widget.product.id}_${variant.id}',
-                    quantity: quantity,
-                    variantId: variant.id,
-                    variantLabel: variant.label,
-                    unitPrice: variant.salePrice ?? widget.product.salePrice,
-                    wholesalePrice:
-                        variant.wholesalePrice ?? widget.product.wholesalePrice,
-                    wholesaleMinQuantity: widget.product.wholesaleMinQuantity,
-                    unitCost: variant.unitCost ?? widget.product.unitCost,
-                    imageUrl:
-                        (variant.images.isNotEmpty
-                            ? variant.images.first.imageUrl
-                            : null) ??
-                        widget.product.primaryImageUrl,
-                    sku: variant.sku,
-                    availableStock: variantStock,
-                    usesBatches: widget.product.stockControl,
-                  ),
-                );
-                Navigator.pop(context);
-                AppSnackbar.show(
-                  context,
-                  message:
-                      widget.existingCartItem != null
-                          ? 'Variante actualizada a ${variant.label}'
-                          : '${widget.product.name} - ${variant.label} añadido al carrito',
-                  backgroundColor: AppColors.success,
-                );
-              },
+        // Si estamos cambiando una variante desde el carrito
+        if (widget.existingCartItem != null &&
+            widget.existingCartItem!.variantId != variant.id) {
+          widget.cartCubit.removeItem(widget.existingCartItem!.cartKey);
+        }
+
+        widget.cartCubit.addItem(
+          CartItemEntity(
+            productId: widget.product.id,
+            productName: widget.product.name,
+            cartKey: '${widget.product.id}_${variant.id}',
+            quantity: quantity,
+            variantId: variant.id,
+            variantLabel: variant.label,
+            unitPrice: variant.salePrice ?? widget.product.salePrice,
+            wholesalePrice:
+                variant.wholesalePrice ?? widget.product.wholesalePrice,
+            wholesaleMinQuantity: widget.product.wholesaleMinQuantity,
+            unitCost: variant.unitCost ?? widget.product.unitCost,
+            imageUrl:
+                (variant.images.isNotEmpty
+                    ? variant.images.first.imageUrl
+                    : null) ??
+                widget.product.primaryImageUrl,
+            sku: variant.sku,
+            availableStock: variantStock,
+            usesBatches: widget.product.stockControl,
+          ),
+        );
+        Navigator.pop(context);
+        AppSnackbar.show(
+          context,
+          message:
+              widget.existingCartItem != null
+                  ? 'Variante actualizada a ${variant.label}'
+                  : '${widget.product.name} - ${variant.label} añadido al carrito',
+          backgroundColor: AppColors.success,
+        );
+      },
       borderRadius: BorderRadius.circular(16),
       child: Opacity(
         opacity: isAgotado ? 0.5 : 1.0,
