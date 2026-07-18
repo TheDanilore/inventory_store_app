@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:go_router/go_router.dart';
@@ -74,9 +75,14 @@ class ProductGallerySection extends StatelessWidget {
                   imageUrl: effectiveUrls[index],
                   fit: BoxFit.contain,
                   placeholder:
-                      (context, url) => const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primary,
+                      (context, url) => Shimmer.fromColors(
+                        baseColor: Colors.grey.shade200,
+                        highlightColor: Colors.grey.shade100,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                   errorWidget:

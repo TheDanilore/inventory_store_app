@@ -9,6 +9,7 @@ import 'package:inventory_store_app/features/catalog/presentation/screens/admin/
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/product_form_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/product_detail_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_loader.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/full_screen_gallery.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
@@ -16,6 +17,18 @@ import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cub
 
 class CatalogRoutes {
   static List<RouteBase> topLevelRoutes(AuthCubit authCubit) => [
+    GoRoute(
+      path: '/gallery',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final imageUrls = (extra?['imageUrls'] as List<dynamic>?)?.cast<String>() ?? [];
+        final initialIndex = extra?['initialIndex'] as int? ?? 0;
+        return FullScreenGallery(
+          imageUrls: imageUrls,
+          initialIndex: initialIndex,
+        );
+      },
+    ),
     GoRoute(
       path: '/product/:id',
       builder: (context, state) {

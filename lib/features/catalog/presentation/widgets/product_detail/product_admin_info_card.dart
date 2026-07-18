@@ -13,12 +13,16 @@ class ProductAdminInfoCard extends StatelessWidget {
     final cubit = context.read<ProductDetailCubit>();
     if (!cubit.isAdmin) return const SizedBox.shrink();
 
+    final product = cubit.product!;
     final cost =
         ((state.selectedVariant?.unitCost ?? 0) > 0)
             ? state.selectedVariant!.unitCost!
-            : cubit.product!.unitCost;
+            : product.unitCost;
     final wPrice = state.baseWholesalePrice;
-    final rPoint = state.selectedVariant?.reorderPoint ?? 0;
+    final int rPoint = state.selectedVariant?.reorderPoint ??
+        (product.productVariants.isNotEmpty
+            ? product.productVariants.fold(0, (sum, v) => sum + v.reorderPoint)
+            : 0);
 
     final retailProfitUnit = state.effectivePrice - cost;
     final retailMargin =

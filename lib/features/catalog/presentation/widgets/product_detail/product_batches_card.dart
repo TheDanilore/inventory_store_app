@@ -12,8 +12,13 @@ class ProductBatchesCard extends StatelessWidget {
     final state = context.watch<ProductDetailCubit>().state;
     final isLoading = state.viewState == ViewState.loading;
 
-    final filteredBatches =
-        state.batchesList
+    if (state.batchesList.isEmpty && !isLoading) {
+      return const SizedBox.shrink();
+    }
+
+    final filteredBatches = state.selectedVariantId == null
+        ? state.batchesList
+        : state.batchesList
             .where((row) => row['variant_id'] == state.selectedVariantId)
             .toList();
 

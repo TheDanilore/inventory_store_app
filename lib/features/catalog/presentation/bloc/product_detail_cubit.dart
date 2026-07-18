@@ -7,6 +7,8 @@ import 'package:inventory_store_app/features/catalog/domain/usecases/check_wishl
 import 'package:inventory_store_app/features/catalog/domain/usecases/toggle_wishlist_usecase.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_current_profile_id_usecase.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/export_product_pdf_usecase.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/check_customer_purchase_usecase.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/add_product_review_usecase.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_financial_summary_entity.dart';
@@ -25,6 +27,8 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
   final ToggleWishlistUseCase _toggleWishlist;
   final GetCurrentProfileIdUseCase _getProfileId;
   final ExportProductPdfUseCase _exportProductPdf;
+  final CheckCustomerPurchaseUseCase _checkPurchase;
+  final AddProductReviewUseCase _addReview;
 
   Future<T> _unwrap<T>(Future<Either<Failure, T>> future) async {
     final res = await future;
@@ -41,12 +45,16 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     required ToggleWishlistUseCase toggleWishlist,
     required GetCurrentProfileIdUseCase getProfileId,
     required ExportProductPdfUseCase exportProductPdf,
+    required CheckCustomerPurchaseUseCase checkPurchase,
+    required AddProductReviewUseCase addReview,
   }) : _getExtraData = getExtraData,
        _getAdminData = getAdminData,
        _checkWishlist = checkWishlist,
        _toggleWishlist = toggleWishlist,
        _getProfileId = getProfileId,
        _exportProductPdf = exportProductPdf,
+       _checkPurchase = checkPurchase,
+       _addReview = addReview,
        super(const ProductDetailState());
 
   void loadInitialData({
@@ -325,5 +333,111 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
         emit(state.copyWith(viewState: ViewState.success));
       },
     );
+  }
+
+  // REVIEW LOGIC
+  Future<void> addReview({
+    required String userName,
+    required int rating,
+    String? comment,
+    required bool isAdminSubmission,
+  }) async {
+    if (product == null) return;
+    
+    emit(state.copyWith(viewState: ViewState.loading));
+    try {
+      if (isAdminSubmission) {
+        if (userName.trim().isEmpty) {
+          emit(state.copyWith(
+            viewState: ViewState.error,
+            errorMessage: 'Ingresa el nombre del cliente.',
+          ));
+          return;
+        }
+        await _unwrap(_addReview.call(
+          productId: product!.id,
+          profileId: _profileId ?? '',
+          userName: userName.trim(),
+          rating: rating,
+          comment: comment?.trim().isNotEmpty == true ? comment!.trim() : null,
+        ));
+      } else {
+        final pid = _profileId ?? await _unwrap(_getProfileId.call());
+        _profileId = pid;
+        if (pid == null) {
+          emit(state.copyWith(
+            viewState: ViewState.error,
+            errorMessage: 'Inicia sesión para opinar.',
+          ));
+          return;
+        }
+
+        final hasPurchased = await _unwrap(
+          _checkPurchase.call(productId: product!.id, profileId: pid),
+        );
+        if (!hasPurchased) {
+          emit(state.copyWith(
+            viewState: ViewState.error,
+            errorMessage: 'Debes haber comprado este producto para opinar.',
+          ));
+          return;
+        }
+
+        await _unwrap(_addReview.call(
+          productId: product!.id,
+          profileId: pid,
+          userName: userName,
+          rating: rating,
+          comment: comment?.trim().isNotEmpty == true ? comment!.trim() : null,
+        ));
+      }
+
+      emit(state.copyWith(
+        viewState: ViewState.success,
+        successMessage: 'Reseña enviada, ¡gracias!',
+      ));
+      
+      await loadData();
+    } catch (e) {
+      emit(state.copyWith(
+        viewState: ViewState.error,
+        errorMessage: 'Error al enviar reseña: $e',
+      ));
+    }
+  }
+  Future<bool> canReview() async {
+    if (isAdmin) return true;
+    try {
+      final pid = _profileId ?? await _unwrap(_getProfileId.call());
+      if (pid == null) return false;
+      return await _unwrap(
+        _checkPurchase.call(productId: product!.id, profileId: pid),
+      );
+    } catch (e) {
+      return false;
+    }
+  }
+
+  bool validateCartAddition(int qty) {
+    final stock = state.effectiveStock;
+    if (stock <= 0) {
+      emit(state.copyWith(
+        viewState: ViewState.error,
+        errorMessage: 'Sin stock.',
+      ));
+      return false;
+    }
+    if (qty > stock) {
+      emit(state.copyWith(
+        viewState: ViewState.error,
+        errorMessage: 'Cantidad mayor al stock.',
+      ));
+      return false;
+    }
+    return true;
+  }
+
+  void clearMessages() {
+    emit(state.copyWith(clearMessages: true));
   }
 }

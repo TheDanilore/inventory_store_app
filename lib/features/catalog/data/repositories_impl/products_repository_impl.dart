@@ -26,6 +26,44 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
+  Future<Either<Failure, bool>> checkCustomerPurchase(String productId, String profileId) async {
+    try {
+      final purchases = await _supabase
+          .from('order_items')
+          .select('id, orders!inner(customer_id)')
+          .eq('product_id', productId)
+          .eq('orders.customer_id', profileId)
+          .limit(1);
+      return right(purchases.isNotEmpty);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> addProductReview({
+    required String productId,
+    required String profileId,
+    required String userName,
+    required int rating,
+    String? comment,
+  }) async {
+    try {
+      await _supabase.from('product_reviews').insert({
+        'product_id': productId,
+        'profile_id': profileId,
+        'user_name': userName,
+        'rating': rating,
+        'comment': comment,
+      });
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  // Mutaciones complejas
+  @override
   Future<Either<Failure, ({List<ProductEntity> products, int totalCount})>>
   getProducts({
     String? searchQuery,

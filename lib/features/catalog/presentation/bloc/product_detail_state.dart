@@ -11,6 +11,8 @@ class ProductDetailState extends Equatable {
   final bool isWishlistLoading;
   final bool isWishlisted;
   final bool showVariantImage;
+  final String? errorMessage;
+  final String? successMessage;
 
   final int selectedQty;
   final int selectedImageIndex;
@@ -38,6 +40,8 @@ class ProductDetailState extends Equatable {
     this.isWishlistLoading = true,
     this.isWishlisted = false,
     this.showVariantImage = false,
+    this.errorMessage,
+    this.successMessage,
     this.selectedQty = 1,
     this.selectedImageIndex = 0,
     this.selectedVariantId,
@@ -62,6 +66,9 @@ class ProductDetailState extends Equatable {
     bool? isWishlistLoading,
     bool? isWishlisted,
     bool? showVariantImage,
+    String? errorMessage,
+    String? successMessage,
+    bool clearMessages = false,
     int? selectedQty,
     int? selectedImageIndex,
     String? selectedVariantId,
@@ -85,6 +92,8 @@ class ProductDetailState extends Equatable {
       isWishlistLoading: isWishlistLoading ?? this.isWishlistLoading,
       isWishlisted: isWishlisted ?? this.isWishlisted,
       showVariantImage: showVariantImage ?? this.showVariantImage,
+      errorMessage: clearMessages ? null : (errorMessage ?? this.errorMessage),
+      successMessage: clearMessages ? null : (successMessage ?? this.successMessage),
       selectedQty: selectedQty ?? this.selectedQty,
       selectedImageIndex: selectedImageIndex ?? this.selectedImageIndex,
       selectedVariantId: selectedVariantId ?? this.selectedVariantId,
@@ -245,6 +254,8 @@ class ProductDetailState extends Equatable {
     isWishlistLoading,
     isWishlisted,
     showVariantImage,
+    errorMessage,
+    successMessage,
     selectedQty,
     selectedImageIndex,
     selectedVariantId,

@@ -1,4 +1,5 @@
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
@@ -14,7 +15,6 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_quick_decisions_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_reviews_card.dart';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
@@ -67,11 +67,36 @@ class ProductDetailScreen extends StatelessWidget {
                 isAdmin: isAdmin,
                 initialVariantId: initialVariantId,
               ),
-      child: _ProductDetailScreenContent(
-        isEmbedded: isEmbedded,
-        cartActionWidget: cartActionWidget,
-        onAddToCart: onAddToCart,
-        product: product,
+      child: BlocListener<ProductDetailCubit, ProductDetailState>(
+        listenWhen: (previous, current) =>
+            previous.errorMessage != current.errorMessage ||
+            previous.successMessage != current.successMessage,
+        listener: (context, state) {
+          if (state.errorMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.errorMessage!),
+                backgroundColor: Colors.red,
+              ),
+            );
+            context.read<ProductDetailCubit>().clearMessages();
+          }
+          if (state.successMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.successMessage!),
+                backgroundColor: Colors.green,
+              ),
+            );
+            context.read<ProductDetailCubit>().clearMessages();
+          }
+        },
+        child: _ProductDetailScreenContent(
+          isEmbedded: isEmbedded,
+          cartActionWidget: cartActionWidget,
+          onAddToCart: onAddToCart,
+          product: product,
+        ),
       ),
     );
   }
@@ -205,17 +230,18 @@ class _ProductDetailScreenContentState
           effectivePrice,
         );
       } else {
+        final cartCubit = context.read<CartCubit>();
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
           builder:
-              (_) => Padding(
+              (sheetContext) => Padding(
                 padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
                 ),
                 child: CartVariantPickerSheet(
-                  cartCubit: context.read<CartCubit>(),
+                  cartCubit: cartCubit,
                   product: widget.product,
                 ),
               ),
@@ -224,12 +250,7 @@ class _ProductDetailScreenContentState
       return;
     }
 
-    if (stock <= 0) {
-      _showSnack('Sin stock.');
-      return;
-    }
-    if (qty > stock) {
-      _showSnack('Cantidad mayor al stock.');
+    if (!cubit.validateCartAddition(qty)) {
       return;
     }
 
@@ -311,9 +332,9 @@ class _ProductDetailScreenContentState
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:
-            (ctx) => Padding(
+            (sheetContext) => Padding(
               padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
               ),
               child: Container(
                 decoration: const BoxDecoration(
@@ -379,7 +400,7 @@ class _ProductDetailScreenContentState
                           if (n != null && n > 0) {
                             cubit.setQty(n.clamp(1, _effectiveStock));
                           }
-                          Navigator.pop(ctx);
+                          Navigator.pop(sheetContext);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
@@ -415,43 +436,26 @@ class _ProductDetailScreenContentState
       _showReviewDialog(isAdmin: true);
       return;
     }
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      _showSnack('Inicia sesión para opinar.');
+    
+    final canReview = await cubit.canReview();
+    if (!canReview) {
+      _showSnack('Debes iniciar sesión y haber comprado este producto para opinar.');
       return;
     }
-    try {
-      final profile =
-          await Supabase.instance.client
-              .from('profiles')
-              .select('id, full_name')
-              .eq('auth_user_id', user.id)
-              .single();
-      final profileId = profile['id'];
-      final fullName = profile['full_name'] ?? 'Usuario';
-      final purchases = await Supabase.instance.client
-          .from('order_items')
-          .select('id, orders!inner(customer_id)')
-          .eq('product_id', product.id)
-          .eq('orders.customer_id', profileId)
-          .limit(1);
-      if (purchases.isEmpty) {
-        _showSnack('Debes haber comprado este producto para opinar.');
-        return;
-      }
-      _showReviewDialog(
-        isAdmin: false,
-        profileId: profileId,
-        defaultName: fullName,
-      );
-    } catch (e) {
-      _showSnack('Error al verificar: $e');
-    }
+
+    if (!mounted) return;
+    final authCubit = context.read<AuthCubit>();
+    final currentUser = authCubit.state.currentUser;
+    final defaultName = currentUser?.fullName ?? 'Usuario';
+
+    _showReviewDialog(
+      isAdmin: false,
+      defaultName: defaultName,
+    );
   }
 
   void _showReviewDialog({
     required bool isAdmin,
-    String? profileId,
     String? defaultName,
   }) {
     int selectedRating = 5;
@@ -599,33 +603,16 @@ class _ProductDetailScreenContentState
                                             return;
                                           }
                                           setS(() => isSubmitting = true);
-                                          try {
-                                            await Supabase.instance.client
-                                                .from('product_reviews')
-                                                .insert({
-                                                  'product_id': product.id,
-                                                  'profile_id': profileId,
-                                                  'user_name': name,
-                                                  'rating': selectedRating,
-                                                  'comment':
-                                                      commentCtrl.text
-                                                              .trim()
-                                                              .isEmpty
-                                                          ? null
-                                                          : commentCtrl.text
-                                                              .trim(),
-                                                });
-                                            if (!context.mounted) return;
-                                            Navigator.pop(dialogCtx);
-                                            _showSnack(
-                                              '¡Reseña publicada!',
-                                              isSuccess: true,
-                                            );
-                                            cubit.loadData();
-                                          } catch (e) {
-                                            setS(() => isSubmitting = false);
-                                            _showSnack('Error: $e');
-                                          }
+                                          
+                                          await cubit.addReview(
+                                            userName: name,
+                                            rating: selectedRating,
+                                            comment: commentCtrl.text.trim(),
+                                            isAdminSubmission: isAdmin,
+                                          );
+                                          
+                                          if (!context.mounted) return;
+                                          Navigator.pop(dialogCtx);
                                         },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
@@ -887,22 +874,24 @@ class _ProductDetailScreenContentState
                           state.effectivePrice,
                         );
                       } else {
+                        final cartCubit = context.read<CartCubit>();
+                        final productDetailCubit = context.read<ProductDetailCubit>();
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
                           backgroundColor: Colors.transparent,
                           builder:
-                              (_) => Padding(
+                              (sheetContext) => Padding(
                                 padding: EdgeInsets.only(
                                   bottom:
-                                      MediaQuery.of(context).viewInsets.bottom,
+                                      MediaQuery.of(sheetContext).viewInsets.bottom,
                                 ),
                                 child: CartVariantPickerSheet(
-                                  cartCubit: context.read<CartCubit>(),
+                                  cartCubit: cartCubit,
                                   product: widget.product,
                                   onVariantSelected: (variant) {
-                                    context.read<ProductDetailCubit>().setVariant(variant.id);
-                                    context.read<ProductDetailCubit>().selectVariantImage(variant.id);
+                                    productDetailCubit.setVariant(variant.id);
+                                    productDetailCubit.selectVariantImage(variant.id);
                                   },
                                 ),
                               ),

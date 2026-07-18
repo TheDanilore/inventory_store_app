@@ -60,6 +60,8 @@ import '../../features/catalog/domain/repositories/ingredients_repository.dart'
     as _i850;
 import '../../features/catalog/domain/repositories/products_repository.dart'
     as _i570;
+import '../../features/catalog/domain/usecases/add_product_review_usecase.dart'
+    as _i288;
 import '../../features/catalog/domain/usecases/catalog_attribute_mutations_uc.dart'
     as _i382;
 import '../../features/catalog/domain/usecases/catalog_category_mutations_uc.dart'
@@ -74,6 +76,8 @@ import '../../features/catalog/domain/usecases/catalog_ingredient_ucs.dart'
     as _i597;
 import '../../features/catalog/domain/usecases/catalog_variant_ucs.dart'
     as _i929;
+import '../../features/catalog/domain/usecases/check_customer_purchase_usecase.dart'
+    as _i987;
 import '../../features/catalog/domain/usecases/check_wishlist_state_usecase.dart'
     as _i44;
 import '../../features/catalog/domain/usecases/create_ingredient_uc.dart'
@@ -1224,6 +1228,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i839.ToggleWishlistUseCase>(
       () => _i839.ToggleWishlistUseCase(gh<_i570.ProductsRepository>()),
     );
+    gh.factory<_i288.AddProductReviewUseCase>(
+      () => _i288.AddProductReviewUseCase(gh<_i570.ProductsRepository>()),
+    );
+    gh.factory<_i987.CheckCustomerPurchaseUseCase>(
+      () => _i987.CheckCustomerPurchaseUseCase(gh<_i570.ProductsRepository>()),
+    );
     gh.factory<_i828.GetDefaultAddressUc>(
       () => _i828.GetDefaultAddressUc(gh<_i760.CheckoutRepository>()),
     );
@@ -1430,6 +1440,18 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i927.GetCurrentProfileIdUseCase>(),
       ),
     );
+    gh.factory<_i715.ProductDetailCubit>(
+      () => _i715.ProductDetailCubit(
+        getExtraData: gh<_i338.GetProductExtraDataUseCase>(),
+        getAdminData: gh<_i713.GetAdminFinancialDataUseCase>(),
+        checkWishlist: gh<_i44.CheckWishlistStateUseCase>(),
+        toggleWishlist: gh<_i839.ToggleWishlistUseCase>(),
+        getProfileId: gh<_i927.GetCurrentProfileIdUseCase>(),
+        exportProductPdf: gh<_i967.ExportProductPdfUseCase>(),
+        checkPurchase: gh<_i987.CheckCustomerPurchaseUseCase>(),
+        addReview: gh<_i288.AddProductReviewUseCase>(),
+      ),
+    );
     gh.factory<_i162.CustomerCatalogCubit>(
       () => _i162.CustomerCatalogCubit(
         getCategoriesUC: gh<_i700.GetCategoriesUC>(),
@@ -1455,16 +1477,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i565.CustomerOrdersCubit>(
       () => _i565.CustomerOrdersCubit(
         getCustomerOrdersUc: gh<_i857.GetCustomerOrdersUc>(),
-      ),
-    );
-    gh.factory<_i715.ProductDetailCubit>(
-      () => _i715.ProductDetailCubit(
-        getExtraData: gh<_i338.GetProductExtraDataUseCase>(),
-        getAdminData: gh<_i713.GetAdminFinancialDataUseCase>(),
-        checkWishlist: gh<_i44.CheckWishlistStateUseCase>(),
-        toggleWishlist: gh<_i839.ToggleWishlistUseCase>(),
-        getProfileId: gh<_i927.GetCurrentProfileIdUseCase>(),
-        exportProductPdf: gh<_i967.ExportProductPdfUseCase>(),
       ),
     );
     gh.factory<_i151.ProductFormCubit>(

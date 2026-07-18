@@ -70,6 +70,16 @@ abstract class ProductsRepository {
   Future<Either<Failure, bool>> hasVariantSales(String variantId);
   Future<Either<Failure, void>> clearVariantImages(String variantId);
 
+  // Reviews
+  Future<Either<Failure, bool>> checkCustomerPurchase(String productId, String profileId);
+  Future<Either<Failure, void>> addProductReview({
+    required String productId,
+    required String profileId,
+    required String userName,
+    required int rating,
+    String? comment,
+  });
+
   // Mutaciones complejas
   Future<Either<Failure, String>> saveProductMaster(
     ProductEntity product,
