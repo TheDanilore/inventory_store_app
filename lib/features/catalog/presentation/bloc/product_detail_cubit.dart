@@ -77,7 +77,9 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
 
   Future<void> loadData() async {
     emit(state.copyWith(viewState: ViewState.loading));
-    await Future.wait([_fetchWishlistState(), _fetchExtraData()]);
+    // Sequential to avoid race condition between wishlist and extra data emits
+    await _fetchWishlistState();
+    await _fetchExtraData();
     emit(state.copyWith(viewState: ViewState.success));
   }
 

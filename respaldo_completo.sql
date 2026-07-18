@@ -2191,6 +2191,10 @@ CREATE POLICY "Lectura publica de reviews" ON "public"."product_reviews" FOR SEL
 
 
 
+CREATE POLICY "Lectura publica de stock" ON "public"."warehouse_stock_batches" FOR SELECT USING (true);
+
+
+
 CREATE POLICY "Lectura selectiva de movimientos de billetera por rol o propiet" ON "public"."wallet_movements" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "profile_id") OR (( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 

@@ -1076,6 +1076,10 @@ class _ProductDetailScreenContentState
       return Container(color: AppColors.background, child: content);
     }
 
+    if (isAdmin) {
+      return Scaffold(backgroundColor: AppColors.background, body: content);
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: content,
