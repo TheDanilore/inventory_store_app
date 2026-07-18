@@ -3,10 +3,77 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class ProfileQuickAccessSection extends StatelessWidget {
-  const ProfileQuickAccessSection({super.key});
+  final bool isLoyaltyEnabled;
+
+  const ProfileQuickAccessSection({
+    super.key,
+    this.isLoyaltyEnabled = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> cards = [];
+
+    if (isLoyaltyEnabled) {
+      cards.add(
+        _QuickAccessCard(
+          title: 'Monedas',
+          subtitle: 'Canjear',
+          icon: Icons.stars_rounded,
+          iconColor: const Color(0xFFD97706), // Gold color
+          backgroundColor: const Color(0xFFFEF3C7),
+          onTap: () => context.push('/points'),
+        ),
+      );
+    }
+
+    cards.addAll([
+      _QuickAccessCard(
+        title: 'Pedidos',
+        subtitle: 'Ver historial',
+        icon: Icons.receipt_long_rounded,
+        iconColor: const Color(0xFF0EA5E9), // Light blue
+        backgroundColor: const Color(0xFFE0F2FE),
+        onTap: () => context.push('/orders'),
+      ),
+      _QuickAccessCard(
+        title: 'Ubicaciones',
+        subtitle: 'Mis ubicaciones',
+        icon: Icons.map_outlined,
+        iconColor: const Color(0xFF10B981), // Light green
+        backgroundColor: const Color(0xFFD1FAE5),
+        onTap: () => context.push('/locations'),
+      ),
+      _QuickAccessCard(
+        title: 'Deseos',
+        subtitle: 'Ver wishlist',
+        icon: Icons.favorite_rounded,
+        iconColor: const Color(0xFFF43F5E), // Light red
+        backgroundColor: const Color(0xFFFFE4E6),
+        onTap: () => context.push('/wishlist'),
+      ),
+    ]);
+
+    // Build rows of 2
+    final List<Widget> rows = [];
+    for (int i = 0; i < cards.length; i += 2) {
+      rows.add(
+        Row(
+          children: [
+            Expanded(child: cards[i]),
+            const SizedBox(width: 12),
+            if (i + 1 < cards.length)
+              Expanded(child: cards[i + 1])
+            else
+              const Expanded(child: SizedBox()),
+          ],
+        ),
+      );
+      if (i + 2 < cards.length) {
+        rows.add(const SizedBox(height: 12));
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -21,48 +88,7 @@ class ProfileQuickAccessSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _QuickAccessCard(
-                  title: 'Pedidos',
-                  subtitle: 'Ver historial',
-                  icon: Icons.receipt_long_rounded,
-                  iconColor: const Color(0xFF0EA5E9), // Light blue
-                  backgroundColor: const Color(0xFFE0F2FE),
-                  onTap: () => context.push('/orders'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _QuickAccessCard(
-                  title: 'Ubicaciones',
-                  subtitle: 'Mis ubicaciones...',
-                  icon: Icons.map_outlined,
-                  iconColor: const Color(0xFF10B981), // Light green
-                  backgroundColor: const Color(0xFFD1FAE5),
-                  onTap: () => context.push('/locations'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _QuickAccessCard(
-                  title: 'Deseos',
-                  subtitle: 'Ver wishlist',
-                  icon: Icons.favorite_rounded,
-                  iconColor: const Color(0xFFF43F5E), // Light red
-                  backgroundColor: const Color(0xFFFFE4E6),
-                  onTap: () => context.push('/wishlist'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(child: SizedBox()), // Empty space for alignment
-            ],
-          ),
+          ...rows,
         ],
       ),
     );
