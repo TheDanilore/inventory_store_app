@@ -11,7 +11,6 @@ import 'package:inventory_store_app/features/purchases/presentation/widgets/purc
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class InventoryEntryFormScreen extends StatefulWidget {
   final String? purchaseOrderId;
@@ -60,18 +59,6 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final cubit = context.read<InventoryEntryFormCubit>();
-
-      String? activeShiftId;
-      final shiftResp =
-          await Supabase.instance.client
-              .from('cash_shifts')
-              .select('id')
-              .eq('status', 'OPEN')
-              .maybeSingle();
-      if (shiftResp != null) {
-        activeShiftId = shiftResp['id'] as String;
-      }
-      cubit.setActiveShiftId(activeShiftId);
 
       await cubit.init(
         purchaseOrderId: widget.purchaseOrderId,
@@ -136,18 +123,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
 
     cubit.setDocumentNumber(_documentNumberCtrl.text.trim());
 
-    // Obtenemos el shift activo que seteamos en el initState (que ahora está guardado en el cubit)
-    String activeShiftId = "";
-    final shiftResp =
-        await Supabase.instance.client
-            .from('cash_shifts')
-            .select('id')
-            .eq('status', 'OPEN')
-            .maybeSingle();
-    if (shiftResp != null) {
-      activeShiftId = shiftResp['id'] as String;
-      cubit.setActiveShiftId(activeShiftId);
-    }
+    final activeShiftId = cubit.state.activeShiftId ?? "";
 
     if (!mounted) return;
     if (!cubit.validate(activeShiftId)) {

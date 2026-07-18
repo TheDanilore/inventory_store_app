@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/inventory/presentation/widgets/batch_edit_sheet.dart';
+import 'package:inventory_store_app/core/widgets/batch_edit_sheet.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_skeleton.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

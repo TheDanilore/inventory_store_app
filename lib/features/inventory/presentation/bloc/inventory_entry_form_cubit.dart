@@ -11,6 +11,7 @@ import 'package:inventory_store_app/features/purchases/domain/usecases/get_activ
 import 'package:inventory_store_app/features/financial/domain/usecases/get_financial_accounts_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/create_inventory_entry_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entry_form_state.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 @injectable
 class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
@@ -49,6 +50,18 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     );
 
     try {
+      String? activeShiftId;
+      final shiftResp =
+          await Supabase.instance.client
+              .from('cash_shifts')
+              .select('id')
+              .eq('status', 'OPEN')
+              .maybeSingle();
+      if (shiftResp != null) {
+        activeShiftId = shiftResp['id'] as String;
+      }
+      setActiveShiftId(activeShiftId);
+
       final results = await Future.wait([
         getActiveWarehouses.call(),
         getActiveSuppliers.call(),

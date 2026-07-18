@@ -28,7 +28,7 @@ import 'package:inventory_store_app/features/inventory/data/models/batch_assignm
 import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
-import 'package:inventory_store_app/features/inventory/presentation/widgets/batch_edit_sheet.dart';
+import 'package:inventory_store_app/core/widgets/batch_edit_sheet.dart';
 
 class DesktopPosPanel extends StatefulWidget {
   final VoidCallback? onSaleCompleted;
