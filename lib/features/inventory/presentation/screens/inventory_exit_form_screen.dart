@@ -348,23 +348,20 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             showBackButton: true,
             showProfileButton: false,
             showDrawerButton: false,
+            bottomNavigationBar:
+                cubit.state.isSaving ? null : _buildBottomActionButton(cubit),
             body:
                 cubit.state.isSaving
                     ? const Center(
                       child: CircularProgressIndicator(color: AppColors.danger),
                     )
-                    : Stack(
-                      children: [
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final isTablet = constraints.maxWidth >= 800;
-                            return isTablet
-                                ? _buildTabletLayout(context, state)
-                                : _buildMobileLayout(context, state);
-                          },
-                        ),
-                        _buildBottomActionButton(cubit),
-                      ],
+                    : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isTablet = constraints.maxWidth >= 800;
+                        return isTablet
+                            ? _buildTabletLayout(context, state)
+                            : _buildMobileLayout(context, state);
+                      },
                     ),
           );
         },
@@ -381,7 +378,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     InventoryExitFormState state,
   ) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -404,7 +401,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
         Expanded(
           flex: 4,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 24, 12, 100),
+            padding: const EdgeInsets.fromLTRB(24, 24, 12, 24),
             child: _buildGeneralInfoSection(cubit),
           ),
         ),
@@ -412,7 +409,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
         Expanded(
           flex: 6,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(12, 24, 24, 100),
+            padding: const EdgeInsets.fromLTRB(12, 24, 24, 24),
             child: _buildProductsSection(cubit),
           ),
         ),
@@ -815,12 +812,8 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   // ════════════════════════════════════════════════════════════════════════════
 
   Widget _buildBottomActionButton(InventoryExitFormCubit cubit) {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: ClipRRect(
-        child: BackdropFilter(
+    return ClipRRect(
+      child: BackdropFilter(
           filter: dart_ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -906,7 +899,6 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 
