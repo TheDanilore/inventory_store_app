@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_stock_tab.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_batches_tab.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -39,54 +40,58 @@ class _InventoryScreenState extends State<InventoryScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // ── Tab Bar ──
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(
-              bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+    return AdminLayout(
+      title: 'Inventario',
+      showBackButton: true,
+      body: Column(
+        children: [
+          // ── Tab Bar ──
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+              ),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: AppColors.primary,
+              indicatorWeight: 3,
+              labelColor: AppColors.primary,
+              unselectedLabelColor: AppColors.textSecondary,
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                letterSpacing: 0.1,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+              tabs: const [
+                Tab(
+                  icon: Icon(Icons.inventory_2_rounded, size: 20),
+                  text: 'Stock General',
+                  iconMargin: EdgeInsets.only(bottom: 4),
+                ),
+                Tab(
+                  icon: Icon(Icons.event_busy_rounded, size: 20),
+                  text: 'Estado de Lotes',
+                  iconMargin: EdgeInsets.only(bottom: 4),
+                ),
+              ],
             ),
           ),
-          child: TabBar(
-            controller: _tabController,
-            indicatorColor: AppColors.primary,
-            indicatorWeight: 3,
-            labelColor: AppColors.primary,
-            unselectedLabelColor: AppColors.textSecondary,
-            labelStyle: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-              letterSpacing: 0.1,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-            tabs: const [
-              Tab(
-                icon: Icon(Icons.inventory_2_rounded, size: 20),
-                text: 'Stock General',
-                iconMargin: EdgeInsets.only(bottom: 4),
-              ),
-              Tab(
-                icon: Icon(Icons.event_busy_rounded, size: 20),
-                text: 'Estado de Lotes',
-                iconMargin: EdgeInsets.only(bottom: 4),
-              ),
-            ],
-          ),
-        ),
 
-        // ── Tab Views ──
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: const [InventoryStockTab(), InventoryBatchesTab()],
+          // ── Tab Views ──
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: const [InventoryStockTab(), InventoryBatchesTab()],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -61,11 +61,7 @@ class InventoryRoutes {
       builder:
           (context, state) => BlocProvider(
             create: (_) => sl<InventoryCubit>(),
-            child: const AdminLayout(
-              title: 'Inventario',
-              showBackButton: true,
-              body: InventoryScreen(),
-            ),
+            child: const InventoryScreen(),
           ),
     ),
     GoRoute(
