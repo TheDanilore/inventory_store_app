@@ -83,28 +83,17 @@ class _CustomerDetailContent extends StatelessWidget {
         final error = state is CustomerDetailError ? state.message : null;
         final c = state is CustomerDetailLoaded ? state.customer : null;
 
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: RefreshIndicator(
-            color: Theme.of(context).colorScheme.primary,
-            onRefresh: () async => _refreshData(context),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isTablet = constraints.maxWidth > 750;
-                final isLoyaltyEnabled =
-                    context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
+        return RefreshIndicator(
+          color: Theme.of(context).colorScheme.primary,
+          onRefresh: () async => _refreshData(context),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = constraints.maxWidth > 750;
+              final isLoyaltyEnabled =
+                  context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
 
-                if (isTablet) {
-                  return _buildTabletLayout(
-                    context,
-                    state,
-                    isLoyaltyEnabled,
-                    isLoading,
-                    error,
-                    c,
-                  );
-                }
-                return _buildMobileLayout(
+              if (isTablet) {
+                return _buildTabletLayout(
                   context,
                   state,
                   isLoyaltyEnabled,
@@ -112,8 +101,16 @@ class _CustomerDetailContent extends StatelessWidget {
                   error,
                   c,
                 );
-              },
-            ),
+              }
+              return _buildMobileLayout(
+                context,
+                state,
+                isLoyaltyEnabled,
+                isLoading,
+                error,
+                c,
+              );
+            },
           ),
         );
       },

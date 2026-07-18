@@ -152,7 +152,7 @@ import '../../features/customers/domain/usecases/wishlist_ucs.dart' as _i600;
 import '../../features/customers/presentation/bloc/customer_credit_list_cubit.dart'
     as _i315;
 import '../../features/customers/presentation/bloc/customer_credit_movements_cubit.dart'
-    as _i1031;
+    as _i1032;
 import '../../features/customers/presentation/bloc/customer_credits_cubit.dart'
     as _i1001;
 import '../../features/customers/presentation/bloc/customer_detail_cubit.dart'
@@ -419,7 +419,7 @@ import '../../features/purchases/presentation/bloc/purchase_order_form/purchase_
 import '../../features/purchases/presentation/bloc/purchase_orders/purchase_orders_cubit.dart'
     as _i971;
 import '../../features/purchases/presentation/bloc/supplier_credit_movements/supplier_credit_movements_cubit.dart'
-    as _i1032;
+    as _i1031;
 import '../../features/purchases/presentation/bloc/supplier_credits/supplier_credits_cubit.dart'
     as _i54;
 import '../../features/purchases/presentation/bloc/suppliers/suppliers_cubit.dart'
@@ -988,11 +988,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i282.UpdateProfileUseCase>(
       () => _i282.UpdateProfileUseCase(gh<_i787.AuthRepository>()),
     );
-    gh.factory<_i1031.CustomerCreditMovementsCubit>(
-      () => _i1031.CustomerCreditMovementsCubit(
-        gh<_i580.GetCreditMovementsUseCase>(),
-      ),
-    );
     gh.factory<_i738.CreateInventoryExitUseCase>(
       () =>
           _i738.CreateInventoryExitUseCase(gh<_i92.InventoryExitsRepository>()),
@@ -1026,8 +1021,8 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i422.InventoryRepository>(),
       ),
     );
-    gh.factoryParam<_i1032.SupplierCreditMovementsCubit, String, String>(
-      (creditId, supplierName) => _i1032.SupplierCreditMovementsCubit(
+    gh.factoryParam<_i1031.SupplierCreditMovementsCubit, String, String>(
+      (creditId, supplierName) => _i1031.SupplierCreditMovementsCubit(
         fetchMovementsUseCase: gh<_i359.FetchSupplierCreditMovementsUseCase>(),
         generatePdfUseCase:
             gh<_i495.GenerateSupplierCreditMovementsPdfUseCase>(),
@@ -1389,6 +1384,12 @@ extension GetItInjectableX on _i174.GetIt {
         getGeneralStockPaginated: gh<_i285.GetGeneralStockPaginatedUseCase>(),
         getBatchMetrics: gh<_i581.GetBatchMetricsUseCase>(),
         getBatchesPaginated: gh<_i544.GetBatchesPaginatedUseCase>(),
+      ),
+    );
+    gh.factory<_i1032.CustomerCreditMovementsCubit>(
+      () => _i1032.CustomerCreditMovementsCubit(
+        gh<_i580.GetCreditMovementsUseCase>(),
+        gh<_i711.GetOrderByIdUseCase>(),
       ),
     );
     gh.factory<_i919.AttributesCubit>(

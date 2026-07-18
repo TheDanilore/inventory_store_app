@@ -8,6 +8,8 @@ import 'package:inventory_store_app/features/customers/presentation/screens/cust
 import 'package:inventory_store_app/features/customers/presentation/screens/customers_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/location_management_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/wishlist_screen.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit_list_cubit.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit_movements_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/auth/presentation/screens/profile_screen.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -63,10 +65,25 @@ class CustomersRoutes {
     GoRoute(
       path: 'customer-credits',
       builder:
-          (context, state) => const AdminLayout(
-            title: 'Cuentas por Cobrar',
-            showBackButton: true,
-            body: CustomerCreditsScreen(),
+          (context, state) => BlocProvider(
+            create: (_) => sl<CustomerCreditListCubit>()..loadAccounts(),
+            child: Builder(
+              builder: (context) {
+                return AdminLayout(
+                  title: 'Cuentas por Cobrar',
+                  showBackButton: true,
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: () {
+                        context.read<CustomerCreditListCubit>().loadAccounts();
+                      },
+                    ),
+                  ],
+                  body: const CustomerCreditsScreen(),
+                );
+              },
+            ),
           ),
     ),
     GoRoute(
@@ -74,21 +91,45 @@ class CustomersRoutes {
       builder: (context, state) {
         final creditId = state.pathParameters['creditId'] ?? '';
         final args = state.extra as Map<String, dynamic>? ?? {};
-        return AdminLayout(
-          title: 'Movimientos de Crédito',
-          showBackButton: true,
-          body: CustomerCreditMovementsScreen(
-            creditId: creditId,
-            customerName:
-                args['customerName'] ?? state.uri.queryParameters['name'] ?? '',
-            currentDebt:
-                args['currentDebt'] ??
-                double.tryParse(state.uri.queryParameters['debt'] ?? '0') ??
-                0.0,
-            creditLimit:
-                args['creditLimit'] ??
-                double.tryParse(state.uri.queryParameters['limit'] ?? '0') ??
-                0.0,
+        final customerName =
+            args['customerName'] as String? ??
+            state.uri.queryParameters['name'] ??
+            '';
+        final currentDebt =
+            args['currentDebt'] as double? ??
+            double.tryParse(state.uri.queryParameters['debt'] ?? '0') ??
+            0.0;
+        final creditLimit =
+            args['creditLimit'] as double? ??
+            double.tryParse(state.uri.queryParameters['limit'] ?? '0') ??
+            0.0;
+
+        // El BlocProvider vive aquí (en el route) para que tanto el body como
+        // las actions del AdminLayout compartan la misma instancia del Cubit.
+        return BlocProvider(
+          create: (_) =>
+              sl<CustomerCreditMovementsCubit>()..loadMovements(creditId),
+          child: Builder(
+            builder: (ctx) => AdminLayout(
+              title: 'Movimientos de Crédito',
+              showBackButton: true,
+              // Acciones del AppBar: acceden al Cubit mediante ctx (Builder).
+              actions: [
+                AdminAppBarIconButton(
+                  icon: Icons.refresh_rounded,
+                  tooltip: 'Refrescar',
+                  onTap: () => ctx
+                      .read<CustomerCreditMovementsCubit>()
+                      .loadMovements(creditId),
+                ),
+              ],
+              body: CustomerCreditMovementsScreen(
+                creditId: creditId,
+                customerName: customerName,
+                currentDebt: currentDebt,
+                creditLimit: creditLimit,
+              ),
+            ),
           ),
         );
       },
