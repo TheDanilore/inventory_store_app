@@ -23,6 +23,10 @@ class CustomerLocationsCubit extends Cubit<CustomerLocationsState> {
   Future<void> loadLocations(String customerId) async {
     emit(CustomerLocationsLoading());
     try {
+      if (customerId.isEmpty) {
+        emit(const CustomerLocationsLoaded([]));
+        return;
+      }
       final locs = await _getLocationsUseCase(customerId);
       emit(CustomerLocationsLoaded(locs));
     } catch (e) {

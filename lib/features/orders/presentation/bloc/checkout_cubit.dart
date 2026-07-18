@@ -27,6 +27,11 @@ class CheckoutCubit extends Cubit<CheckoutState> {
   Future<void> loadAddress(String profileId) async {
     emit(state.copyWith(isLoadingAddress: true));
     
+    if (profileId.isEmpty) {
+      emit(state.copyWith(isLoadingAddress: false, defaultAddress: null));
+      return;
+    }
+
     final result = await getDefaultAddressUc(profileId);
     
     result.fold(

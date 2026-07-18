@@ -32,9 +32,10 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CheckoutCubit>().loadAddress(
-        context.read<AuthCubit>().state.currentUser?.id ?? '',
-      );
+      final userId = context.read<AuthCubit>().state.currentUser?.id;
+      if (userId != null && userId.isNotEmpty) {
+        context.read<CheckoutCubit>().loadAddress(userId);
+      }
     });
   }
 
@@ -98,10 +99,13 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     final checkout = context.read<CheckoutCubit>();
     final config = context.read<AppConfigCubit>();
 
+    final userId = context.read<AuthCubit>().state.currentUser?.id;
+    final profileId = (userId != null && userId.isNotEmpty) ? userId : null;
+
     final result = await checkout.submitOrder(
       itemsToBuy: cartState.items.values.toList(),
       cartCubit: cartCubit,
-      profileId: context.read<AuthCubit>().state.currentUser?.id ?? '',
+      profileId: profileId,
       pointsToSolesRatio: config.state.values['points_to_soles_ratio'] ?? 0.05,
       conversionRate: (config.state.values['loyalty_earning_rate'] ?? 1.0).toInt(),
       saldoPuntos: walletState.balance ?? 0,
@@ -228,10 +232,22 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                                 address: checkout.defaultAddress,
                                 isLoading: checkout.isLoadingAddress,
                                 onTap: () async {
+                                  final user =
+                                      context.read<AuthCubit>().state.currentUser;
+                                  if (user == null || user.id.isEmpty) {
+                                    AppSnackbar.show(
+                                      context,
+                                      message:
+                                          'Inicia sesión para gestionar ubicaciones',
+                                      backgroundColor: AppColors.warning,
+                                    );
+                                    context.push('/login');
+                                    return;
+                                  }
                                   await context.push('/customer/locations');
                                   if (context.mounted) {
                                     context.read<CheckoutCubit>().loadAddress(
-                                      context.read<AuthCubit>().state.currentUser?.id ?? '',
+                                      user.id,
                                     );
                                   }
                                 },
