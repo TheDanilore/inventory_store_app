@@ -7,7 +7,7 @@ import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_location_form_sheet.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/customer_location_map_screen.dart';
-import 'customer_section_card.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_detail/customer_section_card.dart';
 
 class CustomerLocationsSection extends StatelessWidget {
   final List<CustomerLocationEntity> locations;

@@ -5,7 +5,7 @@ import 'package:inventory_store_app/core/enums/view_state.dart';
 
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_ingredient_mutations_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/create_ingredient_uc.dart';
-import 'ingredients_state.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredients_state.dart';
 
 @injectable
 class IngredientsCubit extends Cubit<IngredientsState> {

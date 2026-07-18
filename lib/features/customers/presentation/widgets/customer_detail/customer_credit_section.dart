@@ -4,7 +4,7 @@ import 'package:inventory_store_app/features/customers/domain/entities/credit_mo
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/register_payment_modal.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'customer_section_card.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_detail/customer_section_card.dart';
 
 class CustomerCreditSection extends StatelessWidget {
   final double debt;

@@ -1,4 +1,4 @@
-﻿import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/data/models/customer_credit_model.dart';
 import 'package:inventory_store_app/features/customers/data/models/customer_credit_movement_model.dart';
@@ -122,17 +122,67 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
     required String creditId,
     required int limit,
     required int offset,
+    String? dateFilter,
   }) async {
-    final response = await _supabase
+    var query = _supabase
         .from('customer_credit_movements_summary')
         .select()
-        .eq('customer_credit_id', creditId)
+        .eq('customer_credit_id', creditId);
+
+    if (dateFilter != null && dateFilter != 'all') {
+      final now = DateTime.now();
+      if (dateFilter == '30_days') {
+        final date = now.subtract(const Duration(days: 30)).toIso8601String();
+        query = query.gte('created_at', date);
+      } else if (dateFilter == 'this_month') {
+        final date = DateTime(now.year, now.month, 1).toIso8601String();
+        query = query.gte('created_at', date);
+      }
+    }
+
+    final response = await query
         .order('created_at', ascending: false)
         .range(offset, offset + limit - 1);
 
     return (response as List)
         .map((e) => CustomerCreditMovementModel.fromJson(e).toEntity())
         .toList();
+  }
+
+  @override
+  Future<({double totalCharged, double totalPaid})> getCreditMovementsTotals({
+    required String creditId,
+    String? dateFilter,
+  }) async {
+    var query = _supabase
+        .from('customer_credit_movements')
+        .select('movement_type, amount')
+        .eq('customer_credit_id', creditId);
+
+    if (dateFilter != null && dateFilter != 'all') {
+      final now = DateTime.now();
+      if (dateFilter == '30_days') {
+        final date = now.subtract(const Duration(days: 30)).toIso8601String();
+        query = query.gte('created_at', date);
+      } else if (dateFilter == 'this_month') {
+        final date = DateTime(now.year, now.month, 1).toIso8601String();
+        query = query.gte('created_at', date);
+      }
+    }
+
+    final response = await query;
+    double totalCharged = 0;
+    double totalPaid = 0;
+    for (var row in (response as List)) {
+      final amount = (row['amount'] as num).toDouble();
+      if (row['movement_type'] == 'CHARGE') {
+        totalCharged += amount;
+      } else {
+        totalPaid += amount;
+      }
+    }
+
+    return (totalCharged: totalCharged, totalPaid: totalPaid);
   }
 
   @override

@@ -8,7 +8,7 @@ import 'package:inventory_store_app/features/catalog/domain/repositories/catalog
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_products_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_stock_uc.dart';
-import 'customer_catalog_state.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_state.dart';
 
 @injectable
 class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {

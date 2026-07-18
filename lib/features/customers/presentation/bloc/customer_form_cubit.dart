@@ -3,7 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_ucs.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_ucs.dart';
 
-import 'customer_form_state.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_form_state.dart';
 
 @injectable
 class CustomerFormCubit extends Cubit<CustomerFormState> {

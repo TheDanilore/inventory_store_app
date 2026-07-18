@@ -149,10 +149,10 @@ import '../../features/customers/domain/usecases/get_customer_recent_orders_usec
 import '../../features/customers/domain/usecases/get_customer_top_products_usecase.dart'
     as _i528;
 import '../../features/customers/domain/usecases/wishlist_ucs.dart' as _i600;
+import '../../features/customers/presentation/bloc/credit_movements/customer_credit_movements_cubit.dart'
+    as _i761;
 import '../../features/customers/presentation/bloc/customer_credit_list_cubit.dart'
     as _i315;
-import '../../features/customers/presentation/bloc/customer_credit_movements_cubit.dart'
-    as _i1032;
 import '../../features/customers/presentation/bloc/customer_credits_cubit.dart'
     as _i1001;
 import '../../features/customers/presentation/bloc/customer_detail_cubit.dart'
@@ -632,6 +632,11 @@ extension GetItInjectableX on _i174.GetIt {
         getWarehousesUseCase: gh<_i71.GetWarehousesUseCase>(),
         saveWarehouseUseCase: gh<_i656.SaveWarehouseUseCase>(),
         toggleWarehouseStatusUseCase: gh<_i275.ToggleWarehouseStatusUseCase>(),
+      ),
+    );
+    gh.factory<_i761.CustomerCreditMovementsCubit>(
+      () => _i761.CustomerCreditMovementsCubit(
+        gh<_i4.CustomerCreditsRepository>(),
       ),
     );
     gh.lazySingleton<_i1006.CheckActiveShiftUseCase>(
@@ -1384,12 +1389,6 @@ extension GetItInjectableX on _i174.GetIt {
         getGeneralStockPaginated: gh<_i285.GetGeneralStockPaginatedUseCase>(),
         getBatchMetrics: gh<_i581.GetBatchMetricsUseCase>(),
         getBatchesPaginated: gh<_i544.GetBatchesPaginatedUseCase>(),
-      ),
-    );
-    gh.factory<_i1032.CustomerCreditMovementsCubit>(
-      () => _i1032.CustomerCreditMovementsCubit(
-        gh<_i580.GetCreditMovementsUseCase>(),
-        gh<_i711.GetOrderByIdUseCase>(),
       ),
     );
     gh.factory<_i919.AttributesCubit>(

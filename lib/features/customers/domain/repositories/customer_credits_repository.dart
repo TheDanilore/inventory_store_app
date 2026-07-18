@@ -28,6 +28,12 @@ abstract class CustomerCreditsRepository {
     required String creditId,
     required int limit,
     required int offset,
+    String? dateFilter,
+  });
+
+  Future<({double totalCharged, double totalPaid})> getCreditMovementsTotals({
+    required String creditId,
+    String? dateFilter,
   });
 
   Future<CreditMovementEntity> registerPayment({

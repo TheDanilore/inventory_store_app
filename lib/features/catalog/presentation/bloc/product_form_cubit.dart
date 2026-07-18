@@ -15,7 +15,7 @@ import 'package:inventory_store_app/features/catalog/domain/usecases/get_current
 import 'package:inventory_store_app/features/catalog/domain/usecases/save_product_usecase.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
-import 'product_form_state.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
 
 @injectable
 class ProductFormCubit extends Cubit<ProductFormState> {

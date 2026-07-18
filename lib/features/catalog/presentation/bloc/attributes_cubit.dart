@@ -3,7 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_attributes_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_attribute_mutations_uc.dart';
-import 'attributes_state.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes_state.dart';
 
 @injectable
 class AttributesCubit extends Cubit<AttributesState> {

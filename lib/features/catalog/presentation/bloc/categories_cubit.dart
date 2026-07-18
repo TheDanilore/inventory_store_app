@@ -5,7 +5,7 @@ import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_category_mutations_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
-import 'categories_state.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/categories_state.dart';
 
 @injectable
 class CategoriesCubit extends Cubit<CategoriesState> {

@@ -9,7 +9,7 @@ import 'package:inventory_store_app/features/catalog/domain/usecases/get_categor
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_products_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_stock_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/export_catalog_pdf_usecase.dart';
-import 'admin_catalog_state.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_state.dart';
 
 @injectable
 class AdminCatalogCubit extends Cubit<AdminCatalogState> {

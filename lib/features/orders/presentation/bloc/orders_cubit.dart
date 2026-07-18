@@ -10,7 +10,7 @@ import 'package:inventory_store_app/features/orders/domain/usecases/get_order_it
 import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart';
 import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'orders_state.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/orders_state.dart';
 
 class OrdersCubit extends Cubit<OrdersState> {
   final GetFilteredOrdersUc _getFilteredOrdersUc;

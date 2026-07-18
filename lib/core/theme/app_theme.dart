@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'app_colors.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class AppTheme {
   AppTheme._(); // Constructor privado para evitar instanciaciones innecesarias
