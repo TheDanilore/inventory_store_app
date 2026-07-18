@@ -65,7 +65,7 @@ class AppSnackbar {
     // Insertamos al inicio para que la más nueva tome la posición frontal
     _queue.insert(0, newSnackbar);
 
-    final overlayState = Overlay.of(context);
+    final overlayState = Navigator.maybeOf(context, rootNavigator: true)?.overlay ?? Overlay.of(context);
 
     if (_overlayEntry == null) {
       _overlayEntry = OverlayEntry(

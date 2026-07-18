@@ -97,10 +97,10 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     if (userId == null || userId.isEmpty) {
       AppSnackbar.show(
         context,
-        message: 'Debes iniciar sesión para pedir',
+        message: 'Debes iniciar sesión para hacer tu pedido.',
         backgroundColor: AppColors.warning,
       );
-      Future.delayed(const Duration(milliseconds: 1200), () {
+      Future.delayed(const Duration(milliseconds: 1500), () {
         if (context.mounted) {
           context.push('/login');
         }
@@ -251,12 +251,11 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                                   if (user == null || user.id.isEmpty) {
                                     AppSnackbar.show(
                                       context,
-                                      message:
-                                          'Inicia sesión para gestionar ubicaciones',
+                                      message: 'Inicia sesión para gestionar ubicaciones',
                                       backgroundColor: AppColors.warning,
                                     );
                                     Future.delayed(
-                                      const Duration(milliseconds: 1200),
+                                      const Duration(milliseconds: 1500),
                                       () {
                                         if (context.mounted) {
                                           context.push('/login');
