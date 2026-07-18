@@ -16,6 +16,7 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class InventoryEntriesScreen extends StatefulWidget {
   const InventoryEntriesScreen({super.key});
@@ -184,31 +185,27 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
         final isLoading = state is InventoryEntriesLoading;
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final isTablet = constraints.maxWidth >= 800;
-            return Stack(
-              children: [
-                if (isTablet)
-                  _buildTabletLayout(context, currentState, isLoading)
-                else
-                  _buildMobileLayout(context, currentState, isLoading),
-
-                _buildFloatingAction(context),
-              ],
-            );
-          },
+        return AdminLayout(
+          title: 'Historial de Entradas',
+          showBackButton: true,
+          floatingActionButton: _buildFloatingAction(context),
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = constraints.maxWidth >= 800;
+              if (isTablet) {
+                return _buildTabletLayout(context, currentState, isLoading);
+              }
+              return _buildMobileLayout(context, currentState, isLoading);
+            },
+          ),
         );
       },
     );
   }
 
   Widget _buildFloatingAction(BuildContext context) {
-    return Positioned(
-      bottom: 24,
-      right: 24,
-      child: FloatingActionButton.extended(
-        onPressed: () async {
+    return FloatingActionButton.extended(
+      onPressed: () async {
           final result = await context.push<bool>(
             '/admin/inventory-entry-form',
           );
@@ -221,9 +218,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         label: Text(_hasDraft ? 'Continuar Borrador' : 'Nueva entrada'),
         backgroundColor:
             _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 4,
-      ),
+      foregroundColor: Colors.white,
+      elevation: 4,
     );
   }
 
