@@ -54,6 +54,9 @@ class OrderDetailState extends Equatable {
     this.updaterName,
   });
 
+  bool get canToggleEdit => currentStatus.toUpperCase() != 'CANCELLED' && currentStatus.toUpperCase() != 'RETURNED';
+  bool get isCompleted => currentStatus.toUpperCase() == 'COMPLETED';
+
   OrderDetailState copyWith({
     bool? isLoading,
     bool? hasError,

@@ -1,29 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/widgets/batch_edit_sheet.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_skeleton.dart';
-import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
-import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
-import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail_state.dart';
-import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_header_row.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_status_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_customer_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_payment_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_total_summary_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_items_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_points_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_credit_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/payment_status_section.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_audit_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_credit_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_customer_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_header_row.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_items_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_payment_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_points_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_skeleton.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_status_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_total_summary_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/payment_status_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_batch_sheet.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_reason_dialog.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_return_confirm_dialog.dart';
 
 class OrderDetailSheet extends StatefulWidget {
   final OrderEntity order;
@@ -93,128 +94,16 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     }
   }
 
-  Future<void> _showBatchEditSheet(OrderItemEntity item) async {
-    final state = context.read<OrderDetailCubit>().state;
-    final warehouseId = state.order?.warehouseId;
-    if (warehouseId == null) return;
-
-    List<BatchAssignmentModel> batches;
-    try {
-      batches = await context.read<OrderDetailCubit>().fetchAvailableBatches(
-        item.variantId ?? '',
-        warehouseId,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      AppSnackbar.show(
-        context,
-        message: 'Error cargando lotes: $e',
-        type: SnackbarType.error,
-      );
-      return;
-    }
-
-    if (batches.isEmpty) {
-      if (!mounted) return;
-      AppSnackbar.show(
-        context,
-        message: 'No hay lotes con stock para este producto.',
-        type: SnackbarType.warning,
-      );
-      return;
-    }
-
-    final saved = state.batchOverrides[item.id];
-    if (saved != null) {
-      for (final s in saved) {
-        final idx = batches.indexWhere((b) => b.batchId == s.batchId);
-        if (idx >= 0) batches[idx].assigned = s.assigned;
-      }
-    } else {
-      int remaining = item.quantity;
-      for (final b in batches) {
-        if (remaining <= 0) break;
-        b.assigned = (remaining > b.available) ? b.available : remaining;
-        remaining -= b.assigned;
-      }
-    }
-
-    if (!mounted) return;
-    final result = await showModalBottomSheet<List<BatchAssignmentModel>>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (_) => BatchEditSheet(
-            productName: item.productName ?? 'Producto',
-            variantLabel: item.variantLabel,
-            totalRequired: item.quantity,
-            batches: batches,
-          ),
-    );
-
-    if (result != null && mounted) {
-      context.read<OrderDetailCubit>().updateBatchOverrides(item.id, result);
-    }
-  }
-
-  Future<String?> _showReasonDialog(String title, String hint) async {
-    String notes = '';
-    return showDialog<String>(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(hint, style: const TextStyle(fontSize: 14)),
-                const SizedBox(height: 12),
-                TextField(
-                  maxLines: 3,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    hintText:
-                        'Ej. Producto dañado, cliente cambió de opinión...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onChanged: (val) => notes = val,
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, null),
-                child: const Text('Cancelar'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, notes),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.teal,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Continuar'),
-              ),
-            ],
-          ),
-    );
-  }
-
   Future<void> _saveChanges(double pointsToSolesRatio) async {
     final state = context.read<OrderDetailCubit>().state;
     final isNowCancelled = state.currentStatus.toUpperCase() == 'CANCELLED';
     String? notesOverride;
 
     if (isNowCancelled) {
-      notesOverride = await _showReasonDialog(
-        'Cancelar Pedido',
-        'Ingresa el motivo de la cancelación:',
+      notesOverride = await OrderReasonDialog.show(
+        context,
+        title: 'Cancelar Pedido',
+        hint: 'Ingresa el motivo de la cancelación:',
       );
       if (notesOverride == null) return;
     }
@@ -250,7 +139,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   Future<void> _processReturn(String? notes) async {
     final result = await context.read<OrderDetailCubit>().processReturn(notes);
     if (!mounted) return;
-    if (result == true) {
+    if (result) {
       AppSnackbar.show(
         context,
         message: 'Devolución procesada con éxito',
@@ -262,69 +151,44 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         context,
         message:
             context.read<OrderDetailCubit>().state.errorMessage ??
-            'Error al procesar devolución',
+            'Error procesando devolución',
         type: SnackbarType.error,
       );
     }
   }
 
   Future<void> _confirmReturn() async {
-    final notes = await _showReasonDialog(
-      'Registrar Devolución',
-      'Ingresa el motivo de la devolución:',
+    final notes = await OrderReasonDialog.show(
+      context,
+      title: 'Registrar Devolución',
+      hint: 'Ingresa el motivo de la devolución:',
     );
     if (notes == null) return;
-
     if (!mounted) return;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Icon(
-                  Icons.assignment_return_rounded,
-                  color: Colors.red.shade600,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Confirmar Devolución',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            content: const Text(
-              'Esta acción cancelará el pedido y revertirá todos los movimientos asociados:\n\n'
-              '• Stock de productos devuelto al almacén\n'
-              '• Monedas de fidelidad revertidas\n'
-              '• Deuda de crédito o cuenta ajustada\n\n'
-              '¿Deseas continuar?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancelar'),
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade600,
-                  foregroundColor: Colors.white,
-                ),
-                icon: const Icon(Icons.assignment_return_rounded, size: 18),
-                label: const Text('Confirmar'),
-                onPressed: () => Navigator.pop(ctx, true),
-              ),
-            ],
-          ),
-    );
-
+    final confirmed = await OrderReturnConfirmDialog.show(context);
     if (confirmed == true && mounted) {
       await _processReturn(notes.isNotEmpty ? notes : null);
     }
+  }
+
+  String _getCustomerLabel(
+    String? customerId,
+    List<Map<String, dynamic>> profiles,
+    OrderEntity? order,
+  ) {
+    if (customerId == null) {
+      final manualName = _manualNameCtrl.text.trim();
+      return manualName.isNotEmpty ? manualName : 'Cliente mostrador';
+    }
+    try {
+      final profile = profiles.firstWhere((p) => p['id'] == customerId);
+      final name = (profile['full_name'] as String?)?.trim();
+      if (name != null && name.isNotEmpty) return name;
+    } catch (_) {}
+    return order?.customerName.isNotEmpty == true
+        ? order!.customerName
+        : 'Cliente mostrador';
   }
 
   @override
@@ -335,12 +199,10 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
     return BlocBuilder<OrderDetailCubit, OrderDetailState>(
       builder: (context, state) {
-        if (state.order == null && !state.isLoading) {
-          return const SizedBox.shrink();
-        }
-        final cubit = context.read<OrderDetailCubit>();
-        final isEditing = cubit.canToggleEdit();
-        final isCompleted = cubit.isCompleted();
+        if (state.order == null) return const SizedBox.shrink();
+
+        final isEditing = state.canToggleEdit;
+        final isCompleted = state.isCompleted;
         final maxPtsUser =
             state.selectedCustomerId != null
                 ? state.profiles.firstWhere(
@@ -360,25 +222,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         final totalFinal =
             subtotal - appliedDiscount - state.order!.discountAmount;
         final actualTotal = totalFinal < 0 ? 0.0 : totalFinal;
-
-        List<Map<String, dynamic>> profiles = state.profiles;
-
-        String getCustomerLabel(String? customerId) {
-          if (customerId == null) {
-            final manualName = _manualNameCtrl.text.trim();
-            return manualName.isNotEmpty ? manualName : 'Cliente mostrador';
-          }
-          try {
-            final profile = state.profiles.firstWhere(
-              (p) => p['id'] == customerId,
-            );
-            final name = (profile['full_name'] as String?)?.trim();
-            if (name != null && name.isNotEmpty) return name;
-          } catch (_) {}
-          return state.order!.customerName.isNotEmpty
-              ? state.order!.customerName
-              : 'Cliente mostrador';
-        }
 
         Widget child = Container(
           height:
@@ -422,7 +265,10 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                             message:
                                 'Verifica tu conexión a internet o intenta nuevamente.',
                             action: ElevatedButton.icon(
-                              onPressed: () => cubit.fetchData(state.order!.id),
+                              onPressed:
+                                  () => context
+                                      .read<OrderDetailCubit>()
+                                      .fetchData(_manualNameCtrl.text),
                               icon: const Icon(Icons.refresh_rounded),
                               label: const Text('Reintentar'),
                               style: ElevatedButton.styleFrom(
@@ -438,10 +284,12 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 orderId: state.order!.id,
                                 isCompleted: isCompleted,
                                 isEditing: _isEditing,
-                                canToggleEdit: cubit.canToggleEdit(),
+                                canToggleEdit: state.canToggleEdit,
                                 onToggleEditing: () {
                                   if (_isEditing) {
-                                    cubit.resetEditState();
+                                    context
+                                        .read<OrderDetailCubit>()
+                                        .resetEditState();
                                     _pointsUsedCtrl.text =
                                         state.pointsUsed.toString();
                                     _manualNameCtrl.text =
@@ -464,7 +312,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 isEditing: false, // Siempre en modo lectura
                                 onChanged: (val) {
                                   if (val != null) {
-                                    cubit.updateStatus(val);
+                                    context
+                                        .read<OrderDetailCubit>()
+                                        .updateStatus(val);
                                   }
                                 },
                               ),
@@ -474,24 +324,30 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 isCompleted: isCompleted,
                                 hasManualName: _manualNameCtrl.text.isNotEmpty,
                                 manualNameController: _manualNameCtrl,
-                                profiles: profiles,
-                                selectedCustomerLabel: getCustomerLabel(
+                                profiles: state.profiles,
+                                selectedCustomerLabel: _getCustomerLabel(
                                   state.selectedCustomerId,
+                                  state.profiles,
+                                  state.order,
                                 ),
                                 selectedCustomerId: state.selectedCustomerId,
                                 onSelectCustomer: (id) {
-                                  cubit.selectCustomer(
-                                    id,
-                                    pointsToSolesRatio,
-                                    earningRate,
-                                  );
+                                  context
+                                      .read<OrderDetailCubit>()
+                                      .selectCustomer(
+                                        id,
+                                        pointsToSolesRatio,
+                                        earningRate,
+                                      );
                                 },
                                 onClearCustomer: () {
-                                  cubit.selectCustomer(
-                                    null,
-                                    pointsToSolesRatio,
-                                    earningRate,
-                                  );
+                                  context
+                                      .read<OrderDetailCubit>()
+                                      .selectCustomer(
+                                        null,
+                                        pointsToSolesRatio,
+                                        earningRate,
+                                      );
                                   _manualNameCtrl.text = '';
                                 },
                               ),
@@ -503,11 +359,13 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 currentPaymentMethod: state.paymentMethod,
                                 onChanged: (val) {
                                   if (val != null) {
-                                    cubit.updatePaymentMethod(
-                                      val,
-                                      pointsToSolesRatio,
-                                      earningRate,
-                                    );
+                                    context
+                                        .read<OrderDetailCubit>()
+                                        .updatePaymentMethod(
+                                          val,
+                                          pointsToSolesRatio,
+                                          earningRate,
+                                        );
                                     if (val == 'CRÉDITO') {
                                       _pointsUsedCtrl.text = '0';
                                     }
@@ -528,8 +386,12 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                   customerId: state.selectedCustomerId,
                                   pointsEarned: state.pointsEarned,
                                   onPaymentRegistered: () {
-                                    cubit.setWasModified();
-                                    cubit.fetchData(state.order!.id);
+                                    context
+                                        .read<OrderDetailCubit>()
+                                        .setWasModified();
+                                    context.read<OrderDetailCubit>().fetchData(
+                                      _manualNameCtrl.text,
+                                    );
                                   },
                                   isLoyaltyEnabled: config.loyaltyGlobalEnabled,
                                 ),
@@ -556,39 +418,48 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 quantityControllers: _quantityControllers,
                                 onDecrease: (idx) {
                                   if (state.items[idx].quantity > 1) {
-                                    cubit.updateItemQuantity(
-                                      idx,
-                                      state.items[idx].quantity - 1,
-                                      pointsToSolesRatio,
-                                      earningRate,
-                                    );
+                                    context
+                                        .read<OrderDetailCubit>()
+                                        .updateItemQuantity(
+                                          idx,
+                                          state.items[idx].quantity - 1,
+                                          pointsToSolesRatio,
+                                          earningRate,
+                                        );
                                     _quantityControllers[idx].text =
                                         state.items[idx].quantity.toString();
                                   }
                                 },
                                 onIncrease: (idx) {
-                                  cubit.updateItemQuantity(
-                                    idx,
-                                    state.items[idx].quantity + 1,
-                                    pointsToSolesRatio,
-                                    earningRate,
-                                  );
+                                  context
+                                      .read<OrderDetailCubit>()
+                                      .updateItemQuantity(
+                                        idx,
+                                        state.items[idx].quantity + 1,
+                                        pointsToSolesRatio,
+                                        earningRate,
+                                      );
                                   _quantityControllers[idx].text =
                                       state.items[idx].quantity.toString();
                                 },
                                 onQuantityChanged: (idx, val) {
                                   final qty = int.tryParse(val) ?? 1;
                                   if (qty > 0) {
-                                    cubit.updateItemQuantity(
-                                      idx,
-                                      qty,
-                                      pointsToSolesRatio,
-                                      earningRate,
-                                    );
+                                    context
+                                        .read<OrderDetailCubit>()
+                                        .updateItemQuantity(
+                                          idx,
+                                          qty,
+                                          pointsToSolesRatio,
+                                          earningRate,
+                                        );
                                   }
                                 },
                                 onEditBatches:
-                                    (item) => _showBatchEditSheet(item),
+                                    (item) => OrderDetailBatchSheet.show(
+                                      context,
+                                      item,
+                                    ),
                               ),
                               const SizedBox(height: 16),
                               if (config.loyaltyGlobalEnabled &&
@@ -603,11 +474,13 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                   pointsToSolesRatio: pointsToSolesRatio,
                                   onPointsChanged: (val) {
                                     final pts = int.tryParse(val) ?? 0;
-                                    cubit.updatePointsUsed(
-                                      pts <= maxPtsUser ? pts : maxPtsUser,
-                                      pointsToSolesRatio,
-                                      earningRate,
-                                    );
+                                    context
+                                        .read<OrderDetailCubit>()
+                                        .updatePointsUsed(
+                                          pts <= maxPtsUser ? pts : maxPtsUser,
+                                          pointsToSolesRatio,
+                                          earningRate,
+                                        );
                                     if (pts > maxPtsUser) {
                                       _pointsUsedCtrl.text =
                                           maxPtsUser.toString();
