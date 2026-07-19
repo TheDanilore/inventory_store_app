@@ -1,55 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
-import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
+/// Footer del carrito con el resumen de precio y botón de checkout.
+/// Recibe los valores ya calculados desde la pantalla padre, sin lógica propia.
 class CartCheckoutFooter extends StatelessWidget {
-  final CartCubit cartCubit;
-  final int saldoPuntos;
-  final double pointsToSolesRatio;
-  final VoidCallback onProcessCheckout;
+  final double subtotal;
+  final double totalAPagar;
+  final double descuentoSoles;
+  final int selectedCount;
+  final bool isSending;
+  final bool isVerifyingStock;
+  final VoidCallback? onProcessCheckout;
 
   const CartCheckoutFooter({
     super.key,
-    required this.cartCubit,
-    required this.saldoPuntos,
-    required this.pointsToSolesRatio,
+    required this.subtotal,
+    required this.totalAPagar,
+    required this.descuentoSoles,
+    required this.selectedCount,
+    required this.isSending,
+    required this.isVerifyingStock,
     required this.onProcessCheckout,
   });
 
   @override
   Widget build(BuildContext context) {
-    final checkoutCubit = context.read<CheckoutCubit>();
-    final isSending = context.select<CheckoutCubit, bool>(
-      (p) => p.state.isSending,
-    );
-
-    final config = context.read<AppConfigCubit>();
-    final isLoyaltyEnabled =
-        config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible;
-
-    final subtotal = cartCubit.state.selectedTotalAmount;
-    final totalAPagar =
-        isLoyaltyEnabled
-            ? checkoutCubit.calculateFinalTotal(
-              cartCubit,
-              pointsToSolesRatio,
-              saldoPuntos,
-            )
-            : subtotal;
-    final puntosUsados =
-        isLoyaltyEnabled
-            ? checkoutCubit.calculateApplicablePoints(
-              cartCubit,
-              pointsToSolesRatio,
-              saldoPuntos,
-            )
-            : 0;
-    final descuentoSoles = puntosUsados * pointsToSolesRatio;
-
-    final selectedCount = cartCubit.state.selectedItems.length;
+    final isDisabled =
+        selectedCount == 0 || isSending || isVerifyingStock;
 
     return Container(
       padding: EdgeInsets.only(
@@ -75,7 +52,10 @@ class CartCheckoutFooter extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (descuentoSoles > 0) ...[
-              _buildPriceRow('Subtotal', 'S/ ${subtotal.toStringAsFixed(2)}'),
+              _buildPriceRow(
+                'Subtotal',
+                'S/ ${subtotal.toStringAsFixed(2)}',
+              ),
               const SizedBox(height: 4),
               _buildPriceRow(
                 'Descuento por Puntos',
@@ -137,10 +117,7 @@ class CartCheckoutFooter extends StatelessWidget {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed:
-                    (selectedCount == 0 || isSending)
-                        ? null
-                        : onProcessCheckout,
+                onPressed: isDisabled ? null : onProcessCheckout,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF25D366),
                   disabledBackgroundColor: Colors.grey.shade200,
@@ -151,7 +128,7 @@ class CartCheckoutFooter extends StatelessWidget {
                   ),
                 ),
                 child:
-                    isSending
+                    (isSending || isVerifyingStock)
                         ? const SizedBox(
                           width: 20,
                           height: 20,

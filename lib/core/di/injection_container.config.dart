@@ -322,6 +322,8 @@ import '../../features/orders/domain/usecases/process_checkout_uc.dart'
     as _i446;
 import '../../features/orders/domain/usecases/save_order_changes_uc.dart'
     as _i904;
+import '../../features/orders/domain/usecases/send_whatsapp_order_uc.dart'
+    as _i895;
 import '../../features/orders/domain/usecases/verify_stock_uc.dart' as _i714;
 import '../../features/orders/presentation/bloc/checkout_cubit.dart' as _i602;
 import '../../features/orders/presentation/bloc/customer_orders_cubit.dart'
@@ -458,6 +460,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i967.ExportProductPdfUseCase>(
       () => _i967.ExportProductPdfUseCase(),
     );
+    gh.factory<_i895.SendWhatsAppOrderUc>(() => _i895.SendWhatsAppOrderUc());
     gh.lazySingleton<_i454.SupabaseClient>(() => registerModule.supabase);
     gh.lazySingleton<_i11.NetworkCubit>(() => _i11.NetworkCubit());
     gh.lazySingleton<_i1021.ExportCustomersPdfUseCase>(
@@ -1378,6 +1381,14 @@ extension GetItInjectableX on _i174.GetIt {
         toggleSupplierStatusUseCase: gh<_i175.ToggleSupplierStatusUseCase>(),
       ),
     );
+    gh.factory<_i602.CheckoutCubit>(
+      () => _i602.CheckoutCubit(
+        getDefaultAddressUc: gh<_i828.GetDefaultAddressUc>(),
+        verifyStockUc: gh<_i714.VerifyStockUc>(),
+        processCheckoutUc: gh<_i446.ProcessCheckoutUc>(),
+        sendWhatsAppOrderUc: gh<_i895.SendWhatsAppOrderUc>(),
+      ),
+    );
     gh.lazySingleton<_i110.CreateCategoryUseCase>(
       () => _i110.CreateCategoryUseCase(
         gh<_i1018.CategoriesRepository>(),
@@ -1461,13 +1472,6 @@ extension GetItInjectableX on _i174.GetIt {
         getProductsUC: gh<_i222.GetProductsUC>(),
         getProductStockUC: gh<_i958.GetProductStockUC>(),
         catalogRepository: gh<_i540.CatalogSearchRepository>(),
-      ),
-    );
-    gh.factory<_i602.CheckoutCubit>(
-      () => _i602.CheckoutCubit(
-        getDefaultAddressUc: gh<_i828.GetDefaultAddressUc>(),
-        verifyStockUc: gh<_i714.VerifyStockUc>(),
-        processCheckoutUc: gh<_i446.ProcessCheckoutUc>(),
       ),
     );
     gh.factory<_i17.CustomerWishlistCubit>(

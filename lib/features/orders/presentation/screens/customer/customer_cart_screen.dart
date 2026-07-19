@@ -1,24 +1,24 @@
-import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
-
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
-
 import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_state.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_action_header.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_address_card.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_checkout_footer.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_item_card.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_stock_error_dialog.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_wallet_summary.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:url_launcher/url_launcher.dart';
-
-import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
 
 class CustomerCartScreen extends StatefulWidget {
   const CustomerCartScreen({super.key});
@@ -39,160 +39,155 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     });
   }
 
-  Future<void> _enviarPedidoWhatsApp(
-    List<CartItemModel> selectedItems,
-    String orderId,
-    double totalAPagar,
-    int puntosUsados,
-  ) async {
-    final config = context.read<AppConfigCubit>();
-    final whatsappNumber = config.businessPhone;
-    if (whatsappNumber.isEmpty) {
-      if (context.mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Número de WhatsApp de la tienda no configurado.',
-          backgroundColor: AppColors.error,
-        );
-      }
-      return;
-    }
+  void _handleCheckout() {
+    final user = context.read<AuthCubit>().state.currentUser;
 
-    final buffer = StringBuffer();
-    buffer.writeln('Hola, me gustaría confirmar mi pedido (#$orderId):');
-    buffer.writeln();
-
-    for (final item in selectedItems) {
-      final variantLabel =
-          item.variantLabel != null ? ' Modelo: ${item.variantLabel}' : '';
-      buffer.writeln('• ${item.quantity} x ${item.product.name}$variantLabel');
-    }
-
-    buffer.writeln();
-    if (puntosUsados > 0) {
-      buffer.writeln('Puntos de billetera usados: $puntosUsados');
-    }
-    buffer.writeln('*Total a Pagar: S/ ${totalAPagar.toStringAsFixed(2)}*');
-
-    final message = Uri.encodeComponent(buffer.toString());
-    final url = Uri.parse('https://wa.me/$whatsappNumber?text=$message');
-
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'No se pudo abrir WhatsApp',
-          backgroundColor: AppColors.error,
-        );
-      }
-    }
-  }
-
-  Future<void> _processCheckout(BuildContext context) async {
-    final userId = context.read<AuthCubit>().state.currentUser?.id;
-    if (userId == null || userId.isEmpty) {
+    // Validar sesión antes de proceder
+    if (user == null || user.id.isEmpty) {
       AppSnackbar.show(
         context,
         message: 'Debes iniciar sesión para hacer tu pedido.',
-        backgroundColor: AppColors.warning,
+        type: SnackbarType.warning,
       );
       Future.delayed(const Duration(milliseconds: 1500), () {
-        if (context.mounted) {
-          context.push('/login');
-        }
+        if (mounted) context.push('/login');
       });
       return;
     }
 
     final cartCubit = context.read<CartCubit>();
-    final cartState = cartCubit.state;
     final walletState = context.read<WalletCubit>().state;
-    final checkout = context.read<CheckoutCubit>();
     final config = context.read<AppConfigCubit>();
 
-    final profileId = userId;
-
-    final result = await checkout.submitOrder(
-      itemsToBuy: cartState.items.values.toList(),
+    context.read<CheckoutCubit>().submitOrder(
+      itemsToBuy: cartCubit.state.items.values.toList(),
       cartCubit: cartCubit,
-      profileId: profileId,
-      pointsToSolesRatio: config.state.values['points_to_soles_ratio'] ?? 0.05,
-      conversionRate:
-          (config.state.values['loyalty_earning_rate'] ?? 1.0).toInt(),
+      profileId: user.id,
+      pointsToSolesRatio: config.getDouble('points_to_soles_ratio', 0.01),
+      conversionRate: config.getDouble('loyalty_earning_rate', 1.0).toInt(),
       saldoPuntos: walletState.balance ?? 0,
-      activeWarehouseId: config.state.values['active_warehouse_id'] as String?,
+      activeWarehouseId:
+          config.state.values['active_warehouse_id'] as String?,
+      whatsappNumber: config.businessPhone,
     );
+  }
 
-    if (result == null) return;
+  void _handleAddressNavigation() async {
+    final user = context.read<AuthCubit>().state.currentUser;
 
-    if (!context.mounted) return;
-
-    if (result['error'] == 'STOCK') {
-      final messages = result['messages'] as List<String>;
-      showDialog(
-        context: context,
-        builder:
-            (ctx) => AlertDialog(
-              title: const Text(
-                'Stock Insuficiente',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              content: Text(
-                'Lo sentimos, el stock ha variado y algunos productos ya no están disponibles en las cantidades solicitadas:\n\n${messages.join('\n')}',
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Entendido'),
-                ),
-              ],
-            ),
-      );
-    } else if (result['error'] != null) {
+    if (user == null || user.id.isEmpty) {
       AppSnackbar.show(
         context,
-        message: result['message'] ?? 'Ocurrió un error al procesar el pedido.',
-        backgroundColor: AppColors.error,
+        message: 'Inicia sesión para gestionar ubicaciones',
+        type: SnackbarType.warning,
       );
-    } else if (result['success'] == true) {
-      final orderIdCorto =
-          result['orderId'].toString().substring(0, 8).toUpperCase();
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) context.push('/login');
+      });
+      return;
+    }
 
-      await _enviarPedidoWhatsApp(
-        result['itemsToBuy'] as List<CartItemModel>,
-        orderIdCorto,
-        result['totalAPagar'] as double,
-        result['puntosUsados'] as int,
-      );
-
-      // Saldo es reactivo en el background
-
-      if (context.mounted) {
-        AppSnackbar.show(
-          context,
-          message: '¡Pedido registrado exitosamente!',
-          backgroundColor: AppColors.success,
-        );
-      }
+    await context.push('/locations');
+    if (mounted) {
+      context.read<CheckoutCubit>().loadAddress(user.id);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final cartCubit = context.watch<CartCubit>();
-    final cartState = cartCubit.state;
-    final walletState = context.watch<WalletCubit>().state;
-    final checkout = context.watch<CheckoutCubit>().state;
+    // BlocListener reacciona a los estados del CheckoutCubit sin rebuilds.
+    return BlocListener<CheckoutCubit, CheckoutState>(
+      listenWhen: (prev, curr) => prev.status != curr.status,
+      listener: (context, state) {
+        switch (state.status) {
+          case CheckoutStatus.stockError:
+            CartStockErrorDialog.show(
+              context,
+              messages: state.stockMessages,
+            );
+            context.read<CheckoutCubit>().resetStatus();
+          case CheckoutStatus.failure:
+            AppSnackbar.show(
+              context,
+              message:
+                  state.errorMessage ??
+                  'Ocurrió un error al procesar el pedido.',
+              type: SnackbarType.error,
+            );
+            context.read<CheckoutCubit>().resetStatus();
+          case CheckoutStatus.success:
+            AppSnackbar.show(
+              context,
+              message: '¡Pedido registrado exitosamente!',
+              type: SnackbarType.success,
+            );
+            context.read<CheckoutCubit>().resetStatus();
+          default:
+            break;
+        }
+      },
+      child: _buildBody(context),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    return BlocBuilder<CartCubit, CartState>(
+      builder: (context, cartState) {
+        if (cartState.isLoading) {
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation(AppColors.primary),
+            ),
+          );
+        }
+
+        if (cartState.items.isEmpty) {
+          return const AppEmptyState(
+            icon: Icons.shopping_bag_outlined,
+            title: 'Tu carrito está vacío',
+            message:
+                'Agrega productos desde el catálogo para armar tu pedido.',
+          );
+        }
+
+        return _buildCartContent(context, cartState);
+      },
+    );
+  }
+
+  Widget _buildCartContent(BuildContext context, CartState cartState) {
+    final cartCubit = context.read<CartCubit>();
     final config = context.watch<AppConfigCubit>();
+    final walletState = context.watch<WalletCubit>().state;
+    final checkoutState = context.watch<CheckoutCubit>().state;
+    final checkoutCubit = context.read<CheckoutCubit>();
 
     final saldoPuntos = walletState.balance ?? 0;
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
 
+    // Calcular totales en la pantalla y pasarlos al footer (sin lógica en widgets hijos)
+    final subtotal = cartCubit.state.selectedTotalAmount;
+    final isLoyaltyEnabled =
+        config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible;
+    final puntosUsados =
+        isLoyaltyEnabled
+            ? checkoutCubit.calculateApplicablePoints(
+              cartCubit,
+              pointsToSolesRatio,
+              saldoPuntos,
+            )
+            : 0;
+    final descuentoSoles = puntosUsados * pointsToSolesRatio;
+    final totalAPagar =
+        isLoyaltyEnabled
+            ? checkoutCubit.calculateFinalTotal(
+              cartCubit,
+              pointsToSolesRatio,
+              saldoPuntos,
+            )
+            : subtotal;
+
+    // Ordenar: primero los items con stock
     final sortedCartItems =
         cartState.items.values.toList()..sort((a, b) {
           final aInStock = a.availableStock > 0 ? 1 : 0;
@@ -200,111 +195,75 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
           return bInStock.compareTo(aInStock);
         });
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
-        child:
-            cartState.isLoading
-                ? const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation(AppColors.primary),
-                  ),
-                )
-                : cartState.items.isEmpty
-                ? const AppEmptyState(
-                  icon: Icons.shopping_bag_outlined,
-                  title: 'Tu carrito está vacío',
-                  message:
-                      'Agrega productos desde el catálogo para armar tu pedido.',
-                )
-                : SizedBox(
-                  height: double.infinity,
-                  child: Column(
-                    children: [
-                      if (checkout.isVerifyingStock)
-                        const LinearProgressIndicator(color: AppColors.primary),
-                      Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.only(top: 4, bottom: 20),
-                          itemCount: cartState.items.length + 3,
-                          itemBuilder: (context, i) {
-                            if (i == 0) {
-                              if (!config.loyaltyGlobalEnabled ||
-                                  !config.loyaltyCustomerVisible) {
-                                return const SizedBox.shrink();
-                              }
-                              return CartWalletSummary(
-                                cartCubit: cartCubit,
-                                saldoPuntos: saldoPuntos,
-                              );
-                            }
-                            if (i == 1) {
-                              return CartAddressCard(
-                                address: checkout.defaultAddress,
-                                isLoading: checkout.isLoadingAddress,
-                                onTap: () async {
-                                  final user =
-                                      context
-                                          .read<AuthCubit>()
-                                          .state
-                                          .currentUser;
-                                  if (user == null || user.id.isEmpty) {
-                                    AppSnackbar.show(
-                                      context,
-                                      message:
-                                          'Inicia sesión para gestionar ubicaciones',
-                                      backgroundColor: AppColors.warning,
-                                    );
-                                    Future.delayed(
-                                      const Duration(milliseconds: 1500),
-                                      () {
-                                        if (context.mounted) {
-                                          context.push('/login');
-                                        }
-                                      },
-                                    );
-                                    return;
-                                  }
-                                  await context.push('/locations');
-                                  if (context.mounted) {
-                                    context.read<CheckoutCubit>().loadAddress(
-                                      user.id,
-                                    );
-                                  }
-                                },
-                              );
-                            }
-                            if (i == 2) {
-                              return CartActionHeader(
-                                cartCubit: cartCubit,
-                                cartState: cartState,
-                              );
-                            }
+    return SizedBox(
+      height: double.infinity,
+      child: Column(
+        children: [
+          // Barra de verificación de stock
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            child:
+                checkoutState.isVerifyingStock
+                    ? const LinearProgressIndicator(color: AppColors.primary)
+                    : const SizedBox.shrink(),
+          ),
 
-                            final index = i - 3;
-                            final cartItem = sortedCartItems[index];
-                            final productId = cartItem.productId;
-                            return CartItemCard(
-                              productId: productId,
-                              item: cartItem,
-                              cartCubit: cartCubit,
-                              saldoPuntos: saldoPuntos,
-                              pointsToSolesRatio: pointsToSolesRatio,
-                            );
-                          },
-                        ),
-                      ),
-                      CartCheckoutFooter(
-                        cartCubit: cartCubit,
+          // Lista del carrito
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.only(top: 4, bottom: 20),
+              itemCount: sortedCartItems.length + 3,
+              itemBuilder: (context, i) {
+                // Slot 0: Resumen de billetera
+                if (i == 0) {
+                  if (!isLoyaltyEnabled) return const SizedBox.shrink();
+                  return CartWalletSummary(
+                    cartCubit: cartCubit,
+                    saldoPuntos: saldoPuntos,
+                  );
+                }
 
-                        saldoPuntos: saldoPuntos,
-                        pointsToSolesRatio: pointsToSolesRatio,
-                        onProcessCheckout: () => _processCheckout(context),
-                      ),
-                    ],
-                  ),
-                ),
+                // Slot 1: Dirección de entrega
+                if (i == 1) {
+                  return CartAddressCard(
+                    address: checkoutState.defaultAddress,
+                    isLoading: checkoutState.isLoadingAddress,
+                    onTap: _handleAddressNavigation,
+                  );
+                }
+
+                // Slot 2: Header con acciones de selección
+                if (i == 2) {
+                  return CartActionHeader(
+                    cartCubit: cartCubit,
+                    cartState: cartState,
+                  );
+                }
+
+                // Items del carrito
+                final item = sortedCartItems[i - 3];
+                return CartItemCard(
+                  productId: item.productId,
+                  item: item,
+                  cartCubit: cartCubit,
+                  saldoPuntos: saldoPuntos,
+                  pointsToSolesRatio: pointsToSolesRatio,
+                );
+              },
+            ),
+          ),
+
+          // Footer con total y botón de checkout
+          CartCheckoutFooter(
+            subtotal: subtotal,
+            totalAPagar: totalAPagar,
+            descuentoSoles: descuentoSoles,
+            selectedCount: cartState.selectedItems.length,
+            isSending: checkoutState.isSending,
+            isVerifyingStock: checkoutState.isVerifyingStock,
+            onProcessCheckout: _handleCheckout,
+          ),
+        ],
       ),
     );
   }
