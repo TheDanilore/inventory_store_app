@@ -46,17 +46,21 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<AppConfigCubit>().loadBusinessInfo();
-    context.read<AppConfigCubit>().loadConnectionUrl();
-    _logoUrlFocus.addListener(() {
-      if (!_logoUrlFocus.hasFocus) {
-        setState(() => _logoUrl = _logoUrlCtrl.text);
-      }
-    });
-
     final cubit = context.read<AppConfigCubit>();
+    cubit.loadBusinessInfo();
+    if (cubit.state.connectionUrl == null) {
+      cubit.loadConnectionUrl();
+    }
+    _logoUrlFocus.addListener(_onLogoFocusChange);
+
     if (cubit.state.businessInfo != null) {
       _populateFields(cubit.state.businessInfo!);
+    }
+  }
+
+  void _onLogoFocusChange() {
+    if (!_logoUrlFocus.hasFocus) {
+      setState(() => _logoUrl = _logoUrlCtrl.text);
     }
   }
 
@@ -78,6 +82,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
   @override
   void dispose() {
+    _logoUrlFocus.removeListener(_onLogoFocusChange);
     _businessNameCtrl.dispose();
     _taxIdCtrl.dispose();
     _addressCtrl.dispose();
@@ -105,9 +110,9 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
     final compressed = await FlutterImageCompress.compressWithList(
       bytes,
-      minWidth: 800,
-      minHeight: 800,
-      quality: 80,
+      minWidth: 500,
+      minHeight: 500,
+      quality: 85,
     );
 
     final url = await cubit.uploadBusinessLogo(compressed);
@@ -187,13 +192,11 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
       ],
       child: BlocBuilder<AppConfigCubit, AppConfigState>(
         builder: (context, state) {
-          final isTablet = MediaQuery.of(context).size.width >= 600;
           final isSaving = state.saveStatus == ViewState.loading;
           final isLoading =
               state.status == ViewState.initial ||
               state.status == ViewState.loading;
           final hasError = state.status == ViewState.error;
-
           final supabaseUrl = state.connectionUrl ?? 'Desconocida';
 
           return AdminLayout(
@@ -230,12 +233,23 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                     : null,
             body:
                 isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    )
                     : hasError
                     ? _buildErrorState(context.read<AppConfigCubit>())
-                    : isTablet
-                    ? _buildTabletLayout(isSaving, supabaseUrl)
-                    : _buildMobileLayout(isSaving, supabaseUrl),
+                    : LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth >= 900) {
+                          return _buildDesktopLayout(isSaving, supabaseUrl);
+                        } else if (constraints.maxWidth >= 600) {
+                          return _buildTabletLayout(isSaving, supabaseUrl);
+                        }
+                        return _buildMobileLayout(isSaving, supabaseUrl);
+                      },
+                    ),
           );
         },
       ),
@@ -268,10 +282,12 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
         children: [
           _buildPreviewCard(),
           const SizedBox(height: 16),
-          _buildFormCard(isSaving, supabaseUrl),
+          _buildFormCard(isSaving, supabaseUrl, isDesktop: false),
           const SizedBox(height: 12),
           const _InfoNote(),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
+          _buildConnectionSection(supabaseUrl),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -279,24 +295,61 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
   Widget _buildTabletLayout(bool isSaving, String supabaseUrl) {
     return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 4,
-              child: Column(
-                children: [
-                  _buildPreviewCard(),
-                  const SizedBox(height: 16),
-                  const _InfoNote(),
-                ],
-              ),
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 4,
+            child: Column(
+              children: [
+                _buildPreviewCard(),
+                const SizedBox(height: 16),
+                const _InfoNote(),
+                const SizedBox(height: 16),
+                _buildConnectionSection(supabaseUrl),
+              ],
             ),
-            const SizedBox(width: 20),
-            Expanded(flex: 6, child: _buildFormCard(isSaving, supabaseUrl)),
-          ],
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            flex: 6,
+            child: _buildFormCard(isSaving, supabaseUrl, isDesktop: false),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout(bool isSaving, String supabaseUrl) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1200),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 40,
+                child: Column(
+                  children: [
+                    _buildPreviewCard(),
+                    const SizedBox(height: 16),
+                    const _InfoNote(),
+                    const SizedBox(height: 16),
+                    _buildConnectionSection(supabaseUrl),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                flex: 60,
+                child: _buildFormCard(isSaving, supabaseUrl, isDesktop: true),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -311,28 +364,110 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     );
   }
 
-  Widget _buildFormCard(bool isSaving, String supabaseUrl) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Colors.grey.shade200),
+  Widget _buildFormCard(
+    bool isSaving,
+    String supabaseUrl, {
+    required bool isDesktop,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radiusXl),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow(opacity: 0.05),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Datos del negocio',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Datos del negocio',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: AppColors.textPrimary,
               ),
-              const SizedBox(height: 20),
+            ),
+            const SizedBox(height: 20),
+
+            if (isDesktop) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      controller: _businessNameCtrl,
+                      label: 'Nombre del negocio',
+                      icon: Icons.store_rounded,
+                      hintText: 'Mi Tienda',
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
+                      validator:
+                          (val) =>
+                              val == null || val.trim().isEmpty
+                                  ? 'El nombre del negocio es requerido'
+                                  : null,
+                      onChanged: (val) {
+                        setState(() => _previewName = val);
+                        _markChanged();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: AppTextField(
+                      controller: _taxIdCtrl,
+                      label: 'RUC / Tax ID',
+                      icon: Icons.badge_outlined,
+                      hintText: '20123456789',
+                      keyboardType: TextInputType.number,
+                      focusNode: _taxIdFocus,
+                      textInputAction: TextInputAction.next,
+                      helperText: 'Se muestra en facturas y reportes',
+                      onChanged: (_) => _markChanged(),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      controller: _addressCtrl,
+                      label: 'Dirección',
+                      icon: Icons.location_on_outlined,
+                      hintText: 'Av. Principal 123',
+                      maxLines: 2,
+                      textCapitalization: TextCapitalization.sentences,
+                      focusNode: _addressFocus,
+                      textInputAction: TextInputAction.next,
+                      onChanged: (val) {
+                        setState(() => _previewAddress = val);
+                        _markChanged();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: AppTextField(
+                      controller: _phoneCtrl,
+                      label: 'Teléfono',
+                      icon: Icons.phone_outlined,
+                      hintText: '+51 999 999 999',
+                      keyboardType: TextInputType.phone,
+                      focusNode: _phoneFocus,
+                      textInputAction: TextInputAction.next,
+                      helperText: 'Formato: +51 999 999 999',
+                      onChanged: (_) => _markChanged(),
+                    ),
+                  ),
+                ],
+              ),
+            ] else ...[
               AppTextField(
                 controller: _businessNameCtrl,
                 label: 'Nombre del negocio',
@@ -389,115 +524,111 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                 helperText: 'Formato: +51 999 999 999',
                 onChanged: (_) => _markChanged(),
               ),
-              const SizedBox(height: 14),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: AppTextField(
-                      controller: _logoUrlCtrl,
-                      label: 'URL del logo',
-                      icon: Icons.image_outlined,
-                      hintText: 'https://...',
-                      keyboardType: TextInputType.url,
-                      focusNode: _logoUrlFocus,
-                      textInputAction: TextInputAction.done,
-                      helperText: 'URL pública de la imagen (jpg, png, webp)',
-                      validator: (val) {
-                        if (val != null && val.trim().isNotEmpty) {
-                          final uri = Uri.tryParse(val.trim());
-                          if (uri == null ||
-                              !uri.hasAbsolutePath ||
-                              !uri.scheme.startsWith('http')) {
-                            return 'Ingresa una URL válida (ej. https://...)';
-                          }
-                        }
-                        return null;
-                      },
-                      onChanged: (_) => _markChanged(),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: ElevatedButton.icon(
-                      onPressed: isSaving ? null : _pickLogoImage,
-                      icon:
-                          isSaving
-                              ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                              : const Icon(Icons.upload_file_rounded, size: 20),
-                      label: const Text('Subir'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 16),
-              _LoyaltySection(
-                globalEnabled: _loyaltyGlobalEnabled,
-                customerVisible: _loyaltyCustomerVisible,
-                onGlobalChanged: (val) {
-                  setState(() {
-                    _loyaltyGlobalEnabled = val;
-                    if (!val) {
-                      _loyaltyCustomerVisible = false;
-                    }
-                    _markChanged();
-                  });
-                },
-                onCustomerVisibleChanged:
-                    _loyaltyGlobalEnabled
-                        ? (val) {
-                          setState(() {
-                            _loyaltyCustomerVisible = val;
-                            _markChanged();
-                          });
-                        }
-                        : null,
-              ),
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 16),
-              _ConnectionSection(
-                supabaseUrl: supabaseUrl,
-                onResetPressed: () async {
-                  final updated = await ChangeConnectionDialog.show(
-                    context,
-                    supabaseUrl,
-                  );
-                  if (updated == true && mounted) {
-                    context.read<AppConfigCubit>().loadConnectionUrl();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Conexión actualizada. Reinicia la app para aplicar los cambios.',
-                        ),
-                        backgroundColor: AppColors.primary,
-                      ),
-                    );
-                  }
-                },
-              ),
             ],
-          ),
+
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: AppTextField(
+                    controller: _logoUrlCtrl,
+                    label: 'URL del logo',
+                    icon: Icons.image_outlined,
+                    hintText: 'https://...',
+                    keyboardType: TextInputType.url,
+                    focusNode: _logoUrlFocus,
+                    textInputAction: TextInputAction.done,
+                    helperText: 'URL pública de la imagen (jpg, png, webp)',
+                    validator: (val) {
+                      if (val != null && val.trim().isNotEmpty) {
+                        final uri = Uri.tryParse(val.trim());
+                        if (uri == null ||
+                            !uri.hasAbsolutePath ||
+                            !uri.scheme.startsWith('http')) {
+                          return 'Ingresa una URL válida (ej. https://...)';
+                        }
+                      }
+                      return null;
+                    },
+                    onChanged: (_) => _markChanged(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: ElevatedButton.icon(
+                    onPressed: isSaving ? null : _pickLogoImage,
+                    icon:
+                        isSaving
+                            ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                            : const Icon(Icons.upload_file_rounded, size: 20),
+                    label: const Text('Subir'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const Divider(color: AppColors.border),
+            const SizedBox(height: 16),
+            _LoyaltySection(
+              globalEnabled: _loyaltyGlobalEnabled,
+              customerVisible: _loyaltyCustomerVisible,
+              onGlobalChanged: (val) {
+                setState(() {
+                  _loyaltyGlobalEnabled = val;
+                  if (!val) {
+                    _loyaltyCustomerVisible = false;
+                  }
+                  _markChanged();
+                });
+              },
+              onCustomerVisibleChanged:
+                  _loyaltyGlobalEnabled
+                      ? (val) {
+                        setState(() {
+                          _loyaltyCustomerVisible = val;
+                          _markChanged();
+                        });
+                      }
+                      : null,
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildConnectionSection(String supabaseUrl) {
+    return _ConnectionSection(
+      supabaseUrl: supabaseUrl,
+      onResetPressed: () async {
+        final updated = await ChangeConnectionDialog.show(context, supabaseUrl);
+        if (updated == true && mounted) {
+          context.read<AppConfigCubit>().loadConnectionUrl();
+          AppSnackbar.show(
+            context,
+            message:
+                'Conexión actualizada. Reinicia la app para aplicar los cambios.',
+            type: SnackbarType.info,
+          );
+        }
+      },
     );
   }
 }
@@ -525,6 +656,7 @@ class _LoyaltySection extends StatelessWidget {
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
             fontSize: 18,
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 12),
@@ -532,26 +664,34 @@ class _LoyaltySection extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           title: const Text(
             'Habilitar Sistema Globalmente',
-            style: TextStyle(fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
           ),
           subtitle: const Text(
             'Si se apaga, el sistema desaparece para todos (clientes y admins).',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           value: globalEnabled,
-          activeThumbColor: Theme.of(context).colorScheme.primary,
+          activeColor: AppColors.primary,
           onChanged: onGlobalChanged,
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: const Text(
             'Visible para Clientes',
-            style: TextStyle(fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
           ),
           subtitle: const Text(
             'Si se apaga, los clientes no lo ven, pero los administradores sí.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           value: customerVisible,
-          activeThumbColor: Theme.of(context).colorScheme.primary,
+          activeColor: AppColors.primary,
           onChanged: onCustomerVisibleChanged,
         ),
       ],
@@ -564,23 +704,26 @@ class _InfoNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: primary.withValues(alpha: 0.07),
+        color: AppColors.primary.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primary.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
       ),
-      child: Row(
+      child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline_rounded, size: 17, color: primary),
-          const SizedBox(width: 10),
+          Icon(Icons.info_outline_rounded, size: 17, color: AppColors.primary),
+          SizedBox(width: 10),
           Expanded(
             child: Text(
               'Esta información se usa en toda la app: título global, menú lateral y vista cliente.',
-              style: TextStyle(color: primary, fontSize: 13, height: 1.45),
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 13,
+                height: 1.45,
+              ),
             ),
           ),
         ],
@@ -602,111 +745,107 @@ class _BusinessPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Colors.grey.shade200),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radiusXl),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow(opacity: 0.05),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Vista previa',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade100,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'En tiempo real',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.amber.shade800,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Semantics(
-              label:
-                  'Vista previa del negocio: $businessName, $businessAddress',
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0F9D8F), Color(0xFF0C7C72)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _LogoBadge(logoUrl: businessLogoUrl),
-                    const SizedBox(height: 14),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
-                      transitionBuilder:
-                          (child, animation) =>
-                              FadeTransition(opacity: animation, child: child),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          businessName,
-                          key: ValueKey(businessName),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
-                      transitionBuilder:
-                          (child, animation) =>
-                              FadeTransition(opacity: animation, child: child),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          businessAddress,
-                          key: ValueKey(businessAddress),
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            height: 1.35,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Vista previa',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: AppColors.textPrimary,
                 ),
               ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade100,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'En tiempo real',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.amber.shade900,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Semantics(
+            label: 'Vista previa del negocio: $businessName, $businessAddress',
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, Color(0xFF0F3460)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _LogoBadge(logoUrl: businessLogoUrl),
+                  const SizedBox(height: 14),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    transitionBuilder:
+                        (child, animation) =>
+                            FadeTransition(opacity: animation, child: child),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        businessName,
+                        key: ValueKey(businessName),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    transitionBuilder:
+                        (child, animation) =>
+                            FadeTransition(opacity: animation, child: child),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        businessAddress,
+                        key: ValueKey(businessAddress),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          height: 1.35,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -774,15 +913,16 @@ class _ConnectionSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        const Row(
           children: [
-            const Icon(Icons.dns_rounded, color: Colors.blueGrey),
-            const SizedBox(width: 8),
+            Icon(Icons.dns_rounded, color: AppColors.primary),
+            SizedBox(width: 8),
             Text(
               'Servidor de Base de Datos',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
+                color: AppColors.textPrimary,
               ),
             ),
           ],
@@ -791,19 +931,20 @@ class _ConnectionSection extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.blueGrey.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.2)),
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppColors.radiusXl),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppColors.cardShadow(opacity: 0.05),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
+              const Text(
                 'Supabase URL conectada',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blueGrey.shade700,
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -811,7 +952,8 @@ class _ConnectionSection extends StatelessWidget {
                 supabaseUrl,
                 style: const TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 16),
@@ -820,8 +962,8 @@ class _ConnectionSection extends StatelessWidget {
                 icon: const Icon(Icons.edit_rounded, size: 18),
                 label: const Text('Cambiar Servidor (Multi-Tenant)'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.blueGrey.shade700,
-                  side: BorderSide(color: Colors.blueGrey.shade300),
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
