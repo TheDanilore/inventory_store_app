@@ -33,17 +33,31 @@ class CatalogHeader extends StatefulWidget {
 
 class _CatalogHeaderState extends State<CatalogHeader> {
   static final List<String> _searchHistory = [];
+  final FocusNode _searchFocusNode = FocusNode();
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
 
   @override
   void initState() {
     super.initState();
     widget.searchController.addListener(_onSearchTextChange);
+    _searchFocusNode.addListener(_onFocusChange);
   }
 
   @override
   void dispose() {
+    _hideOverlay();
     widget.searchController.removeListener(_onSearchTextChange);
+    _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (_searchFocusNode.hasFocus && _searchHistory.isNotEmpty) {
+      _showOverlay();
+    } else {
+      _hideOverlay();
+    }
   }
 
   void _onSearchTextChange() {
@@ -64,11 +78,140 @@ class _CatalogHeaderState extends State<CatalogHeader> {
   void _selectHistoryItem(String term) {
     widget.searchController.text = term;
     widget.onSearchChanged(term);
+    _searchFocusNode.unfocus();
+    _hideOverlay();
   }
 
   void _clearSearch() {
     widget.searchController.clear();
     widget.onSearchChanged('');
+  }
+
+  void _showOverlay() {
+    _hideOverlay();
+    if (!mounted) return;
+
+    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final overlay = Overlay.of(context);
+
+    _overlayEntry = OverlayEntry(
+      builder:
+          (context) => Positioned(
+            width: isDesktop ? 420 : (MediaQuery.of(context).size.width - 32),
+            child: CompositedTransformFollower(
+              link: _layerLink,
+              showWhenUnlinked: false,
+              offset: const Offset(0, 48),
+              child: Material(
+                elevation: 8,
+                borderRadius: BorderRadius.circular(12),
+                shadowColor: Colors.black.withValues(alpha: 0.15),
+                color: Colors.white,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Búsquedas Recientes',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                setState(() => _searchHistory.clear());
+                                _hideOverlay();
+                              },
+                              child: const Text(
+                                'Limpiar',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1, color: AppColors.border),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 180),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: _searchHistory.length,
+                          itemBuilder: (context, index) {
+                            final item = _searchHistory[index];
+                            return ListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 0,
+                              ),
+                              visualDensity: VisualDensity.compact,
+                              leading: const Icon(
+                                Icons.history_rounded,
+                                size: 16,
+                                color: AppColors.textMuted,
+                              ),
+                              title: Text(
+                                item,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(
+                                  Icons.close_rounded,
+                                  size: 14,
+                                  color: AppColors.textMuted,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _searchHistory.removeAt(index);
+                                  });
+                                  if (_searchHistory.isEmpty) {
+                                    _hideOverlay();
+                                  } else {
+                                    _showOverlay();
+                                  }
+                                },
+                              ),
+                              onTap: () => _selectHistoryItem(item),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+    );
+
+    overlay.insert(_overlayEntry!);
+  }
+
+  void _hideOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
   }
 
   @override
@@ -83,7 +226,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               color: Colors.white.withValues(alpha: 0.85),
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
               child: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
             ),
           ),
@@ -95,186 +238,146 @@ class _CatalogHeaderState extends State<CatalogHeader> {
   Widget _buildSearchField() {
     final hasText = widget.searchController.text.isNotEmpty;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      height: 44,
-      decoration: BoxDecoration(
-        color:
-            widget.searchByIngredient
-                ? const Color(0xFFECFDF5)
-                : AppColors.background,
-        borderRadius: BorderRadius.circular(AppColors.radius),
-        border: Border.all(
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        height: 44,
+        decoration: BoxDecoration(
           color:
               widget.searchByIngredient
-                  ? const Color(0xFF10B981)
-                  : AppColors.border,
-          width: widget.searchByIngredient ? 1.5 : 1,
+                  ? const Color(0xFFECFDF5)
+                  : AppColors.background,
+          borderRadius: BorderRadius.circular(AppColors.radius),
+          border: Border.all(
+            color:
+                widget.searchByIngredient
+                    ? const Color(0xFF10B981)
+                    : AppColors.border,
+            width: widget.searchByIngredient ? 1.5 : 1,
+          ),
         ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: widget.searchController,
-              onChanged: (val) {
-                widget.onSearchChanged(val);
-                if (val.trim().length >= 3) {
-                  _addToHistory(val);
-                }
-              },
-              onSubmitted: (val) => _addToHistory(val),
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w500,
-              ),
-              decoration: InputDecoration(
-                hintText:
-                    widget.searchByIngredient
-                        ? 'Ej: Glifosato, Clorpirifos, Paracetamol...'
-                        : 'Buscar producto...',
-                hintStyle: TextStyle(
-                  color:
-                      widget.searchByIngredient
-                          ? const Color(0xFF6EE7B7)
-                          : AppColors.textMuted,
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: widget.searchController,
+                focusNode: _searchFocusNode,
+                onChanged: (val) {
+                  widget.onSearchChanged(val);
+                  if (val.trim().length >= 3) {
+                    _addToHistory(val);
+                  }
+                },
+                onSubmitted: (val) => _addToHistory(val),
+                style: const TextStyle(
                   fontSize: 14,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w500,
                 ),
-                prefixIcon: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(
-                    widget.searchByIngredient
-                        ? Icons.science_rounded
-                        : Icons.search_rounded,
-                    key: ValueKey(widget.searchByIngredient),
+                decoration: InputDecoration(
+                  hintText:
+                      widget.searchByIngredient
+                          ? 'Ej: Glifosato, Clorpirifos, Paracetamol...'
+                          : 'Buscar producto...',
+                  hintStyle: TextStyle(
                     color:
                         widget.searchByIngredient
-                            ? const Color(0xFF10B981)
+                            ? const Color(0xFF6EE7B7)
                             : AppColors.textMuted,
-                    size: 20,
+                    fontSize: 14,
                   ),
+                  prefixIcon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      widget.searchByIngredient
+                          ? Icons.science_rounded
+                          : Icons.search_rounded,
+                      key: ValueKey(widget.searchByIngredient),
+                      color:
+                          widget.searchByIngredient
+                              ? const Color(0xFF10B981)
+                              : AppColors.textMuted,
+                      size: 20,
+                    ),
+                  ),
+                  suffixIcon:
+                      hasText
+                          ? IconButton(
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              size: 18,
+                              color: AppColors.textMuted,
+                            ),
+                            onPressed: _clearSearch,
+                            tooltip: 'Borrar búsqueda',
+                          )
+                          : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                suffixIcon:
-                    hasText
-                        ? IconButton(
-                          icon: const Icon(
-                            Icons.close_rounded,
-                            size: 18,
-                            color: AppColors.textMuted,
-                          ),
-                          onPressed: _clearSearch,
-                          tooltip: 'Borrar búsqueda',
-                        )
-                        : null,
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
-          ),
-          Tooltip(
-            message: 'Buscar por ingrediente activo',
-            child: GestureDetector(
-              onTap:
-                  () => widget.onToggleIngredientSearch(
-                    !widget.searchByIngredient,
-                  ),
-              child: Container(
-                padding: const EdgeInsets.only(left: 8, right: 14),
-                color: Colors.transparent,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Ingrediente',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color:
-                            widget.searchByIngredient
-                                ? const Color(0xFF059669)
-                                : AppColors.textMuted,
-                      ),
+            Tooltip(
+              message: 'Buscar por ingrediente activo',
+              child: GestureDetector(
+                onTap:
+                    () => widget.onToggleIngredientSearch(
+                      !widget.searchByIngredient,
                     ),
-                    const SizedBox(width: 6),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      width: 32,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(9),
-                        color:
-                            widget.searchByIngredient
-                                ? const Color(0xFF10B981)
-                                : AppColors.border,
+                child: Container(
+                  padding: const EdgeInsets.only(left: 8, right: 14),
+                  color: Colors.transparent,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Ingrediente',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color:
+                              widget.searchByIngredient
+                                  ? const Color(0xFF059669)
+                                  : AppColors.textMuted,
+                        ),
                       ),
-                      child: Stack(
-                        children: [
-                          AnimatedPositioned(
-                            duration: const Duration(milliseconds: 200),
-                            curve: Curves.easeInOut,
-                            left: widget.searchByIngredient ? 16 : 2,
-                            top: 2,
-                            child: Container(
-                              width: 14,
-                              height: 14,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
+                      const SizedBox(width: 6),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        width: 32,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(9),
+                          color:
+                              widget.searchByIngredient
+                                  ? const Color(0xFF10B981)
+                                  : AppColors.border,
+                        ),
+                        child: Stack(
+                          children: [
+                            AnimatedPositioned(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeInOut,
+                              left: widget.searchByIngredient ? 16 : 2,
+                              top: 2,
+                              child: Container(
+                                width: 14,
+                                height: 14,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHistoryChips() {
-    if (_searchHistory.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: SizedBox(
-        height: 28,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(right: 6, top: 4),
-              child: Icon(
-                Icons.history_rounded,
-                size: 14,
-                color: AppColors.textMuted,
-              ),
-            ),
-            ..._searchHistory.map((item) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ActionChip(
-                  label: Text(
-                    item,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    ],
                   ),
-                  backgroundColor: AppColors.background,
-                  side: const BorderSide(color: AppColors.border),
-                  padding: EdgeInsets.zero,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  onPressed: () => _selectHistoryItem(item),
                 ),
-              );
-            }),
+              ),
+            ),
           ],
         ),
       ),
@@ -330,7 +433,6 @@ class _CatalogHeaderState extends State<CatalogHeader> {
             ],
           ],
         ),
-        _buildHistoryChips(),
         AnimatedSize(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,
@@ -373,7 +475,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                   )
                   : const SizedBox.shrink(),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
       ],
     );
   }
@@ -382,7 +484,6 @@ class _CatalogHeaderState extends State<CatalogHeader> {
     return Column(
       children: [
         _buildSearchField(),
-        _buildHistoryChips(),
         AnimatedSize(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,
@@ -425,7 +526,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                   )
                   : const SizedBox.shrink(),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
       ],
     );
   }
