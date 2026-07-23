@@ -674,7 +674,7 @@ class _LoyaltySection extends StatelessWidget {
             style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           value: globalEnabled,
-          activeColor: AppColors.primary,
+          activeThumbColor: AppColors.primary,
           onChanged: onGlobalChanged,
         ),
         SwitchListTile(
@@ -691,7 +691,7 @@ class _LoyaltySection extends StatelessWidget {
             style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           value: customerVisible,
-          activeColor: AppColors.primary,
+          activeThumbColor: AppColors.primary,
           onChanged: onCustomerVisibleChanged,
         ),
       ],

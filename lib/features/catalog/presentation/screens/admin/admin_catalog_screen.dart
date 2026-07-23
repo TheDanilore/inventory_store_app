@@ -529,7 +529,6 @@ class _CatalogHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant _CatalogHeaderDelegate oldDelegate) {
     return maxHeight != oldDelegate.maxHeight ||
-        minHeight != oldDelegate.minHeight ||
-        child != oldDelegate.child;
+        minHeight != oldDelegate.minHeight;
   }
 }

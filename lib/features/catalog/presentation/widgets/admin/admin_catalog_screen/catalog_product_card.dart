@@ -57,6 +57,15 @@ class _AdminProductCardState extends State<AdminProductCard> {
     final isAgotado =
         widget.product.stockControl && widget.product.totalStock <= 0;
     final isDesactivado = !widget.product.isActive;
+    final activeIng =
+        (widget.highlightIngredient != null &&
+                widget.highlightIngredient!.isNotEmpty)
+            ? widget.highlightIngredient!
+            : (widget.product.details['active_ingredient'] ??
+                    widget.product.details['active_ingredients'] ??
+                    widget.product.details['principio_activo'] ??
+                    widget.product.details['formula'])
+                ?.toString();
 
     return Material(
       color: Colors.transparent,
@@ -311,17 +320,16 @@ class _AdminProductCardState extends State<AdminProductCard> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (widget.highlightIngredient != null &&
-                          widget.highlightIngredient!.isNotEmpty) ...[
+                      if (activeIng != null && activeIng.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                            horizontal: 8,
+                            vertical: 3,
                           ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFECFDF5),
-                            borderRadius: BorderRadius.circular(5),
+                            borderRadius: BorderRadius.circular(6),
                             border: Border.all(color: const Color(0xFF6EE7B7)),
                           ),
                           child: Row(
@@ -329,13 +337,13 @@ class _AdminProductCardState extends State<AdminProductCard> {
                             children: [
                               const Icon(
                                 Icons.science_rounded,
-                                size: 11,
+                                size: 12,
                                 color: Color(0xFF059669),
                               ),
-                              const SizedBox(width: 3),
+                              const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
-                                  widget.highlightIngredient!,
+                                  activeIng,
                                   style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,

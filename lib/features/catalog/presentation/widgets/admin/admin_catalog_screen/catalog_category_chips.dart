@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-/// Fila horizontal de chips de categorías y estado para filtrar el catálogo.
+/// Fila horizontal de chips de ordenamiento, filtros rápidos (Recién Creados, Activos, Con Stock) y categorías.
 class CategoryChips extends StatelessWidget {
   final List<CategoryEntity> categories;
   final String? selectedCategoryId;
@@ -48,11 +48,14 @@ class CategoryChips extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                 ],
+
+                // Chip por defecto: Óptimo (Todas)
                 _CategoryChip(
-                  label: 'Todas',
+                  label: 'Óptimo (Todas)',
                   selected: selectedCategoryId == null,
                   onTap: () => onSelected(null),
                 ),
+
                 ...categories.map(
                   (cat) => _CategoryChip(
                     label: cat.name,
@@ -80,11 +83,10 @@ class _StatusFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Theme.of(context);
     String label = 'Todos';
     Color color = AppColors.textSecondary;
     Color bgColor = AppColors.background;
-    IconData icon = Icons.filter_list_rounded;
+    IconData icon = Icons.tune_rounded;
 
     if (filterIsActive == true) {
       label = 'Activos';
@@ -105,7 +107,7 @@ class _StatusFilterChip extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            // Ciclo: null (Todos) -> true (Activos) -> false (Inactivos) -> null...
+            // Ciclo de filtrado: null (Todos) -> true (Activos) -> false (Inactivos) -> null...
             if (filterIsActive == null) {
               onChanged(true);
             } else if (filterIsActive == true) {
