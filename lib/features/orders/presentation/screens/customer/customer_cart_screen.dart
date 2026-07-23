@@ -81,11 +81,11 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
         message: 'Inicia sesión para gestionar ubicaciones',
         type: SnackbarType.warning,
       );
-      context.push('/login');
+      context.go('/login');
       return;
     }
 
-    await context.push('/locations');
+    context.go('/locations');
     if (mounted) {
       context.read<CheckoutCubit>().loadAddress(user.id);
     }

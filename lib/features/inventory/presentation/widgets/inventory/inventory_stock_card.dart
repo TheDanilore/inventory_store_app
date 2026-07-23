@@ -54,7 +54,7 @@ class InventoryStockCard extends StatelessWidget {
           onTap:
               onTap ??
               () {
-                context.push(
+                context.go(
                   '/admin/product/${item.productId}?variantId=${item.variantId}',
                 );
               },

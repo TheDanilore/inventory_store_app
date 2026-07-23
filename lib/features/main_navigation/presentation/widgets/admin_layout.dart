@@ -295,7 +295,7 @@ class _AdminLayoutState extends State<AdminLayout> {
             offset: const Offset(0, 48),
             onSelected: (value) {
               if (value == 'profile') context.push('/admin/profile');
-              if (value == 'business') context.push('/admin/business-info');
+              if (value == 'business') context.go('/admin/business-info');
               if (value == 'logout') context.read<AuthCubit>().logout();
             },
             itemBuilder: (ctx) => [

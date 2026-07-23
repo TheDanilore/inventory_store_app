@@ -227,7 +227,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                         onToggleIngredientSearch:
                                             cubit.toggleSearchByIngredient,
                                         onAddProduct:
-                                            () => context.push(
+                                            () => context.go(
                                               '/admin/product-form',
                                             ),
                                       ),

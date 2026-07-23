@@ -174,9 +174,9 @@ class CustomerLayout extends StatelessWidget {
             } else {
               final user = Supabase.instance.client.auth.currentUser;
               if (user == null) {
-                context.push('/login');
+                context.go('/login');
               } else {
-                context.push('/profile');
+                context.go('/profile');
               }
             }
           },

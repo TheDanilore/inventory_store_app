@@ -140,7 +140,7 @@ class _ShiftsTabState extends State<ShiftsTab> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(14),
                           child: InkWell(
-                            onTap: () => context.push('/admin/all-cash-shifts'),
+                            onTap: () => context.go('/admin/all-cash-shifts'),
                             borderRadius: BorderRadius.circular(14),
                             child: const Padding(
                               padding: EdgeInsets.all(11),

@@ -88,7 +88,7 @@ class InventoryBatchCard extends StatelessWidget {
               onTap:
                   onTap ??
                   () {
-                    context.push(
+                    context.go(
                       '/admin/product/${batch.productId}?variantId=${batch.variantId}',
                     );
                   },

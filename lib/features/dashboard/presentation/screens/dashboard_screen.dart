@@ -725,7 +725,7 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
             ),
           ),
           TextButton.icon(
-            onPressed: () => context.push('/admin/inventory'),
+            onPressed: () => context.go('/admin/inventory'),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.error,
               padding: const EdgeInsets.symmetric(horizontal: 12),

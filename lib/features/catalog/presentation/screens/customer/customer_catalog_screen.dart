@@ -84,8 +84,9 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                   ),
                   ElevatedButton(
                     onPressed: () {
+                      final router = GoRouter.of(context);
                       Navigator.pop(context);
-                      context.push('/login');
+                      router.go('/login');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.accent,
@@ -225,7 +226,11 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
             ),
             const SizedBox(width: 8),
             ElevatedButton(
-              onPressed: () => context.push('/login'),
+              onPressed: () {
+                final router = GoRouter.of(context);
+                Navigator.pop(context);
+                router.go('/login');
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: AppColors.primary,

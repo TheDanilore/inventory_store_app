@@ -19,7 +19,7 @@ class ProfileQuickAccessSection extends StatelessWidget {
           icon: Icons.stars_rounded,
           iconColor: const Color(0xFFD97706), // Gold color
           backgroundColor: const Color(0xFFFEF3C7),
-          onTap: () => context.push('/points'),
+          onTap: () => context.go('/points'),
         ),
       );
     }
@@ -31,7 +31,7 @@ class ProfileQuickAccessSection extends StatelessWidget {
         icon: Icons.receipt_long_rounded,
         iconColor: const Color(0xFF0EA5E9), // Light blue
         backgroundColor: const Color(0xFFE0F2FE),
-        onTap: () => context.push('/orders'),
+        onTap: () => context.go('/orders'),
       ),
       _QuickAccessCard(
         title: 'Ubicaciones',
@@ -39,7 +39,7 @@ class ProfileQuickAccessSection extends StatelessWidget {
         icon: Icons.map_outlined,
         iconColor: const Color(0xFF10B981), // Light green
         backgroundColor: const Color(0xFFD1FAE5),
-        onTap: () => context.push('/locations'),
+        onTap: () => context.go('/locations'),
       ),
       _QuickAccessCard(
         title: 'Deseos',
@@ -47,7 +47,7 @@ class ProfileQuickAccessSection extends StatelessWidget {
         icon: Icons.favorite_rounded,
         iconColor: const Color(0xFFF43F5E), // Light red
         backgroundColor: const Color(0xFFFFE4E6),
-        onTap: () => context.push('/wishlist'),
+        onTap: () => context.go('/wishlist'),
       ),
     ]);
 

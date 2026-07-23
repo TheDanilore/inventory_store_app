@@ -101,7 +101,7 @@ class _PremiumCustomerCardState extends State<PremiumCustomerCard> {
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: () {
-              context.push(
+              context.go(
                 '/admin/customer-detail/${widget.customer.id}',
                 extra: widget.customer,
               );

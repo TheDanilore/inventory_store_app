@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
-import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -105,8 +104,19 @@ class _LoginFormCardState extends State<LoginFormCard> {
                 ),
               ),
               const SizedBox(width: 8),
-              AppPrimaryButton(
-                label: 'Enviar enlace',
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
                 onPressed: () async {
                   final email = emailCtrl.text.trim();
                   if (email.isEmpty || !email.contains('@')) {
@@ -137,6 +147,13 @@ class _LoginFormCardState extends State<LoginFormCard> {
                     }
                   }
                 },
+                child: const Text(
+                  'Enviar enlace',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),

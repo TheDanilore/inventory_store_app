@@ -39,7 +39,7 @@ class OfflineGamesSuggestion extends StatelessWidget {
         const SizedBox(height: 12),
         ElevatedButton.icon(
           onPressed: () {
-            context.push('/points');
+            context.go('/points');
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,

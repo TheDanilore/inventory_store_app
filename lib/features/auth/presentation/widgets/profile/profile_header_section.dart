@@ -219,7 +219,7 @@ class ProfileHeaderSection extends StatelessWidget {
                   const SizedBox(height: 18),
                   InkWell(
                     onTap: () {
-                      context.push('/points');
+                      context.go('/points');
                     },
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
