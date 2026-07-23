@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -32,7 +32,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isEditing = false;
-  File? _selectedImage;
+  Uint8List? _selectedImageBytes;
 
   final _fullNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
@@ -69,15 +69,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickImage() async {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    ImageSource? source;
+
+    if (isMobile) {
+      source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: AppColors.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (ctx) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Foto de Perfil',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+                    title: const Text('Tomar Foto'),
+                    onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
+                    title: const Text('Seleccionar de Galería'),
+                    onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      source = ImageSource.gallery;
+    }
+
+    if (source == null) return;
+
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 800,
+      source: source,
+      maxWidth: 500,
+      maxHeight: 500,
+      imageQuality: 85,
     );
     if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
+      final bytes = await pickedFile.readAsBytes();
+      if (mounted) {
+        setState(() {
+          _selectedImageBytes = bytes;
+        });
+      }
     }
   }
 
@@ -98,13 +160,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       isActive: currentUser.isActive,
     );
 
-    final imageBytes =
-        _selectedImage != null ? await _selectedImage!.readAsBytes() : null;
-
     final success = await cubit.updateProfile(
       updatedUser,
-      imageBytes: imageBytes,
+      imageBytes: _selectedImageBytes,
     );
+
     if (success && mounted) {
       AppSnackbar.show(
         context,
@@ -113,7 +173,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
       setState(() {
         _isEditing = false;
-        _selectedImage = null;
+        _selectedImageBytes = null;
       });
     }
   }
@@ -122,7 +182,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_newPasswordCtrl.text.isEmpty || _confirmPasswordCtrl.text.isEmpty) {
       AppSnackbar.show(
         context,
-        message: 'Llena las contraseñas',
+        message: 'Ingresa las contraseñas requeridas',
         type: SnackbarType.warning,
       );
       return;
@@ -150,26 +210,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<bool> _onWillPop() async {
+    if (!_isEditing) return true;
+
+    final shouldPop = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('¿Descartar cambios?'),
+            content: const Text(
+              'Tienes cambios de edición sin guardar. ¿Deseas salir sin guardar los datos?',
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppColors.radius),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text(
+                  'Continuar editando',
+                  style: TextStyle(color: AppColors.textMuted),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Descartar',
+                  style: TextStyle(color: AppColors.error),
+                ),
+              ),
+            ],
+          ),
+    );
+
+    if (shouldPop == true && mounted) {
+      setState(() {
+        _isEditing = false;
+        _selectedImageBytes = null;
+        _populateFields();
+      });
+    }
+    return shouldPop ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final appConfigState = context.watch<AppConfigCubit>().state;
-    final isLoyaltyGlobal =
-        appConfigState.businessInfo?.loyaltyGlobalEnabled ?? false;
-    final isLoyaltyCustomer =
-        appConfigState.businessInfo?.loyaltyCustomerVisible ?? false;
+    final isLoyaltyGlobal = context.select<AppConfigCubit, bool>(
+      (c) => c.state.businessInfo?.loyaltyGlobalEnabled ?? false,
+    );
+    final isLoyaltyCustomer = context.select<AppConfigCubit, bool>(
+      (c) => c.state.businessInfo?.loyaltyCustomerVisible ?? false,
+    );
     final isLoyaltyEnabled =
         widget.openedFromAdmin
             ? isLoyaltyGlobal
             : (isLoyaltyGlobal && isLoyaltyCustomer);
 
-    // En CustomerLayout usualmente está el WalletCubit.
-    // En AdminLayout (openedFromAdmin = true) puede que no esté disponible.
-    int walletBalance = 0;
-    if (!widget.openedFromAdmin) {
-      try {
-        walletBalance = context.watch<WalletCubit>().state.balance ?? 0;
-      } catch (_) {}
-    }
+    final walletBalance =
+        widget.openedFromAdmin
+            ? 0
+            : context.select<WalletCubit, int>((w) => w.state.balance ?? 0);
 
     return BlocConsumer<AuthCubit, AuthState>(
       listener: (context, state) {
@@ -200,176 +300,375 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
 
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              final isTablet = constraints.maxWidth >= 700;
-              final horizontalPadding =
-                  isTablet ? (constraints.maxWidth - 700) / 2 : 0.0;
+        return PopScope(
+          canPop: !_isEditing,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            final shouldPop = await _onWillPop();
+            if (shouldPop && context.mounted) Navigator.pop(context);
+          },
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            body: LayoutBuilder(
+              builder: (context, constraints) {
+                final isDesktop = constraints.maxWidth >= 900;
 
-              return RefreshIndicator(
-                color: AppColors.teal,
-                onRefresh: () async {
-                  await context.read<AuthCubit>().checkSession();
-                },
-                child: CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverPadding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding,
-                      ),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          ProfileHeaderSection(
-                            displayName: user.fullName,
-                            userRole: user.role,
-                            email: user.email,
-                            walletBalance: walletBalance,
-                            avatarUrl: avatarUrl,
-                            imageBytes: null,
-                            isEditing: _isEditing,
-                            isLoyaltyEnabled: isLoyaltyEnabled,
-                            onPickImage: _pickImage,
-                            onEditToggle: () {
-                              if (_isEditing) {
-                                setState(() {
-                                  _isEditing = false;
-                                  _selectedImage = null;
-                                  _populateFields();
-                                });
-                              } else {
-                                setState(() => _isEditing = true);
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          if (!widget.openedFromAdmin && !_isEditing) ...[
-                            ProfileQuickAccessSection(
-                              isLoyaltyEnabled: isLoyaltyEnabled,
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 400),
-                              child:
-                                  _isEditing
-                                      ? Column(
-                                        key: const ValueKey('editMode'),
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          _sectionLabelInline(
-                                            context,
-                                            'Editar Datos Personales',
-                                          ),
-                                          Stack(
-                                            children: [
-                                              ProfileEditFormSection(
-                                                nameCtrl: _fullNameCtrl,
-                                                phoneCtrl: _phoneCtrl,
-                                                docNumCtrl: _docNumCtrl,
-                                                docType: _docType,
-                                                onDocTypeChanged:
-                                                    (val) => setState(
-                                                      () => _docType = val,
-                                                    ),
-                                                onSave: _saveProfile,
-                                              ),
-                                              if (isLoading)
-                                                Positioned.fill(
-                                                  child: ClipRRect(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          24,
-                                                        ),
-                                                    child: BackdropFilter(
-                                                      filter: ImageFilter.blur(
-                                                        sigmaX: 8,
-                                                        sigmaY: 8,
-                                                      ),
-                                                      child: Container(
-                                                        color: Colors.white
-                                                            .withValues(
-                                                              alpha: 0.3,
-                                                            ),
-                                                        child: const Center(
-                                                          child:
-                                                              CircularProgressIndicator(),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 14),
-                                          _sectionLabelInline(
-                                            context,
-                                            'Seguridad',
-                                          ),
-                                          PasswordChangeCard(
-                                            newPasswordCtrl: _newPasswordCtrl,
-                                            confirmPasswordCtrl:
-                                                _confirmPasswordCtrl,
-                                            isUpdating: isLoading,
-                                            onSave: _changePassword,
-                                          ),
-                                        ],
-                                      )
-                                      : Column(
-                                        key: const ValueKey('readMode'),
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          _sectionLabelInline(
-                                            context,
-                                            'Información de cuenta',
-                                          ),
-                                          ProfileReadOnlyInfoSection(
-                                            email:
-                                                user.email.isEmpty
-                                                    ? 'Sin correo'
-                                                    : user.email,
-                                            userRole: user.role,
-                                            fullName: user.fullName,
-                                            phone: user.phone,
-                                            docType: user.documentType,
-                                            docNum: user.documentNumber,
-                                          ),
-                                        ],
-                                      ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          ProfileActionButtonsSection(
-                            isAdmin: user.role == AppRoles.admin,
-                            openedFromAdmin: widget.openedFromAdmin,
-                            onToggleView: () {
-                              if (widget.openedFromAdmin) {
-                                context.go('/');
-                              } else {
-                                context.go('/admin');
-                              }
-                            },
-                            onSignOut: () async {
-                              await context.read<AuthCubit>().logout();
-                            },
-                          ),
-                          const SizedBox(height: 32),
-                        ]),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+                if (isDesktop) {
+                  return _buildDesktopSplitLayout(
+                    context,
+                    user,
+                    avatarUrl,
+                    isLoading,
+                    isLoyaltyEnabled,
+                    walletBalance,
+                  );
+                }
+
+                return _buildMobileSingleColumnLayout(
+                  context,
+                  user,
+                  avatarUrl,
+                  isLoading,
+                  isLoyaltyEnabled,
+                  walletBalance,
+                  constraints,
+                );
+              },
+            ),
           ),
         );
       },
+    );
+  }
+
+  // ── Layout Desktop: Split Profile Dashboard (2 Columnas width >= 900) ──────
+  Widget _buildDesktopSplitLayout(
+    BuildContext context,
+    UserEntity user,
+    String? avatarUrl,
+    bool isLoading,
+    bool isLoyaltyEnabled,
+    int walletBalance,
+  ) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1200),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Columna Izquierda: Resumen y Acciones (35% Ancho)
+              Expanded(
+                flex: 35,
+                child: Column(
+                  children: [
+                    ProfileHeaderSection(
+                      displayName: user.fullName,
+                      userRole: user.role,
+                      email: user.email,
+                      walletBalance: walletBalance,
+                      avatarUrl: avatarUrl,
+                      imageBytes: _selectedImageBytes,
+                      isEditing: _isEditing,
+                      isLoyaltyEnabled: isLoyaltyEnabled,
+                      onPickImage: _pickImage,
+                      onEditToggle: () {
+                        if (_isEditing) {
+                          setState(() {
+                            _isEditing = false;
+                            _selectedImageBytes = null;
+                            _populateFields();
+                          });
+                        } else {
+                          setState(() => _isEditing = true);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    ProfileActionButtonsSection(
+                      isAdmin: user.role == AppRoles.admin,
+                      openedFromAdmin: widget.openedFromAdmin,
+                      onToggleView: () {
+                        if (widget.openedFromAdmin) {
+                          context.go('/');
+                        } else {
+                          context.go('/admin');
+                        }
+                      },
+                      onSignOut: () async {
+                        await context.read<AuthCubit>().logout();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              // Columna Derecha: Datos y Seguridad (65% Ancho)
+              Expanded(
+                flex: 65,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!widget.openedFromAdmin && !_isEditing) ...[
+                      ProfileQuickAccessSection(
+                        isLoyaltyEnabled: isLoyaltyEnabled,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child:
+                          _isEditing
+                              ? Column(
+                                key: const ValueKey('desktopEditMode'),
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _sectionLabelInline(
+                                    context,
+                                    'Editar Datos Personales',
+                                  ),
+                                  Stack(
+                                    children: [
+                                      ProfileEditFormSection(
+                                        nameCtrl: _fullNameCtrl,
+                                        phoneCtrl: _phoneCtrl,
+                                        docNumCtrl: _docNumCtrl,
+                                        docType: _docType,
+                                        onDocTypeChanged:
+                                            (val) => setState(
+                                              () => _docType = val,
+                                            ),
+                                        onSave: _saveProfile,
+                                      ),
+                                      if (isLoading)
+                                        Positioned.fill(
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              24,
+                                            ),
+                                            child: BackdropFilter(
+                                              filter: ImageFilter.blur(
+                                                sigmaX: 8,
+                                                sigmaY: 8,
+                                              ),
+                                              child: Container(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.3,
+                                                ),
+                                                child: const Center(
+                                                  child:
+                                                      CircularProgressIndicator(),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 20),
+                                  _sectionLabelInline(context, 'Seguridad'),
+                                  PasswordChangeCard(
+                                    newPasswordCtrl: _newPasswordCtrl,
+                                    confirmPasswordCtrl: _confirmPasswordCtrl,
+                                    isUpdating: isLoading,
+                                    onSave: _changePassword,
+                                  ),
+                                ],
+                              )
+                              : Column(
+                                key: const ValueKey('desktopReadMode'),
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _sectionLabelInline(
+                                    context,
+                                    'Información de cuenta',
+                                  ),
+                                  ProfileReadOnlyInfoSection(
+                                    email:
+                                        user.email.isEmpty
+                                            ? 'Sin correo'
+                                            : user.email,
+                                    userRole: user.role,
+                                    fullName: user.fullName,
+                                    phone: user.phone,
+                                    docType: user.documentType,
+                                    docNum: user.documentNumber,
+                                  ),
+                                ],
+                              ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Layout Móvil / Tablet: 1 Columna Continua ──────────────────────────────
+  Widget _buildMobileSingleColumnLayout(
+    BuildContext context,
+    UserEntity user,
+    String? avatarUrl,
+    bool isLoading,
+    bool isLoyaltyEnabled,
+    int walletBalance,
+    BoxConstraints constraints,
+  ) {
+    final isTablet = constraints.maxWidth >= 700;
+    final horizontalPadding =
+        isTablet ? (constraints.maxWidth - 700) / 2 : 0.0;
+
+    return RefreshIndicator(
+      color: AppColors.teal,
+      onRefresh: () async {
+        await context.read<AuthCubit>().checkSession();
+      },
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                ProfileHeaderSection(
+                  displayName: user.fullName,
+                  userRole: user.role,
+                  email: user.email,
+                  walletBalance: walletBalance,
+                  avatarUrl: avatarUrl,
+                  imageBytes: _selectedImageBytes,
+                  isEditing: _isEditing,
+                  isLoyaltyEnabled: isLoyaltyEnabled,
+                  onPickImage: _pickImage,
+                  onEditToggle: () {
+                    if (_isEditing) {
+                      setState(() {
+                        _isEditing = false;
+                        _selectedImageBytes = null;
+                        _populateFields();
+                      });
+                    } else {
+                      setState(() => _isEditing = true);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                if (!widget.openedFromAdmin && !_isEditing) ...[
+                  ProfileQuickAccessSection(
+                    isLoyaltyEnabled: isLoyaltyEnabled,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    child:
+                        _isEditing
+                            ? Column(
+                              key: const ValueKey('editMode'),
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _sectionLabelInline(
+                                  context,
+                                  'Editar Datos Personales',
+                                ),
+                                Stack(
+                                  children: [
+                                    ProfileEditFormSection(
+                                      nameCtrl: _fullNameCtrl,
+                                      phoneCtrl: _phoneCtrl,
+                                      docNumCtrl: _docNumCtrl,
+                                      docType: _docType,
+                                      onDocTypeChanged:
+                                          (val) =>
+                                              setState(() => _docType = val),
+                                      onSave: _saveProfile,
+                                    ),
+                                    if (isLoading)
+                                      Positioned.fill(
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            24,
+                                          ),
+                                          child: BackdropFilter(
+                                            filter: ImageFilter.blur(
+                                              sigmaX: 8,
+                                              sigmaY: 8,
+                                            ),
+                                            child: Container(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.3,
+                                              ),
+                                              child: const Center(
+                                                child:
+                                                    CircularProgressIndicator(),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+                                _sectionLabelInline(context, 'Seguridad'),
+                                PasswordChangeCard(
+                                  newPasswordCtrl: _newPasswordCtrl,
+                                  confirmPasswordCtrl: _confirmPasswordCtrl,
+                                  isUpdating: isLoading,
+                                  onSave: _changePassword,
+                                ),
+                              ],
+                            )
+                            : Column(
+                              key: const ValueKey('readMode'),
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _sectionLabelInline(
+                                  context,
+                                  'Información de cuenta',
+                                ),
+                                ProfileReadOnlyInfoSection(
+                                  email:
+                                      user.email.isEmpty
+                                          ? 'Sin correo'
+                                          : user.email,
+                                  userRole: user.role,
+                                  fullName: user.fullName,
+                                  phone: user.phone,
+                                  docType: user.documentType,
+                                  docNum: user.documentNumber,
+                                ),
+                              ],
+                            ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ProfileActionButtonsSection(
+                  isAdmin: user.role == AppRoles.admin,
+                  openedFromAdmin: widget.openedFromAdmin,
+                  onToggleView: () {
+                    if (widget.openedFromAdmin) {
+                      context.go('/');
+                    } else {
+                      context.go('/admin');
+                    }
+                  },
+                  onSignOut: () async {
+                    await context.read<AuthCubit>().logout();
+                  },
+                ),
+                const SizedBox(height: 32),
+              ]),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

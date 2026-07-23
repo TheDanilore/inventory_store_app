@@ -1,14 +1,20 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders_state.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/orders/customer_order_card.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/customer/orders/customer_order_detail_sheet.dart';
+import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
 
 class CustomerOrdersScreen extends StatefulWidget {
   const CustomerOrdersScreen({super.key});
@@ -21,6 +27,8 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
+  OrderEntity? _selectedOrder;
+  List<OrderItemEntity> _selectedOrderItems = const [];
 
   static const List<Map<String, String>> _filters = [
     {'value': 'ALL', 'label': 'Todo'},
@@ -33,8 +41,8 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = Supabase.instance.client.auth.currentUser;
-      context.read<CustomerOrdersCubit>().init(user?.id);
+      final userId = context.read<AuthCubit>().state.currentUser?.id;
+      context.read<CustomerOrdersCubit>().init(userId);
     });
 
     _scrollController.addListener(_onScroll);
@@ -68,11 +76,86 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     });
   }
 
+  Future<void> _handleReorder(String orderId) async {
+    try {
+      final items = await context
+          .read<CustomerOrdersCubit>()
+          .fetchOrderItems(orderId);
+      if (!mounted) return;
+
+      final cartCubit = context.read<CartCubit>();
+      for (final item in items) {
+        final cartItem = CartItemEntity(
+          productId: item.productId ?? '',
+          productName: item.productName ?? 'Producto',
+          cartKey: item.variantId ?? item.productId ?? item.id,
+          quantity: item.quantity,
+          unitPrice: item.appliedPrice,
+          unitCost: item.unitCost,
+          availableStock: 999,
+          usesBatches: false,
+          variantId: item.variantId,
+          variantLabel: item.variantDisplayName,
+          imageUrl: item.displayImageUrl,
+          sku: item.sku,
+          isSelected: true,
+        );
+        cartCubit.addItem(cartItem);
+      }
+
+      AppSnackbar.show(
+        context,
+        message: '¡Productos de la orden añadidos al carrito!',
+        type: SnackbarType.success,
+      );
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al recuperar los productos del pedido.',
+          type: SnackbarType.error,
+        );
+      }
+    }
+  }
+
+  Future<void> _showOrderDetails(OrderEntity order, bool isDesktop) async {
+    try {
+      final items = await context
+          .read<CustomerOrdersCubit>()
+          .fetchOrderItems(order.id);
+
+      if (!mounted) return;
+      setState(() {
+        _selectedOrder = order;
+        _selectedOrderItems = items;
+      });
+
+      if (!isDesktop) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) => CustomerOrderDetailSheet(
+            order: order,
+            items: items,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al recuperar detalles del pedido.',
+          type: SnackbarType.error,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<CustomerOrdersCubit>().state;
     final cubit = context.read<CustomerOrdersCubit>();
-    final displayOrders = state.filteredOrders;
 
     return CustomerLayout(
       title: 'Mis Pedidos',
@@ -84,64 +167,209 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
         onRefresh: () async {
           await cubit.refresh();
         },
-        child: CustomScrollView(
-          controller: _scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (state.isBackgroundLoading)
-                      _buildBackgroundSyncIndicator(),
-                    _buildHeaderBanner(displayOrders.length),
-                  ],
-                ),
-              ),
-            ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isDesktop = constraints.maxWidth >= 900;
 
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _StickyFiltersDelegate(
+            return BlocBuilder<CustomerOrdersCubit, CustomerOrdersState>(
+              builder: (context, state) {
+                final displayOrders = state.filteredOrders;
+
+                final currentSelectedOrder =
+                    _selectedOrder == null
+                        ? null
+                        : displayOrders.firstWhere(
+                          (o) => o.id == _selectedOrder!.id,
+                          orElse: () => _selectedOrder!,
+                        );
+
+                if (isDesktop) {
+                  return _buildDesktopSplitLayout(
+                    context,
+                    state,
+                    cubit,
+                    displayOrders,
+                    currentSelectedOrder,
+                  );
+                }
+
+                return _buildMobileSingleColumnLayout(
+                  context,
+                  state,
+                  cubit,
+                  displayOrders,
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // ── Layout Desktop: Split History Dashboard (45% Lista / 55% Detalle Fijo) ─
+  Widget _buildDesktopSplitLayout(
+    BuildContext context,
+    CustomerOrdersState state,
+    CustomerOrdersCubit cubit,
+    List<OrderEntity> displayOrders,
+    OrderEntity? currentSelectedOrder,
+  ) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1200),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Columna Izquierda: Historial de Pedidos (45%)
+              Expanded(
+                flex: 45,
                 child: Container(
                   color: AppColors.background,
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildSearchBar(),
-                      const SizedBox(height: 12),
-                      _buildFilters(state, cubit),
+                  child: CustomScrollView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (state.isBackgroundLoading)
+                              _buildBackgroundSyncIndicator(),
+                            _buildHeaderBanner(displayOrders.length),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+                      SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _StickyFiltersDelegate(
+                          child: Container(
+                            color: AppColors.background,
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildSearchBar(),
+                                const SizedBox(height: 12),
+                                _buildFilters(state, cubit),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      _buildBody(state, cubit, isDesktop: true),
                     ],
                   ),
                 ),
               ),
-            ),
-
-            // Body
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: _buildBody(state, cubit),
-            ),
-
-            // Bottom Loading Indicator
-            if (state.isLoadingMore)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  ),
-                ),
+              const SizedBox(width: 24),
+              // Columna Derecha: Detalle de Pedido Embebido (55%)
+              Expanded(
+                flex: 55,
+                child:
+                    currentSelectedOrder == null
+                        ? const AppEmptyState(
+                          icon: Icons.receipt_long_outlined,
+                          title: 'Ningún pedido seleccionado',
+                          message:
+                              'Selecciona un pedido del historial para ver el desglose completo.',
+                        )
+                        : AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: Container(
+                            key: ValueKey(currentSelectedOrder.id),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(
+                                AppColors.radiusXl,
+                              ),
+                              border: Border.all(color: AppColors.border),
+                              boxShadow: AppColors.cardShadow(),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                AppColors.radiusXl,
+                              ),
+                              child: CustomerOrderDetailSheet(
+                                order: currentSelectedOrder,
+                                items: _selectedOrderItems,
+                              ),
+                            ),
+                          ),
+                        ),
               ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 40)),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  // ── Layout Móvil / Tablet: 1 Columna Continua con Modal BottomSheet ────────
+  Widget _buildMobileSingleColumnLayout(
+    BuildContext context,
+    CustomerOrdersState state,
+    CustomerOrdersCubit cubit,
+    List<OrderEntity> displayOrders,
+  ) {
+    return CustomScrollView(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (state.isBackgroundLoading) _buildBackgroundSyncIndicator(),
+                _buildHeaderBanner(displayOrders.length),
+              ],
+            ),
+          ),
+        ),
+
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _StickyFiltersDelegate(
+            child: Container(
+              color: AppColors.background,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildSearchBar(),
+                  const SizedBox(height: 12),
+                  _buildFilters(state, cubit),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: _buildBody(state, cubit, isDesktop: false),
+        ),
+
+        if (state.isLoadingMore)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+            ),
+          ),
+
+        const SliverToBoxAdapter(child: SizedBox(height: 40)),
+      ],
     );
   }
 
@@ -244,15 +472,10 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow(opacity: 0.06),
       ),
       child: TextField(
         controller: _searchController,
@@ -302,7 +525,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
           final isSelected = state.statusFilter == value;
 
           return Material(
-            color: isSelected ? AppColors.primary : Colors.white,
+            color: isSelected ? AppColors.primary : AppColors.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(40),
               side: BorderSide(
@@ -334,7 +557,11 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     );
   }
 
-  Widget _buildBody(CustomerOrdersState state, CustomerOrdersCubit cubit) {
+  Widget _buildBody(
+    CustomerOrdersState state,
+    CustomerOrdersCubit cubit, {
+    required bool isDesktop,
+  }) {
     if (state.isLoading) {
       return SliverList(
         delegate: SliverChildBuilderDelegate(
@@ -405,15 +632,14 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
       delegate: SliverChildBuilderDelegate((context, index) {
         final order = displayOrders[index];
         final isProcessing = state.isOrderProcessing(order.id);
-        return CustomerOrderCard(
-          key: ValueKey(order.id),
-          order: order,
-          isProcessing: isProcessing,
-          onReorder: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Función de re-ordenar pronto.')),
-            );
-          },
+        return GestureDetector(
+          onTap: () => _showOrderDetails(order, isDesktop),
+          child: CustomerOrderCard(
+            key: ValueKey(order.id),
+            order: order,
+            isProcessing: isProcessing,
+            onReorder: () => _handleReorder(order.id),
+          ),
         );
       }, childCount: displayOrders.length),
     );
@@ -438,15 +664,15 @@ class _StickyFiltersDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     return Material(
-      elevation: overlapsContent ? 6 : 0,
-      shadowColor: AppColors.primary.withValues(alpha: 0.15),
+      elevation: overlapsContent ? 4 : 0,
+      shadowColor: AppColors.primary.withValues(alpha: 0.12),
       color: AppColors.background,
       child: child,
     );
   }
 
   @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
-    return true;
+  bool shouldRebuild(covariant _StickyFiltersDelegate oldDelegate) {
+    return oldDelegate.child != child;
   }
 }

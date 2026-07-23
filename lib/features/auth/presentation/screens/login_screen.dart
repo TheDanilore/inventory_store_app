@@ -54,10 +54,6 @@ class _LoginScreenState extends State<LoginScreen>
       end: 1.05,
     ).animate(CurvedAnimation(parent: _blobCtrl, curve: Curves.easeInOutSine));
     _blobCtrl.repeat(reverse: true);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // GoRouter maneja la redirección, ya no es necesario checar sesión manualmente aquí.
-    });
   }
 
   @override
@@ -69,8 +65,6 @@ class _LoginScreenState extends State<LoginScreen>
     _blobCtrl.dispose();
     super.dispose();
   }
-
-  // Removido _checkSession ya que GoRouter lo maneja globalmente
 
   void _authenticate(bool isLoginMode) {
     final cubit = context.read<AuthCubit>();
@@ -135,156 +129,325 @@ class _LoginScreenState extends State<LoginScreen>
       builder: (context, state) {
         return Scaffold(
           backgroundColor: AppColors.background,
-          body: Stack(
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 1024;
+
+              if (isDesktop) {
+                return _buildDesktopSplitLayout(context, state);
+              }
+              return _buildMobileLayout(context, state);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  // ── Layout Desktop: Split-Screen Auth (50% Hero Panel / 50% Auth Form) ──────
+  Widget _buildDesktopSplitLayout(BuildContext context, AuthState state) {
+    return Row(
+      children: [
+        // Lado Izquierdo: Hero Panel de Marca (50%)
+        Expanded(
+          flex: 1,
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primary, Color(0xFF0F3460)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Stack(
+              children: [
+                AnimatedBuilder(
+                  animation: _blobAnim,
+                  builder: (context, child) {
+                    return Positioned(
+                      top: -100,
+                      left: -100,
+                      child: Transform.scale(
+                        scale: _blobAnim.value,
+                        child: Container(
+                          width: 380,
+                          height: 380,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.05),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(60.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.storefront_rounded,
+                          size: 42,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      const Text(
+                        'Gestión Inteligente de Inventario y Ventas',
+                        style: TextStyle(
+                          fontSize: 34,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: -0.8,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Accede al panel de control centralizado para administrar catálogo, pedidos, POS y reportes financieros en tiempo real.',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withValues(alpha: 0.8),
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      Row(
+                        children: [
+                          _buildFeatureBadge('Control de Stock'),
+                          const SizedBox(width: 12),
+                          _buildFeatureBadge('Caja POS'),
+                          const SizedBox(width: 12),
+                          _buildFeatureBadge('Fidelización'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Lado Derecho: Formulario de Autenticación (50%)
+        Expanded(
+          flex: 1,
+          child: Container(
+            color: AppColors.background,
+            child: Stack(
+              children: [
+                // Back Button invitado
+                Positioned(
+                  top: 24,
+                  left: 24,
+                  child: _buildBackButton(context),
+                ),
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(32),
+                      child: FadeTransition(
+                        opacity: _fadeAnim,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            LoginHeaderSection(isLoginMode: state.isLoginMode),
+                            const SizedBox(height: 28),
+                            LoginFormCard(
+                              formKey: _formKey,
+                              nameController: _nameController,
+                              emailController: _emailController,
+                              passwordController: _passwordController,
+                              isLoginMode: state.isLoginMode,
+                              isLoading: state.viewState == ViewState.loading,
+                              onAuthenticate:
+                                  () => _authenticate(state.isLoginMode),
+                            ),
+                            const SizedBox(height: 20),
+                            LoginToggleMode(
+                              isLoginMode: state.isLoginMode,
+                              isLoading: state.viewState == ViewState.loading,
+                              onToggle: () => _onToggleMode(state.isLoginMode),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Layout Móvil / Tablet: 1 Columna Centrada ─────────────────────────────
+  Widget _buildMobileLayout(BuildContext context, AuthState state) {
+    return Stack(
+      children: [
+        // Blobs decorativos
+        AnimatedBuilder(
+          animation: _blobAnim,
+          builder: (context, child) {
+            return Positioned(
+              top: -80,
+              right: -80,
+              child: Transform.scale(
+                scale: _blobAnim.value,
+                child: Container(
+                  width: 260,
+                  height: 260,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary.withValues(alpha: 0.06),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        AnimatedBuilder(
+          animation: _blobAnim,
+          builder: (context, child) {
+            return Positioned(
+              top: 40,
+              left: -60,
+              child: Transform.scale(
+                scale: 2.0 - _blobAnim.value,
+                child: Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.accent.withValues(alpha: 0.05),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+
+        SafeArea(
+          child: Column(
             children: [
-              // ── Decorative blobs ─────────────────────────────────────────────
-              AnimatedBuilder(
-                animation: _blobAnim,
-                builder: (context, child) {
-                  return Positioned(
-                    top: -80,
-                    right: -80,
-                    child: Transform.scale(
-                      scale: _blobAnim.value,
-                      child: Container(
-                        width: 260,
-                        height: 260,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.primary.withValues(alpha: 0.06),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              AnimatedBuilder(
-                animation: _blobAnim,
-                builder: (context, child) {
-                  return Positioned(
-                    top: 40,
-                    left: -60,
-                    child: Transform.scale(
-                      // Escalado inverso para que respiren en desfasaje
-                      scale: 2.0 - _blobAnim.value,
-                      child: Container(
-                        width: 180,
-                        height: 180,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.accent.withValues(alpha: 0.05),
-                        ),
-                      ),
-                    ),
-                  );
-                },
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8, top: 4),
+                  child: _buildBackButton(context),
+                ),
               ),
 
-              // ── Content ──────────────────────────────────────────────────────
-              SafeArea(
-                child: Column(
-                  children: [
-                    // Back button (guest mode)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8, top: 4),
-                        child: GestureDetector(
-                          onTapDown:
-                              (_) => setState(() => _isBackBtnPressed = true),
-                          onTapUp:
-                              (_) => setState(() => _isBackBtnPressed = false),
-                          onTapCancel:
-                              () => setState(() => _isBackBtnPressed = false),
-                          child: AnimatedScale(
-                            scale: _isBackBtnPressed ? 0.90 : 1.0,
-                            duration: const Duration(milliseconds: 150),
-                            child: IconButton(
-                              icon: Container(
-                                width: 38,
-                                height: 38,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(11),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.primary.withValues(
-                                        alpha: 0.08,
-                                      ),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.arrow_back_ios_new_rounded,
-                                  size: 15,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              onPressed: () {
-                                // Si hay historial, retrocede. Si no, va a /customer (modo invitado).
-                                if (context.canPop()) {
-                                  context.pop();
-                                } else {
-                                  context.go('/');
-                                }
-                              },
+              Expanded(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 450),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: FadeTransition(
+                        opacity: _fadeAnim,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            LoginHeaderSection(isLoginMode: state.isLoginMode),
+                            const SizedBox(height: 32),
+                            LoginFormCard(
+                              formKey: _formKey,
+                              nameController: _nameController,
+                              emailController: _emailController,
+                              passwordController: _passwordController,
+                              isLoginMode: state.isLoginMode,
+                              isLoading: state.viewState == ViewState.loading,
+                              onAuthenticate:
+                                  () => _authenticate(state.isLoginMode),
                             ),
-                          ),
+                            const SizedBox(height: 20),
+                            LoginToggleMode(
+                              isLoginMode: state.isLoginMode,
+                              isLoading: state.viewState == ViewState.loading,
+                              onToggle: () => _onToggleMode(state.isLoginMode),
+                            ),
+                            const SizedBox(height: 32),
+                          ],
                         ),
                       ),
                     ),
-
-                    Expanded(
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 450),
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
-                            child: FadeTransition(
-                              opacity: _fadeAnim,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  LoginHeaderSection(
-                                    isLoginMode: state.isLoginMode,
-                                  ),
-                                  const SizedBox(height: 32),
-                                  LoginFormCard(
-                                    formKey: _formKey,
-                                    nameController: _nameController,
-                                    emailController: _emailController,
-                                    passwordController: _passwordController,
-                                    isLoginMode: state.isLoginMode,
-                                    isLoading:
-                                        state.viewState == ViewState.loading,
-                                    onAuthenticate:
-                                        () => _authenticate(state.isLoginMode),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  LoginToggleMode(
-                                    isLoginMode: state.isLoginMode,
-                                    isLoading:
-                                        state.viewState == ViewState.loading,
-                                    onToggle:
-                                        () => _onToggleMode(state.isLoginMode),
-                                  ),
-                                  const SizedBox(height: 32),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ],
           ),
-        );
-      },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBackButton(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isBackBtnPressed = true),
+      onTapUp: (_) => setState(() => _isBackBtnPressed = false),
+      onTapCancel: () => setState(() => _isBackBtnPressed = false),
+      child: AnimatedScale(
+        scale: _isBackBtnPressed ? 0.90 : 1.0,
+        duration: const Duration(milliseconds: 150),
+        child: IconButton(
+          icon: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(11),
+              boxShadow: AppColors.cardShadow(opacity: 0.08),
+            ),
+            child: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 15,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureBadge(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }

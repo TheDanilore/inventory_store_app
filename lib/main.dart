@@ -20,11 +20,6 @@ import 'package:inventory_store_app/features/loyalty/presentation/bloc/points_cu
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/top_customers_cubit.dart';
 
-// ─── Singletons protegidos contra múltiples llamadas a main() ────────────────
-// En Flutter Web (desarrollo con hot restart), el módulo Dart puede inicializar
-// el entrypoint varias veces. Usar `late final` sin guard causaría
-// "DartError: Assertion failed" al intentar reasignar una variable `late final`
-// ya inicializada. La solución es usar nullable + inicialización condicional.
 AuthCubit? _authCubit;
 GoRouter? _router;
 

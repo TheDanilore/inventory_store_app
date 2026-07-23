@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
+import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -60,93 +61,154 @@ class _LoginFormCardState extends State<LoginFormCard> {
   Future<void> _showForgotPasswordDialog() async {
     final emailCtrl = TextEditingController(text: widget.emailController.text);
     final cubit = context.read<AuthCubit>();
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
-    await showDialog(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Recuperar contraseña'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+    Widget buildResetContent(BuildContext ctx) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Recuperar contraseña',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Ingresa tu correo electrónico para enviarte un enlace de recuperación.',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          AppTextField(
+            controller: emailCtrl,
+            label: 'Correo electrónico',
+            icon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              const Text(
-                'Ingresa tu correo electrónico para enviarte un enlace de recuperación.',
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Correo electrónico',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email_outlined),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: AppColors.textMuted),
                 ),
+              ),
+              const SizedBox(width: 8),
+              AppPrimaryButton(
+                label: 'Enviar enlace',
+                onPressed: () async {
+                  final email = emailCtrl.text.trim();
+                  if (email.isEmpty || !email.contains('@')) {
+                    AppSnackbar.show(
+                      ctx,
+                      message: 'Ingresa un correo válido.',
+                      type: SnackbarType.warning,
+                    );
+                    return;
+                  }
+
+                  Navigator.pop(ctx);
+
+                  final error = await cubit.resetPassword(email);
+                  if (mounted) {
+                    if (error != null) {
+                      AppSnackbar.show(
+                        context,
+                        message: error,
+                        type: SnackbarType.error,
+                      );
+                    } else {
+                      AppSnackbar.show(
+                        context,
+                        message: 'Enlace enviado. Revisa tu bandeja de entrada.',
+                        type: SnackbarType.success,
+                      );
+                    }
+                  }
+                },
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text(
-                'Cancelar',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final email = emailCtrl.text.trim();
-                if (email.isEmpty || !email.contains('@')) {
-                  AppSnackbar.show(
-                    ctx,
-                    message: 'Ingresa un correo válido.',
-                    type: SnackbarType.warning,
-                  );
-                  return;
-                }
+        ],
+      );
+    }
 
-                Navigator.pop(ctx); // Cerrar diálogo antes de procesar
-
-                final error = await cubit.resetPassword(email);
-                if (error != null) {
-                  if (mounted) {
-                    AppSnackbar.show(
-                      context,
-                      message: error,
-                      type: SnackbarType.error,
-                    );
-                  }
-                } else {
-                  if (mounted) {
-                    AppSnackbar.show(
-                      context,
-                      message: 'Enlace enviado. Revisa tu bandeja de entrada.',
-                      type: SnackbarType.success,
-                    );
-                  }
-                }
-              },
-              child: const Text('Enviar enlace'),
+    if (isMobile) {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: AppColors.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (ctx) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 16,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
             ),
-          ],
-        );
-      },
-    );
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                buildResetContent(ctx),
+              ],
+            ),
+          );
+        },
+      );
+    } else {
+      await showDialog(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
+            ),
+            contentPadding: const EdgeInsets.all(24),
+            content: SizedBox(
+              width: 400,
+              child: buildResetContent(ctx),
+            ),
+          );
+        },
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radiusXl),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow(),
       ),
       child: Form(
         key: widget.formKey,
@@ -159,6 +221,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
                 label: 'Nombre completo',
                 icon: Icons.person_outline_rounded,
                 keyboardType: TextInputType.name,
+                textInputAction: TextInputAction.next,
                 validator: _validateName,
               ),
               const SizedBox(height: 14),
@@ -169,6 +232,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
               label: 'Correo electrónico',
               icon: Icons.email_outlined,
               keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
               validator: _validateEmail,
             ),
             const SizedBox(height: 14),
@@ -177,6 +241,10 @@ class _LoginFormCardState extends State<LoginFormCard> {
               controller: widget.passwordController,
               label: 'Contraseña',
               icon: Icons.lock_outline_rounded,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: widget.isLoading
+                  ? null
+                  : (_) => widget.onAuthenticate(),
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscurePassword
@@ -235,10 +303,10 @@ class _LoginFormCardState extends State<LoginFormCard> {
                       ? null
                       : () => setState(() => _isButtonPressed = false),
               child: AnimatedScale(
-                scale: _isButtonPressed ? 0.95 : 1.0,
+                scale: _isButtonPressed ? 0.96 : 1.0,
                 duration: const Duration(milliseconds: 150),
                 child: SizedBox(
-                  height: 54,
+                  height: 52,
                   child: ElevatedButton(
                     onPressed: widget.isLoading ? null : widget.onAuthenticate,
                     style: ElevatedButton.styleFrom(
@@ -246,7 +314,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(AppColors.radius),
                       ),
                     ),
                     child:

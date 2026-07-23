@@ -21,6 +21,9 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
       emit(state.copyWith(isLoading: false));
       return;
     }
+    if (state.orders.isNotEmpty && state.profileId == profileId) {
+      return;
+    }
     emit(
       state.copyWith(profileId: profileId, isLoading: true, errorMessage: ''),
     );

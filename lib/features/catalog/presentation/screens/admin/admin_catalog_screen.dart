@@ -421,7 +421,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
                   if (isDesktop) {
                     return Container(
-                      color: const Color(0xFFF9FAFB),
+                      color: AppColors.background,
                       child: catalogBody,
                     );
                   }
@@ -469,7 +469,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   ElevatedButton.icon(
                     onPressed: () => context.go('/admin/pos'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E293B),
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(
@@ -477,7 +477,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         vertical: 8,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppColors.radiusSm),
                       ),
                     ),
                     icon: const Icon(Icons.point_of_sale_rounded, size: 16),

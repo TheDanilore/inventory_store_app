@@ -33,8 +33,11 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final userId = context.read<AuthCubit>().state.currentUser?.id;
-      if (userId != null && userId.isNotEmpty) {
-        context.read<CheckoutCubit>().loadAddress(userId);
+      final checkoutCubit = context.read<CheckoutCubit>();
+      if (userId != null &&
+          userId.isNotEmpty &&
+          checkoutCubit.state.defaultAddress == null) {
+        checkoutCubit.loadAddress(userId);
       }
     });
   }
@@ -42,16 +45,13 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
   void _handleCheckout() {
     final user = context.read<AuthCubit>().state.currentUser;
 
-    // Validar sesión antes de proceder
     if (user == null || user.id.isEmpty) {
       AppSnackbar.show(
         context,
         message: 'Debes iniciar sesión para hacer tu pedido.',
         type: SnackbarType.warning,
       );
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted) context.push('/login');
-      });
+      context.push('/login');
       return;
     }
 
@@ -81,9 +81,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
         message: 'Inicia sesión para gestionar ubicaciones',
         type: SnackbarType.warning,
       );
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted) context.push('/login');
-      });
+      context.push('/login');
       return;
     }
 
@@ -95,7 +93,6 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // BlocListener reacciona a los estados del CheckoutCubit sin rebuilds.
     return BlocListener<CheckoutCubit, CheckoutState>(
       listenWhen: (prev, curr) => prev.status != curr.status,
       listener: (context, state) {
@@ -150,25 +147,54 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
           );
         }
 
-        return _buildCartContent(context, cartState);
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isDesktop = constraints.maxWidth >= 900;
+
+            if (isDesktop) {
+              return _buildDesktopSplitLayout(context, cartState);
+            }
+
+            return _buildMobileSingleColumnLayout(context, cartState);
+          },
+        );
       },
     );
   }
 
-  Widget _buildCartContent(BuildContext context, CartState cartState) {
+  // ── Layout Desktop: Split Checkout ERP (60% Items / 40% Panel Fijo) ─────────
+  Widget _buildDesktopSplitLayout(BuildContext context, CartState cartState) {
     final cartCubit = context.read<CartCubit>();
-    final config = context.watch<AppConfigCubit>();
-    final walletState = context.watch<WalletCubit>().state;
-    final checkoutState = context.watch<CheckoutCubit>().state;
     final checkoutCubit = context.read<CheckoutCubit>();
 
-    final saldoPuntos = walletState.balance ?? 0;
-    final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
+    final isLoyaltyGlobal = context.select<AppConfigCubit, bool>(
+      (c) => c.state.businessInfo?.loyaltyGlobalEnabled ?? false,
+    );
+    final isLoyaltyCustomer = context.select<AppConfigCubit, bool>(
+      (c) => c.state.businessInfo?.loyaltyCustomerVisible ?? false,
+    );
+    final pointsToSolesRatio = context.select<AppConfigCubit, double>(
+      (c) => c.getDouble('points_to_soles_ratio', 0.01),
+    );
+    final saldoPuntos = context.select<WalletCubit, int>(
+      (w) => w.state.balance ?? 0,
+    );
 
-    // Calcular totales en la pantalla y pasarlos al footer (sin lógica en widgets hijos)
+    final defaultAddress = context.select<CheckoutCubit, dynamic>(
+      (c) => c.state.defaultAddress,
+    );
+    final isLoadingAddress = context.select<CheckoutCubit, bool>(
+      (c) => c.state.isLoadingAddress,
+    );
+    final isSending = context.select<CheckoutCubit, bool>(
+      (c) => c.state.isSending,
+    );
+    final isVerifyingStock = context.select<CheckoutCubit, bool>(
+      (c) => c.state.isVerifyingStock,
+    );
+
     final subtotal = cartCubit.state.selectedTotalAmount;
-    final isLoyaltyEnabled =
-        config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible;
+    final isLoyaltyEnabled = isLoyaltyGlobal && isLoyaltyCustomer;
     final puntosUsados =
         isLoyaltyEnabled
             ? checkoutCubit.calculateApplicablePoints(
@@ -187,7 +213,144 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
             )
             : subtotal;
 
-    // Ordenar: primero los items con stock
+    final sortedCartItems =
+        cartState.items.values.toList()..sort((a, b) {
+          final aInStock = a.availableStock > 0 ? 1 : 0;
+          final bInStock = b.availableStock > 0 ? 1 : 0;
+          return bInStock.compareTo(aInStock);
+        });
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1200),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Columna Izquierda: Lista de Productos (60%)
+              Expanded(
+                flex: 60,
+                child: Column(
+                  children: [
+                    CartActionHeader(
+                      cartCubit: cartCubit,
+                      cartState: cartState,
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: sortedCartItems.length,
+                        itemBuilder: (context, i) {
+                          final item = sortedCartItems[i];
+                          return CartItemCard(
+                            productId: item.productId,
+                            item: item,
+                            cartCubit: cartCubit,
+                            saldoPuntos: saldoPuntos,
+                            pointsToSolesRatio: pointsToSolesRatio,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              // Columna Derecha: Panel Fijo de Resumen & Checkout (40%)
+              Expanded(
+                flex: 40,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      CartAddressCard(
+                        address: defaultAddress,
+                        isLoading: isLoadingAddress,
+                        onTap: _handleAddressNavigation,
+                      ),
+                      const SizedBox(height: 16),
+                      if (isLoyaltyEnabled) ...[
+                        CartWalletSummary(
+                          cartCubit: cartCubit,
+                          saldoPuntos: saldoPuntos,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      CartCheckoutFooter(
+                        subtotal: subtotal,
+                        totalAPagar: totalAPagar,
+                        descuentoSoles: descuentoSoles,
+                        selectedCount: cartState.selectedItems.length,
+                        isSending: isSending,
+                        isVerifyingStock: isVerifyingStock,
+                        onProcessCheckout: _handleCheckout,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Layout Móvil / Tablet: 1 Columna Continua con Footer Flotante ───────────
+  Widget _buildMobileSingleColumnLayout(
+    BuildContext context,
+    CartState cartState,
+  ) {
+    final cartCubit = context.read<CartCubit>();
+    final checkoutCubit = context.read<CheckoutCubit>();
+
+    final isLoyaltyGlobal = context.select<AppConfigCubit, bool>(
+      (c) => c.state.businessInfo?.loyaltyGlobalEnabled ?? false,
+    );
+    final isLoyaltyCustomer = context.select<AppConfigCubit, bool>(
+      (c) => c.state.businessInfo?.loyaltyCustomerVisible ?? false,
+    );
+    final pointsToSolesRatio = context.select<AppConfigCubit, double>(
+      (c) => c.getDouble('points_to_soles_ratio', 0.01),
+    );
+    final saldoPuntos = context.select<WalletCubit, int>(
+      (w) => w.state.balance ?? 0,
+    );
+
+    final defaultAddress = context.select<CheckoutCubit, dynamic>(
+      (c) => c.state.defaultAddress,
+    );
+    final isLoadingAddress = context.select<CheckoutCubit, bool>(
+      (c) => c.state.isLoadingAddress,
+    );
+    final isSending = context.select<CheckoutCubit, bool>(
+      (c) => c.state.isSending,
+    );
+    final isVerifyingStock = context.select<CheckoutCubit, bool>(
+      (c) => c.state.isVerifyingStock,
+    );
+
+    final subtotal = cartCubit.state.selectedTotalAmount;
+    final isLoyaltyEnabled = isLoyaltyGlobal && isLoyaltyCustomer;
+    final puntosUsados =
+        isLoyaltyEnabled
+            ? checkoutCubit.calculateApplicablePoints(
+              cartCubit,
+              pointsToSolesRatio,
+              saldoPuntos,
+            )
+            : 0;
+    final descuentoSoles = puntosUsados * pointsToSolesRatio;
+    final totalAPagar =
+        isLoyaltyEnabled
+            ? checkoutCubit.calculateFinalTotal(
+              cartCubit,
+              pointsToSolesRatio,
+              saldoPuntos,
+            )
+            : subtotal;
+
     final sortedCartItems =
         cartState.items.values.toList()..sort((a, b) {
           final aInStock = a.availableStock > 0 ? 1 : 0;
@@ -199,22 +362,19 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
       height: double.infinity,
       child: Column(
         children: [
-          // Barra de verificación de stock
           AnimatedSize(
             duration: const Duration(milliseconds: 200),
             child:
-                checkoutState.isVerifyingStock
+                isVerifyingStock
                     ? const LinearProgressIndicator(color: AppColors.primary)
                     : const SizedBox.shrink(),
           ),
 
-          // Lista del carrito
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.only(top: 4, bottom: 20),
               itemCount: sortedCartItems.length + 3,
               itemBuilder: (context, i) {
-                // Slot 0: Resumen de billetera
                 if (i == 0) {
                   if (!isLoyaltyEnabled) return const SizedBox.shrink();
                   return CartWalletSummary(
@@ -223,16 +383,14 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                   );
                 }
 
-                // Slot 1: Dirección de entrega
                 if (i == 1) {
                   return CartAddressCard(
-                    address: checkoutState.defaultAddress,
-                    isLoading: checkoutState.isLoadingAddress,
+                    address: defaultAddress,
+                    isLoading: isLoadingAddress,
                     onTap: _handleAddressNavigation,
                   );
                 }
 
-                // Slot 2: Header con acciones de selección
                 if (i == 2) {
                   return CartActionHeader(
                     cartCubit: cartCubit,
@@ -240,7 +398,6 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                   );
                 }
 
-                // Items del carrito
                 final item = sortedCartItems[i - 3];
                 return CartItemCard(
                   productId: item.productId,
@@ -253,14 +410,13 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
             ),
           ),
 
-          // Footer con total y botón de checkout
           CartCheckoutFooter(
             subtotal: subtotal,
             totalAPagar: totalAPagar,
             descuentoSoles: descuentoSoles,
             selectedCount: cartState.selectedItems.length,
-            isSending: checkoutState.isSending,
-            isVerifyingStock: checkoutState.isVerifyingStock,
+            isSending: isSending,
+            isVerifyingStock: isVerifyingStock,
             onProcessCheckout: _handleCheckout,
           ),
         ],

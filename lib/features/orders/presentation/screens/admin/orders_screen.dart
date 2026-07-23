@@ -38,7 +38,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OrdersCubit>().loadOrders(reset: true);
+      final cubit = context.read<OrdersCubit>();
+      // Control de Data Egress: Carga solo si la lista está vacía
+      if (cubit.state.orders.isEmpty) {
+        cubit.loadOrders(reset: true);
+      }
     });
   }
 
@@ -163,10 +167,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
       selected: isSelected,
       onSelected: onSelected,
       showCheckmark: false,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       selectedColor: AppColors.primary.withValues(alpha: 0.1),
       labelStyle: TextStyle(
-        color: isSelected ? AppColors.primary : Colors.grey.shade700,
+        color: isSelected ? AppColors.primary : AppColors.textSecondary,
         fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
         fontSize: 13,
       ),
@@ -176,7 +180,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
           color:
               isSelected
                   ? AppColors.primary.withValues(alpha: 0.3)
-                  : Colors.grey.shade300,
+                  : AppColors.border,
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -185,14 +189,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final config = context.watch<AppConfigCubit>();
-    final isLoyaltyEnabled = config.loyaltyGlobalEnabled;
+    // ── Optimización de Rebuilds: context.select granular ────────────────────
+    final isLoyaltyEnabled = context.select<AppConfigCubit, bool>(
+      (c) => c.state.businessInfo?.loyaltyGlobalEnabled ?? false,
+    );
 
     return AdminLayout(
       title: widget.customTitle ?? 'Gestión de Pedidos',
       showBackButton: true,
-      actions:
-          const [], // Here we can inject appbar actions natively if needed in the future
+      actions: const [],
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 800;
@@ -200,6 +205,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
           return BlocBuilder<OrdersCubit, OrdersState>(
             builder: (context, state) {
               final cubit = context.read<OrdersCubit>();
+
+              // ── Sincronización Estricta de Pedido Seleccionado ─────────────
+              final currentSelectedOrder =
+                  _selectedOrder == null
+                      ? null
+                      : state.orders.firstWhere(
+                        (o) => o.id == _selectedOrder!.id,
+                        orElse: () => _selectedOrder!,
+                      );
+
               final content = CustomScrollView(
                 slivers: [
                   if (state.isBackgroundLoading)
@@ -227,6 +242,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       cubit,
                       isWide,
                       isLoyaltyEnabled,
+                      currentSelectedOrder,
                     ),
                   ),
                 ],
@@ -238,15 +254,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     Expanded(
                       flex: 45,
                       child: Container(
-                        color: Colors.grey.shade50,
+                        color: AppColors.background,
                         child: content,
                       ),
                     ),
-                    Container(width: 1, color: Colors.grey.shade200),
+                    Container(width: 1, color: AppColors.border),
                     Expanded(
                       flex: 55,
                       child:
-                          _selectedOrder == null
+                          currentSelectedOrder == null
                               ? const AppEmptyState(
                                 icon: Icons.receipt_long_rounded,
                                 title: 'Ningún pedido seleccionado',
@@ -256,8 +272,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               : AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 300),
                                 child: OrderDetailSheet(
-                                  key: ValueKey(_selectedOrder!.id),
-                                  order: _selectedOrder!,
+                                  key: ValueKey(currentSelectedOrder.id),
+                                  order: currentSelectedOrder,
                                   isEmbedded: true,
                                   onPop: _onOrderEmbeddedPop,
                                 ),
@@ -275,11 +291,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
+  // ── Renderizado Perezoso (Lazy Loading) con SliverChildBuilderDelegate ─────
   Widget _buildListSliver(
     OrdersState state,
     OrdersCubit cubit,
     bool isWide,
     bool isLoyaltyEnabled,
+    OrderEntity? selectedOrder,
   ) {
     final totalPages = state.totalPages;
     final pageItems = state.orders;
@@ -300,7 +318,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
       return SliverFillRemaining(
         child: AppEmptyState(
           icon: Icons.error_outline_rounded,
-          color: Colors.red,
+          color: AppColors.error,
           title: 'Ocurrió un error',
           message: state.errorMessage,
         ),
@@ -317,55 +335,71 @@ class _OrdersScreenState extends State<OrdersScreen> {
       );
     }
 
+    final showPagination = totalPages > 1;
+    final itemCount = 1 + pageItems.length + (showPagination ? 1 : 0);
+
     return SliverList(
-      delegate: SliverChildListDelegate([
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 8, 4, 16),
-          child: Row(
-            children: [
-              Text(
-                'Mostrando resultados',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          // Encabezado de contador de resultados (Index 0)
+          if (index == 0) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(4, 8, 4, 16),
+              child: Row(
+                children: [
+                  Text(
+                    'Mostrando resultados',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    'Pág. ${state.currentPage + 1} / $totalPages',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
-              const Spacer(),
-              Text(
-                'Pág. ${state.currentPage + 1} / $totalPages',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        ...pageItems.map((order) {
-          final isSelected = isWide && _selectedOrder?.id == order.id;
-          return AdminOrderCard(
-            order: order,
-            isProcessing: cubit.state.isOrderProcessing(order.id),
-            isGeneratingPDF: state.isGeneratingPDF(order.id),
-            isSelected: isSelected,
-            isLoyaltyEnabled: isLoyaltyEnabled,
-            onTap: () => _showOrderDetails(order, isWide),
-            onUpdateStatus: (o, s) => _updateOrderStatus(o, s),
-            onPrint: () => _printOrderTicket(order),
-          );
-        }),
-        if (totalPages > 1)
-          Padding(
+            );
+          }
+
+          // Elementos de la lista (Index 1 a pageItems.length)
+          if (index <= pageItems.length) {
+            final order = pageItems[index - 1];
+            final isSelected = isWide && selectedOrder?.id == order.id;
+
+            return AdminOrderCard(
+              order: order,
+              isProcessing:
+                  cubit.state.isOrderProcessing(order.id) ||
+                  state.isBackgroundLoading,
+              isGeneratingPDF: state.isGeneratingPDF(order.id),
+              isSelected: isSelected,
+              isLoyaltyEnabled: isLoyaltyEnabled,
+              onTap: () => _showOrderDetails(order, isWide),
+              onUpdateStatus: (o, s) => _updateOrderStatus(o, s),
+              onPrint: () => _printOrderTicket(order),
+            );
+          }
+
+          // Bloque de paginación al final de la lista
+          return Padding(
             padding: const EdgeInsets.only(top: 8, bottom: 24),
             child: AdminPageBlocks(
               currentPage: state.currentPage,
               totalPages: totalPages,
               onPageChanged: cubit.goToPage,
             ),
-          ),
-      ]),
+          );
+        },
+        childCount: itemCount,
+      ),
     );
   }
 }
