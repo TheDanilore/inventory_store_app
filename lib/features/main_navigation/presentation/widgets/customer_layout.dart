@@ -536,14 +536,7 @@ class CustomerLayout extends StatelessWidget {
             );
           },
         ),
-        Expanded(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1280),
-              child: body,
-            ),
-          ),
-        ),
+        Expanded(child: body),
       ],
     );
 

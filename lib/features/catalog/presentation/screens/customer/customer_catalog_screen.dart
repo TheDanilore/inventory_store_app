@@ -260,304 +260,286 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
           final isDesktop = constraints.maxWidth >= 900;
           final maxExtent = isDesktop ? 240.0 : 200.0;
 
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1280),
-              child: RefreshIndicator(
-                onRefresh: cubit.refreshProducts,
-                color: AppColors.primary,
-                child: CustomScrollView(
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    // ── Banners (solo en modo normal) ─────────────────────────────────
-                    if (!state.isSearchMode && state.searchTerm.isEmpty) ...[
-                      SliverToBoxAdapter(
-                        child: CatalogWelcomeBanner(
-                          businessName: widget.businessName,
-                          businessAddress: widget.businessAddress,
-                        ),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                      const SliverToBoxAdapter(child: CatalogPromoBanner()),
-                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                    ],
+          return RefreshIndicator(
+            onRefresh: cubit.refreshProducts,
+            color: AppColors.primary,
+            child: CustomScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                // ── Banners (solo en modo normal) ─────────────────────────────────
+                if (!state.isSearchMode && state.searchTerm.isEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: CatalogWelcomeBanner(
+                      businessName: widget.businessName,
+                      businessAddress: widget.businessAddress,
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                  const SliverToBoxAdapter(child: CatalogPromoBanner()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                ],
 
-                    // ── Buscador fijo (pinned) ─────────────────────────────────────────
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: _StickySearchDelegate(
-                        child: const CatalogSearchBar(),
+                // ── Buscador fijo (pinned) ─────────────────────────────────────────
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _StickySearchDelegate(
+                    child: const CatalogSearchBar(),
+                  ),
+                ),
+
+                // ── Categorías ────────────────────────────────────────────────────
+                if (!state.isSearchMode && state.searchTerm.isEmpty) ...[
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'Categorías',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                  const SliverToBoxAdapter(child: CatalogCategoryList()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-                    // ── Categorías ────────────────────────────────────────────────────
-                    if (!state.isSearchMode && state.searchTerm.isEmpty) ...[
-                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                      const SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'Categorías',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
+                  // ── 🔥 Más Vendidos ───────────────────────────────────────────
+                  if (state.products.isNotEmpty) ...[
+                    SliverToBoxAdapter(
+                      child: _buildSectionTitle(
+                        '🔥 Más Vendidos',
+                        'Top de preferencia',
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                    SliverToBoxAdapter(
+                      child: _HorizontalProductList(
+                        products:
+                            state.products
+                                .where(
+                                  (p) => !p.stockControl || p.totalStock > 0,
+                                )
+                                .take(6)
+                                .toList(),
+                        onAddToCart: widget.onAddToCart,
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  ],
+
+                  // ── ✨ Recomendados para Ti ──────────────────────────────────
+                  SliverToBoxAdapter(
+                    child: _buildRecommendedSection(context, state.products),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'Todos los Productos',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
                         ),
                       ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                      const SliverToBoxAdapter(child: CatalogCategoryList()),
-                      const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                    ),
+                  ),
+                ],
 
-                      // ── 🔥 Más Vendidos ───────────────────────────────────────────
-                      if (state.products.isNotEmpty) ...[
-                        SliverToBoxAdapter(
-                          child: _buildSectionTitle(
-                            '🔥 Más Vendidos',
-                            'Top de preferencia',
-                          ),
-                        ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 10)),
-                        SliverToBoxAdapter(
-                          child: _HorizontalProductList(
-                            products:
-                                state.products
-                                    .where(
-                                      (p) =>
-                                          !p.stockControl || p.totalStock > 0,
-                                    )
-                                    .take(6)
-                                    .toList(),
-                            onAddToCart: widget.onAddToCart,
-                          ),
-                        ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                      ],
-
-                      // ── ✨ Recomendados para Ti ──────────────────────────────────
-                      SliverToBoxAdapter(
-                        child: _buildRecommendedSection(
-                          context,
-                          state.products,
+                if (state.searchTerm.isNotEmpty || state.isSearchMode) ...[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      child: Text(
+                        state.searchTerm.isEmpty
+                            ? 'Búsquedas recientes'
+                            : 'Resultados',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
                         ),
                       ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                    ),
+                  ),
+                ],
 
-                      const SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'Todos los Productos',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-
-                    if (state.searchTerm.isNotEmpty || state.isSearchMode) ...[
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
-                          ),
-                          child: Text(
-                            state.searchTerm.isEmpty
-                                ? 'Búsquedas recientes'
-                                : 'Resultados',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-
-                    // ── Historial de Búsqueda ─────────────────────────────────────────
-                    if (state.isSearchMode && state.searchTerm.isEmpty) ...[
-                      SliverToBoxAdapter(
-                        child:
-                            state.searchHistory.isEmpty
-                                ? const Padding(
-                                  padding: EdgeInsets.all(32),
-                                  child: Center(
-                                    child: Text(
-                                      'No hay búsquedas recientes',
-                                      style: TextStyle(
-                                        color: AppColors.textMuted,
-                                      ),
+                // ── Historial de Búsqueda ─────────────────────────────────────────
+                if (state.isSearchMode && state.searchTerm.isEmpty) ...[
+                  SliverToBoxAdapter(
+                    child:
+                        state.searchHistory.isEmpty
+                            ? const Padding(
+                              padding: EdgeInsets.all(32),
+                              child: Center(
+                                child: Text(
+                                  'No hay búsquedas recientes',
+                                  style: TextStyle(color: AppColors.textMuted),
+                                ),
+                              ),
+                            )
+                            : ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: state.searchHistory.length,
+                              itemBuilder: (context, index) {
+                                final term = state.searchHistory[index];
+                                return ListTile(
+                                  leading: const Icon(
+                                    Icons.history,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  title: Text(
+                                    term,
+                                    style: const TextStyle(
+                                      color: AppColors.textPrimary,
                                     ),
                                   ),
-                                )
-                                : ListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: state.searchHistory.length,
-                                  itemBuilder: (context, index) {
-                                    final term = state.searchHistory[index];
-                                    return ListTile(
-                                      leading: const Icon(
-                                        Icons.history,
-                                        color: AppColors.textMuted,
-                                      ),
-                                      title: Text(
-                                        term,
-                                        style: const TextStyle(
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                      onTap: () {
-                                        cubit.setSearchMode(false);
-                                        cubit.setSearchTerm(term);
-                                      },
-                                    );
+                                  onTap: () {
+                                    cubit.setSearchMode(false);
+                                    cubit.setSearchTerm(term);
                                   },
-                                ),
-                      ),
-                      SliverToBoxAdapter(
-                        child:
-                            state.searchHistory.isNotEmpty
-                                ? TextButton(
-                                  onPressed: cubit.clearSearchHistory,
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: AppColors.primary,
-                                  ),
-                                  child: const Text('Limpiar historial'),
-                                )
-                                : const SizedBox.shrink(),
-                      ),
-                    ]
-                    // ── Grid de Productos ─────────────────────────────────────────────
-                    else if ((state.viewState == ViewState.loading &&
-                            state.products.isEmpty) &&
-                        (state.viewState == ViewState.loading ||
-                            state.isLoadingMore)) ...[
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: maxExtent,
-                                childAspectRatio: 0.58,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                              ),
-                          delegate: SliverChildBuilderDelegate(
-                            (_, _) => const CatalogProductShimmer(),
-                            childCount: 8,
-                          ),
-                        ),
-                      ),
-                    ] else if (state.errorMessage != null &&
-                        state.products.isEmpty) ...[
-                      SliverToBoxAdapter(
-                        child: AppEmptyState(
-                          icon: Icons.error_outline_rounded,
-                          color: AppColors.error,
-                          title: 'Ocurrió un error',
-                          message: state.errorMessage!,
-                          action: ElevatedButton.icon(
-                            onPressed: cubit.refreshProducts,
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Reintentar'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
+                                );
+                              },
                             ),
-                          ),
+                  ),
+                  SliverToBoxAdapter(
+                    child:
+                        state.searchHistory.isNotEmpty
+                            ? TextButton(
+                              onPressed: cubit.clearSearchHistory,
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                              ),
+                              child: const Text('Limpiar historial'),
+                            )
+                            : const SizedBox.shrink(),
+                  ),
+                ]
+                // ── Grid de Productos ─────────────────────────────────────────────
+                else if ((state.viewState == ViewState.loading &&
+                        state.products.isEmpty) &&
+                    (state.viewState == ViewState.loading ||
+                        state.isLoadingMore)) ...[
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    sliver: SliverGrid(
+                      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: maxExtent,
+                        childAspectRatio: 0.58,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (_, _) => const CatalogProductShimmer(),
+                        childCount: 8,
+                      ),
+                    ),
+                  ),
+                ] else if (state.errorMessage != null &&
+                    state.products.isEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: AppEmptyState(
+                      icon: Icons.error_outline_rounded,
+                      color: AppColors.error,
+                      title: 'Ocurrió un error',
+                      message: state.errorMessage!,
+                      action: ElevatedButton.icon(
+                        onPressed: cubit.refreshProducts,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Reintentar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
                         ),
                       ),
-                    ] else if (state.products.isEmpty) ...[
-                      SliverToBoxAdapter(
+                    ),
+                  ),
+                ] else if (state.products.isEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(
+                              Icons.search_off_rounded,
+                              size: 64,
+                              color: AppColors.textMuted,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No se encontraron productos',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Prueba buscando otra cosa o cambiando de categoría.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    sliver: SliverGrid(
+                      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: maxExtent,
+                        childAspectRatio: 0.58,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final product = state.products[index];
+                        return CatalogProductCard(
+                          product: product,
+                          onAddToCart: widget.onAddToCart ?? (p) async {},
+                        );
+                      }, childCount: state.products.length),
+                    ),
+                  ),
+                  if ((state.viewState == ViewState.loading ||
+                          state.isLoadingMore) &&
+                      !(state.viewState == ViewState.loading &&
+                          state.products.isEmpty))
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24.0),
                         child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(32.0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(
-                                  Icons.search_off_rounded,
-                                  size: 64,
-                                  color: AppColors.textMuted,
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  'No se encontraron productos',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Prueba buscando otra cosa o cambiando de categoría.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
                           ),
                         ),
                       ),
-                    ] else ...[
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: maxExtent,
-                                childAspectRatio: 0.58,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                              ),
-                          delegate: SliverChildBuilderDelegate((
-                            context,
-                            index,
-                          ) {
-                            final product = state.products[index];
-                            return CatalogProductCard(
-                              product: product,
-                              onAddToCart: widget.onAddToCart ?? (p) async {},
-                            );
-                          }, childCount: state.products.length),
-                        ),
-                      ),
-                      if ((state.viewState == ViewState.loading ||
-                              state.isLoadingMore) &&
-                          !(state.viewState == ViewState.loading &&
-                              state.products.isEmpty))
-                        const SliverToBoxAdapter(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24.0),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                    ],
-                  ],
-                ),
-              ),
+                    ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                ],
+              ],
             ),
           );
         },
@@ -589,7 +571,12 @@ class _StickySearchDelegate extends SliverPersistentHeaderDelegate {
         child: Container(
           color: AppColors.surface.withValues(alpha: 0.85),
           padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
-          child: child,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1280),
+              child: child,
+            ),
+          ),
         ),
       ),
     );

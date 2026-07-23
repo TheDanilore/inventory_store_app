@@ -16,7 +16,6 @@ import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entit
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/admin/orders_screen.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/core/router/app_router.dart';
 
 class CustomersRoutes {
   static List<RouteBase> get adminRoutes => [
@@ -96,7 +95,6 @@ class CustomersRoutes {
     ),
     GoRoute(
       path: '/locations',
-      parentNavigatorKey: rootNavigatorKey,
       builder: (context, state) {
         final customerId =
             context.read<AuthCubit>().state.currentUser?.id ?? '';
@@ -105,7 +103,6 @@ class CustomersRoutes {
     ),
     GoRoute(
       path: '/wishlist',
-      parentNavigatorKey: rootNavigatorKey,
       builder:
           (context, state) => WishlistScreen(
             onAddToCart: (ctx, product) {

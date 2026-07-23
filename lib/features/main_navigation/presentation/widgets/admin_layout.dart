@@ -99,15 +99,7 @@ class _AdminLayoutState extends State<AdminLayout> {
                         _buildOfflineBanner(),
 
                         // ── Content View ─────────────────────────────────────
-                        Expanded(
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints:
-                                  const BoxConstraints(maxWidth: 1280),
-                              child: widget.body,
-                            ),
-                          ),
-                        ),
+                        Expanded(child: widget.body),
                       ],
                     ),
                   ),
@@ -206,14 +198,7 @@ class _AdminLayoutState extends State<AdminLayout> {
               child: Column(
                 children: [
                   _buildOfflineBanner(),
-                  Expanded(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1280),
-                        child: widget.body,
-                      ),
-                    ),
-                  ),
+                  Expanded(child: widget.body),
                 ],
               ),
             ),

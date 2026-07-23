@@ -400,6 +400,33 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildBackButton(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width >= 1024;
+
+    if (isDesktop) {
+      return TextButton.icon(
+        onPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/');
+          }
+        },
+        icon: const Icon(
+          Icons.arrow_back_rounded,
+          size: 16,
+          color: AppColors.textSecondary,
+        ),
+        label: const Text(
+          'Volver a la Tienda',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _isBackBtnPressed = true),
       onTapUp: (_) => setState(() => _isBackBtnPressed = false),

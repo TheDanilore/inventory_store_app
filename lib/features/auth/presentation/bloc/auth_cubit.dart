@@ -139,7 +139,7 @@ class AuthCubit extends Cubit<AuthState> {
         return failure.message;
       },
       (_) {
-        emit(state.copyWith(viewState: ViewState.success));
+        emit(state.copyWith(viewState: ViewState.initial));
         return null;
       },
     );
