@@ -12,12 +12,12 @@ import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.d
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 
-import 'package:inventory_store_app/features/auth/presentation/widgets/profile_header_section.dart';
-import 'package:inventory_store_app/features/auth/presentation/widgets/profile_edit_form_section.dart';
-import 'package:inventory_store_app/features/auth/presentation/widgets/profile_read_only_info_section.dart';
-import 'package:inventory_store_app/features/auth/presentation/widgets/profile_action_buttons_section.dart';
-import 'package:inventory_store_app/features/auth/presentation/widgets/profile_quick_access_section.dart';
-import 'package:inventory_store_app/features/auth/presentation/widgets/profile_shimmer.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/profile/profile_header_section.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/profile/profile_edit_form_section.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/profile/profile_read_only_info_section.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/profile/profile_action_buttons_section.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/profile/profile_quick_access_section.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/profile/profile_shimmer.dart';
 
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';

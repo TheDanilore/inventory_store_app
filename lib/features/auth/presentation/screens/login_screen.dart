@@ -8,9 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
-import 'package:inventory_store_app/features/auth/presentation/widgets/login_header_section.dart';
-import 'package:inventory_store_app/features/auth/presentation/widgets/login_form_card.dart';
-import 'package:inventory_store_app/features/auth/presentation/widgets/login_toggle_mode.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login/login_header_section.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login/login_form_card.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login/login_toggle_mode.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -112,6 +112,8 @@ class _LoginScreenState extends State<LoginScreen>
             type: SnackbarType.error,
           );
         } else if (state.viewState == ViewState.success) {
+          _passwordController.clear();
+          _blobCtrl.stop();
           if (!state.isLoginMode) {
             AppSnackbar.show(
               context,

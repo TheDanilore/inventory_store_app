@@ -23,100 +23,117 @@ class ProfileActionButtonsSection extends StatelessWidget {
     final cubit = context.read<AuthCubit>();
     final passwordCtrl = TextEditingController();
 
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            final isDeleting =
-                (context.watch<AuthCubit>().state.viewState ==
-                    ViewState.loading);
+    try {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) {
+          return StatefulBuilder(
+            builder: (context, setState) {
+              final isDeleting = context.select<AuthCubit, bool>(
+                (a) => a.state.viewState == ViewState.loading,
+              );
 
-            return AlertDialog(
-              title: const Text(
-                'Eliminar Cuenta',
-                style: TextStyle(color: Colors.red),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Esta acción no se puede deshacer. Todos tus datos y monedas serán eliminados permanentemente.',
+              return AlertDialog(
+                backgroundColor: AppColors.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                ),
+                title: const Text(
+                  'Eliminar Cuenta',
+                  style: TextStyle(
+                    color: AppColors.error,
+                    fontWeight: FontWeight.w800,
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Por favor, ingresa tu contraseña para confirmar:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: passwordCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Contraseña',
-                      border: OutlineInputBorder(),
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Esta acción no se puede deshacer. Todos tus datos y monedas serán eliminados permanentemente.',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Por favor, ingresa tu contraseña para confirmar:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: passwordCtrl,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Contraseña',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: isDeleting ? null : () => Navigator.pop(ctx),
+                    child: const Text(
+                      'Cancelar',
+                      style: TextStyle(color: AppColors.textMuted),
                     ),
                   ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isDeleting ? null : () => Navigator.pop(ctx),
-                  child: const Text(
-                    'Cancelar',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed:
-                      isDeleting
-                          ? null
-                          : () async {
-                            if (passwordCtrl.text.isEmpty) return;
-                            final success = await cubit.deleteAccount(
-                              passwordCtrl.text,
-                            );
-                            if (!success) {
-                              if (ctx.mounted) {
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Error al eliminar la cuenta',
+                  ElevatedButton(
+                    onPressed:
+                        isDeleting
+                            ? null
+                            : () async {
+                              if (passwordCtrl.text.isEmpty) return;
+                              final success = await cubit.deleteAccount(
+                                passwordCtrl.text,
+                              );
+                              if (!success) {
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Error al eliminar la cuenta',
+                                      ),
+                                      backgroundColor: AppColors.error,
                                     ),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
+                                  );
+                                }
+                              } else {
+                                if (ctx.mounted) {
+                                  ctx.go('/login');
+                                }
                               }
-                            } else {
-                              if (ctx.mounted) {
-                                ctx.go('/login');
-                              }
-                            }
-                          },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child:
-                      isDeleting
-                          ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
+                            },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                    ),
+                    child:
+                        isDeleting
+                            ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                            : const Text(
+                              'Eliminar Cuenta',
+                              style: TextStyle(color: Colors.white),
                             ),
-                          )
-                          : const Text(
-                            'Eliminar Cuenta',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      passwordCtrl.dispose();
+    }
   }
 
   @override

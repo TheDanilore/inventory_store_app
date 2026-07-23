@@ -198,6 +198,8 @@ class _LoginFormCardState extends State<LoginFormCard> {
         },
       );
     }
+
+    emailCtrl.dispose();
   }
 
   @override
