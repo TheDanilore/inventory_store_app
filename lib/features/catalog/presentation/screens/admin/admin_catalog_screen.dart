@@ -256,6 +256,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                   onSelected: cubit.setCategory,
                                   filterIsActive: state.filterIsActive,
                                   onStatusSelected: cubit.setFilterIsActive,
+                                  sortOption: state.sortOption,
+                                  onSortSelected: cubit.setSortOption,
+                                  stockFilter: state.stockFilter,
+                                  onStockFilterSelected: cubit.setStockFilter,
                                 ),
                               )
                               : null;

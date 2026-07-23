@@ -13,6 +13,8 @@ class AdminCatalogState extends Equatable {
   final String searchTerm;
   final bool searchByIngredient;
   final bool? filterIsActive;
+  final String sortOption;
+  final int stockFilter;
   final int totalCount;
   final int currentPage;
   final String? errorMessage;
@@ -27,6 +29,8 @@ class AdminCatalogState extends Equatable {
     this.searchTerm = '',
     this.searchByIngredient = false,
     this.filterIsActive,
+    this.sortOption = 'Recientes',
+    this.stockFilter = 0,
     this.totalCount = 0,
     this.currentPage = 0,
     this.errorMessage,
@@ -47,6 +51,8 @@ class AdminCatalogState extends Equatable {
     String? searchTerm,
     bool? searchByIngredient,
     bool? filterIsActive,
+    String? sortOption,
+    int? stockFilter,
     int? totalCount,
     int? currentPage,
     String? errorMessage,
@@ -68,6 +74,8 @@ class AdminCatalogState extends Equatable {
       searchByIngredient: searchByIngredient ?? this.searchByIngredient,
       filterIsActive:
           clearFilterIsActive ? null : (filterIsActive ?? this.filterIsActive),
+      sortOption: sortOption ?? this.sortOption,
+      stockFilter: stockFilter ?? this.stockFilter,
       totalCount: totalCount ?? this.totalCount,
       currentPage: currentPage ?? this.currentPage,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
@@ -85,6 +93,8 @@ class AdminCatalogState extends Equatable {
     searchTerm,
     searchByIngredient,
     filterIsActive,
+    sortOption,
+    stockFilter,
     totalCount,
     currentPage,
     errorMessage,

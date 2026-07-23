@@ -164,7 +164,17 @@ class _DashboardScreenContent extends StatelessWidget {
             if (state is DashboardLoaded) {
               return LayoutBuilder(
                 builder: (context, constraints) {
+                  final isDesktop = constraints.maxWidth >= 1100;
                   final isTablet = constraints.maxWidth >= 720;
+
+                  if (isDesktop) {
+                    return _buildDesktopLayout(
+                      context,
+                      adminGoalCurrent,
+                      adminGoalTarget,
+                      state,
+                    );
+                  }
                   if (isTablet) {
                     return _buildTabletLayout(
                       context,
@@ -187,6 +197,91 @@ class _DashboardScreenContent extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+
+  Widget _buildDesktopLayout(
+    BuildContext context,
+    double goalCurrent,
+    double goalTarget,
+    DashboardLoaded state,
+  ) {
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _HealthSummaryBar(
+                  lowStockCount: state.inventory.lowStockProducts,
+                  criticalBatchesCount: state.criticalBatches.length,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          AdminGoalCard(
+                            currentAmount: goalCurrent,
+                            targetAmount: goalTarget,
+                            onAddPressed:
+                                () => _openGoalDialog(
+                                  context,
+                                  goalCurrent,
+                                  goalTarget,
+                                ),
+                          ),
+                          const SizedBox(height: 20),
+                          if (state.criticalBatches.isNotEmpty) ...[
+                            ExpiringBatchesCard(batches: state.criticalBatches),
+                            const SizedBox(height: 20),
+                          ],
+                          const SectionHeader(
+                            icon: Icons.inventory_2_rounded,
+                            title: 'Inventario',
+                            subtitle: 'Valorización y proyecciones de stock',
+                          ),
+                          const SizedBox(height: 12),
+                          _buildInventoryContent(state.inventory),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      flex: 6,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const SectionHeader(
+                                icon: Icons.point_of_sale_rounded,
+                                title: 'Ventas Registradas',
+                                subtitle: 'Órdenes con estado COMPLETADO',
+                              ),
+                              _buildSalesFilters(context, state),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          _buildSalesContent(state.sales, state.isSalesLoading),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

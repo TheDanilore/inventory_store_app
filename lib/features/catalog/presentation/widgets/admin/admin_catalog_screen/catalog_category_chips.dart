@@ -9,6 +9,10 @@ class CategoryChips extends StatelessWidget {
   final ValueChanged<String?> onSelected;
   final bool? filterIsActive;
   final ValueChanged<bool?>? onStatusSelected;
+  final String sortOption;
+  final ValueChanged<String>? onSortSelected;
+  final int stockFilter;
+  final ValueChanged<int>? onStockFilterSelected;
 
   const CategoryChips({
     super.key,
@@ -17,6 +21,10 @@ class CategoryChips extends StatelessWidget {
     required this.onSelected,
     this.filterIsActive,
     this.onStatusSelected,
+    this.sortOption = 'Recientes',
+    this.onSortSelected,
+    this.stockFilter = 0,
+    this.onStockFilterSelected,
   });
 
   @override
@@ -43,11 +51,17 @@ class CategoryChips extends StatelessWidget {
                 ],
 
                 // Chip de Ordenamiento
-                const _SortFilterChip(),
+                _SortFilterChip(
+                  currentSort: sortOption,
+                  onSelected: onSortSelected ?? (_) {},
+                ),
                 const SizedBox(width: 8),
 
                 // Chip de Filtro de Stock
-                const _StockFilterChip(),
+                _StockFilterChip(
+                  stockFilterState: stockFilter,
+                  onChanged: onStockFilterSelected ?? (_) {},
+                ),
                 const SizedBox(width: 8),
 
                 const VerticalDivider(
@@ -215,17 +229,16 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
-class _SortFilterChip extends StatefulWidget {
-  const _SortFilterChip();
+class _SortFilterChip extends StatelessWidget {
+  final String currentSort;
+  final ValueChanged<String> onSelected;
 
-  @override
-  State<_SortFilterChip> createState() => _SortFilterChipState();
-}
+  const _SortFilterChip({
+    required this.currentSort,
+    required this.onSelected,
+  });
 
-class _SortFilterChipState extends State<_SortFilterChip> {
-  String _currentSort = 'Recientes';
-
-  final List<String> _sortOptions = [
+  static const List<String> _sortOptions = [
     'Recientes',
     'Nombre (A-Z)',
     'Precio: Menor a Mayor',
@@ -237,7 +250,7 @@ class _SortFilterChipState extends State<_SortFilterChip> {
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
       tooltip: 'Ordenar por',
-      onSelected: (val) => setState(() => _currentSort = val),
+      onSelected: onSelected,
       itemBuilder: (ctx) => _sortOptions
           .map(
             (opt) => PopupMenuItem<String>(
@@ -245,11 +258,11 @@ class _SortFilterChipState extends State<_SortFilterChip> {
               child: Row(
                 children: [
                   Icon(
-                    opt == _currentSort
+                    opt == currentSort
                         ? Icons.check_circle_rounded
                         : Icons.radio_button_unchecked_rounded,
                     size: 16,
-                    color: opt == _currentSort
+                    color: opt == currentSort
                         ? AppColors.primary
                         : AppColors.textMuted,
                   ),
@@ -258,7 +271,7 @@ class _SortFilterChipState extends State<_SortFilterChip> {
                     opt,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: opt == _currentSort
+                      fontWeight: opt == currentSort
                           ? FontWeight.bold
                           : FontWeight.normal,
                     ),
@@ -271,31 +284,43 @@ class _SortFilterChipState extends State<_SortFilterChip> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: currentSort != 'Recientes'
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : AppColors.background,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(
+            color: currentSort != 'Recientes'
+                ? AppColors.primary.withValues(alpha: 0.5)
+                : AppColors.border,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.sort_rounded,
               size: 14,
-              color: AppColors.textSecondary,
+              color: currentSort != 'Recientes'
+                  ? AppColors.primary
+                  : AppColors.textSecondary,
             ),
             const SizedBox(width: 6),
             Text(
-              _currentSort,
-              style: const TextStyle(
+              currentSort,
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: currentSort != 'Recientes'
+                    ? AppColors.primary
+                    : AppColors.textPrimary,
               ),
             ),
-            const Icon(
+            Icon(
               Icons.arrow_drop_down_rounded,
               size: 18,
-              color: AppColors.textMuted,
+              color: currentSort != 'Recientes'
+                  ? AppColors.primary
+                  : AppColors.textMuted,
             ),
           ],
         ),
@@ -304,15 +329,14 @@ class _SortFilterChipState extends State<_SortFilterChip> {
   }
 }
 
-class _StockFilterChip extends StatefulWidget {
-  const _StockFilterChip();
+class _StockFilterChip extends StatelessWidget {
+  final int stockFilterState;
+  final ValueChanged<int> onChanged;
 
-  @override
-  State<_StockFilterChip> createState() => _StockFilterChipState();
-}
-
-class _StockFilterChipState extends State<_StockFilterChip> {
-  int _stockFilterState = 0; // 0: Todos, 1: Con Stock, 2: Agotados
+  const _StockFilterChip({
+    required this.stockFilterState,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -320,11 +344,11 @@ class _StockFilterChipState extends State<_StockFilterChip> {
     Color color = AppColors.textSecondary;
     IconData icon = Icons.inventory_2_outlined;
 
-    if (_stockFilterState == 1) {
+    if (stockFilterState == 1) {
       label = 'En Stock';
       color = AppColors.success;
       icon = Icons.check_circle_outline_rounded;
-    } else if (_stockFilterState == 2) {
+    } else if (stockFilterState == 2) {
       label = 'Agotados';
       color = AppColors.warning;
       icon = Icons.error_outline_rounded;
@@ -332,20 +356,19 @@ class _StockFilterChipState extends State<_StockFilterChip> {
 
     return InkWell(
       onTap: () {
-        setState(() {
-          _stockFilterState = (_stockFilterState + 1) % 3;
-        });
+        final nextState = (stockFilterState + 1) % 3;
+        onChanged(nextState);
       },
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: _stockFilterState != 0
+          color: stockFilterState != 0
               ? color.withValues(alpha: 0.1)
               : AppColors.background,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: _stockFilterState != 0
+            color: stockFilterState != 0
                 ? color.withValues(alpha: 0.5)
                 : AppColors.border,
           ),
@@ -360,7 +383,7 @@ class _StockFilterChipState extends State<_StockFilterChip> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: _stockFilterState != 0 ? color : AppColors.textPrimary,
+                color: stockFilterState != 0 ? color : AppColors.textPrimary,
               ),
             ),
           ],

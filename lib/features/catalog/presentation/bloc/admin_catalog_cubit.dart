@@ -91,6 +91,18 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     refreshProducts();
   }
 
+  void setSortOption(String option) {
+    if (state.sortOption == option) return;
+    emit(state.copyWith(sortOption: option, currentPage: 0));
+    refreshProducts();
+  }
+
+  void setStockFilter(int filter) {
+    if (state.stockFilter == filter) return;
+    emit(state.copyWith(stockFilter: filter, currentPage: 0));
+    refreshProducts();
+  }
+
   void setPage(int page) {
     if (state.currentPage == page) return;
     emit(state.copyWith(currentPage: page));
@@ -140,10 +152,36 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
           stockResult.fold((_) {}, (s) => stock = s);
         }
 
-        final enriched =
+        List<ProductEntity> enriched =
             data.products
                 .map((p) => p.copyWith(totalStock: stock[p.id] ?? 0))
                 .toList();
+
+        // 1. Filtrar por stock (0: Todos, 1: En Stock, 2: Agotados)
+        if (state.stockFilter == 1) {
+          enriched =
+              enriched
+                  .where((p) => !p.stockControl || p.totalStock > 0)
+                  .toList();
+        } else if (state.stockFilter == 2) {
+          enriched =
+              enriched
+                  .where((p) => p.stockControl && p.totalStock == 0)
+                  .toList();
+        }
+
+        // 2. Ordenar según sortOption
+        if (state.sortOption == 'Nombre (A-Z)') {
+          enriched.sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
+        } else if (state.sortOption == 'Precio: Menor a Mayor') {
+          enriched.sort((a, b) => a.salePrice.compareTo(b.salePrice));
+        } else if (state.sortOption == 'Precio: Mayor a Menor') {
+          enriched.sort((a, b) => b.salePrice.compareTo(a.salePrice));
+        } else if (state.sortOption == 'Mayor Stock') {
+          enriched.sort((a, b) => b.totalStock.compareTo(a.totalStock));
+        }
 
         emit(
           state.copyWith(
