@@ -91,42 +91,51 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     super.dispose();
   }
 
+  bool _isShowingPopDialog = false;
+
   Future<bool> _onWillPop() async {
     final cubit = context.read<ProductFormCubit>();
     final state = cubit.state;
     if (state.isSaving || state.isInitializingData) return false;
     if (!cubit.hasUnsavedChanges) return true;
+    if (_isShowingPopDialog) return false;
 
-    final shouldPop = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('¿Descartar cambios?'),
-            content: const Text(
-              'Si sales ahora, los cambios no guardados se perderán. ¿Deseas salir de todas formas?',
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppColors.radius),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: AppColors.textMuted),
-                ),
+    _isShowingPopDialog = true;
+
+    try {
+      final shouldPop = await showDialog<bool>(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: const Text('¿Descartar cambios?'),
+              content: const Text(
+                'Si sales ahora, los cambios no guardados se perderán. ¿Deseas salir de todas formas?',
               ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text(
-                  'Salir',
-                  style: TextStyle(color: AppColors.error),
-                ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppColors.radius),
               ),
-            ],
-          ),
-    );
-    return shouldPop ?? false;
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(color: AppColors.textMuted),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text(
+                    'Salir',
+                    style: TextStyle(color: AppColors.error),
+                  ),
+                ),
+              ],
+            ),
+      );
+      return shouldPop ?? false;
+    } finally {
+      _isShowingPopDialog = false;
+    }
   }
 
   Future<void> _guardar() async {
