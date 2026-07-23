@@ -292,6 +292,7 @@ class _ProductDetailScreenContentState
   }
 
   void _showSnack(String msg, {bool isSuccess = false}) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -1074,28 +1075,156 @@ class _ProductDetailScreenContentState
       ],
     );
 
-    if (widget.isEmbedded) {
-      return Container(color: AppColors.background, child: content);
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktop = constraints.maxWidth >= 1024;
 
-    if (isAdmin) {
-      return Scaffold(backgroundColor: AppColors.background, body: content);
-    }
+        if (isDesktop) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1280),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Columna Izquierda: Galería ERP (50%) ────────────────
+                      Expanded(
+                        flex: 5,
+                        child: Card(
+                          elevation: 0,
+                          color: AppColors.surface,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                            side: const BorderSide(color: AppColors.border),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: SizedBox(
+                              height: 520,
+                              child: ProductGallerySection(
+                                images: gallery.toList(),
+                                pageController: _pageController,
+                                selectedIndex: _selectedImageIndex,
+                                onPageChanged: _onGalleryChanged,
+                                wishlistWidget: _buildWishlistButton(),
+                                variantImageOverrideUrl:
+                                    (_showVariantImage && _selectedVariant != null)
+                                        ? _selectedVariantImageUrl
+                                        : null,
+                                variantLabelOverride:
+                                    (_showVariantImage && _selectedVariant != null)
+                                        ? _selectedVariant!.attributeMap.values.join(' - ')
+                                        : null,
+                                fallbackImageUrl: product.primaryImageUrl,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 24),
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: content,
-      bottomNavigationBar: ProductBottomBar(
-        canBuy: _canBuy,
-        isActive: _isActive,
-        effectiveStock: _effectiveStock,
-        effectivePrice: _effectivePrice,
-        selectedQty: _selectedQty,
-        onDecrement: () => cubit.setQty(_selectedQty - 1),
-        onIncrement: () => cubit.setQty(_selectedQty + 1),
-        onQtyTap: _showQuantityDialog,
-        onAddToCart: _addToCart,
-      ),
+                      // ── Columna Derecha: Información y Compra (50%) ─────────
+                      Expanded(
+                        flex: 5,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ProductTopSection(
+                                name: product.name,
+                                sku: _selectedVariant?.sku,
+                                isActive: _isActive,
+                                effectiveStock: _effectiveStock,
+                                averageRating: _averageRating,
+                                totalReviews: _reviewsList.length,
+                              ),
+                              const SizedBox(height: 16),
+                              ProductPriceSection(
+                                effectivePrice: _effectivePrice,
+                                baseSalePrice: _baseSalePrice,
+                                baseWholesalePrice: _baseWholesalePrice,
+                                baseWholesaleMinQty: _baseWholesaleMinQty,
+                                selectedQty: _selectedQty,
+                              ),
+                              const SizedBox(height: 20),
+                              if (isAdmin) ProductAvailabilityCard(),
+                              if (isAdmin) const SizedBox(height: 16),
+                              if (isAdmin && product.usesBatches) ...[
+                                const ProductBatchesCard(),
+                                const SizedBox(height: 16),
+                              ],
+                              if (isAdmin) ...[
+                                ProductAdminInfoCard(),
+                                const SizedBox(height: 16),
+                                ProductQuickDecisionsCard(),
+                                const SizedBox(height: 16),
+                              ],
+                              ProductDetailsCard(details: mergedDetails),
+                              const SizedBox(height: 16),
+                              if (_activeIngredients.isNotEmpty) ...[
+                                ProductIngredientsCard(ingredients: _activeIngredients),
+                                const SizedBox(height: 16),
+                              ],
+                              ProductDescriptionCard(description: product.description ?? ''),
+                              const SizedBox(height: 16),
+                              ProductReviewsCard(
+                                averageRating: _averageRating,
+                                totalReviews: _reviewsList.length,
+                                reviews: _reviewsList,
+                                onAddReview: _onAddReviewTapped,
+                              ),
+                              const SizedBox(height: 24),
+                              if (!isAdmin)
+                                ProductBottomBar(
+                                  canBuy: _canBuy,
+                                  isActive: _isActive,
+                                  effectiveStock: _effectiveStock,
+                                  effectivePrice: _effectivePrice,
+                                  selectedQty: _selectedQty,
+                                  onDecrement: () => cubit.setQty(_selectedQty - 1),
+                                  onIncrement: () => cubit.setQty(_selectedQty + 1),
+                                  onQtyTap: _showQuantityDialog,
+                                  onAddToCart: _addToCart,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        if (widget.isEmbedded) {
+          return Container(color: AppColors.background, child: content);
+        }
+
+        if (isAdmin) {
+          return Scaffold(backgroundColor: AppColors.background, body: content);
+        }
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: content,
+          bottomNavigationBar: ProductBottomBar(
+            canBuy: _canBuy,
+            isActive: _isActive,
+            effectiveStock: _effectiveStock,
+            effectivePrice: _effectivePrice,
+            selectedQty: _selectedQty,
+            onDecrement: () => cubit.setQty(_selectedQty - 1),
+            onIncrement: () => cubit.setQty(_selectedQty + 1),
+            onQtyTap: _showQuantityDialog,
+            onAddToCart: _addToCart,
+          ),
+        );
+      },
     );
   }
 
