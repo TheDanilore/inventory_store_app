@@ -504,7 +504,7 @@ class CustomerLayout extends StatelessWidget {
                             children: [
                               Container(
                                 width: double.infinity,
-                                color: Colors.red.shade500,
+                                color: AppColors.error,
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 6,
                                 ),
@@ -536,7 +536,14 @@ class CustomerLayout extends StatelessWidget {
             );
           },
         ),
-        Expanded(child: body),
+        Expanded(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1280),
+              child: body,
+            ),
+          ),
+        ),
       ],
     );
 
@@ -617,7 +624,6 @@ class _ShakeCartIconState extends State<_ShakeCartIcon>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _animation;
-  int _prevCount = 0;
 
   @override
   void initState() {
@@ -641,13 +647,12 @@ class _ShakeCartIconState extends State<_ShakeCartIcon>
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<CartCubit, CartState>(
+    return BlocConsumer<CartCubit, CartState>(
+      listenWhen: (previous, current) => current.itemCount > previous.itemCount,
+      listener: (context, state) {
+        _ctrl.forward(from: 0.0);
+      },
       builder: (context, cartState) {
-        if (cartState.itemCount > _prevCount) {
-          _ctrl.forward(from: 0.0);
-        }
-        _prevCount = cartState.itemCount;
-
         return RotationTransition(
           turns: _animation,
           child: Stack(

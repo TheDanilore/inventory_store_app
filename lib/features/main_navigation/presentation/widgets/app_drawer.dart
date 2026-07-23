@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -501,13 +502,6 @@ class _AppDrawerState extends State<AppDrawer> {
           currentPath == sub.routePath ||
           currentPath.startsWith('${sub.routePath}/'),
     );
-    if (hasActiveChild && !_expanded.contains(item.title)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_expanded.contains(item.title)) {
-          setState(() => _expanded.add(item.title));
-        }
-      });
-    }
     final isOpen = _expanded.contains(item.title) || hasActiveChild;
 
     return Column(
@@ -874,8 +868,11 @@ class _DrawerFooter extends StatelessWidget {
                                 alpha: 0.1,
                               ),
                               backgroundImage:
-                                  currentUser?.avatarUrl != null
-                                      ? NetworkImage(currentUser!.avatarUrl!)
+                                  currentUser?.avatarUrl != null &&
+                                          currentUser!.avatarUrl!.isNotEmpty
+                                      ? CachedNetworkImageProvider(
+                                        currentUser.avatarUrl!,
+                                      )
                                       : null,
                               child:
                                   currentUser?.avatarUrl == null

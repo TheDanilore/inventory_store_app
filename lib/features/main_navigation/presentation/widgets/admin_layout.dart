@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/core/network/network_state.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/offline_games_suggestion.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/app_drawer.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_sidebar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:inventory_store_app/core/network/network_cubit.dart';
@@ -10,9 +12,10 @@ import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.d
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
 
-class AdminLayout extends StatelessWidget {
+class AdminLayout extends StatefulWidget {
   final String title;
   final Widget body;
   final Widget? floatingActionButton;
@@ -42,6 +45,13 @@ class AdminLayout extends StatelessWidget {
     this.actions,
   });
 
+  @override
+  State<AdminLayout> createState() => _AdminLayoutState();
+}
+
+class _AdminLayoutState extends State<AdminLayout> {
+  bool _isSidebarCollapsed = false;
+
   void _openProfile(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
@@ -49,6 +59,10 @@ class AdminLayout extends StatelessWidget {
     } else {
       context.push('/admin/profile');
     }
+  }
+
+  void _toggleSidebar() {
+    setState(() => _isSidebarCollapsed = !_isSidebarCollapsed);
   }
 
   @override
@@ -59,13 +73,59 @@ class AdminLayout extends StatelessWidget {
         statusBarIconBrightness: Brightness.dark,
         statusBarBrightness: Brightness.light,
       ),
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF7F8FC),
-        endDrawer: showDrawerButton ? const AppDrawer(isAdmin: true) : null,
-        appBar:
-            showAppBar
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isDesktop = constraints.maxWidth >= 1024;
+
+          if (isDesktop) {
+            return Scaffold(
+              backgroundColor: AppColors.background,
+              body: Row(
+                children: [
+                  // ── Left Sidebar (Desktop) ─────────────────────────────────
+                  AdminSidebar(
+                    isCollapsed: _isSidebarCollapsed,
+                    onToggleCollapse: _toggleSidebar,
+                  ),
+
+                  // ── Right Main Area (TopBar + Body) ─────────────────────────
+                  Expanded(
+                    child: Column(
+                      children: [
+                        // ── TopBar ERP ───────────────────────────────────────
+                        _buildDesktopTopBar(context),
+
+                        // ── Offline Banner ───────────────────────────────────
+                        _buildOfflineBanner(),
+
+                        // ── Content View ─────────────────────────────────────
+                        Expanded(
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints:
+                                  const BoxConstraints(maxWidth: 1280),
+                              child: widget.body,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              floatingActionButton: widget.floatingActionButton,
+            );
+          }
+
+          // ── Mobile / Tablet Layout ──────────────────────────────────────────
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            endDrawer: widget.showDrawerButton
+                ? const AppDrawer(isAdmin: true)
+                : null,
+            appBar: widget.showAppBar
                 ? AppBar(
-                  backgroundColor: Colors.white,
+                  backgroundColor: AppColors.surface,
                   elevation: 0,
                   shadowColor: Colors.black.withValues(alpha: 0.06),
                   surfaceTintColor: Colors.transparent,
@@ -73,40 +133,38 @@ class AdminLayout extends StatelessWidget {
                   title: Padding(
                     padding: const EdgeInsets.only(left: 4),
                     child: Text(
-                      title,
+                      widget.title,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
+                        color: AppColors.textPrimary,
                         letterSpacing: -0.3,
                       ),
                     ),
                   ),
-                  // Ajustamos el ancho dependiendo de cuántos botones hay realmente
                   leadingWidth:
-                      (showBackButton && showProfileButton) ? 104 : 60,
+                      (widget.showBackButton && widget.showProfileButton)
+                          ? 104
+                          : 60,
                   leading:
-                      (!showBackButton && !showProfileButton)
+                      (!widget.showBackButton && !widget.showProfileButton)
                           ? const SizedBox.shrink()
                           : Align(
-                            alignment:
-                                Alignment
-                                    .centerLeft, // <-- ANCLAJE FIJO A LA IZQUIERDA
+                            alignment: Alignment.centerLeft,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const SizedBox(
-                                  width: 12,
-                                ), // <-- MARGEN CONSTANTE
-                                if (showBackButton)
+                                const SizedBox(width: 12),
+                                if (widget.showBackButton)
                                   AdminAppBarIconButton(
                                     icon: Icons.arrow_back_ios_new_rounded,
                                     tooltip: 'Volver',
                                     onTap: () => Navigator.maybePop(context),
                                   ),
-                                if (showBackButton && showProfileButton)
+                                if (widget.showBackButton &&
+                                    widget.showProfileButton)
                                   const SizedBox(width: 8),
-                                if (showProfileButton)
+                                if (widget.showProfileButton)
                                   AdminProfileAvatar(
                                     onTap: () => _openProfile(context),
                                   ),
@@ -114,21 +172,21 @@ class AdminLayout extends StatelessWidget {
                             ),
                           ),
                   actions: [
-                    if (actions != null) ...actions!,
-                    if (actions != null && actions!.isNotEmpty)
+                    if (widget.actions != null) ...widget.actions!,
+                    if (widget.actions != null && widget.actions!.isNotEmpty)
                       const SizedBox(width: 8),
 
-                    if (showSettingsButton &&
-                        settingsActions != null &&
-                        settingsActions!.isNotEmpty) ...[
+                    if (widget.showSettingsButton &&
+                        widget.settingsActions != null &&
+                        widget.settingsActions!.isNotEmpty) ...[
                       AdminSettingsMenuButton(
-                        items: settingsActions!,
-                        onSelected: onSettingsSelected,
+                        items: widget.settingsActions!,
+                        onSelected: widget.onSettingsSelected,
                       ),
                       const SizedBox(width: 8),
                     ],
 
-                    if (showDrawerButton)
+                    if (widget.showDrawerButton)
                       Builder(
                         builder:
                             (context) => AdminAppBarIconButton(
@@ -142,65 +200,204 @@ class AdminLayout extends StatelessWidget {
                   ],
                 )
                 : null,
-        body: SafeArea(
-          top: !showAppBar,
-          bottom: false,
-          child: Column(
-            children: [
-              // Offline banner Animates its height layout size so it doesn't leave gaps
-              BlocBuilder<NetworkCubit, NetworkState>(
-                builder: (context, state) {
-                  final isOnline = state is NetworkConnected;
-                  return AnimatedSize(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutCubic,
-                    alignment: Alignment.topCenter,
-                    child:
-                        isOnline
-                            ? const SizedBox(width: double.infinity, height: 0)
-                            : Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: double.infinity,
-                                  color: const Color(0xFFFF3B30),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 7,
-                                  ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.wifi_off_rounded,
-                                        color: Colors.white,
-                                        size: 14,
-                                      ),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        'Sin conexión a internet',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: 0.2,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const OfflineGamesSuggestion(),
-                              ],
-                            ),
-                  );
-                },
+            body: SafeArea(
+              top: !widget.showAppBar,
+              bottom: false,
+              child: Column(
+                children: [
+                  _buildOfflineBanner(),
+                  Expanded(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1280),
+                        child: widget.body,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              Expanded(child: body),
+            ),
+            floatingActionButton: widget.floatingActionButton,
+            bottomNavigationBar: widget.bottomNavigationBar,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDesktopTopBar(BuildContext context) {
+    return Container(
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(color: AppColors.border, width: 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          // ── Toggle Sidebar Button ─────────────────────────────────
+          AdminAppBarIconButton(
+            icon: _isSidebarCollapsed
+                ? Icons.menu_open_rounded
+                : Icons.menu_rounded,
+            tooltip: _isSidebarCollapsed ? 'Expandir menú' : 'Colapsar menú',
+            onTap: _toggleSidebar,
+          ),
+          const SizedBox(width: 16),
+
+          // ── Title & Breadcrumbs ───────────────────────────────────
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const Text(
+                'Panel de Administración ERP',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ],
           ),
-        ),
-        floatingActionButton: floatingActionButton,
-        bottomNavigationBar: bottomNavigationBar,
+
+          const Spacer(),
+
+          // ── Quick Custom Actions ──────────────────────────────────
+          if (widget.actions != null) ...widget.actions!,
+          if (widget.actions != null && widget.actions!.isNotEmpty)
+            const SizedBox(width: 12),
+
+          // ── Notifications Icon ────────────────────────────────────
+          AdminAppBarIconButton(
+            icon: Icons.notifications_none_rounded,
+            tooltip: 'Notificaciones',
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Sin notificaciones pendientes'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 12),
+
+          // ── Settings Dropdown ─────────────────────────────────────
+          if (widget.showSettingsButton &&
+              widget.settingsActions != null &&
+              widget.settingsActions!.isNotEmpty) ...[
+            AdminSettingsMenuButton(
+              items: widget.settingsActions!,
+              onSelected: widget.onSettingsSelected,
+            ),
+            const SizedBox(width: 12),
+          ],
+
+          // ── Admin Profile Dropdown Avatar ─────────────────────────
+          PopupMenuButton<String>(
+            tooltip: 'Opciones de perfil',
+            offset: const Offset(0, 48),
+            onSelected: (value) {
+              if (value == 'profile') context.push('/admin/profile');
+              if (value == 'business') context.push('/admin/business-info');
+              if (value == 'logout') context.read<AuthCubit>().logout();
+            },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'profile',
+                child: Row(
+                  children: [
+                    Icon(Icons.person_outline_rounded, size: 18),
+                    SizedBox(width: 8),
+                    Text('Mi Perfil'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'business',
+                child: Row(
+                  children: [
+                    Icon(Icons.storefront_rounded, size: 18),
+                    SizedBox(width: 8),
+                    Text('Datos de Negocio'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
+                    SizedBox(width: 8),
+                    Text('Cerrar Sesión', style: TextStyle(color: AppColors.error)),
+                  ],
+                ),
+              ),
+            ],
+            child: AdminProfileAvatar(
+              onTap: () {},
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildOfflineBanner() {
+    return BlocBuilder<NetworkCubit, NetworkState>(
+      builder: (context, state) {
+        final isOnline = state is NetworkConnected;
+        return AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: isOnline
+              ? const SizedBox(width: double.infinity, height: 0)
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      color: AppColors.error,
+                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.wifi_off_rounded,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Sin conexión a internet',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const OfflineGamesSuggestion(),
+                  ],
+                ),
+        );
+      },
     );
   }
 }
@@ -221,7 +418,7 @@ class AdminAppBarIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final button = Material(
-      color: const Color(0xFFF1F5F9),
+      color: AppColors.background,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -229,7 +426,7 @@ class AdminAppBarIconButton extends StatelessWidget {
         child: SizedBox(
           width: 38,
           height: 38,
-          child: Icon(icon, size: 18, color: const Color(0xFF475569)),
+          child: Icon(icon, size: 18, color: AppColors.textSecondary),
         ),
       ),
     );
@@ -262,20 +459,20 @@ class AdminSettingsMenuButton extends StatelessWidget {
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
+          color: AppColors.background,
           borderRadius: BorderRadius.circular(10),
         ),
         child: const Icon(
           Icons.more_vert_rounded,
           size: 18,
-          color: Color(0xFF475569),
+          color: AppColors.textSecondary,
         ),
       ),
     );
   }
 }
 
-/// Avatar / botón de perfil - carga la foto real del usuario desde AuthCubit
+/// Avatar / botón de perfil con CachedNetworkImage
 class AdminProfileAvatar extends StatelessWidget {
   final VoidCallback onTap;
   const AdminProfileAvatar({super.key, required this.onTap});
@@ -290,17 +487,11 @@ class AdminProfileAvatar extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
           gradient: const LinearGradient(
-            colors: [Color(0xFF0EA5E9), Color(0xFF0284C7)],
+            colors: [AppColors.primary, AppColors.accent],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0284C7).withValues(alpha: 0.3),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: AppColors.cardShadow(opacity: 0.2),
         ),
         child: Material(
           color: Colors.transparent,
@@ -315,7 +506,6 @@ class AdminProfileAvatar extends StatelessWidget {
                   if (state.viewState == ViewState.loading &&
                       currentUser?.avatarUrl == null &&
                       (currentUser?.fullName ?? '').isEmpty) {
-                    // Skeleton/Loading state
                     return const Center(
                       child: SizedBox(
                         width: 14,
@@ -330,13 +520,15 @@ class AdminProfileAvatar extends StatelessWidget {
 
                   if (currentUser?.avatarUrl != null &&
                       currentUser!.avatarUrl!.isNotEmpty) {
-                    return Image.network(
-                      currentUser.avatarUrl!,
+                    return CachedNetworkImage(
+                      imageUrl: currentUser.avatarUrl!,
                       fit: BoxFit.cover,
                       width: 38,
                       height: 38,
-                      errorBuilder:
-                          (context, error, stackTrace) =>
+                      placeholder:
+                          (context, url) => _initialsWidget(currentUser),
+                      errorWidget:
+                          (context, url, error) =>
                               _initialsWidget(currentUser),
                     );
                   }
