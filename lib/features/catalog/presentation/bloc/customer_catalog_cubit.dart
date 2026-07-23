@@ -150,6 +150,15 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
                 .map((p) => p.copyWith(totalStock: stock[p.id] ?? p.totalStock))
                 .toList();
 
+        // Ordenamiento prioritario estándar E-Commerce: con stock primero
+        enriched.sort((a, b) {
+          final aAvailable = !a.stockControl || a.totalStock > 0;
+          final bAvailable = !b.stockControl || b.totalStock > 0;
+          if (aAvailable && !bAvailable) return -1;
+          if (!aAvailable && bAvailable) return 1;
+          return 0;
+        });
+
         final updated = List<ProductEntity>.from(state.products)
           ..addAll(enriched);
 

@@ -9,6 +9,8 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
+import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 
 class AttributesManagementScreen extends StatefulWidget {
   const AttributesManagementScreen({super.key});
@@ -23,6 +25,11 @@ class _AttributesManagementScreenState
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
+  // Desktop Form State
+  final _desktopNameCtrl = TextEditingController();
+  final _desktopDescCtrl = TextEditingController();
+  String? _editingAttributeId;
+
   @override
   void initState() {
     super.initState();
@@ -33,21 +40,75 @@ class _AttributesManagementScreenState
         _isFabExtended.value = true;
       }
     });
-    // Load attributes on first build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AttributesCubit>().loadAttributes();
     });
   }
 
+  @override
+  void dispose() {
+    _isFabExtended.dispose();
+    _scrollController.dispose();
+    _desktopNameCtrl.dispose();
+    _desktopDescCtrl.dispose();
+    super.dispose();
+  }
+
   void _showAttributeForm([Map<String, dynamic>? attribute]) {
+    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    if (isDesktop) {
+      setState(() {
+        _editingAttributeId = attribute?['id'];
+        _desktopNameCtrl.text = attribute?['name'] ?? '';
+        _desktopDescCtrl.text = attribute?['description'] ?? '';
+      });
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) => AttributeFormSheet(attribute: attribute),
     );
+  }
+
+  void _clearDesktopForm() {
+    setState(() {
+      _editingAttributeId = null;
+      _desktopNameCtrl.clear();
+      _desktopDescCtrl.clear();
+    });
+  }
+
+  Future<void> _saveDesktopAttribute() async {
+    final name = _desktopNameCtrl.text.trim();
+    if (name.isEmpty) {
+      AppSnackbar.show(
+        context,
+        message: 'El nombre de la propiedad es obligatorio.',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    final cubit = context.read<AttributesCubit>();
+    final success = await cubit.saveAttribute(
+      name,
+      id: _editingAttributeId,
+    );
+
+    if (success && mounted) {
+      AppSnackbar.show(
+        context,
+        message:
+            _editingAttributeId == null
+                ? 'Propiedad creada correctamente.'
+                : 'Propiedad actualizada correctamente.',
+        type: SnackbarType.success,
+      );
+      _clearDesktopForm();
+    }
   }
 
   void _showAddValueForm(String attributeId, String attributeName) {
@@ -59,13 +120,6 @@ class _AttributesManagementScreenState
             attributeName: attributeName,
           ),
     );
-  }
-
-  @override
-  void dispose() {
-    _isFabExtended.dispose();
-    _scrollController.dispose();
-    super.dispose();
   }
 
   @override
@@ -90,39 +144,204 @@ class _AttributesManagementScreenState
         child: BlocBuilder<AttributesCubit, AttributesState>(
           builder: (context, state) {
             final cubit = context.read<AttributesCubit>();
-            return RefreshIndicator(
-              onRefresh: () => cubit.loadAttributes(),
-              color: AppColors.primary,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: _buildContent(state, cubit),
-              ),
+            final isSaving = state.isSaving;
+
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final isDesktop = constraints.maxWidth >= 900;
+
+                if (isDesktop) {
+                  return _buildDesktopLayout(context, state, cubit, isSaving);
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () => cubit.loadAttributes(),
+                  color: AppColors.primary,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _buildContent(state, cubit),
+                  ),
+                );
+              },
             );
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        onPressed: () => _showAttributeForm(),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: ValueListenableBuilder<bool>(
-          valueListenable: _isFabExtended,
-          builder: (context, isExtended, _) {
-            return AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              child:
-                  isExtended
-                      ? const Text(
-                        'Nueva Propiedad',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                      : const SizedBox.shrink(),
-            );
-          },
+      floatingActionButton: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 900) return const SizedBox.shrink();
+          return FloatingActionButton.extended(
+            backgroundColor: AppColors.primary,
+            onPressed: () => _showAttributeForm(),
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: ValueListenableBuilder<bool>(
+              valueListenable: _isFabExtended,
+              builder: (context, isExtended, _) {
+                return AnimatedSize(
+                  duration: const Duration(milliseconds: 200),
+                  child:
+                      isExtended
+                          ? const Text(
+                            'Nueva Propiedad',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                          : const SizedBox.shrink(),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout(
+    BuildContext context,
+    AttributesState state,
+    AttributesCubit cubit,
+    bool isSaving,
+  ) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1200),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Columna Izquierda: Formulario ERP Embebido (40%)
+              Expanded(
+                flex: 40,
+                child: _buildDesktopFormCard(isSaving),
+              ),
+              const SizedBox(width: 24),
+              // Columna Derecha: Lista de Atributos (60%)
+              Expanded(
+                flex: 60,
+                child: RefreshIndicator(
+                  onRefresh: () => cubit.loadAttributes(),
+                  color: AppColors.primary,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _buildContent(state, cubit),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopFormCard(bool isSaving) {
+    final isEditing = _editingAttributeId != null;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radiusXl),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow(opacity: 0.05),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.category_outlined,
+                  color: AppColors.primary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isEditing ? 'Editar Propiedad' : 'Nueva Propiedad',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isEditing
+                          ? 'Modifica el nombre y descripción del atributo.'
+                          : 'Crea una propiedad para variantes (Talla, Color, etc.).',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          AppTextField(
+            controller: _desktopNameCtrl,
+            label: 'Nombre de la Propiedad',
+            icon: Icons.label_outlined,
+            hintText: 'Ej: Talla, Color, Sabor, Marca...',
+            textCapitalization: TextCapitalization.sentences,
+          ),
+          const SizedBox(height: 16),
+          AppTextField(
+            controller: _desktopDescCtrl,
+            label: 'Descripción (Opcional)',
+            icon: Icons.notes_rounded,
+            hintText: 'Ej: Tamaño o presentación del producto...',
+            maxLines: 3,
+            textCapitalization: TextCapitalization.sentences,
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              if (isEditing)
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: isSaving ? null : _clearDesktopForm,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
+              if (isEditing) const SizedBox(width: 12),
+              Expanded(
+                flex: isEditing ? 1 : 2,
+                child: AppPrimaryButton(
+                  label: isEditing ? 'Guardar Cambios' : 'Crear Propiedad',
+                  loading: isSaving,
+                  onPressed: isSaving ? null : _saveDesktopAttribute,
+                  backgroundColor: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -138,21 +357,21 @@ class _AttributesManagementScreenState
         key: const ValueKey('empty'),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
-          SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.25),
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+              children: const [
                 Icon(
                   Icons.category_outlined,
                   size: 60,
-                  color: Colors.grey.shade300,
+                  color: AppColors.textMuted,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Text(
                   'No hay propiedades registradas',
                   style: TextStyle(
-                    color: Colors.grey.shade500,
+                    color: AppColors.textSecondary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -177,13 +396,55 @@ class _AttributesManagementScreenState
           attribute: attr,
           onEdit: () => _showAttributeForm(attr),
           onDelete: () async {
-            final success = await cubit.deleteAttribute(attr['id']);
-            if (success && context.mounted) {
-              AppSnackbar.show(
-                context,
-                message: 'Propiedad "${attr['name']}" eliminada',
-                type: SnackbarType.success,
-              );
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                backgroundColor: AppColors.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                ),
+                title: const Text(
+                  'Eliminar Propiedad',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                content: Text(
+                  '¿Estás seguro de eliminar la propiedad "${attr['name']}"? Se eliminarán también todos sus valores.',
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text(
+                      'Cancelar',
+                      style: TextStyle(color: AppColors.textMuted),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                    ),
+                    child: const Text(
+                      'Eliminar',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            );
+
+            if (confirmed == true && context.mounted) {
+              final success = await cubit.deleteAttribute(attr['id']);
+              if (success && context.mounted) {
+                AppSnackbar.show(
+                  context,
+                  message: 'Propiedad "${attr['name']}" eliminada',
+                  type: SnackbarType.success,
+                );
+              }
             }
           },
           onAddValue: () => _showAddValueForm(attr['id'], attr['name']),
@@ -214,29 +475,44 @@ class _AttributeCard extends StatefulWidget {
 
 class _AttributeCardState extends State<_AttributeCard> {
   bool _isCardPressed = false;
+  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
     final values = (widget.attribute['attribute_values'] as List?) ?? [];
-    // Read isSaving from cubit state for the chip animation
     final isSaving = context.watch<AttributesCubit>().state.isSaving;
 
-    return AnimatedScale(
-      scale: _isCardPressed ? 0.98 : 1.0,
-      duration: const Duration(milliseconds: 150),
-      child: Card(
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: Colors.grey.shade200),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onHighlightChanged: (val) => setState(() => _isCardPressed = val),
-          onTap: widget.onEdit,
-          child: Padding(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onHighlightChanged: (val) => setState(() => _isCardPressed = val),
+        onHover: (hover) => setState(() => _isHovered = hover),
+        onTap: widget.onEdit,
+        child: AnimatedScale(
+          scale: _isCardPressed ? 0.98 : 1.0,
+          duration: const Duration(milliseconds: 150),
+          child: Container(
             padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+              boxShadow: [
+                if (_isHovered)
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  )
+                else
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.03),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -245,13 +521,17 @@ class _AttributeCardState extends State<_AttributeCard> {
                   children: [
                     Row(
                       children: [
-                        CircleAvatar(
-                          backgroundColor: AppColors.primary.withValues(
-                            alpha: 0.1,
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(11),
                           ),
                           child: const Icon(
                             Icons.category_outlined,
                             color: AppColors.primary,
+                            size: 20,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -260,6 +540,7 @@ class _AttributeCardState extends State<_AttributeCard> {
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ],
@@ -269,7 +550,7 @@ class _AttributeCardState extends State<_AttributeCard> {
                         IconButton(
                           icon: const Icon(
                             Icons.edit_rounded,
-                            color: Colors.blue,
+                            color: AppColors.info,
                           ),
                           onPressed: widget.onEdit,
                           tooltip: 'Editar Propiedad',
@@ -277,7 +558,7 @@ class _AttributeCardState extends State<_AttributeCard> {
                         IconButton(
                           icon: const Icon(
                             Icons.delete_outline_rounded,
-                            color: Colors.red,
+                            color: AppColors.error,
                           ),
                           onPressed: widget.onDelete,
                           tooltip: 'Eliminar Propiedad',
@@ -296,13 +577,13 @@ class _AttributeCardState extends State<_AttributeCard> {
                     ),
                     child: Text(
                       widget.attribute['description'],
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
                         fontSize: 13,
                       ),
                     ),
                   ),
-                const Divider(),
+                const Divider(color: AppColors.border),
                 const SizedBox(height: 8),
                 AnimatedSize(
                   duration: const Duration(milliseconds: 200),
@@ -380,18 +661,28 @@ class _ValueChipState extends State<_ValueChip> {
   @override
   Widget build(BuildContext context) {
     return InputChip(
-      label: Text(widget.value['value'], style: const TextStyle(fontSize: 13)),
+      label: Text(
+        widget.value['value'],
+        style: const TextStyle(
+          fontSize: 13,
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
       deleteIcon:
           _isDeleting
               ? const SizedBox(
                 width: 14,
                 height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.textSecondary,
+                ),
               )
-              : const Icon(Icons.close, size: 14),
+              : const Icon(Icons.close, size: 14, color: AppColors.textSecondary),
       onDeleted: _isDeleting ? null : _handleDelete,
-      backgroundColor: Colors.grey.shade100,
-      side: BorderSide(color: Colors.grey.shade200),
+      backgroundColor: AppColors.background,
+      side: const BorderSide(color: AppColors.border),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
   }
