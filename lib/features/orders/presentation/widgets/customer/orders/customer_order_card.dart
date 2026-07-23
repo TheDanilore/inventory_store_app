@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
-import 'package:inventory_store_app/features/orders/presentation/bloc/orders_cubit.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/orders/customer_order_detail_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+
 
 class CustomerOrderCard extends StatefulWidget {
   final OrderEntity order;
@@ -224,7 +225,7 @@ class _CustomerOrderCardState extends State<CustomerOrderCard> {
   void _showOrderDetails(OrderEntity order) async {
     setState(() => _isLoadingDetails = true);
     try {
-      final cubit = context.read<OrdersCubit>();
+      final cubit = context.read<CustomerOrdersCubit>();
       final items = await cubit.fetchOrderItems(order.id);
 
       if (!mounted) return;

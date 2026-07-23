@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
-import 'package:inventory_store_app/features/orders/presentation/bloc/orders_cubit.dart';
-import 'package:inventory_store_app/features/orders/presentation/bloc/orders_state.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders_cubit.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders_state.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/orders/customer_order_card.dart';
 
 class CustomerOrdersScreen extends StatefulWidget {
@@ -32,7 +33,8 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OrdersCubit>().init();
+      final user = Supabase.instance.client.auth.currentUser;
+      context.read<CustomerOrdersCubit>().init(user?.id);
     });
 
     _scrollController.addListener(_onScroll);
@@ -50,10 +52,10 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      final cubit = context.read<OrdersCubit>();
+      final cubit = context.read<CustomerOrdersCubit>();
       final state = cubit.state;
-      if (!state.isLoading && state.orders.length < state.totalRecords) {
-        cubit.loadOrders(reset: false);
+      if (!state.isLoadingMore && state.hasMore) {
+        cubit.loadMore();
       }
     }
   }
@@ -62,14 +64,15 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       if (!mounted) return;
-      context.read<OrdersCubit>().setSearchQuery(query);
+      context.read<CustomerOrdersCubit>().setSearchQuery(query);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<OrdersCubit>().state;
-    final cubit = context.read<OrdersCubit>();
+    final state = context.watch<CustomerOrdersCubit>().state;
+    final cubit = context.read<CustomerOrdersCubit>();
+    final displayOrders = state.filteredOrders;
 
     return CustomerLayout(
       title: 'Mis Pedidos',
@@ -79,7 +82,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () async {
-          await cubit.loadOrders(reset: true);
+          await cubit.refresh();
         },
         child: CustomScrollView(
           controller: _scrollController,
@@ -93,7 +96,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                   children: [
                     if (state.isBackgroundLoading)
                       _buildBackgroundSyncIndicator(),
-                    _buildHeaderBanner(state.orders.length),
+                    _buildHeaderBanner(displayOrders.length),
                   ],
                 ),
               ),
@@ -125,7 +128,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
             ),
 
             // Bottom Loading Indicator
-            if (state.isLoading)
+            if (state.isLoadingMore)
               const SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
@@ -151,7 +154,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
       ),
-      child: Row(
+      child: const Row(
         children: [
           SizedBox(
             width: 14,
@@ -161,8 +164,8 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
               color: AppColors.primary,
             ),
           ),
-          const SizedBox(width: 10),
-          const Text(
+          SizedBox(width: 10),
+          Text(
             'Actualizando pedidos...',
             style: TextStyle(
               fontSize: 12,
@@ -285,7 +288,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     );
   }
 
-  Widget _buildFilters(OrdersState state, OrdersCubit cubit) {
+  Widget _buildFilters(CustomerOrdersState state, CustomerOrdersCubit cubit) {
     return SizedBox(
       height: 38,
       child: ListView.separated(
@@ -331,7 +334,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     );
   }
 
-  Widget _buildBody(OrdersState state, OrdersCubit cubit) {
+  Widget _buildBody(CustomerOrdersState state, CustomerOrdersCubit cubit) {
     if (state.isLoading) {
       return SliverList(
         delegate: SliverChildBuilderDelegate(
@@ -348,10 +351,10 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
       );
     }
 
-    if (state.customerIdFilter == null) {
-      return SliverToBoxAdapter(
+    if (state.profileId == null) {
+      return const SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.only(top: 40),
+          padding: EdgeInsets.only(top: 40),
           child: AppEmptyState(
             icon: Icons.person_off_outlined,
             title: 'Necesitas iniciar sesión',
@@ -374,7 +377,9 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
       );
     }
 
-    if (state.orders.isEmpty) {
+    final displayOrders = state.filteredOrders;
+
+    if (displayOrders.isEmpty) {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.only(top: 40),
@@ -398,7 +403,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
 
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        final order = state.orders[index];
+        final order = displayOrders[index];
         final isProcessing = state.isOrderProcessing(order.id);
         return CustomerOrderCard(
           key: ValueKey(order.id),
@@ -410,7 +415,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
             );
           },
         );
-      }, childCount: state.orders.length),
+      }, childCount: displayOrders.length),
     );
   }
 }

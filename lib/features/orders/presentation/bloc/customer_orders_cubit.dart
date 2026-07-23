@@ -1,16 +1,20 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/get_customer_orders_uc.dart';
+import 'package:inventory_store_app/features/orders/domain/usecases/get_order_items_uc.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders_state.dart';
-
 import 'package:injectable/injectable.dart';
 
 @injectable
 class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
   final GetCustomerOrdersUc getCustomerOrdersUc;
+  final GetOrderItemsUc getOrderItemsUc;
   static const int _limit = 15;
 
-  CustomerOrdersCubit({required this.getCustomerOrdersUc})
-    : super(const CustomerOrdersState());
+  CustomerOrdersCubit({
+    required this.getCustomerOrdersUc,
+    required this.getOrderItemsUc,
+  }) : super(const CustomerOrdersState());
 
   void init(String? profileId) {
     if (profileId == null) {
@@ -21,6 +25,22 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
       state.copyWith(profileId: profileId, isLoading: true, errorMessage: ''),
     );
     _loadData(profileId);
+  }
+
+  void setStatusFilter(String filter) {
+    emit(state.copyWith(statusFilter: filter));
+  }
+
+  void setSearchQuery(String query) {
+    emit(state.copyWith(searchQuery: query));
+  }
+
+  Future<List<OrderItemEntity>> fetchOrderItems(String orderId) async {
+    final result = await getOrderItemsUc(orderId);
+    return result.fold(
+      (failure) => throw Exception(failure.message),
+      (items) => items,
+    );
   }
 
   Future<void> _loadData(String profileId) async {

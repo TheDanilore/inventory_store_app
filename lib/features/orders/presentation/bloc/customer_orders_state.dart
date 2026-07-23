@@ -48,6 +48,21 @@ class CustomerOrdersState extends Equatable {
     );
   }
 
+  List<OrderEntity> get filteredOrders {
+    return orders.where((order) {
+      final matchesStatus =
+          statusFilter == 'ALL' || order.status == statusFilter;
+      final matchesSearch =
+          searchQuery.isEmpty ||
+          order.id.toLowerCase().contains(searchQuery.toLowerCase());
+      return matchesStatus && matchesSearch;
+    }).toList();
+  }
+
+  bool isOrderProcessing(String orderId) {
+    return false;
+  }
+
   @override
   List<Object?> get props => [
     orders,
@@ -61,3 +76,4 @@ class CustomerOrdersState extends Equatable {
     errorMessage,
   ];
 }
+
