@@ -120,7 +120,12 @@ class _AdminSidebarState extends State<AdminSidebar> {
 
                 if (!widget.isCollapsed) ...[
                   const SizedBox(height: 12),
-                  const Divider(height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+                  const Divider(
+                    height: 1,
+                    indent: 16,
+                    endIndent: 16,
+                    color: AppColors.border,
+                  ),
                   _buildSectionHeader('GESTIÓN COMERCIAL'),
                 ],
 
@@ -130,9 +135,10 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     icon: Icons.receipt_long_rounded,
                     title: 'Pedidos',
                     routePath: '/admin/orders',
-                    trailing: _pendingCount != null && _pendingCount! > 0
-                        ? _buildBadge(_pendingCount!)
-                        : null,
+                    trailing:
+                        _pendingCount != null && _pendingCount! > 0
+                            ? _buildBadge(_pendingCount!)
+                            : null,
                   ),
                   currentPath,
                 ),
@@ -220,7 +226,12 @@ class _AdminSidebarState extends State<AdminSidebar> {
 
                 if (!widget.isCollapsed) ...[
                   const SizedBox(height: 12),
-                  const Divider(height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+                  const Divider(
+                    height: 1,
+                    indent: 16,
+                    endIndent: 16,
+                    color: AppColors.border,
+                  ),
                   _buildSectionHeader('CONFIGURACIÓN ERP'),
                 ],
 
@@ -308,9 +319,10 @@ class _AdminSidebarState extends State<AdminSidebar> {
               height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
-                mainAxisAlignment: widget.isCollapsed
-                    ? MainAxisAlignment.center
-                    : MainAxisAlignment.spaceBetween,
+                mainAxisAlignment:
+                    widget.isCollapsed
+                        ? MainAxisAlignment.center
+                        : MainAxisAlignment.spaceBetween,
                 children: [
                   if (!widget.isCollapsed)
                     const Text(
@@ -340,57 +352,64 @@ class _AdminSidebarState extends State<AdminSidebar> {
   Widget _buildBrandHeader(BuildContext context) {
     return Container(
       height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primary, AppColors.accent],
+      padding: EdgeInsets.symmetric(horizontal: widget.isCollapsed ? 0 : 16),
+      child: ClipRect(
+        child: Row(
+          mainAxisAlignment:
+              widget.isCollapsed
+                  ? MainAxisAlignment.center
+                  : MainAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.accent],
+                ),
+                borderRadius: BorderRadius.circular(10),
               ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.storefront_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-          if (!widget.isCollapsed) ...[
-            const SizedBox(width: 12),
-            Expanded(
-              child: BlocBuilder<AppConfigCubit, AppConfigState>(
-                builder: (context, state) {
-                  final name = state.businessInfo?.businessName ?? 'ERP Tienda';
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const Text(
-                        'Panel de Control',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  );
-                },
+              child: const Icon(
+                Icons.storefront_rounded,
+                color: Colors.white,
+                size: 20,
               ),
             ),
+            if (!widget.isCollapsed) ...[
+              const SizedBox(width: 12),
+              Expanded(
+                child: BlocBuilder<AppConfigCubit, AppConfigState>(
+                  builder: (context, state) {
+                    final name =
+                        state.businessInfo?.businessName ?? 'ERP Tienda';
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const Text(
+                          'Panel de Control',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -415,15 +434,17 @@ class _AdminSidebarState extends State<AdminSidebar> {
     AdminSidebarItem item,
     String currentPath,
   ) {
-    final isActive = currentPath == item.routePath ||
+    final isActive =
+        currentPath == item.routePath ||
         (item.routePath != '/admin' && currentPath.startsWith(item.routePath));
 
     final tile = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: Material(
-        color: isActive
-            ? AppColors.primary.withValues(alpha: 0.1)
-            : Colors.transparent,
+        color:
+            isActive
+                ? AppColors.primary.withValues(alpha: 0.1)
+                : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
@@ -431,33 +452,44 @@ class _AdminSidebarState extends State<AdminSidebar> {
           hoverColor: AppColors.primaryLight,
           child: Container(
             height: 42,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                Icon(
-                  item.icon,
-                  size: 20,
-                  color: isActive ? AppColors.primary : AppColors.textSecondary,
-                ),
-                if (!widget.isCollapsed) ...[
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
-                        color: isActive
-                            ? AppColors.primary
-                            : AppColors.textPrimary,
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.isCollapsed ? 0 : 12,
+            ),
+            child: ClipRect(
+              child: Row(
+                mainAxisAlignment:
+                    widget.isCollapsed
+                        ? MainAxisAlignment.center
+                        : MainAxisAlignment.start,
+                children: [
+                  Icon(
+                    item.icon,
+                    size: 20,
+                    color:
+                        isActive ? AppColors.primary : AppColors.textSecondary,
+                  ),
+                  if (!widget.isCollapsed) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight:
+                              isActive ? FontWeight.w800 : FontWeight.w500,
+                          color:
+                              isActive
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
+                        ),
                       ),
                     ),
-                  ),
-                  if (item.trailing != null) item.trailing!,
+                    if (item.trailing != null) item.trailing!,
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -465,10 +497,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
     );
 
     if (widget.isCollapsed) {
-      return Tooltip(
-        message: item.title,
-        child: tile,
-      );
+      return Tooltip(message: item.title, child: tile);
     }
     return tile;
   }
@@ -479,7 +508,9 @@ class _AdminSidebarState extends State<AdminSidebar> {
     String currentPath,
   ) {
     final hasActiveChild = item.children.any(
-      (sub) => currentPath == sub.routePath || currentPath.startsWith('${sub.routePath}/'),
+      (sub) =>
+          currentPath == sub.routePath ||
+          currentPath.startsWith('${sub.routePath}/'),
     );
     final isOpen = _expandedGroups.contains(item.title) || hasActiveChild;
 
@@ -488,35 +519,43 @@ class _AdminSidebarState extends State<AdminSidebar> {
         tooltip: item.title,
         offset: const Offset(60, 0),
         onSelected: (route) => context.go(route),
-        itemBuilder: (ctx) => item.children
-            .map(
-              (sub) => PopupMenuItem(
-                value: sub.routePath,
-                child: Row(
-                  children: [
-                    Icon(sub.icon, size: 18, color: AppColors.textSecondary),
-                    const SizedBox(width: 10),
-                    Text(sub.title),
-                  ],
-                ),
-              ),
-            )
-            .toList(),
+        itemBuilder:
+            (ctx) =>
+                item.children
+                    .map(
+                      (sub) => PopupMenuItem(
+                        value: sub.routePath,
+                        child: Row(
+                          children: [
+                            Icon(
+                              sub.icon,
+                              size: 18,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(sub.title),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           child: Container(
             height: 42,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: hasActiveChild
-                  ? AppColors.primary.withValues(alpha: 0.1)
-                  : Colors.transparent,
+              color:
+                  hasActiveChild
+                      ? AppColors.primary.withValues(alpha: 0.1)
+                      : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               item.icon,
               size: 20,
-              color: hasActiveChild ? AppColors.primary : AppColors.textSecondary,
+              color:
+                  hasActiveChild ? AppColors.primary : AppColors.textSecondary,
             ),
           ),
         ),
@@ -543,9 +582,10 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     Icon(
                       item.icon,
                       size: 20,
-                      color: hasActiveChild
-                          ? AppColors.primary
-                          : AppColors.textSecondary,
+                      color:
+                          hasActiveChild
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -555,12 +595,14 @@ class _AdminSidebarState extends State<AdminSidebar> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: hasActiveChild
-                              ? FontWeight.w800
-                              : FontWeight.w500,
-                          color: hasActiveChild
-                              ? AppColors.primary
-                              : AppColors.textPrimary,
+                          fontWeight:
+                              hasActiveChild
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                          color:
+                              hasActiveChild
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
                         ),
                       ),
                     ),
@@ -593,9 +635,12 @@ class _AdminSidebarState extends State<AdminSidebar> {
               ),
             ),
             child: Column(
-              children: item.children
-                  .map((sub) => _buildSidebarTile(context, sub, currentPath))
-                  .toList(),
+              children:
+                  item.children
+                      .map(
+                        (sub) => _buildSidebarTile(context, sub, currentPath),
+                      )
+                      .toList(),
             ),
           ),
         ),

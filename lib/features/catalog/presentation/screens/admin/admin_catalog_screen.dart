@@ -182,10 +182,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                       double headerMaxHeight;
                       if (isDesktop) {
                         headerMaxHeight =
-                            state.searchByIngredient ? 120.0 : 70.0;
+                            state.searchByIngredient ? 115.0 : 68.0;
                       } else {
                         headerMaxHeight =
-                            state.searchByIngredient ? 175.0 : 115.0;
+                            state.searchByIngredient ? 165.0 : 110.0;
                       }
                       const double headerMinHeight = 60.0;
 

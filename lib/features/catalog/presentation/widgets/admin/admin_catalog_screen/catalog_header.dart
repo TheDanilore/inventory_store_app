@@ -32,12 +32,7 @@ class CatalogHeader extends StatefulWidget {
 }
 
 class _CatalogHeaderState extends State<CatalogHeader> {
-  static final List<String> _searchHistory = [
-    'Paracetamol',
-    'Ibuprofeno',
-    'Amoxicilina',
-    'Glifosato',
-  ];
+  static final List<String> _searchHistory = [];
 
   @override
   void initState() {
