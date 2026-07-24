@@ -483,7 +483,29 @@ class _CatalogHeaderState extends State<CatalogHeader> {
   Widget _buildMobileLayout() {
     return Column(
       children: [
-        _buildSearchField(),
+        Row(
+          children: [
+            if (widget.isPosMode && widget.onBack != null) ...[
+              IconButton(
+                onPressed: widget.onBack,
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: AppColors.textPrimary,
+                ),
+                tooltip: 'Volver al Catálogo',
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.background,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radius),
+                    side: const BorderSide(color: AppColors.border),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Expanded(child: _buildSearchField()),
+          ],
+        ),
         AnimatedSize(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,
