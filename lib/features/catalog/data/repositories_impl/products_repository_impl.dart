@@ -86,6 +86,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
           searchQuery.trim().isNotEmpty) {
         selectString +=
             ', product_active_ingredients!inner(active_ingredients!inner(name))';
+      } else {
+        selectString +=
+            ', product_active_ingredients(active_ingredients(name))';
       }
 
       var query = _supabase.from('products').select(selectString);

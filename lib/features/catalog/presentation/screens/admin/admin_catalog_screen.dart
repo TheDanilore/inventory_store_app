@@ -354,25 +354,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           onPageChanged: cubit.setPage,
                           onSale:
                               widget.onAddToCart ??
-                              (product) {
-                                showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  backgroundColor: Colors.transparent,
-                                  builder:
-                                      (_) => Padding(
-                                        padding: EdgeInsets.only(
-                                          bottom:
-                                              MediaQuery.of(
-                                                context,
-                                              ).viewInsets.bottom,
-                                        ),
-                                        child: PosAddToCartSheet(
-                                          productEntity: product,
-                                        ),
-                                      ),
-                                );
-                              },
+                              (product) => PosAddToCartSheet.show(context, product),
                           onToggleActive:
                               (p) => _toggleProductoActivo(p, cubit),
                           searchByIngredient: state.searchByIngredient,

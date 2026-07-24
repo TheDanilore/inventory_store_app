@@ -183,11 +183,24 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
           enriched.sort((a, b) => b.totalStock.compareTo(a.totalStock));
         }
 
+        final matchedMap = <String, String>{};
+        for (final p in enriched) {
+          final ingName = (p.details['active_ingredient'] ??
+                  p.details['active_ingredients'] ??
+                  p.details['principio_activo'] ??
+                  p.details['formula'])
+              ?.toString();
+          if (ingName != null && ingName.isNotEmpty) {
+            matchedMap[p.id] = ingName;
+          }
+        }
+
         emit(
           state.copyWith(
             catalogState:
                 enriched.isEmpty ? ViewState.empty : ViewState.success,
             products: enriched,
+            matchedIngredients: matchedMap,
             totalCount: data.totalCount,
             clearError: true,
           ),

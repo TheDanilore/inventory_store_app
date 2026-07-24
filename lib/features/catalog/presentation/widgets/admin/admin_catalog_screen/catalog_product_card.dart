@@ -61,11 +61,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
         (widget.highlightIngredient != null &&
                 widget.highlightIngredient!.isNotEmpty)
             ? widget.highlightIngredient!
-            : (widget.product.details['active_ingredient'] ??
-                    widget.product.details['active_ingredients'] ??
-                    widget.product.details['principio_activo'] ??
-                    widget.product.details['formula'])
-                ?.toString();
+            : null;
 
     return Material(
       color: Colors.transparent,

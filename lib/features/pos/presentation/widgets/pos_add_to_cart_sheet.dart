@@ -15,7 +15,57 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 /// Carga variantes con el join relacional correcto (sin JSONB obsoleto).
 class PosAddToCartSheet extends StatefulWidget {
   final ProductEntity productEntity;
-  const PosAddToCartSheet({super.key, required this.productEntity});
+  final bool isDialogMode;
+
+  const PosAddToCartSheet({
+    super.key,
+    required this.productEntity,
+    this.isDialogMode = false,
+  });
+
+  static Future<void> show(BuildContext context, ProductEntity product) async {
+    final isDesktop = MediaQuery.of(context).size.width >= 700;
+    final cartCubit = context.read<CartCubit>();
+
+    if (isDesktop) {
+      await showDialog<void>(
+        context: context,
+        builder:
+            (ctx) => BlocProvider.value(
+              value: cartCubit,
+              child: Dialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: PosAddToCartSheet(
+                    productEntity: product,
+                    isDialogMode: true,
+                  ),
+                ),
+              ),
+            ),
+      );
+    } else {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder:
+            (_) => BlocProvider.value(
+              value: cartCubit,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: PosAddToCartSheet(productEntity: product),
+              ),
+            ),
+      );
+    }
+  }
 
   @override
   State<PosAddToCartSheet> createState() => _PosAddToCartSheetState();
@@ -170,31 +220,68 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
 
     return Container(
       padding: EdgeInsets.fromLTRB(
-        20,
-        8,
-        20,
-        MediaQuery.of(context).viewInsets.bottom + 28,
+        24,
+        widget.isDialogMode ? 20 : 8,
+        24,
+        widget.isDialogMode
+            ? 24
+            : (MediaQuery.of(context).viewInsets.bottom + 28),
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius:
+            widget.isDialogMode
+                ? BorderRadius.circular(20)
+                : const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE2E8F0),
-                borderRadius: BorderRadius.circular(2),
+          if (widget.isDialogMode) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.shopping_bag_outlined,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Agregar al Carrito',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                  tooltip: 'Cerrar',
+                ),
+              ],
+            ),
+            const Divider(height: 20),
+          ] else ...[
+            // Handle
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
+          ],
 
           // Header producto
           Row(

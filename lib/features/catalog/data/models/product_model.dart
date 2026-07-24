@@ -75,6 +75,28 @@ class ProductModel {
     final categoriesMap = json['categories'] as Map<String, dynamic>?;
     final variantsList = json['product_variants'] as List? ?? [];
     final batchesList = json['warehouse_stock_batches'] as List? ?? [];
+    final Map<String, dynamic> rawDetails = Map<String, dynamic>.from(
+      json['details'] is String
+          ? (jsonDecode(json['details'] as String) as Map<String, dynamic>)
+          : (json['details'] as Map<String, dynamic>?) ?? {},
+    );
+
+    final paiList = json['product_active_ingredients'] as List?;
+    if (paiList != null && paiList.isNotEmpty) {
+      final names = <String>[];
+      for (final item in paiList) {
+        if (item is Map<String, dynamic>) {
+          final ai = item['active_ingredients'] as Map<String, dynamic>?;
+          if (ai != null && ai['name'] != null) {
+            names.add(ai['name'].toString());
+          }
+        }
+      }
+      if (names.isNotEmpty) {
+        rawDetails['active_ingredient'] = names.join(', ');
+      }
+    }
+
     return ProductModel(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -98,10 +120,7 @@ class ProductModel {
           json['updated_at'] != null
               ? DateTime.parse(json['updated_at'] as String)
               : null,
-      details:
-          json['details'] is String
-              ? jsonDecode(json['details'] as String) as Map<String, dynamic>
-              : (json['details'] as Map<String, dynamic>?) ?? {},
+      details: rawDetails,
       createdBy: json['created_by'] as String?,
       updatedBy: json['updated_by'] as String?,
       stockControl: json['stock_control'] as bool? ?? true,

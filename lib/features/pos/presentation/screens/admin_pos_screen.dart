@@ -85,18 +85,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       return;
     }
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (_) => Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: PosAddToCartSheet(productEntity: product),
-          ),
-    );
+    PosAddToCartSheet.show(context, product);
   }
 
   @override
