@@ -146,13 +146,16 @@ lib/
 - **Flutter SDK** `>=3.7.2`
 - **Dart SDK** `^3.7.2`
 - Proyecto en [Supabase](https://supabase.com/) con las tablas, funciones y políticas RLS configuradas.
-- Variables de entorno: `SUPABASE_URL` y `SUPABASE_ANON_KEY` (en un archivo env.json).
+- Archivo de configuración local `env.json` en la raíz del proyecto.
 
-y dentro de env.json debe de estar la url y la key de supabase, por ejemplo:
+Para configurarlo, puedes duplicar el archivo `env.json.example` incluido en el proyecto, renombrarlo como `env.json` y completar la siguiente estructura con tus credenciales (este archivo está ignorado en Git por seguridad):
+
+```json
 {
   "SUPABASE_URL": "https://xxxxxxxx.supabase.co",
   "SUPABASE_KEY": "sb_publishable_xxxxxxxx"
 }
+```
 
 ---
 
@@ -169,18 +172,44 @@ y dentro de env.json debe de estar la url y la key de supabase, por ejemplo:
    flutter pub get
    ```
 
-3. **Configura Supabase** con tu URL y Anon Key en las constantes del proyecto.
+3. **Configura tus credenciales:**
+   Crea el archivo `env.json` en la raíz del proyecto siguiendo el formato del punto anterior.
 
-4. **Regenera el código de inyección de dependencias** (si modificas cubits/use cases con `@injectable`):
+4. **Generar el código de inyección de dependencias:**
    ```bash
-   dart run build_runner build
+   dart run build_runner build --delete-conflicting-outputs
    ```
 
 5. **Ejecuta la aplicación:**
    ```bash
    flutter run --dart-define-from-file=env.json
    ```
+   
+6. **Compilación y Generación de Binarios:**
+   Si deseas generar los instalables de la aplicación, utiliza los siguientes comandos guiados:
 
+   ```bash
+   # 1. Limpiar el proyecto y refrescar dependencias
+   flutter clean
+   flutter pub get
+
+   # 2. Reconstruir inyección de dependencias y modelos generados
+   dart run build_runner build -d --delete-conflicting-outputs
+
+   # 3. Compilar según la plataforma o necesidad:
+   
+   # APK de desarrollo (Debug)
+   flutter build apk --debug --dart-define-from-file=env.json
+   
+   # APK de producción (Release único)
+   flutter build apk --release --dart-define-from-file=env.json
+
+   # APK optimizado para múltiples arquitecturas (Split por ABI)
+   flutter build apk --split-per-abi --dart-define-from-file=env.json
+
+   # Android App Bundle (Para subir a Google Play Store)
+   flutter build appbundle --release --dart-define-from-file=env.json
+   ```
 ---
 
 ## 📄 Licencia
