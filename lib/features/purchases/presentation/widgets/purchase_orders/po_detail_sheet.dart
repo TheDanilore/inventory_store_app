@@ -1,0 +1,1594 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_cubit.dart';
+
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/features/purchases/data/models/purchase_order_model.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/purchase_order_item_entity.dart';
+
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
+import 'package:inventory_store_app/core/widgets/detail_sheet_header.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/financial_summary_card.dart';
+import 'package:inventory_store_app/core/widgets/product_item_card.dart';
+
+class PODetailSheet extends StatefulWidget {
+  final PurchaseOrderModel po;
+  final Future<List<PurchaseOrderItemEntity>> Function() loadItems;
+  final VoidCallback onReceive;
+  final Future<void> Function(String) onUpdateStatus;
+  final VoidCallback? onPaymentSuccess;
+  final bool isDialog;
+
+  const PODetailSheet({
+    super.key,
+    required this.po,
+    required this.loadItems,
+    required this.onReceive,
+    required this.onUpdateStatus,
+    this.onPaymentSuccess,
+    this.isDialog = false,
+  });
+
+  @override
+  State<PODetailSheet> createState() => _PODetailSheetState();
+}
+
+class _PODetailSheetState extends State<PODetailSheet> {
+  List<PurchaseOrderItemEntity>? _items;
+  bool _isLoadingItems = true;
+  bool _isProcessingAction = false;
+
+  // ── Estado local "espejo" de los campos editables ──────────────────
+  // widget.po es inmutable y viene del padre; si solo leemos de ahí,
+  // los cambios hechos dentro de este sheet (método de pago, pago
+  // registrado, estado) no se reflejan hasta que el padre vuelve a
+  // construir el widget con una copia nueva de la orden (ej. tras un
+  // refresh manual). Para que el sheet se actualice al instante,
+  // guardamos copias locales y las mutamos con setState() apenas la
+  // operación tiene éxito, en vez de depender únicamente del
+  // Navigator.pop(context, true) para refrescar.
+  late String _paymentMethod = widget.po.paymentMethod;
+  late String _status = widget.po.status;
+  late double _amountPaid = widget.po.amountPaid;
+
+  double get _pending => widget.po.totalAmount - _amountPaid;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchItems();
+  }
+
+  Future<void> _fetchItems() async {
+    try {
+      final items = await widget.loadItems();
+      if (mounted) {
+        setState(() {
+          _items = items;
+          _isLoadingItems = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingItems = false);
+        AppSnackbar.show(
+          context,
+          message: 'Error al cargar detalles: $e',
+          type: SnackbarType.error,
+        );
+      }
+    }
+  }
+
+  Future<void> _handleUpdateStatus(String newStatus) async {
+    if (_isProcessingAction) return;
+
+    setState(() => _isProcessingAction = true);
+    try {
+      await widget.onUpdateStatus(newStatus);
+      if (mounted) {
+        setState(() => _status = newStatus);
+        AppSnackbar.show(
+          context,
+          message: 'Estado actualizado correctamente.',
+          type: SnackbarType.success,
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al actualizar: $e',
+          type: SnackbarType.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessingAction = false);
+    }
+  }
+
+  /// Confirmación de cancelación con feedback háptico y diálogo.
+  Future<void> _confirmCancelOrder() async {
+    HapticFeedback.heavyImpact();
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Anular Orden',
+      message:
+          '¿Estás seguro de que deseas anular esta orden de compra? Esta acción no se puede deshacer.',
+      confirmText: 'Sí, anular',
+      cancelText: 'Cancelar',
+      confirmColor: AppColors.danger,
+    );
+    if (confirmed == true && mounted) {
+      await _handleUpdateStatus('CANCELLED');
+    }
+  }
+
+  Future<void> _showPaymentDialog() async {
+    final supabase = Supabase.instance.client;
+    List<Map<String, dynamic>> accounts = [];
+    try {
+      final aRes = await supabase
+          .from('financial_accounts')
+          .select('id, name, type, balance')
+          .eq('is_active', true)
+          .order('name');
+      accounts = List<Map<String, dynamic>>.from(aRes as List);
+    } catch (_) {}
+
+    if (!mounted) return;
+    if (accounts.isEmpty) {
+      AppSnackbar.show(
+        context,
+        message: 'No hay cuentas financieras activas disponibles.',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    String selectedAccountId = accounts.first['id'] as String;
+
+    // ── Pre-cargar turnos de caja abiertos ───────────────────────────
+    final Map<String, String> activeShiftByAccount = {};
+    try {
+      final openShiftsRes = await supabase
+          .from('cash_shifts')
+          .select('id, account_id')
+          .eq('status', 'OPEN');
+      for (final s in openShiftsRes as List) {
+        final accId = s['account_id'] as String?;
+        final shiftId = s['id'] as String?;
+        if (accId != null && shiftId != null) {
+          activeShiftByAccount[accId] = shiftId;
+        }
+      }
+    } catch (_) {}
+
+    final amountCtrl = TextEditingController(text: _pending.toStringAsFixed(2));
+
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final selAcc = accounts.firstWhere(
+              (a) => a['id'] == selectedAccountId,
+              orElse: () => accounts.first,
+            );
+            final accType = selAcc['type'] as String? ?? 'OTRO';
+            final isCaja = accType == 'CAJA';
+            final hasShift = activeShiftByAccount.containsKey(
+              selectedAccountId,
+            );
+            final isNoShiftWarning = isCaja && !hasShift;
+            final accBalance = (selAcc['balance'] as num? ?? 0).toDouble();
+            final payInput = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+            final isInsufficientFunds = accBalance < payInput && payInput > 0;
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.payments_rounded, color: AppColors.success),
+                  SizedBox(width: 8),
+                  Text(
+                    'Registrar Pago de Orden',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Proveedor: ${widget.po.supplierName}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Deuda Pendiente: S/ ${_pending.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: AppColors.danger,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Cuenta Origen (Caja / Banco):',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedAccountId,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                      ),
+                      items:
+                          accounts.map((acc) {
+                            final name = acc['name'] as String;
+                            final bal = (acc['balance'] as num).toDouble();
+                            return DropdownMenuItem<String>(
+                              value: acc['id'] as String,
+                              child: Text(
+                                '$name (Saldo: S/ ${bal.toStringAsFixed(2)})',
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            );
+                          }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() => selectedAccountId = val);
+                        }
+                      },
+                    ),
+                    if (isNoShiftWarning) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.warning),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: AppColors.warning,
+                              size: 18,
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Esta caja no tiene un turno abierto. Debes abrir la caja antes de registrar un pago.',
+                                style: TextStyle(
+                                  color: AppColors.warning,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (isInsufficientFunds) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.danger),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.account_balance_wallet_outlined,
+                              color: AppColors.danger,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Saldo insuficiente. La cuenta tiene S/ ${accBalance.toStringAsFixed(2)} y el monto a pagar es S/ ${payInput.toStringAsFixed(2)}.',
+                                style: const TextStyle(
+                                  color: AppColors.danger,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Monto a pagar (S/):',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: amountCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      onChanged: (_) => setDialogState(() {}),
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        (isNoShiftWarning || isInsufficientFunds)
+                            ? AppColors.textMuted
+                            : AppColors.success,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed:
+                      isNoShiftWarning
+                          ? () {
+                            AppSnackbar.show(
+                              context,
+                              message:
+                                  'Debes abrir el turno de caja antes de registrar un egreso en efectivo.',
+                              type: SnackbarType.warning,
+                            );
+                          }
+                          : isInsufficientFunds
+                          ? () {
+                            AppSnackbar.show(
+                              context,
+                              message:
+                                  'Saldo insuficiente en la cuenta seleccionada.',
+                              type: SnackbarType.error,
+                            );
+                          }
+                          : () => Navigator.pop(ctx, true),
+                  child: const Text('Confirmar Pago'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      final payAmount = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+      if (payAmount <= 0) {
+        AppSnackbar.show(
+          context,
+          message: 'Ingrese un monto válido mayor a 0.',
+          type: SnackbarType.error,
+        );
+        return;
+      }
+
+      // Validación de saldo suficiente en la cuenta seleccionada
+      final selAccFinal = accounts.firstWhere(
+        (a) => a['id'] == selectedAccountId,
+        orElse: () => accounts.first,
+      );
+      final accBalanceFinal = (selAccFinal['balance'] as num? ?? 0).toDouble();
+      if (accBalanceFinal < payAmount) {
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message:
+                'Saldo insuficiente. La cuenta tiene S/ ${accBalanceFinal.toStringAsFixed(2)} y el monto requerido es S/ ${payAmount.toStringAsFixed(2)}.',
+            type: SnackbarType.error,
+          );
+        }
+        return;
+      }
+
+      final selAcc = accounts.firstWhere(
+        (a) => a['id'] == selectedAccountId,
+        orElse: () => accounts.first,
+      );
+      final accType = selAcc['type'] as String? ?? 'OTRO';
+      final accBalance = (selAcc['balance'] as num?)?.toDouble() ?? 0.0;
+      final accName = selAcc['name'] as String? ?? 'la cuenta';
+
+      if (accBalance < payAmount) {
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message:
+                'Saldo insuficiente en la cuenta "$accName". Saldo disponible: S/ ${accBalance.toStringAsFixed(2)}, Monto a pagar: S/ ${payAmount.toStringAsFixed(2)}.',
+            type: SnackbarType.warning,
+          );
+        }
+        return;
+      }
+
+      // ── Validar Turno de Caja Activo ───────────────────────────────
+
+      String? activeShiftId;
+      try {
+        final shiftRes =
+            await supabase
+                .from('cash_shifts')
+                .select('id')
+                .eq('account_id', selectedAccountId)
+                .eq('status', 'OPEN')
+                .maybeSingle();
+
+        if (shiftRes != null) {
+          activeShiftId = shiftRes['id'] as String?;
+        }
+      } catch (_) {}
+
+      if (accType == 'CAJA' && activeShiftId == null) {
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message:
+                'No hay un turno de caja abierto para esta cuenta. Debes abrir el turno de caja antes de registrar un egreso en efectivo.',
+            type: SnackbarType.warning,
+          );
+        }
+        return;
+      }
+
+      setState(() => _isProcessingAction = true);
+      try {
+        // Obtener el UUID del usuario actualmente logueado
+        final currentUserId = supabase.auth.currentUser?.id;
+
+        final response = await supabase.rpc(
+          'register_supplier_credit_payment_rpc',
+          params: {
+            'p_supplier_id': widget.po.supplierId,
+            'p_credit_id': null,
+            'p_amount': payAmount,
+            'p_account_id': selectedAccountId,
+            'p_order_id': widget.po.id,
+            'p_notes':
+                'Pago de Orden de Compra #${widget.po.id.substring(0, 8)}',
+            'p_shift_id': activeShiftId,
+            'p_profile_id': currentUserId, // ← UUID del usuario logueado
+          },
+        );
+
+        // El RPC retorna un JSONB: {'success': true} o {'success': false, 'error': '...'}
+        // Si no se verifica esto, cualquier error interno del RPC pasa silencioso.
+        final result = response as Map<String, dynamic>?;
+        final didSucceed = result?['success'] == true;
+
+        if (!mounted) return;
+
+        if (!didSucceed) {
+          final errMsg =
+              result?['error'] as String? ??
+              result?['detail'] as String? ??
+              'Error desconocido en el servidor.';
+          AppSnackbar.show(
+            context,
+            message: 'Error del servidor: $errMsg',
+            type: SnackbarType.error,
+          );
+          return;
+        }
+
+        setState(() {
+          _amountPaid += payAmount;
+        });
+        AppSnackbar.show(
+          context,
+          message:
+              'Pago de S/ ${payAmount.toStringAsFixed(2)} registrado correctamente.',
+          type: SnackbarType.success,
+        );
+
+        try {
+          context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
+        } catch (_) {}
+        widget.onPaymentSuccess?.call();
+      } catch (e) {
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Error al registrar pago: $e',
+            type: SnackbarType.error,
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isProcessingAction = false);
+      }
+    }
+  }
+
+  bool get _canEditPaymentMethod =>
+      (_status == 'SENT' || _status == 'PENDING') && _amountPaid == 0;
+
+  Future<void> _showEditPaymentMethodDialog() async {
+    String selectedMethod = _paymentMethod;
+
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.edit_outlined, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Text(
+                    'Editar Método de Pago',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Seleccione la nueva forma de pago acordada:',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedMethod,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'EFECTIVO',
+                        child: Text('Efectivo'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'TARJETA',
+                        child: Text('Tarjeta / Transferencia'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'CRÉDITO',
+                        child: Text('Línea de Crédito'),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedMethod = val);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Guardar Cambios'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      if (selectedMethod == _paymentMethod) return;
+
+      setState(() => _isProcessingAction = true);
+      try {
+        final supabase = Supabase.instance.client;
+        final supplierId = widget.po.supplierId;
+
+        if (supplierId == null) return;
+        final orderAmount = widget.po.totalAmount;
+
+        // Si se cambia la forma de pago A Crédito (CRÉDITO)
+        if (selectedMethod == 'CRÉDITO') {
+          final creditRes =
+              await supabase
+                  .from('supplier_credits')
+                  .select('id, current_debt, credit_limit, is_active')
+                  .eq('supplier_id', supplierId)
+                  .maybeSingle();
+
+          if (creditRes == null) {
+            if (mounted) {
+              AppSnackbar.show(
+                context,
+                message:
+                    'El proveedor no tiene una línea de crédito habilitada. Por favor regístrala en Créditos Proveedores.',
+                type: SnackbarType.error,
+              );
+            }
+            return;
+          }
+
+          final isActive = creditRes['is_active'] as bool? ?? true;
+          if (!isActive) {
+            if (mounted) {
+              AppSnackbar.show(
+                context,
+                message: 'La línea de crédito de este proveedor está inactiva.',
+                type: SnackbarType.error,
+              );
+            }
+            return;
+          }
+
+          final creditLimit =
+              (creditRes['credit_limit'] as num?)?.toDouble() ?? 0.0;
+          final currentDebtTable =
+              (creditRes['current_debt'] as num?)?.toDouble() ?? 0.0;
+
+          // Calcular deuda acumulada en órdenes pendientes
+          final pendingPosRes = await supabase
+              .from('purchase_orders')
+              .select('total_amount, amount_paid')
+              .eq('supplier_id', supplierId)
+              .inFilter('payment_status', ['PENDING', 'PARTIAL'])
+              .neq('status', 'CANCELLED');
+
+          double poDebt = 0.0;
+          for (final po in pendingPosRes as List) {
+            final total = (po['total_amount'] as num?)?.toDouble() ?? 0.0;
+            final paid = (po['amount_paid'] as num?)?.toDouble() ?? 0.0;
+            final debt = (total - paid) > 0 ? (total - paid) : 0.0;
+            poDebt += debt;
+          }
+
+          final realDebt =
+              currentDebtTable > poDebt ? currentDebtTable : poDebt;
+
+          if (creditLimit <= 0) {
+            if (mounted) {
+              AppSnackbar.show(
+                context,
+                message:
+                    'El proveedor tiene un límite de crédito de S/ 0.00. Configura un límite en Créditos Proveedores.',
+                type: SnackbarType.error,
+              );
+            }
+            return;
+          }
+
+          if ((realDebt + orderAmount) > creditLimit) {
+            final available = (creditLimit - realDebt).clamp(
+              0.0,
+              double.infinity,
+            );
+            if (mounted) {
+              AppSnackbar.show(
+                context,
+                message:
+                    'Límite de crédito excedido. Disponible: S/ ${available.toStringAsFixed(2)}, Monto de la orden: S/ ${orderAmount.toStringAsFixed(2)}.',
+                type: SnackbarType.error,
+              );
+            }
+            return;
+          }
+
+          // Actualizar deuda en la tabla supplier_credits
+          final creditId = creditRes['id'] as String;
+          await supabase
+              .from('supplier_credits')
+              .update({
+                'current_debt': currentDebtTable + orderAmount,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', creditId);
+
+          // Registrar movimiento de cargo
+          final currentUserId = supabase.auth.currentUser?.id;
+          await supabase.from('supplier_credit_movements').insert({
+            'supplier_credit_id': creditId,
+            'purchase_order_id': widget.po.id,
+            'movement_type': 'CHARGE',
+            'amount': orderAmount,
+            'notes':
+                'Cambio de método de pago a CRÉDITO en Orden #${widget.po.id.substring(0, 8)}',
+            'created_by': currentUserId,
+          });
+        }
+
+        // Si se cambia de CRÉDITO a otra forma de pago (EFECTIVO o TARJETA)
+        if (_paymentMethod == 'CRÉDITO' && selectedMethod != 'CRÉDITO') {
+          final creditRes =
+              await supabase
+                  .from('supplier_credits')
+                  .select('id, current_debt')
+                  .eq('supplier_id', supplierId)
+                  .maybeSingle();
+
+          if (creditRes != null) {
+            final creditId = creditRes['id'] as String;
+            final currentDebtTable =
+                (creditRes['current_debt'] as num?)?.toDouble() ?? 0.0;
+            final newDebt = (currentDebtTable - orderAmount).clamp(
+              0.0,
+              double.infinity,
+            );
+            await supabase
+                .from('supplier_credits')
+                .update({
+                  'current_debt': newDebt,
+                  'updated_at': DateTime.now().toIso8601String(),
+                })
+                .eq('id', creditId);
+          }
+        }
+
+        await supabase
+            .from('purchase_orders')
+            .update({
+              'payment_method': selectedMethod,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', widget.po.id);
+
+        if (mounted) {
+          setState(() => _paymentMethod = selectedMethod);
+          AppSnackbar.show(
+            context,
+            message: 'Método de pago actualizado a $selectedMethod',
+            type: SnackbarType.success,
+          );
+          try {
+            context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
+          } catch (_) {}
+          widget.onPaymentSuccess?.call();
+        }
+      } catch (e) {
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Error al cambiar método de pago: $e',
+            type: SnackbarType.error,
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isProcessingAction = false);
+      }
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'PENDING':
+        return AppColors.warning;
+      case 'SENT':
+        return Colors.blue.shade400;
+      case 'PARTIAL':
+        return Colors.orange.shade400;
+      case 'RECEIVED':
+        return AppColors.success;
+      case 'CANCELLED':
+        return AppColors.danger;
+      default:
+        return AppColors.textSecondary;
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'PENDING':
+        return 'Pendiente';
+      case 'SENT':
+        return 'Enviado';
+      case 'PARTIAL':
+        return 'Parcial';
+      case 'RECEIVED':
+        return 'Recibido';
+      case 'CANCELLED':
+        return 'Cancelado';
+      default:
+        return status;
+    }
+  }
+
+  Future<void> _sendWhatsAppMessage() async {
+    final shortCode =
+        '#${widget.po.id.length >= 8 ? widget.po.id.substring(0, 8).toUpperCase() : widget.po.id.toUpperCase()}';
+
+    final itemsText =
+        _items != null && _items!.isNotEmpty
+            ? _items!
+                .map((i) {
+                  final qty = i.quantityOrdered.toInt();
+                  final price = 'S/ ${i.unitCost.toStringAsFixed(2)}';
+                  final sub = 'S/ ${i.subtotal.toStringAsFixed(2)}';
+                  final variant =
+                      i.variantAttrs.isNotEmpty ? ' (${i.variantAttrs})' : '';
+                  return '• *${i.productName ?? 'Producto'}$variant*\n   $qty x $price = *$sub*';
+                })
+                .join('\n\n')
+            : 'Detalle de productos adjunto';
+
+    final message = '''
+📋 *ORDEN DE COMPRA $shortCode*
+
+*Proveedor:* ${widget.po.supplierName}
+*Fecha Emisión:* ${DateFormat('dd/MM/yyyy').format(widget.po.createdAt)}
+*Total Orden:* S/ ${widget.po.totalAmount.toStringAsFixed(2)}
+
+📦 *DETALLE DE PRODUCTOS:*
+$itemsText
+
+----------------------------------
+Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
+''';
+
+    final encodedMessage = Uri.encodeComponent(message);
+    final whatsappUrl = Uri.parse('https://wa.me/?text=$encodedMessage');
+
+    try {
+      if (await canLaunchUrl(whatsappUrl)) {
+        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+
+        if (_status == 'PENDING' && mounted) {
+          final changeStatus = await showDialog<bool>(
+            context: context,
+            builder:
+                (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  title: const Text('¿Actualizar a ENVIADO?'),
+                  content: const Text(
+                    'Has compartido la orden de compra por WhatsApp. ¿Deseas actualizar el estado de la orden a "Enviado"?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Mantener Pendiente'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Sí, cambiar a Enviado'),
+                    ),
+                  ],
+                ),
+          );
+
+          if (changeStatus == true && mounted) {
+            await _handleUpdateStatus('SENT');
+          }
+        }
+      } else {
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'No se pudo abrir WhatsApp.',
+            type: SnackbarType.error,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al abrir WhatsApp: $e',
+          type: SnackbarType.error,
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shortCode =
+        '#${widget.po.id.length >= 8 ? widget.po.id.substring(0, 8).toUpperCase() : widget.po.id.toUpperCase()}';
+
+    return Material(
+      color: AppColors.background,
+      borderRadius:
+          widget.isDialog
+              ? BorderRadius.circular(20)
+              : const BorderRadius.vertical(top: Radius.circular(28)),
+      child: Container(
+        height:
+            widget.isDialog ? null : MediaQuery.of(context).size.height * 0.85,
+        constraints:
+            widget.isDialog
+                ? BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                )
+                : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Drag Handle (solo móvil/bottomsheet) ──
+            if (!widget.isDialog) ...[
+              const SizedBox(height: 8),
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            if (_isProcessingAction)
+              const LinearProgressIndicator(
+                color: AppColors.primary,
+                backgroundColor: AppColors.border,
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.receipt_long_rounded,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: 'Copiar ID completo (${widget.po.id})',
+                    child: InkWell(
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: widget.po.id));
+                        AppSnackbar.show(
+                          context,
+                          message: 'ID de orden copiado: ${widget.po.id}',
+                          type: SnackbarType.info,
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Detalle de Orden $shortCode',
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.copy_rounded,
+                              size: 15,
+                              color: AppColors.textSecondary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  StatusPill(
+                    label: _statusLabel(_status),
+                    color: _statusColor(_status),
+                  ),
+                  const Spacer(),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 4),
+
+            // ── Contenido scrolleable ──────────────────────────────
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Exportar PDF
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Tooltip(
+                          message: 'Exportar orden en PDF',
+                          child: TextButton.icon(
+                            onPressed:
+                                _isProcessingAction
+                                    ? null
+                                    : () {
+                                      AppSnackbar.show(
+                                        context,
+                                        message: 'Función de PDF próximamente',
+                                        type: SnackbarType.info,
+                                      );
+                                    },
+                            icon: const Icon(
+                              Icons.picture_as_pdf_rounded,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
+                            label: const Text(
+                              'Exportar PDF',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // ── Card Proveedor y Finanzas ──────────────────
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Label PROVEEDOR con contraste mejorado
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'PROVEEDOR',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textSecondary,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              Tooltip(
+                                message: 'Copiar ID completo (${widget.po.id})',
+                                child: InkWell(
+                                  onTap: () {
+                                    Clipboard.setData(
+                                      ClipboardData(text: widget.po.id),
+                                    );
+                                    AppSnackbar.show(
+                                      context,
+                                      message:
+                                          'ID de orden copiado: ${widget.po.id}',
+                                      type: SnackbarType.info,
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          shortCode,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(
+                                          Icons.copy_rounded,
+                                          size: 13,
+                                          color: AppColors.primary,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.po.supplierName,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+
+                          const Divider(height: 24, color: AppColors.border),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'MÉTODO DE PAGO',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textSecondary,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        _paymentMethod,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                      if (_canEditPaymentMethod) ...[
+                                        const SizedBox(width: 4),
+                                        InkWell(
+                                          onTap:
+                                              _isProcessingAction
+                                                  ? null
+                                                  : _showEditPaymentMethodDialog,
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(2.0),
+                                            child: Icon(
+                                              Icons.edit_rounded,
+                                              size: 16,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  const Text(
+                                    'FECHA EMISIÓN',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textSecondary,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                  Text(
+                                    DateFormat(
+                                      'dd/MM/yyyy HH:mm',
+                                    ).format(widget.po.createdAt.toLocal()),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // ── Card financiera con animación de conteo ──
+                          FinancialSummaryCard(
+                            columns: [
+                              FinancialColumn(
+                                label: 'TOTAL',
+                                amount: widget.po.totalAmount,
+                                amountColor:
+                                    _status == 'CANCELLED'
+                                        ? AppColors.textMuted
+                                        : AppColors.primary,
+                              ),
+                              FinancialColumn(
+                                label: 'PAGADO',
+                                amount: _amountPaid,
+                                amountColor: AppColors.success,
+                              ),
+                              FinancialColumn(
+                                label: 'DEUDA',
+                                amount: _status == 'CANCELLED' ? 0.0 : _pending,
+                                amountColor:
+                                    (_status != 'CANCELLED' && _pending > 0)
+                                        ? AppColors.danger
+                                        : AppColors.textSecondary,
+                                alignment: CrossAxisAlignment.end,
+                              ),
+                            ],
+                          ),
+                          if (_status != 'CANCELLED' && _pending > 0) ...[
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                icon: const Icon(
+                                  Icons.payments_rounded,
+                                  size: 18,
+                                  color: AppColors.success,
+                                ),
+                                label: Text(
+                                  'Registrar Pago / Abono (S/ ${_pending.toStringAsFixed(2)})',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.success,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(
+                                    color: AppColors.success,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                onPressed:
+                                    _isProcessingAction
+                                        ? null
+                                        : _showPaymentDialog,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ── Lista de Items ─────────────────────────────
+                    const Text(
+                      'Productos Solicitados',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (_isLoadingItems)
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: 3,
+                        itemBuilder:
+                            (_, _) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: AppShimmer(
+                                width: double.infinity,
+                                height: 76,
+                                borderRadius: 12,
+                              ),
+                            ),
+                      )
+                    else if (_items == null || _items!.isEmpty)
+                      const Text(
+                        'No hay productos en esta orden.',
+                        style: TextStyle(color: AppColors.textMuted),
+                      )
+                    else
+                      ...List.generate(_items!.length, (index) {
+                        final item = _items![index];
+                        final isFullyReceived = item.fullyReceived;
+                        final progress =
+                            item.quantityOrdered > 0
+                                ? item.quantityReceived / item.quantityOrdered
+                                : 0.0;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: ProductItemCard(
+                            imageUrl: item.imageUrl,
+                            productName: item.productName ?? '—',
+                            variantLabel: item.variantAttrs,
+                            // Progress bar de recepción (Mejora #4)
+                            progressWidget: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: progress.clamp(0.0, 1.0),
+                                    backgroundColor: AppColors.border,
+                                    color:
+                                        isFullyReceived
+                                            ? AppColors.success
+                                            : AppColors.warning,
+                                    minHeight: 4,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Recibido: ${item.quantityReceived.toInt()} / ${item.quantityOrdered.toInt()}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        isFullyReceived
+                                            ? AppColors.success
+                                            : AppColors.warning,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            trailing: ItemPriceTrailing(
+                              text: 'S/ ${item.subtotal.toStringAsFixed(2)}',
+                            ),
+                            animationDelay: Duration(milliseconds: 60 * index),
+                          ),
+                        );
+                      }),
+
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+
+            // Sticky Footer
+            _StickyFooter(
+              status: _status,
+              isProcessing: _isProcessingAction,
+              onReceive: widget.onReceive,
+              onMarkSent: () => _handleUpdateStatus('SENT'),
+              onSendWhatsApp: _sendWhatsAppMessage,
+              onCancel: _confirmCancelOrder,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sticky Footer con AnimatedSwitcher
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _StickyFooter extends StatelessWidget {
+  final String status;
+  final bool isProcessing;
+  final VoidCallback onReceive;
+  final VoidCallback onMarkSent;
+  final VoidCallback onSendWhatsApp;
+  final VoidCallback onCancel;
+
+  const _StickyFooter({
+    required this.status,
+    required this.isProcessing,
+    required this.onReceive,
+    required this.onMarkSent,
+    required this.onSendWhatsApp,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Sin acciones disponibles: no renderizar footer
+    final showCancel = status != 'CANCELLED' && status != 'RECEIVED';
+    final showReceive = status == 'SENT' || status == 'PARTIAL';
+    final showMarkSent = status == 'PENDING';
+
+    if (!showCancel && !showReceive && !showMarkSent) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border(top: BorderSide(color: AppColors.border)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Botón de acción primaria con AnimatedSwitcher
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder:
+                (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.15),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                ),
+            child: _buildPrimaryButton(context),
+          ),
+
+          // Botón destructivo siempre debajo
+          if (showCancel) ...[
+            const SizedBox(height: 4),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: isProcessing ? null : onCancel,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: Text(
+                  'Anular Orden',
+                  style: TextStyle(
+                    color:
+                        isProcessing ? AppColors.textMuted : AppColors.danger,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrimaryButton(BuildContext context) {
+    if (status == 'SENT' || status == 'PARTIAL') {
+      return SizedBox(
+        key: const ValueKey('receive'),
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          icon: const Icon(Icons.inventory_rounded, size: 20),
+          label: const Text(
+            'Recepcionar Mercadería',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: isProcessing ? null : onReceive,
+        ),
+      );
+    }
+
+    if (status == 'PENDING') {
+      return Column(
+        key: const ValueKey('pendingActions'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.chat_rounded, size: 20),
+              label: const Text(
+                'Enviar a Proveedor (WhatsApp)',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                backgroundColor: AppColors.success,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: isProcessing ? null : onSendWhatsApp,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: isProcessing ? null : onMarkSent,
+              child: const Text(
+                'Marcar como ENVIADA',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // RECEIVED o CANCELLED: sin acción primaria
+    return const SizedBox.shrink(key: ValueKey('none'));
+  }
+}

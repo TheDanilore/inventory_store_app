@@ -1,0 +1,862 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:go_router/go_router.dart';
+import 'package:vibration/vibration.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:intl/intl.dart';
+import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_state.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/close_shift_sheet.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/open_shift_sheet.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
+
+class ShiftsTab extends StatefulWidget {
+  final bool showOpenShiftButton;
+
+  const ShiftsTab({super.key, this.showOpenShiftButton = true});
+
+  @override
+  State<ShiftsTab> createState() => _ShiftsTabState();
+}
+
+class _ShiftsTabState extends State<ShiftsTab> {
+  final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 10 && _isFabExtended.value) {
+        _isFabExtended.value = false;
+      } else if (_scrollController.offset <= 10 && !_isFabExtended.value) {
+        _isFabExtended.value = true;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _isFabExtended.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<CashShiftsCubit>();
+
+    return BlocBuilder<CashShiftsCubit, CashShiftsState>(
+      builder: (context, state) {
+        final shifts = state.shifts;
+        final isLoading = state.isLoading;
+        final openShifts =
+            shifts
+                .where(
+                  (s) =>
+                      s.status.name == 'open' ||
+                      s.status.toString() == 'CashShiftStatus.open',
+                )
+                .toList();
+
+        return Stack(
+          children: [
+            Column(
+              children: [
+                if (openShifts.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                    child: Column(
+                      children:
+                          openShifts
+                              .map(
+                                (s) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _ActiveShiftBanner(
+                                    shift: s,
+                                    onClose: () async {
+                                      final expected = await cubit.calcExpected(
+                                        s.id,
+                                        s.accountId ?? '',
+                                        s.openingAmount,
+                                      );
+                                      if (context.mounted) {
+                                        CloseShiftSheet.show(
+                                          context,
+                                          shift: s,
+                                          expectedAmount: expected,
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                    ),
+                  ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    openShifts.isNotEmpty ? 4 : 14,
+                    16,
+                    0,
+                  ),
+                  child: Row(
+                    children: [
+                      _StatusChip(
+                        label: 'Abiertos',
+                        count: state.totalOpenCount,
+                        color: AppColors.success,
+                        selected: state.filterStatus == 'OPEN',
+                        onTap: () {
+                          cubit.setFilterStatus(
+                            state.filterStatus == 'OPEN' ? 'Todos' : 'OPEN',
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                      _StatusChip(
+                        label: 'Cerrados',
+                        count: state.totalClosedCount,
+                        color: AppColors.textSecondary,
+                        selected: state.filterStatus == 'CLOSED',
+                        onTap: () {
+                          cubit.setFilterStatus(
+                            state.filterStatus == 'CLOSED' ? 'Todos' : 'CLOSED',
+                          );
+                        },
+                      ),
+                      const Spacer(),
+                      Tooltip(
+                        message: 'Historial global',
+                        child: Material(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          child: InkWell(
+                            onTap: () => context.go('/admin/all-cash-shifts'),
+                            borderRadius: BorderRadius.circular(14),
+                            child: const Padding(
+                              padding: EdgeInsets.all(11),
+                              child: Icon(
+                                Icons.manage_search_rounded,
+                                size: 18,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      DateFilterCalendar(
+                        dateRange:
+                            state.dateFrom != null && state.dateTo != null
+                                ? DateTimeRange(
+                                  start: state.dateFrom!,
+                                  end: state.dateTo!,
+                                )
+                                : null,
+                        onDateRangeSelected: (picked) {
+                          cubit.setDateRange(
+                            picked.start,
+                            DateTime(
+                              picked.end.year,
+                              picked.end.month,
+                              picked.end.day,
+                              23,
+                              59,
+                              59,
+                            ),
+                          );
+                        },
+                        onClear: () {
+                          cubit.setDateRange(null, null);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                Expanded(
+                  child:
+                      isLoading && shifts.isEmpty
+                          ? const _ShiftsSkeleton()
+                          : shifts.isEmpty
+                          ? const AppEmptyState(
+                            icon: Icons.store_rounded,
+                            title: 'Sin turnos',
+                            message:
+                                'No hay turnos registrados en este período.',
+                          )
+                          : Column(
+                            children: [
+                              Expanded(
+                                child: RefreshIndicator(
+                                  onRefresh: () async => cubit.fetchShifts(),
+                                  child: AnimationLimiter(
+                                    child: ListView.separated(
+                                      controller: _scrollController,
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        4,
+                                        16,
+                                        16,
+                                      ),
+                                      itemCount: shifts.length,
+                                      separatorBuilder:
+                                          (_, _) => const SizedBox(height: 8),
+                                      itemBuilder:
+                                          (
+                                            _,
+                                            i,
+                                          ) => AnimationConfiguration.staggeredList(
+                                            position: i,
+                                            duration: const Duration(
+                                              milliseconds: 375,
+                                            ),
+                                            child: SlideAnimation(
+                                              verticalOffset: 50.0,
+                                              child: FadeInAnimation(
+                                                child: _ShiftCard(
+                                                  shift: shifts[i],
+                                                  onClose:
+                                                      shifts[i].status.name ==
+                                                                  'open' ||
+                                                              shifts[i].status
+                                                                      .toString() ==
+                                                                  'CashShiftStatus.open'
+                                                          ? () async {
+                                                            final expected = await cubit
+                                                                .calcExpected(
+                                                                  shifts[i].id,
+                                                                  shifts[i]
+                                                                          .accountId ??
+                                                                      '',
+                                                                  shifts[i]
+                                                                      .openingAmount,
+                                                                );
+                                                            if (context
+                                                                .mounted) {
+                                                              CloseShiftSheet.show(
+                                                                context,
+                                                                shift:
+                                                                    shifts[i],
+                                                                expectedAmount:
+                                                                    expected,
+                                                              );
+                                                            }
+                                                          }
+                                                          : null,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(
+                                height: 80,
+                              ), // Keep some padding so last item can be seen above pagination/FAB
+                            ],
+                          ),
+                ),
+                // --- PAGINACIÓN ANCLADA ---
+                if (state.totalPages > 1 && !isLoading)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, -4),
+                        ),
+                      ],
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: AdminPageBlocks(
+                        currentPage: state.currentPage,
+                        totalPages: state.totalPages,
+                        onPageChanged: (page) => cubit.setPage(page),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            if (widget.showOpenShiftButton)
+              Positioned(
+                bottom: 16,
+                right: 16,
+                child: FloatingActionButton.extended(
+                  heroTag: 'fab_shifts',
+                  onPressed:
+                      isLoading
+                          ? null
+                          : () async {
+                            // Solo vibrar si no es web para evitar MissingPluginException
+                            if (!kIsWeb) {
+                              Vibration.vibrate(duration: 50, amplitude: 128);
+                            }
+                            // Obtener cuentas de caja, temporalmente sin usar estado, o esperar que el cubit las provea.
+                            // Wait, CashShiftsState doesn't expose cajaAccounts. Let's fetch them on demand or from cubit.
+                            final availableAccounts =
+                                await cubit.getAvailableAccounts();
+                            if (!context.mounted) return;
+                            if (availableAccounts.isEmpty) {
+                              AppSnackbar.show(
+                                context,
+                                message:
+                                    'Todas las cajas tienen turnos abiertos',
+                                type: SnackbarType.warning,
+                              );
+                              return;
+                            }
+                            OpenShiftSheet.show(
+                              context,
+                              accounts: availableAccounts,
+                            );
+                          },
+                  backgroundColor: AppColors.success,
+                  icon: const Icon(
+                    Icons.lock_open_rounded,
+                    color: Colors.white,
+                  ),
+                  label: ValueListenableBuilder<bool>(
+                    valueListenable: _isFabExtended,
+                    builder: (context, isExtended, _) {
+                      return AnimatedSize(
+                        duration: const Duration(milliseconds: 200),
+                        child:
+                            isExtended
+                                ? const Text(
+                                  'Abrir turno',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                )
+                                : const SizedBox.shrink(),
+                      );
+                    },
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ActiveShiftBanner extends StatefulWidget {
+  final CashShiftEntity shift;
+  final Future<void> Function() onClose;
+
+  const _ActiveShiftBanner({required this.shift, required this.onClose});
+
+  @override
+  State<_ActiveShiftBanner> createState() => _ActiveShiftBannerState();
+}
+
+class _ActiveShiftBannerState extends State<_ActiveShiftBanner> {
+  bool _isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.success.withValues(alpha: 0.1),
+            blurRadius: 15,
+            spreadRadius: -2,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.point_of_sale_rounded,
+              color: AppColors.success,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Turno abierto en:',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  widget.shift.accountName ?? '',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: AppColors.success,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Por: ${(widget.shift.openedByName ?? '').split(' ')[0]}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed:
+                _isLoading
+                    ? null
+                    : () async {
+                      setState(() => _isLoading = true);
+                      await widget.onClose();
+                      if (mounted) setState(() => _isLoading = false);
+                    },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+              minimumSize: const Size(0, 36),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon:
+                _isLoading
+                    ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                    : const Icon(Icons.lock_clock_rounded, size: 16),
+            label: Text(
+              _isLoading ? 'Cargando' : 'Cerrar',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final String label;
+  final int count;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _StatusChip({
+    required this.label,
+    required this.count,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.15) : AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? color : AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: selected ? color : AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color:
+                    selected
+                        ? color
+                        : AppColors.textSecondary.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: selected ? Colors.white : AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ShiftCard extends StatefulWidget {
+  final CashShiftEntity shift;
+  final Future<void> Function()? onClose;
+
+  const _ShiftCard({required this.shift, this.onClose});
+
+  @override
+  State<_ShiftCard> createState() => _ShiftCardState();
+}
+
+class _ShiftCardState extends State<_ShiftCard> {
+  bool _isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isOpen = widget.shift.status == CashShiftStatus.open;
+    final shift = widget.shift;
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.transparent),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 15,
+            spreadRadius: -2,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: (isOpen
+                            ? AppColors.success
+                            : AppColors.textSecondary)
+                        .withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.point_of_sale_rounded,
+                    color: isOpen ? AppColors.success : AppColors.textSecondary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        shift.accountName ?? '',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.play_circle_fill_rounded,
+                            size: 12,
+                            color: AppColors.success.withValues(alpha: 0.8),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            DateFormat(
+                              'dd/MM/yyyy HH:mm',
+                            ).format(shift.openedAt.toLocal()),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.person,
+                            size: 12,
+                            color: AppColors.textSecondary.withValues(
+                              alpha: 0.8,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              (shift.openedByName ?? '').split(' ')[0],
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: (isOpen
+                                ? AppColors.success
+                                : AppColors.textSecondary)
+                            .withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isOpen ? 'ABIERTO' : 'CERRADO',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color:
+                              isOpen
+                                  ? AppColors.success
+                                  : AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Apertura',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        'S/ ${shift.openingAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!isOpen) ...[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Cierre',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          'S/ ${shift.actualAmount?.toStringAsFixed(2) ?? '0.00'}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'Diferencia',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          'S/ ${shift.differenceAmount?.toStringAsFixed(2) ?? '0.00'}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            color:
+                                shift.differenceAmount == null ||
+                                        shift.differenceAmount == 0
+                                    ? AppColors.success
+                                    : (shift.differenceAmount! > 0
+                                        ? AppColors.success
+                                        : AppColors.danger),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (isOpen && widget.onClose != null)
+                  ElevatedButton(
+                    onPressed:
+                        _isLoading
+                            ? null
+                            : () async {
+                              setState(() => _isLoading = true);
+                              await widget.onClose!();
+                              if (mounted) setState(() => _isLoading = false);
+                            },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.danger,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 0,
+                      ),
+                      minimumSize: const Size(0, 32),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child:
+                        _isLoading
+                            ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                            : const Text(
+                              'Cerrar Turno',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ShiftsSkeleton extends StatelessWidget {
+  const _ShiftsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: 4,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (_, _) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const AppShimmer(width: 40, height: 40, isCircular: true),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        AppShimmer(width: 140, height: 16),
+                        SizedBox(height: 8),
+                        AppShimmer(width: 80, height: 12),
+                      ],
+                    ),
+                  ),
+                  const AppShimmer(width: 60, height: 24, borderRadius: 6),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: const [
+                  AppShimmer(width: 60, height: 16),
+                  AppShimmer(width: 60, height: 16),
+                  AppShimmer(width: 60, height: 16),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}

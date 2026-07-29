@@ -1,0 +1,247 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/constants/app_roles.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/router/go_router_refresh_stream.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
+import 'package:inventory_store_app/features/app_config/presentation/routes/app_config_routes.dart';
+import 'package:inventory_store_app/features/auth/presentation/routes/auth_routes.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog/customer_catalog_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/routes/catalog_routes.dart';
+import 'package:inventory_store_app/features/customers/presentation/routes/customers_routes.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_cart_fab.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_variant_picker_sheet.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/routes/dashboard_routes.dart';
+import 'package:inventory_store_app/features/financial/presentation/routes/financial_routes.dart';
+import 'package:inventory_store_app/features/inventory/presentation/routes/inventory_routes.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/routes/loyalty_routes.dart';
+import 'package:inventory_store_app/features/orders/presentation/routes/orders_routes.dart';
+import 'package:inventory_store_app/features/pos/presentation/routes/pos_routes.dart';
+import 'package:inventory_store_app/features/purchases/presentation/routes/purchases_routes.dart';
+import 'package:inventory_store_app/features/users/presentation/routes/users_routes.dart';
+import 'package:inventory_store_app/features/catalog/presentation/screens/admin/admin_catalog_screen.dart';
+import 'package:inventory_store_app/features/catalog/presentation/screens/customer/customer_catalog_screen.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
+
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'root',
+);
+
+class AppRouter {
+  static String? _pendingDeepLink;
+
+  static void captureInitialRoute() {
+    try {
+      final uri = Uri.base;
+      final path = uri.path;
+      if (path.isNotEmpty && path != '/splash' && path != '/login') {
+        _pendingDeepLink = path + (uri.query.isNotEmpty ? '?${uri.query}' : '');
+        debugPrint('AppRouter: deep link capturado -> $_pendingDeepLink');
+      }
+    } catch (_) {}
+  }
+
+  static GoRouter createRouter(AuthCubit authCubit) {
+    return GoRouter(
+      navigatorKey: rootNavigatorKey,
+      restorationScopeId: 'router',
+      initialLocation: '/splash',
+      refreshListenable: GoRouterRefreshStream(authCubit.stream),
+      errorBuilder:
+          (context, state) => Scaffold(
+            appBar: AppBar(title: const Text('Página no encontrada')),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.link_off_rounded,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Esta página no existe',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    state.matchedLocation,
+                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: () => context.go('/'),
+                    icon: const Icon(Icons.home_rounded),
+                    label: const Text('Ir al Inicio'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      redirect: (context, state) {
+        final authState = authCubit.state;
+        final currentPath = state.uri.path;
+        final isSplash = currentPath == '/splash';
+        final isLogin = currentPath == '/login';
+
+        if (authState.authStatus == AuthStatus.initial) {
+          return isSplash ? null : '/splash';
+        }
+
+        if (authState.authStatus == AuthStatus.unauthenticated) {
+          if (currentPath.startsWith('/admin')) return '/';
+          if (isSplash) return '/';
+          return null;
+        }
+
+        if (authState.authStatus == AuthStatus.authenticated &&
+            _pendingDeepLink != null) {
+          final link = _pendingDeepLink!;
+          _pendingDeepLink = null;
+          return link;
+        }
+
+        final role = authState.currentUser?.role;
+        if (role == null) {
+          return '/login';
+        }
+
+        if (isSplash || isLogin) {
+          return role == AppRoles.admin ? '/admin' : '/';
+        }
+
+        if (currentPath.startsWith('/admin') && role != AppRoles.admin) {
+          return '/';
+        }
+
+        return null;
+      },
+      routes: [
+        ...AuthRoutes.topLevelRoutes,
+        ...CatalogRoutes.topLevelRoutes(authCubit),
+        ...CustomersRoutes.topLevelRoutes,
+        ...OrdersRoutes.topLevelRoutes,
+
+        // ADMIN ROUTES
+        ShellRoute(
+          builder:
+              (context, state, child) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
+                  ),
+                  BlocProvider(
+                    create: (_) => sl<CartCubit>()..initCart(cartType: 'pos'),
+                  ),
+                ],
+                child: child,
+              ),
+          routes: [
+            GoRoute(
+              path: '/admin',
+              builder:
+                  (context, state) => AdminCatalogScreen(
+                    floatingActionButton: const PosCartFab(),
+                    onProfileAvatarTap: () {
+                      final auth = context.read<AuthCubit>();
+                      if (auth.state.currentUser == null) {
+                        context.go('/login');
+                      } else {
+                        context.push('/admin/profile');
+                      }
+                    },
+                  ),
+            ),
+            ...AuthRoutes.adminRoutes,
+            ...AppConfigRoutes.adminRoutes,
+            ...CatalogRoutes.adminRoutes,
+            ...CustomersRoutes.adminRoutes,
+            ...DashboardRoutes.adminRoutes,
+            ...FinancialRoutes.adminRoutes,
+            ...InventoryRoutes.adminRoutes,
+            ...LoyaltyRoutes.adminRoutes,
+            ...OrdersRoutes.adminRoutes,
+            ...PosRoutes.adminRoutes,
+            ...PurchasesRoutes.adminRoutes,
+            ...UsersRoutes.adminRoutes,
+          ],
+        ),
+
+        // CUSTOMER ROUTES
+        StatefulShellRoute.indexedStack(
+          builder:
+              (context, state, navigationShell) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create:
+                        (_) => sl<CartCubit>()..initCart(cartType: 'customer'),
+                  ),
+                ],
+                child: CustomerLayout(
+                  title: 'Danilore Store',
+                  body: navigationShell,
+                  showAppBar:
+                      navigationShell.currentIndex !=
+                      0, // Show for all except Catalog
+                  showWalletChip: true,
+                  showCartIcon: false,
+                  showProfileIcon: false,
+                  showBackButton: false,
+                  currentIndex: navigationShell.currentIndex,
+                ),
+              ),
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/',
+                  builder: (context, state) {
+                    final config = context.watch<AppConfigCubit>();
+                    return BlocProvider(
+                      create:
+                          (_) => sl<CustomerCatalogCubit>()..loadInitialData(),
+                      child: CustomerCatalogScreen(
+                        businessName: config.businessName,
+                        businessAddress: config.businessAddress,
+                        onAddToCart: (product) async {
+                          await CartVariantPickerSheet.show(
+                            context: context,
+                            cartCubit: context.read<CartCubit>(),
+                            product: product,
+                          );
+                        },
+                      ),
+                    );
+                  },
+                  routes: CatalogRoutes.customerRoutes,
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                OrdersRoutes.customerRoutes.firstWhere(
+                  (route) => (route as GoRoute).path == '/cart',
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                ...CustomersRoutes.customerRoutes,
+                ...LoyaltyRoutes.customerRoutes,
+                ...OrdersRoutes.customerRoutes.where(
+                  (route) => (route as GoRoute).path != '/cart',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
