@@ -14,6 +14,8 @@ class CashShiftsState extends Equatable {
   final DateTime? dateFrom;
   final DateTime? dateTo;
   final String? profileFilter;
+  final List<Map<String, dynamic>> profiles;
+  final bool isLoadingProfiles;
 
   const CashShiftsState({
     this.shifts = const [],
@@ -28,6 +30,8 @@ class CashShiftsState extends Equatable {
     this.dateFrom,
     this.dateTo,
     this.profileFilter,
+    this.profiles = const [],
+    this.isLoadingProfiles = true,
   });
 
   CashShiftsState copyWith({
@@ -43,6 +47,8 @@ class CashShiftsState extends Equatable {
     DateTime? dateFrom,
     DateTime? dateTo,
     String? profileFilter,
+    List<Map<String, dynamic>>? profiles,
+    bool? isLoadingProfiles,
     bool clearDates = false,
     bool clearProfileFilter = false,
   }) {
@@ -60,6 +66,8 @@ class CashShiftsState extends Equatable {
       dateTo: clearDates ? null : (dateTo ?? this.dateTo),
       profileFilter:
           clearProfileFilter ? null : (profileFilter ?? this.profileFilter),
+      profiles: profiles ?? this.profiles,
+      isLoadingProfiles: isLoadingProfiles ?? this.isLoadingProfiles,
     );
   }
 
@@ -82,5 +90,7 @@ class CashShiftsState extends Equatable {
     dateFrom,
     dateTo,
     profileFilter,
+    profiles,
+    isLoadingProfiles,
   ];
 }

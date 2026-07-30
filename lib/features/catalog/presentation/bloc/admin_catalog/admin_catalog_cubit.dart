@@ -109,9 +109,29 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     refreshProducts();
   }
 
-  // Products
-
   Future<void> refreshProducts() async {
+    _loadProducts(resetPage: true);
+  }
+
+  void decrementStockLocal(Map<String, int> soldQuantities) {
+    if (state.products.isEmpty) return;
+    
+    final updatedProducts = state.products.map((product) {
+      if (soldQuantities.containsKey(product.id) && product.stockControl) {
+        final soldQty = soldQuantities[product.id]!;
+        // Aquí restamos el stock de la entidad principal. Si usa lotes/variantes es más complejo,
+        // pero para stock general basta con reducir totalStock en UI cache.
+        final newStock = product.totalStock - soldQty;
+        // Nota: ProductEntity es inmutable, así que creamos un copyWith.
+        return product.copyWith(totalStock: newStock < 0 ? 0 : newStock);
+      }
+      return product;
+    }).toList();
+
+    emit(state.copyWith(products: updatedProducts));
+  }
+
+  Future<void> _loadProducts({bool resetPage = false}) async {
     emit(state.copyWith(catalogState: ViewState.loading, clearError: true));
 
     final offset = state.currentPage * AdminCatalogState.pageSize;

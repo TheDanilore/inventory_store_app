@@ -2,11 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
-import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
-import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
 import 'package:inventory_store_app/features/pos/domain/repositories/pos_repository.dart';
 import 'package:inventory_store_app/features/pos/domain/usecases/check_active_shift_uc.dart';
 import 'package:get_it/get_it.dart';
@@ -32,7 +29,7 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checko
 import 'package:inventory_store_app/core/widgets/batch_edit_sheet.dart';
 
 class DesktopPosPanel extends StatefulWidget {
-  final VoidCallback? onSaleCompleted;
+  final ValueChanged<Map<String, int>>? onSaleCompleted;
 
   const DesktopPosPanel({super.key, this.onSaleCompleted});
 
@@ -55,7 +52,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
   int _clientSearchVersion = 0;
   Timer? _debounce;
 
-  bool _isDiscountPercentage = false;
+  final ValueNotifier<bool> _isDiscountPercentage = ValueNotifier(false);
 
   // Almacén, Cuentas y Caja
   List<WarehouseModel> _warehouseList = [];
@@ -84,6 +81,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     _clienteCtrl.dispose();
     _puntosCtrl.dispose();
     _descuentoCtrl.dispose();
+    _isDiscountPercentage.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -333,7 +331,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
 
     final totalFinal = PosCalculatorUtils.calcularTotalFinal(
       discountText: _descuentoCtrl.text,
-      isDiscountPercentage: _isDiscountPercentage,
+      isDiscountPercentage: _isDiscountPercentage.value,
       pos: posCubit.state,
       cart: cartCubit.state,
       ratio: pointsToSolesRatio,
@@ -359,13 +357,15 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
 
       final disp = PosCalculatorUtils.getCreditDisponible(_creditInfo);
       if (disp < totalFinal) {
+        // En lugar de bloquear la UI localmente, mostramos una advertencia
+        // pero la validación final (atómica) debe hacerse en la Base de Datos.
         AppSnackbar.show(
           context,
           message:
-              'Crédito insuficiente. Disponible: S/ ${disp.toStringAsFixed(2)}',
-          type: SnackbarType.error,
+              'El crédito calculado es S/ ${disp.toStringAsFixed(2)}. La transacción podría ser rechazada por el servidor.',
+          type: SnackbarType.warning,
         );
-        return;
+        // Continuamos para que sea el backend quien rechace atómicamente si fuera necesario.
       }
     }
 
@@ -400,14 +400,14 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       );
       final totalProfit = PosCalculatorUtils.calcularGananciaTotal(
         discountText: _descuentoCtrl.text,
-        isDiscountPercentage: _isDiscountPercentage,
+        isDiscountPercentage: _isDiscountPercentage.value,
         pos: posCubit.state,
         cart: cartCubit.state,
         ratio: pointsToSolesRatio,
       );
       final descuentoExtra = PosCalculatorUtils.getCustomDiscountAmount(
         discountText: _descuentoCtrl.text,
-        isDiscountPercentage: _isDiscountPercentage,
+        isDiscountPercentage: _isDiscountPercentage.value,
         pos: posCubit.state,
         cart: cartCubit.state,
         ratio: pointsToSolesRatio,
@@ -470,11 +470,16 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
         return;
       }
 
+      final soldQuantities = {
+        for (final item in cartCubit.state.items.values)
+          item.productId: item.quantity
+      };
+
       posCubit.removeClient();
       posCubit.setPuntosAUsar(0);
       cartCubit.clearCart();
       posCubit.clearAllBatchOverrides();
-      widget.onSaleCompleted?.call();
+      widget.onSaleCompleted?.call(soldQuantities);
 
       if (mounted) {
         await showDialog(
@@ -485,28 +490,22 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                 isDraft: isDraft,
                 onPrint: () async {
                   try {
-                    final orderResp =
-                        await Supabase.instance.client
-                            .from('orders')
-                            .select(
-                              'id, customer_name, customer_id, total_amount, total_profit, discount_amount, payment_method, payment_status, amount_paid, status, points_used, points_earned, created_at, warehouse_id, profiles!orders_customer_id_fkey(full_name, phone), warehouses(name)',
-                            )
-                            .eq('id', orderId)
-                            .single();
-                    final itemsResp = await Supabase.instance.client
-                        .from('order_items')
-                        .select(
-                          'id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name, product_images(id, image_url, is_main)), product_variants(sku, product_images(id, image_url, is_main), variant_attribute_values(attribute_values(value, attributes(name))))',
-                        )
-                        .eq('order_id', orderId);
-
-                    final order = OrderModel.fromJson(orderResp);
-                    final items =
-                        List<Map<String, dynamic>>.from(
-                          itemsResp,
-                        ).map((x) => OrderItemModel.fromJson(x)).toList();
-
-                    await OrderPdfGenerator.shareTicket(order, items: items);
+                    final fetchResult = await _checkoutService.fetchOrderForReceipt(orderId);
+                    
+                    fetchResult.fold(
+                      (failure) {
+                        if (dialogContext.mounted) {
+                          AppSnackbar.show(
+                            dialogContext,
+                            message: 'Error al obtener orden: ${failure.message}',
+                            type: SnackbarType.error,
+                          );
+                        }
+                      },
+                      (result) async {
+                        await OrderPdfGenerator.shareTicket(result.order, items: result.items);
+                      },
+                    );
                   } catch (e) {
                     if (dialogContext.mounted) {
                       AppSnackbar.show(
@@ -747,10 +746,15 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                     const SizedBox(height: 32),
 
                     // Resumen Total
-                    _buildSummarySection(
-                      pointsToSolesRatio,
-                      earningRate,
-                      isLoyaltyEnabled,
+                    ListenableBuilder(
+                      listenable: Listenable.merge([_descuentoCtrl, _isDiscountPercentage]),
+                      builder: (context, _) {
+                        return _buildSummarySection(
+                          pointsToSolesRatio,
+                          earningRate,
+                          isLoyaltyEnabled,
+                        );
+                      }
                     ),
                   ],
                 ),
@@ -758,7 +762,12 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
             ),
 
             // Action Bar inferior
-            _buildStickyActionBar(pointsToSolesRatio),
+            ListenableBuilder(
+              listenable: Listenable.merge([_descuentoCtrl, _isDiscountPercentage]),
+              builder: (context, _) {
+                return _buildStickyActionBar(pointsToSolesRatio);
+              }
+            ),
           ],
         ),
 
@@ -910,7 +919,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                 ),
                 totalFinal: PosCalculatorUtils.calcularTotalFinal(
                   discountText: _descuentoCtrl.text,
-                  isDiscountPercentage: _isDiscountPercentage,
+                  isDiscountPercentage: _isDiscountPercentage.value,
                   pos: posCubit.state,
                   cart: cartCubit.state,
                   ratio: ratio,
@@ -940,14 +949,14 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                       ? 0
                       : PosCalculatorUtils.getCustomDiscountAmount(
                         discountText: _descuentoCtrl.text,
-                        isDiscountPercentage: _isDiscountPercentage,
+                        isDiscountPercentage: _isDiscountPercentage.value,
                         pos: posCubit.state,
                         cart: cartCubit.state,
                         ratio: ratio,
                       ),
               totalFinal: PosCalculatorUtils.calcularTotalFinal(
                 discountText: _descuentoCtrl.text,
-                isDiscountPercentage: _isDiscountPercentage,
+                isDiscountPercentage: _isDiscountPercentage.value,
                 pos: posCubit.state,
                 cart: cartCubit.state,
                 ratio: ratio,
@@ -1000,12 +1009,10 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                 children: [
                   const Text('Monto', style: TextStyle(fontSize: 12)),
                   Switch(
-                    value: _isDiscountPercentage,
+                    value: _isDiscountPercentage.value,
                     onChanged: (val) {
-                      setState(() {
-                        _isDiscountPercentage = val;
-                        _descuentoCtrl.text = '';
-                      });
+                      _isDiscountPercentage.value = val;
+                      _descuentoCtrl.text = '';
                     },
                     activeThumbColor: AppColors.primary,
                   ),
@@ -1021,8 +1028,8 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
               hintText: '0.00',
-              prefixText: _isDiscountPercentage ? null : 'S/ ',
-              suffixText: _isDiscountPercentage ? '%' : null,
+              prefixText: _isDiscountPercentage.value ? null : 'S/ ',
+              suffixText: _isDiscountPercentage.value ? '%' : null,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 12,
@@ -1042,7 +1049,6 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
             ),
             onChanged: (v) {
               if (v.trim().isEmpty) {
-                setState(() {});
                 return;
               }
               final val = double.tryParse(v) ?? 0.0;
@@ -1052,18 +1058,17 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                 puntosSeguros,
               );
               final amt =
-                  _isDiscountPercentage
+                  _isDiscountPercentage.value
                       ? (cartState.totalAmount * (val / 100))
                       : val;
               if (amt > maxDiscount) {
-                if (_isDiscountPercentage) {
+                if (_isDiscountPercentage.value) {
                   final maxPerc = (maxDiscount / cartState.totalAmount) * 100;
                   _descuentoCtrl.text = maxPerc.toStringAsFixed(2);
                 } else {
                   _descuentoCtrl.text = maxDiscount.toStringAsFixed(2);
                 }
               }
-              setState(() {});
             },
           ),
         ],
@@ -1086,7 +1091,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
             final cartCubit = context.watch<CartCubit>();
             final total = PosCalculatorUtils.calcularTotalFinal(
               discountText: _descuentoCtrl.text,
-              isDiscountPercentage: _isDiscountPercentage,
+              isDiscountPercentage: _isDiscountPercentage.value,
               pos: posCubit.state,
               cart: cartCubit.state,
               ratio: ratio,

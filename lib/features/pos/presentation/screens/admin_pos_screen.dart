@@ -23,6 +23,24 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/desktop_pos_panel.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_operations_drawer.dart';
 
+extension ProductToCartExtension on ProductEntity {
+  CartItemEntity toCartItem() {
+    return CartItemEntity(
+      productId: id,
+      productName: name,
+      cartKey: id,
+      quantity: 1,
+      unitPrice: displaySalePrice ?? 0.0,
+      unitCost: defaultVariant?.unitCost ?? 0.0,
+      availableStock: stockControl ? totalStock : 999999,
+      usesBatches: false,
+      wholesalePrice: defaultVariant?.wholesalePrice,
+      imageUrl: primaryImageUrl,
+      isSelected: true,
+    );
+  }
+}
+
 class AdminPosScreen extends StatefulWidget {
   const AdminPosScreen({super.key});
 
@@ -66,27 +84,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   Future<void> _irAVenta(ProductEntity product) async {
     if (product.productVariants.isEmpty && !product.usesBatches) {
       final cart = context.read<CartCubit>();
-      cart.addItem(
-        CartItemEntity(
-          productId: product.id,
-          productName: product.name,
-          cartKey: product.id,
-          quantity: 1,
-          unitPrice: product.displaySalePrice ?? 0.0,
-          unitCost: product.defaultVariant?.unitCost ?? 0.0,
-          availableStock: product.stockControl ? product.totalStock : 999999,
-          usesBatches: false,
-          wholesalePrice: product.defaultVariant?.wholesalePrice,
-          imageUrl: product.primaryImageUrl,
-          isSelected: true,
-        ),
-      );
-
-      AppSnackbar.show(
-        context,
-        message: '${product.name} agregado al carrito',
-        type: SnackbarType.success,
-      );
+      cart.addItem(product.toCartItem());
       return;
     }
 
@@ -124,16 +122,22 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
         },
       },
       child: BlocListener<CartCubit, CartState>(
-        listenWhen:
-            (previous, current) =>
-                previous.errorMessage != current.errorMessage &&
-                current.errorMessage != null,
+        listenWhen: (previous, current) => 
+            previous.errorMessage != current.errorMessage ||
+            previous.items.length != current.items.length,
         listener: (context, state) {
           if (state.errorMessage != null) {
             AppSnackbar.show(
               context,
               message: state.errorMessage!,
               type: SnackbarType.warning,
+            );
+          } else if (state.items.isNotEmpty) {
+            // Un item ha sido agregado exitosamente.
+            AppSnackbar.show(
+              context,
+              message: 'Item agregado al carrito',
+              type: SnackbarType.success,
             );
           }
         },
@@ -238,8 +242,8 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                         ],
                       ),
                       child: DesktopPosPanel(
-                        onSaleCompleted: () {
-                          context.read<AdminCatalogCubit>().refreshProducts();
+                        onSaleCompleted: (soldQuantities) {
+                          context.read<AdminCatalogCubit>().decrementStockLocal(soldQuantities);
                         },
                       ),
                     ),

@@ -929,15 +929,6 @@ extension GetItInjectableX on _i174.GetIt {
         deleteIngredientUC: gh<_i538.DeleteIngredientUC>(),
       ),
     );
-    gh.factory<_i1029.CashShiftsCubit>(
-      () => _i1029.CashShiftsCubit(
-        getCashShifts: gh<_i486.GetCashShiftsUseCase>(),
-        getCounts: gh<_i582.GetCashShiftsStatusCountUseCase>(),
-        openShift: gh<_i1030.OpenCashShiftUseCase>(),
-        closeShift: gh<_i576.CloseCashShiftUseCase>(),
-        calcExpected: gh<_i85.CalcExpectedCashShiftUseCase>(),
-      ),
-    );
     gh.lazySingleton<_i506.GetAppSettingsUseCase>(
       () => _i506.GetAppSettingsUseCase(gh<_i257.AppConfigRepository>()),
     );
@@ -1315,6 +1306,16 @@ extension GetItInjectableX on _i174.GetIt {
         saveCart: gh<_i1022.SaveCartUseCase>(),
         syncCart: gh<_i480.SyncCartUseCase>(),
         clearCart: gh<_i596.ClearCartUseCase>(),
+      ),
+    );
+    gh.factory<_i1029.CashShiftsCubit>(
+      () => _i1029.CashShiftsCubit(
+        getCashShifts: gh<_i486.GetCashShiftsUseCase>(),
+        getCounts: gh<_i582.GetCashShiftsStatusCountUseCase>(),
+        openShift: gh<_i1030.OpenCashShiftUseCase>(),
+        closeShift: gh<_i576.CloseCashShiftUseCase>(),
+        calcExpected: gh<_i85.CalcExpectedCashShiftUseCase>(),
+        repository: gh<_i1050.CashShiftRepository>(),
       ),
     );
     gh.factory<_i30.FinancialAccountsCubit>(

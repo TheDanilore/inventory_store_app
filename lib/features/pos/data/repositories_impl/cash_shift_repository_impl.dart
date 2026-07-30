@@ -298,4 +298,48 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
       return left(Failure.from(e));
     }
   }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getStaffProfiles() async {
+    try {
+      final res = await _supabase
+          .from('profiles')
+          .select('id, full_name')
+          .neq('role', 'customer')
+          .order('full_name');
+          
+      return right(List<Map<String, dynamic>>.from(res));
+    } on PostgrestException catch (e, stack) {
+      developer.log('PostgrestException en getStaffProfiles', error: e, stackTrace: stack);
+      return left(ServerFailure(message: e.message));
+    } catch (e, stack) {
+      developer.log('Error general en getStaffProfiles', error: e, stackTrace: stack);
+      return left(Failure.from(e));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getAvailableAccounts(Set<String> openAccountIds) async {
+    try {
+      final res = await _supabase
+          .from('financial_accounts')
+          .select('id, name, type, balance')
+          .eq('is_active', true)
+          .eq('type', 'CAJA')
+          .order('name');
+
+      final accounts = (res as List).map((e) => Map<String, dynamic>.from(e)).toList();
+      final availableAccounts = accounts
+          .where((a) => !openAccountIds.contains(a['id']))
+          .toList();
+          
+      return right(availableAccounts);
+    } on PostgrestException catch (e, stack) {
+      developer.log('PostgrestException en getAvailableAccounts', error: e, stackTrace: stack);
+      return left(ServerFailure(message: e.message));
+    } catch (e, stack) {
+      developer.log('Error general en getAvailableAccounts', error: e, stackTrace: stack);
+      return left(Failure.from(e));
+    }
+  }
 }

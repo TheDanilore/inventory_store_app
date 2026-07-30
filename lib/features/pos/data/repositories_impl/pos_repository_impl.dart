@@ -2,11 +2,15 @@ import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
+import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/sale_entity.dart';
 import 'dart:developer' as developer;
+import 'dart:isolate';
 import 'package:inventory_store_app/features/pos/domain/repositories/pos_repository.dart';
+
 @LazySingleton(as: PosRepository)
 class PosRepositoryImpl implements PosRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -170,6 +174,40 @@ class PosRepositoryImpl implements PosRepository {
       return right(orderId);
     } catch (e, stack) {
       developer.log('Error en processSale RPC', error: e, stackTrace: stack);
+      return left(Failure.from(e));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ({OrderModel order, List<OrderItemModel> items})>> fetchOrderForReceipt(String orderId) async {
+    try {
+      final orderResp = await _supabase
+          .from('orders')
+          .select(
+            'id, customer_name, customer_id, total_amount, total_profit, discount_amount, payment_method, payment_status, amount_paid, status, points_used, points_earned, created_at, warehouse_id, profiles!orders_customer_id_fkey(full_name, phone), warehouses(name)',
+          )
+          .eq('id', orderId)
+          .single();
+          
+      final itemsResp = await _supabase
+          .from('order_items')
+          .select(
+            'id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name, product_images(id, image_url, is_main)), product_variants(sku, product_images(id, image_url, is_main), variant_attribute_values(attribute_values(value, attributes(name))))',
+          )
+          .eq('order_id', orderId);
+
+      // Delegar la deserialización a un Isolate
+      final result = await Isolate.run(() {
+        final order = OrderModel.fromJson(orderResp);
+        final items = List<Map<String, dynamic>>.from(itemsResp)
+            .map((x) => OrderItemModel.fromJson(x))
+            .toList();
+        return (order: order, items: items);
+      });
+
+      return right(result);
+    } catch (e, stack) {
+      developer.log('Error en fetchOrderForReceipt', error: e, stackTrace: stack);
       return left(Failure.from(e));
     }
   }

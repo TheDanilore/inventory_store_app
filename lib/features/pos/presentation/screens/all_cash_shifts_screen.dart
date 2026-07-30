@@ -8,7 +8,6 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/close_shif
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
@@ -36,40 +35,18 @@ class _AllCashShiftsBody extends StatefulWidget {
 }
 
 class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
-  final _supabase = Supabase.instance.client;
-  List<Map<String, dynamic>> _profiles = [];
-  bool _isLoadingProfiles = true;
-  String? _selectedProfileId;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadProfiles();
+      context.read<CashShiftsCubit>().loadProfiles();
       context.read<CashShiftsCubit>().fetchShifts();
     });
   }
 
-  Future<void> _loadProfiles() async {
-    try {
-      final res = await _supabase
-          .from('profiles')
-          .select('id, full_name')
-          .neq('role', 'customer')
-          .order('full_name');
-      if (mounted) {
-        setState(() {
-          _profiles = List<Map<String, dynamic>>.from(res);
-          _isLoadingProfiles = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoadingProfiles = false);
-    }
-  }
-
-  void _showUserPickerBottomSheet(CashShiftsCubit cubit) {
-    if (_isLoadingProfiles) return;
+  void _showUserPickerBottomSheet(CashShiftsCubit cubit, CashShiftsState state) {
+    if (state.isLoadingProfiles) return;
 
     showModalBottomSheet(
       context: context,
@@ -117,14 +94,16 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                       children: [
                         _buildUserOption(
                           cubit,
+                          state,
                           title: 'Todos los usuarios',
                           value: null,
                           icon: Icons.group_rounded,
                         ),
                         const Divider(height: 24),
-                        ..._profiles.map(
+                        ...state.profiles.map(
                           (p) => _buildUserOption(
                             cubit,
+                            state,
                             title: p['full_name'] as String,
                             value: p['id'] as String,
                             icon: Icons.person_rounded,
@@ -143,17 +122,17 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
   }
 
   Widget _buildUserOption(
-    CashShiftsCubit cubit, {
+    CashShiftsCubit cubit,
+    CashShiftsState state, {
     required String title,
     required String? value,
     required IconData icon,
   }) {
-    final isSelected = _selectedProfileId == value;
+    final isSelected = state.profileFilter == value;
     final colorScheme = Theme.of(context).colorScheme;
 
     return ListTile(
       onTap: () {
-        setState(() => _selectedProfileId = value);
         cubit.setProfileFilter(value);
         Navigator.pop(context);
       },
@@ -190,18 +169,18 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
     final theme = Theme.of(context);
     final cubit = context.read<CashShiftsCubit>();
 
-    String selectedUserName = 'Todos los usuarios';
-    if (_selectedProfileId != null) {
-      final p =
-          _profiles.where((p) => p['id'] == _selectedProfileId).firstOrNull;
-      if (p != null) selectedUserName = p['full_name'] as String;
-    }
-
     return AdminLayout(
       title: 'Historial de Turnos',
       showBackButton: true,
       body: BlocBuilder<CashShiftsCubit, CashShiftsState>(
         builder: (context, state) {
+          String selectedUserName = 'Todos los usuarios';
+          if (state.profileFilter != null) {
+            final p =
+                state.profiles.where((p) => p['id'] == state.profileFilter).firstOrNull;
+            if (p != null) selectedUserName = p['full_name'] as String;
+          }
+
           return Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 800),
@@ -238,7 +217,7 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                         ),
                         const SizedBox(height: 16),
                         InkWell(
-                          onTap: () => _showUserPickerBottomSheet(cubit),
+                          onTap: () => _showUserPickerBottomSheet(cubit, state),
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -256,7 +235,7 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                             child: Row(
                               children: [
                                 Icon(
-                                  _selectedProfileId == null
+                                  state.profileFilter == null
                                       ? Icons.group_rounded
                                       : Icons.person_rounded,
                                   color: theme.colorScheme.primary,
@@ -265,7 +244,7 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    _isLoadingProfiles
+                                    state.isLoadingProfiles
                                         ? 'Cargando usuarios...'
                                         : selectedUserName,
                                     style: theme.textTheme.titleMedium

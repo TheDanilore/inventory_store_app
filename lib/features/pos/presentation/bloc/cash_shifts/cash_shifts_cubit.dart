@@ -7,7 +7,7 @@ import 'package:inventory_store_app/features/pos/domain/usecases/open_cash_shift
 import 'package:inventory_store_app/features/pos/domain/usecases/close_cash_shift_uc.dart';
 import 'package:inventory_store_app/features/pos/domain/usecases/calc_expected_cash_shift_uc.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_state.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/features/pos/domain/repositories/cash_shift_repository.dart';
 
 @injectable
 class CashShiftsCubit extends Cubit<CashShiftsState> {
@@ -16,6 +16,7 @@ class CashShiftsCubit extends Cubit<CashShiftsState> {
   final OpenCashShiftUseCase _openShift;
   final CloseCashShiftUseCase _closeShift;
   final CalcExpectedCashShiftUseCase _calcExpected;
+  final CashShiftRepository _repository;
 
   CashShiftsCubit({
     required GetCashShiftsUseCase getCashShifts,
@@ -23,12 +24,23 @@ class CashShiftsCubit extends Cubit<CashShiftsState> {
     required OpenCashShiftUseCase openShift,
     required CloseCashShiftUseCase closeShift,
     required CalcExpectedCashShiftUseCase calcExpected,
+    required CashShiftRepository repository,
   }) : _getCashShifts = getCashShifts,
        _getCounts = getCounts,
        _openShift = openShift,
        _closeShift = closeShift,
        _calcExpected = calcExpected,
+       _repository = repository,
        super(const CashShiftsState());
+
+  Future<void> loadProfiles() async {
+    emit(state.copyWith(isLoadingProfiles: true));
+    final res = await _repository.getStaffProfiles();
+    res.fold(
+      (failure) => emit(state.copyWith(isLoadingProfiles: false)),
+      (profiles) => emit(state.copyWith(isLoadingProfiles: false, profiles: profiles)),
+    );
+  }
 
   void setFilterStatus(String status) {
     emit(state.copyWith(filterStatus: status, currentPage: 0));
@@ -207,21 +219,10 @@ class CashShiftsCubit extends Cubit<CashShiftsState> {
   }
 
   Future<List<Map<String, dynamic>>> getAvailableAccounts() async {
-    try {
-      final res = await Supabase.instance.client
-          .from('financial_accounts')
-          .select('id, name, type, balance')
-          .eq('is_active', true)
-          .eq('type', 'CAJA')
-          .order('name');
-
-      final accounts =
-          (res as List).map((e) => Map<String, dynamic>.from(e)).toList();
-      return accounts
-          .where((a) => !state.openAccountIds.contains(a['id']))
-          .toList();
-    } catch (e) {
-      return [];
-    }
+    final res = await _repository.getAvailableAccounts(state.openAccountIds);
+    return res.fold(
+      (failure) => [],
+      (accounts) => accounts,
+    );
   }
 }

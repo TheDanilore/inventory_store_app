@@ -45,4 +45,10 @@ abstract class CashShiftRepository {
 
   /// Verifica si existe un turno de caja abierto para la cuenta dada.
   Future<Either<Failure, CashShiftEntity?>> checkActiveShift(String accountId);
+
+  /// Obtiene la lista de perfiles de usuarios (staff).
+  Future<Either<Failure, List<Map<String, dynamic>>>> getStaffProfiles();
+
+  /// Obtiene las cuentas financieras disponibles de tipo CAJA.
+  Future<Either<Failure, List<Map<String, dynamic>>>> getAvailableAccounts(Set<String> openAccountIds);
 }
