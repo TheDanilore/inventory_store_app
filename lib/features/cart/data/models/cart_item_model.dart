@@ -1,6 +1,6 @@
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 
 class CartItemModel {
   final ProductEntity product;

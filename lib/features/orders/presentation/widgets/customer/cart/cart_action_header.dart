@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CartActionHeader extends StatelessWidget {

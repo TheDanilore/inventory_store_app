@@ -1,11 +1,11 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
-import 'package:inventory_store_app/features/pos/domain/usecases/load_cart_uc.dart';
-import 'package:inventory_store_app/features/pos/domain/usecases/save_cart_uc.dart';
-import 'package:inventory_store_app/features/pos/domain/usecases/clear_cart_uc.dart';
-import 'package:inventory_store_app/features/pos/domain/usecases/sync_cart_uc.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/cart/domain/usecases/load_cart_uc.dart';
+import 'package:inventory_store_app/features/cart/domain/usecases/save_cart_uc.dart';
+import 'package:inventory_store_app/features/cart/domain/usecases/clear_cart_uc.dart';
+import 'package:inventory_store_app/features/cart/domain/usecases/sync_cart_uc.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 @injectable
@@ -90,6 +90,12 @@ class CartCubit extends Cubit<CartState> {
   }
 
   void addItem(CartItemEntity item) {
+    if (item.availableStock <= 0) {
+      emit(state.copyWith(errorMessage: 'Producto agotado.'));
+      emit(state.copyWith(errorMessage: null)); // Clear error immediately after
+      return;
+    }
+
     final newItems = Map<String, CartItemEntity>.from(state.items);
 
     if (newItems.containsKey(item.cartKey)) {

@@ -1,6 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
+
+enum PosStatus { initial, loading, success, error }
 
 class PosState extends Equatable {
   final bool isLoading;
@@ -18,6 +21,13 @@ class PosState extends Equatable {
   final List<WarehouseModel> warehouses;
   final List<Map<String, dynamic>> accounts;
 
+  final PosStatus status;
+  final CashShiftEntity? activeShift;
+  final List<Map<String, dynamic>> clientMatches;
+  final String? lastOrderId;
+  final Map<String, dynamic>? creditInfo;
+  final String? selectedAccountId;
+
   const PosState({
     this.isLoading = false,
     this.errorMessage = '',
@@ -30,6 +40,12 @@ class PosState extends Equatable {
     this.batchOverrides = const {},
     this.warehouses = const [],
     this.accounts = const [],
+    this.status = PosStatus.initial,
+    this.activeShift,
+    this.clientMatches = const [],
+    this.lastOrderId,
+    this.creditInfo,
+    this.selectedAccountId,
   });
 
   PosState copyWith({
@@ -44,6 +60,12 @@ class PosState extends Equatable {
     Map<String, List<BatchAssignmentModel>>? batchOverrides,
     List<WarehouseModel>? warehouses,
     List<Map<String, dynamic>>? accounts,
+    PosStatus? status,
+    CashShiftEntity? activeShift,
+    List<Map<String, dynamic>>? clientMatches,
+    String? lastOrderId,
+    Map<String, dynamic>? creditInfo,
+    String? selectedAccountId,
     bool clearClient = false,
   }) {
     return PosState(
@@ -61,6 +83,12 @@ class PosState extends Equatable {
       batchOverrides: batchOverrides ?? this.batchOverrides,
       warehouses: warehouses ?? this.warehouses,
       accounts: accounts ?? this.accounts,
+      status: status ?? this.status,
+      activeShift: activeShift ?? this.activeShift,
+      clientMatches: clientMatches ?? this.clientMatches,
+      lastOrderId: lastOrderId ?? this.lastOrderId,
+      creditInfo: clearClient ? null : (creditInfo ?? this.creditInfo),
+      selectedAccountId: selectedAccountId ?? this.selectedAccountId,
     );
   }
 
@@ -77,5 +105,11 @@ class PosState extends Equatable {
     batchOverrides,
     warehouses,
     accounts,
+    status,
+    activeShift,
+    clientMatches,
+    lastOrderId,
+    creditInfo,
+    selectedAccountId,
   ];
 }

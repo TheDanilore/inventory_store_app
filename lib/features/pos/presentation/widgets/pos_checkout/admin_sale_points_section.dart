@@ -135,8 +135,14 @@ class AdminSalePointsSection extends StatelessWidget {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      onChanged:
+                      onSubmitted:
                           (val) => onPointsChanged(int.tryParse(val) ?? 0),
+                      onTapOutside: (event) {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        onPointsChanged(
+                          int.tryParse(pointsController.text) ?? 0,
+                        );
+                      },
                     ),
                   ),
                 ],

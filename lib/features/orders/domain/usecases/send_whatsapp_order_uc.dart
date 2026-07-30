@@ -1,6 +1,6 @@
 import 'package:injectable/injectable.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 
 /// UseCase encargado de construir el mensaje de WhatsApp y lanzar la URL.
 /// Pertenece a la capa de dominio porque encapsula la regla de negocio

@@ -13,6 +13,7 @@ class CatalogHeader extends StatefulWidget {
   final VoidCallback onAddProduct;
   final bool isPosMode;
   final VoidCallback? onBack;
+  final FocusNode? searchFocusNode;
 
   const CatalogHeader({
     super.key,
@@ -25,6 +26,7 @@ class CatalogHeader extends StatefulWidget {
     required this.onAddProduct,
     this.isPosMode = false,
     this.onBack,
+    this.searchFocusNode,
   });
 
   @override
@@ -262,7 +264,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
             Expanded(
               child: TextField(
                 controller: widget.searchController,
-                focusNode: _searchFocusNode,
+                focusNode: widget.searchFocusNode,
                 onChanged: (val) {
                   widget.onSearchChanged(val);
                   if (val.trim().length >= 3) {

@@ -2,7 +2,6 @@ import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
-import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/sale_entity.dart';
 
 /// Datos iniciales necesarios para arrancar el POS.
@@ -19,9 +18,6 @@ abstract class PosRepository {
   Future<Either<Failure, PosInitData>> loadInitialData({
     bool forceRefresh = false,
   });
-
-  /// Verifica si existe un turno de caja abierto para la cuenta dada.
-  Future<Either<Failure, CashShiftEntity?>> checkActiveShift(String accountId);
 
   /// Busca clientes por nombre, documento o teléfono.
   Future<Either<Failure, List<Map<String, dynamic>>>> searchClients(

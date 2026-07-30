@@ -5,8 +5,8 @@ import 'package:inventory_store_app/features/orders/domain/usecases/process_chec
 import 'package:inventory_store_app/features/orders/domain/usecases/send_whatsapp_order_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/verify_stock_uc.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_state.dart';
-import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 
 @injectable
 class CheckoutCubit extends Cubit<CheckoutState> {

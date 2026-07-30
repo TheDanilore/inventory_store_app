@@ -1,3 +1,5 @@
+import 'dart:isolate';
+import 'dart:developer' as developer;
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -63,18 +65,18 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
           .count(CountOption.exact);
 
       final data = response.data as List;
-      final shifts =
-          data
-              .map(
-                (e) =>
-                    CashShiftModel.fromJson(
-                      Map<String, dynamic>.from(e),
-                    ).toEntity(),
-              )
-              .toList();
+      
+      // Isolate para evitar jank en el parseo JSON
+      final shifts = await Isolate.run(() {
+        return data.map((e) => CashShiftModel.fromJson(Map<String, dynamic>.from(e)).toEntity()).toList();
+      });
 
       return right((shifts: shifts, totalCount: response.count));
-    } catch (e) {
+    } on PostgrestException catch (e, stack) {
+      developer.log('PostgrestException en getShifts', error: e, stackTrace: stack);
+      return left(ServerFailure(message: e.message));
+    } catch (e, stack) {
+      developer.log('Error general en getShifts', error: e, stackTrace: stack);
       return left(Failure.from(e));
     }
   }
@@ -186,8 +188,6 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         );
       }
 
-      // We should calculate the expected amount. Wait, maybe that's done by a database function or trigger?
-      // Legacy calcExpected was just querying account_movements. Let's do that.
       final shiftRes =
           await _supabase
               .from('cash_shifts')
@@ -254,10 +254,47 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         if (m['movement_type'] == 'INCOME') income += amt;
         if (m['movement_type'] == 'EXPENSE') expense += amt;
       }
+      return right(income - expense);
+    } on PostgrestException catch (e, stack) {
+      developer.log('PostgrestException en calcExpected', error: e, stackTrace: stack);
+      return left(ServerFailure(message: e.message));
+    } catch (e, stack) {
+      developer.log('Error general en calcExpected', error: e, stackTrace: stack);
+      return left(Failure.from(e));
+    }
+  }
 
-      final expectedAmount = openingAmount + income - expense;
-      return right(expectedAmount);
-    } catch (e) {
+  @override
+  Future<Either<Failure, CashShiftEntity?>> checkActiveShift(
+    String accountId,
+  ) async {
+    try {
+      final shiftData =
+          await _supabase
+              .from('cash_shifts')
+              .select('id, status, account_id') // Solo los campos mínimos necesarios
+              .eq('account_id', accountId)
+              .eq('status', 'OPEN')
+              .maybeSingle();
+
+      if (shiftData == null) return right(null);
+
+      // Usamos los campos mínimos
+      final shift = CashShiftEntity(
+        id: shiftData['id'],
+        status: CashShiftStatus.fromString(shiftData['status']),
+        openingAmount: 0.0, // No requerido para el checkout
+        openedAt: DateTime.now(), // Fake date for checkout
+        accountId: shiftData['account_id'],
+      );
+
+      return right(shift);
+    } on PostgrestException catch (e, stack) {
+      // Capturamos el error específico de Supabase para trazabilidad
+      developer.log('PostgrestException en checkActiveShift', error: e, stackTrace: stack);
+      return left(ServerFailure(message: e.message));
+    } catch (e, stack) {
+      developer.log('Error general en checkActiveShift', error: e, stackTrace: stack);
       return left(Failure.from(e));
     }
   }

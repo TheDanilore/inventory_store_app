@@ -42,4 +42,7 @@ abstract class CashShiftRepository {
     required String accountId,
     required double openingAmount,
   });
+
+  /// Verifica si existe un turno de caja abierto para la cuenta dada.
+  Future<Either<Failure, CashShiftEntity?>> checkActiveShift(String accountId);
 }

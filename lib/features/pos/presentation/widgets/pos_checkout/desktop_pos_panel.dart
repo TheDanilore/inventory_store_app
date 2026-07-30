@@ -8,13 +8,14 @@ import 'package:inventory_store_app/features/inventory/data/models/warehouse_mod
 import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
 import 'package:inventory_store_app/features/pos/domain/repositories/pos_repository.dart';
+import 'package:inventory_store_app/features/pos/domain/usecases/check_active_shift_uc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -25,7 +26,7 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checko
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_total_summary_section.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/sale_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
-import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
 import 'package:inventory_store_app/core/widgets/batch_edit_sheet.dart';
@@ -41,6 +42,7 @@ class DesktopPosPanel extends StatefulWidget {
 
 class _DesktopPosPanelState extends State<DesktopPosPanel> {
   final PosRepository _checkoutService = GetIt.I<PosRepository>();
+  final CheckActiveShiftUc _checkActiveShiftUc = GetIt.I<CheckActiveShiftUc>();
 
   // Controladores
   final _clienteCtrl = TextEditingController();
@@ -172,7 +174,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     }
 
     try {
-      final shiftResult = await _checkoutService.checkActiveShift(
+      final shiftResult = await _checkActiveShiftUc.call(
         _selectedAccountId!,
       );
       shiftResult.fold(

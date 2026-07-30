@@ -17,8 +17,8 @@ import 'package:inventory_store_app/features/orders/presentation/widgets/custome
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_item_card.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_stock_error_dialog.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_wallet_summary.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
 
 class CustomerCartScreen extends StatefulWidget {
   const CustomerCartScreen({super.key});

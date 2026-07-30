@@ -5,9 +5,9 @@ import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
-import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
-import 'package:inventory_store_app/features/pos/domain/repositories/cart_repository.dart';
-import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/cart/domain/repositories/cart_repository.dart';
+import 'package:inventory_store_app/features/cart/data/models/cart_item_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 

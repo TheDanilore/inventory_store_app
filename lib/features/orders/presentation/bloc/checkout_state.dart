@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 
 enum CheckoutStatus {
   idle,

@@ -42,32 +42,36 @@ class OrderPdfGenerator {
     }
   }
 
-  static Future<Uint8List> _buildPdf(
+  static Future<Uint8List> buildPdfBytes(
     OrderEntity order, {
     required List<OrderItemEntity> items,
+    String? bName,
+    String? bTaxId,
+    String? bAddress,
+    String? bPhone,
   }) async {
     final pdf = pw.Document();
 
-    // 1. Obtener la información del negocio (Síncrono/Asíncrono según prefieras)
-    // Aquí hacemos una consulta rápida a 'business_info' (asumiendo que hay 1 fila)
-    String businessName = 'MI NEGOCIO';
-    String taxId = 'RUC: 00000000000';
-    String address = 'Dirección no registrada';
-    String phone = '';
+    String businessName = bName ?? 'MI NEGOCIO';
+    String taxId = bTaxId ?? 'RUC: 00000000000';
+    String address = bAddress ?? 'Dirección no registrada';
+    String phone = bPhone ?? '';
 
-    try {
-      final supabase = Supabase.instance.client;
-      final info =
-          await supabase.from('business_info').select().limit(1).maybeSingle();
+    if (bName == null) {
+      try {
+        final supabase = Supabase.instance.client;
+        final info =
+            await supabase.from('business_info').select().limit(1).maybeSingle();
 
-      if (info != null) {
-        businessName = info['business_name'] ?? businessName;
-        taxId = info['tax_id'] != null ? 'RUC: ${info['tax_id']}' : taxId;
-        address = info['address'] ?? address;
-        phone = info['phone'] != null ? 'Tel: ${info['phone']}' : phone;
+        if (info != null) {
+          businessName = info['business_name'] ?? businessName;
+          taxId = info['tax_id'] != null ? 'RUC: ${info['tax_id']}' : taxId;
+          address = info['address'] ?? address;
+          phone = info['phone'] != null ? 'Tel: ${info['phone']}' : phone;
+        }
+      } catch (_) {
+        // Ignorar, usará valores por defecto
       }
-    } catch (_) {
-      // Ignorar, usará valores por defecto
     }
 
     final peruTime = _toPeruTime(order.createdAt ?? DateTime.now());
@@ -269,7 +273,7 @@ class OrderPdfGenerator {
     OrderEntity order, {
     required List<OrderItemEntity> items,
   }) async {
-    final bytes = await _buildPdf(order, items: items);
+    final bytes = await buildPdfBytes(order, items: items);
 
     await Printing.layoutPdf(
       onLayout: (_) async => bytes,
@@ -281,7 +285,7 @@ class OrderPdfGenerator {
     OrderEntity order, {
     required List<OrderItemEntity> items,
   }) async {
-    final bytes = await _buildPdf(order, items: items);
+    final bytes = await buildPdfBytes(order, items: items);
 
     await Printing.sharePdf(
       bytes: bytes,
@@ -293,7 +297,7 @@ class OrderPdfGenerator {
     OrderEntity order, {
     required List<OrderItemEntity> items,
   }) async {
-    final bytes = await _buildPdf(order, items: items);
+    final bytes = await buildPdfBytes(order, items: items);
 
     await FileSaver.instance.saveFile(
       name: 'Pedido_${order.id.substring(0, 8)}',
@@ -307,7 +311,7 @@ class OrderPdfGenerator {
     OrderEntity order, {
     required List<OrderItemEntity> items,
   }) async {
-    final bytes = await _buildPdf(order, items: items);
+    final bytes = await buildPdfBytes(order, items: items);
 
     await FileSaver.instance.saveAs(
       name: 'Pedido_${order.id.substring(0, 8)}',

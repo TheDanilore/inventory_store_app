@@ -44,6 +44,14 @@ import '../../features/auth/domain/usecases/register_uc.dart' as _i182;
 import '../../features/auth/domain/usecases/reset_password_uc.dart' as _i878;
 import '../../features/auth/domain/usecases/update_profile_uc.dart' as _i282;
 import '../../features/auth/presentation/bloc/auth_cubit.dart' as _i52;
+import '../../features/cart/data/repositories_impl/cart_repository_impl.dart'
+    as _i250;
+import '../../features/cart/domain/repositories/cart_repository.dart' as _i322;
+import '../../features/cart/domain/usecases/clear_cart_uc.dart' as _i596;
+import '../../features/cart/domain/usecases/load_cart_uc.dart' as _i281;
+import '../../features/cart/domain/usecases/save_cart_uc.dart' as _i1022;
+import '../../features/cart/domain/usecases/sync_cart_uc.dart' as _i480;
+import '../../features/cart/presentation/bloc/cart_cubit.dart' as _i793;
 import '../../features/catalog/data/repositories_impl/catalog_search_repository_impl.dart'
     as _i930;
 import '../../features/catalog/data/repositories_impl/categories_repository_impl.dart'
@@ -191,7 +199,7 @@ import '../../features/financial/domain/repositories/account_movements_repositor
 import '../../features/financial/domain/repositories/financial_accounts_repository.dart'
     as _i662;
 import '../../features/financial/domain/usecases/get_account_movements_usecase.dart'
-    as _i812;
+    as _i811;
 import '../../features/financial/domain/usecases/get_financial_accounts_usecase.dart'
     as _i425;
 import '../../features/financial/domain/usecases/save_account_movement_usecase.dart'
@@ -320,7 +328,7 @@ import '../../features/orders/domain/usecases/get_order_by_id_usecase.dart'
     as _i711;
 import '../../features/orders/domain/usecases/get_order_details_uc.dart'
     as _i93;
-import '../../features/orders/domain/usecases/get_order_items_uc.dart' as _i814;
+import '../../features/orders/domain/usecases/get_order_items_uc.dart' as _i812;
 import '../../features/orders/domain/usecases/process_checkout_uc.dart'
     as _i446;
 import '../../features/orders/domain/usecases/save_order_changes_uc.dart'
@@ -335,13 +343,10 @@ import '../../features/orders/presentation/bloc/order_detail/order_detail_cubit.
     as _i808;
 import '../../features/orders/presentation/bloc/orders/orders_cubit.dart'
     as _i1051;
-import '../../features/pos/data/repositories_impl/cart_repository_impl.dart'
-    as _i321;
 import '../../features/pos/data/repositories_impl/cash_shift_repository_impl.dart'
     as _i399;
 import '../../features/pos/data/repositories_impl/pos_repository_impl.dart'
     as _i125;
-import '../../features/pos/domain/repositories/cart_repository.dart' as _i811;
 import '../../features/pos/domain/repositories/cash_shift_repository.dart'
     as _i1050;
 import '../../features/pos/domain/repositories/pos_repository.dart' as _i511;
@@ -349,19 +354,14 @@ import '../../features/pos/domain/usecases/calc_expected_cash_shift_uc.dart'
     as _i85;
 import '../../features/pos/domain/usecases/check_active_shift_uc.dart'
     as _i1006;
-import '../../features/pos/domain/usecases/clear_cart_uc.dart' as _i776;
 import '../../features/pos/domain/usecases/close_cash_shift_uc.dart' as _i576;
 import '../../features/pos/domain/usecases/get_cash_shifts_status_count_uc.dart'
     as _i582;
 import '../../features/pos/domain/usecases/get_cash_shifts_uc.dart' as _i486;
-import '../../features/pos/domain/usecases/load_cart_uc.dart' as _i648;
 import '../../features/pos/domain/usecases/load_initial_pos_data_uc.dart'
     as _i233;
 import '../../features/pos/domain/usecases/open_cash_shift_uc.dart' as _i1030;
 import '../../features/pos/domain/usecases/process_checkout_uc.dart' as _i153;
-import '../../features/pos/domain/usecases/save_cart_uc.dart' as _i855;
-import '../../features/pos/domain/usecases/sync_cart_uc.dart' as _i331;
-import '../../features/pos/presentation/bloc/cart/cart_cubit.dart' as _i193;
 import '../../features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart'
     as _i1029;
 import '../../features/pos/presentation/bloc/pos/pos_cubit.dart' as _i437;
@@ -412,7 +412,7 @@ import '../../features/purchases/domain/usecases/receive_purchase_order_items_us
 import '../../features/purchases/domain/usecases/register_supplier_credit_payment_usecase.dart'
     as _i525;
 import '../../features/purchases/domain/usecases/save_supplier_credit_usecase.dart'
-    as _i322;
+    as _i321;
 import '../../features/purchases/domain/usecases/search_suppliers_usecase.dart'
     as _i142;
 import '../../features/purchases/domain/usecases/toggle_supplier_credit_usecase.dart'
@@ -519,6 +519,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i317.WarehousesRepository>(
       () => _i237.WarehousesRepositoryImpl(),
     );
+    gh.lazySingleton<_i322.CartRepository>(() => _i250.CartRepositoryImpl());
     gh.lazySingleton<_i1018.CategoriesRepository>(
       () => _i208.CategoriesRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
@@ -614,7 +615,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i875.CustomersRepository>(
       () => _i365.CustomersRepositoryImpl(),
     );
-    gh.lazySingleton<_i811.CartRepository>(() => _i321.CartRepositoryImpl());
     gh.lazySingleton<_i257.AppConfigRepository>(
       () => _i785.AppConfigRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
@@ -635,6 +635,18 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1030.OpenCashShiftUseCase>(
       () => _i1030.OpenCashShiftUseCase(gh<_i1050.CashShiftRepository>()),
     );
+    gh.lazySingleton<_i596.ClearCartUseCase>(
+      () => _i596.ClearCartUseCase(gh<_i322.CartRepository>()),
+    );
+    gh.lazySingleton<_i281.LoadCartUseCase>(
+      () => _i281.LoadCartUseCase(gh<_i322.CartRepository>()),
+    );
+    gh.lazySingleton<_i1022.SaveCartUseCase>(
+      () => _i1022.SaveCartUseCase(gh<_i322.CartRepository>()),
+    );
+    gh.lazySingleton<_i480.SyncCartUseCase>(
+      () => _i480.SyncCartUseCase(gh<_i322.CartRepository>()),
+    );
     gh.factory<_i276.WarehousesCubit>(
       () => _i276.WarehousesCubit(
         getWarehousesUseCase: gh<_i71.GetWarehousesUseCase>(),
@@ -646,9 +658,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i761.CustomerCreditMovementsCubit(
         gh<_i4.CustomerCreditsRepository>(),
       ),
-    );
-    gh.lazySingleton<_i1006.CheckActiveShiftUseCase>(
-      () => _i1006.CheckActiveShiftUseCase(gh<_i511.PosRepository>()),
     );
     gh.lazySingleton<_i233.LoadInitialPosDataUseCase>(
       () => _i233.LoadInitialPosDataUseCase(gh<_i511.PosRepository>()),
@@ -728,6 +737,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i115.SupplierCreditMovementsRepository>(),
       ),
     );
+    gh.factory<_i1006.CheckActiveShiftUc>(
+      () => _i1006.CheckActiveShiftUc(gh<_i1050.CashShiftRepository>()),
+    );
     gh.factory<_i876.ExportKardexPdfUseCase>(
       () => _i876.ExportKardexPdfUseCase(gh<_i269.KardexRepository>()),
     );
@@ -739,18 +751,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i600.RemoveFromWishlistUseCase>(
       () => _i600.RemoveFromWishlistUseCase(gh<_i728.WishlistRepository>()),
-    );
-    gh.lazySingleton<_i776.ClearCartUseCase>(
-      () => _i776.ClearCartUseCase(gh<_i811.CartRepository>()),
-    );
-    gh.lazySingleton<_i648.LoadCartUseCase>(
-      () => _i648.LoadCartUseCase(gh<_i811.CartRepository>()),
-    );
-    gh.lazySingleton<_i855.SaveCartUseCase>(
-      () => _i855.SaveCartUseCase(gh<_i811.CartRepository>()),
-    );
-    gh.lazySingleton<_i331.SyncCartUseCase>(
-      () => _i331.SyncCartUseCase(gh<_i811.CartRepository>()),
     );
     gh.lazySingleton<_i817.FetchSupplierCreditsUseCase>(
       () => _i817.FetchSupplierCreditsUseCase(
@@ -786,8 +786,8 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i123.SupplierCreditsRepository>(),
       ),
     );
-    gh.lazySingleton<_i322.SaveSupplierCreditUseCase>(
-      () => _i322.SaveSupplierCreditUseCase(
+    gh.lazySingleton<_i321.SaveSupplierCreditUseCase>(
+      () => _i321.SaveSupplierCreditUseCase(
         gh<_i123.SupplierCreditsRepository>(),
       ),
     );
@@ -1087,8 +1087,8 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i476.UsersRepository>(),
       ),
     );
-    gh.factory<_i812.GetAccountMovementsUseCase>(
-      () => _i812.GetAccountMovementsUseCase(
+    gh.factory<_i811.GetAccountMovementsUseCase>(
+      () => _i811.GetAccountMovementsUseCase(
         gh<_i561.AccountMovementsRepository>(),
       ),
     );
@@ -1120,11 +1120,6 @@ extension GetItInjectableX on _i174.GetIt {
             gh<_i549.UpdatePurchaseOrderStatusUseCase>(),
       ),
     );
-    gh.factory<_i437.PosCubit>(
-      () => _i437.PosCubit(
-        loadInitialPosData: gh<_i233.LoadInitialPosDataUseCase>(),
-      ),
-    );
     gh.factory<_i135.CustomerLocationsCubit>(
       () => _i135.CustomerLocationsCubit(
         gh<_i598.GetCustomerLocationsUseCase>(),
@@ -1136,7 +1131,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i218.AccountMovementsCubit>(
       () => _i218.AccountMovementsCubit(
-        getMovements: gh<_i812.GetAccountMovementsUseCase>(),
+        getMovements: gh<_i811.GetAccountMovementsUseCase>(),
         saveMovement: gh<_i625.SaveAccountMovementUseCase>(),
         transferFunds: gh<_i862.TransferFundsUseCase>(),
         getCurrentUser: gh<_i813.GetCurrentUserUseCase>(),
@@ -1296,19 +1291,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i711.GetOrderByIdUseCase>(
       () => _i711.GetOrderByIdUseCase(gh<_i992.OrdersRepository>()),
     );
-    gh.lazySingleton<_i814.GetOrderItemsUc>(
-      () => _i814.GetOrderItemsUc(gh<_i992.OrdersRepository>()),
+    gh.lazySingleton<_i812.GetOrderItemsUc>(
+      () => _i812.GetOrderItemsUc(gh<_i992.OrdersRepository>()),
     );
     gh.lazySingleton<_i904.SaveOrderChangesUc>(
       () => _i904.SaveOrderChangesUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.factory<_i193.CartCubit>(
-      () => _i193.CartCubit(
-        loadCart: gh<_i648.LoadCartUseCase>(),
-        saveCart: gh<_i855.SaveCartUseCase>(),
-        syncCart: gh<_i331.SyncCartUseCase>(),
-        clearCart: gh<_i776.ClearCartUseCase>(),
-      ),
     );
     gh.factory<_i70.CustomersCubit>(
       () => _i70.CustomersCubit(
@@ -1320,6 +1307,14 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i378.InventoryExitsCubit(
         getExitsUseCase: gh<_i136.GetInventoryExitsUseCase>(),
         getItemsUseCase: gh<_i441.GetExitItemsUseCase>(),
+      ),
+    );
+    gh.factory<_i793.CartCubit>(
+      () => _i793.CartCubit(
+        loadCart: gh<_i281.LoadCartUseCase>(),
+        saveCart: gh<_i1022.SaveCartUseCase>(),
+        syncCart: gh<_i480.SyncCartUseCase>(),
+        clearCart: gh<_i596.ClearCartUseCase>(),
       ),
     );
     gh.factory<_i30.FinancialAccountsCubit>(
@@ -1383,8 +1378,16 @@ extension GetItInjectableX on _i174.GetIt {
         getFilteredOrdersUc: gh<_i617.GetFilteredOrdersUc>(),
         saveOrderChangesUc: gh<_i904.SaveOrderChangesUc>(),
         cancelOrderUc: gh<_i534.CancelOrderUc>(),
-        getOrderItemsUc: gh<_i814.GetOrderItemsUc>(),
+        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
         repository: gh<_i992.OrdersRepository>(),
+      ),
+    );
+    gh.factory<_i437.PosCubit>(
+      () => _i437.PosCubit(
+        loadInitialPosData: gh<_i233.LoadInitialPosDataUseCase>(),
+        getOrderDetails: gh<_i93.GetOrderDetailsUc>(),
+        posRepository: gh<_i511.PosRepository>(),
+        checkActiveShiftUc: gh<_i1006.CheckActiveShiftUc>(),
       ),
     );
     gh.factory<_i833.UserFormCubit>(
@@ -1499,7 +1502,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i442.CustomerOrdersCubit>(
       () => _i442.CustomerOrdersCubit(
         getCustomerOrdersUc: gh<_i857.GetCustomerOrdersUc>(),
-        getOrderItemsUc: gh<_i814.GetOrderItemsUc>(),
+        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
       ),
     );
     gh.factory<_i991.CustomerCatalogCubit>(

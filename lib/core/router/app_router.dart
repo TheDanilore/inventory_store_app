@@ -15,7 +15,7 @@ import 'package:inventory_store_app/features/catalog/presentation/routes/catalog
 import 'package:inventory_store_app/features/customers/presentation/routes/customers_routes.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_cart_fab.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_variant_picker_sheet.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/routes/dashboard_routes.dart';
 import 'package:inventory_store_app/features/financial/presentation/routes/financial_routes.dart';
 import 'package:inventory_store_app/features/inventory/presentation/routes/inventory_routes.dart';

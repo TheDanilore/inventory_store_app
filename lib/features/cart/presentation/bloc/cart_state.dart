@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 
 class CartState extends Equatable {
   final Map<String, CartItemEntity> items;

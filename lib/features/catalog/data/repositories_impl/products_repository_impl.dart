@@ -1,3 +1,4 @@
+import 'dart:isolate';
 import 'dart:typed_data';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
@@ -114,11 +115,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
       transformQuery = transformQuery.range(offset, offset + limit - 1);
       final response = await transformQuery.count(CountOption.exact);
 
-      final models =
-          List<Map<String, dynamic>>.from(
-            response.data,
-          ).map(ProductModel.fromJson).toList();
-      final entities = models.map((m) => m.toEntity()).toList();
+      final responseData = response.data as List;
+      final entities = await Isolate.run(() {
+        final models = List<Map<String, dynamic>>.from(responseData)
+            .map(ProductModel.fromJson)
+            .toList();
+        return models.map((m) => m.toEntity()).toList();
+      });
+
       return right((products: entities, totalCount: response.count));
     } catch (e) {
       return _handleError(e);
