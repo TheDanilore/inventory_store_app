@@ -43,5 +43,6 @@ abstract class PosRepository {
 
   /// Obtiene una orden y sus items de forma eficiente usando un Isolate
   /// para no bloquear la UI al imprimir o mostrar el comprobante.
-  Future<Either<Failure, ({OrderModel order, List<OrderItemModel> items})>> fetchOrderForReceipt(String orderId);
+  Future<Either<Failure, ({OrderModel order, List<OrderItemModel> items})>>
+  fetchOrderForReceipt(String orderId);
 }

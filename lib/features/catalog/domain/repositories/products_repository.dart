@@ -144,5 +144,7 @@ abstract class ProductsRepository {
   Future<Either<Failure, void>> clearCache();
 
   // Guardado Atómico (RPC)
-  Future<Either<Failure, void>> saveProductComplete(Map<String, dynamic> payload);
+  Future<Either<Failure, void>> saveProductComplete(
+    Map<String, dynamic> payload,
+  );
 }

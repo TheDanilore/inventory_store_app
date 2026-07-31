@@ -50,5 +50,7 @@ abstract class CashShiftRepository {
   Future<Either<Failure, List<Map<String, dynamic>>>> getStaffProfiles();
 
   /// Obtiene las cuentas financieras disponibles de tipo CAJA.
-  Future<Either<Failure, List<Map<String, dynamic>>>> getAvailableAccounts(Set<String> openAccountIds);
+  Future<Either<Failure, List<Map<String, dynamic>>>> getAvailableAccounts(
+    Set<String> openAccountIds,
+  );
 }

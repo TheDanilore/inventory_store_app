@@ -65,15 +65,26 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
           .count(CountOption.exact);
 
       final data = response.data as List;
-      
+
       // Isolate para evitar jank en el parseo JSON
       final shifts = await Isolate.run(() {
-        return data.map((e) => CashShiftModel.fromJson(Map<String, dynamic>.from(e)).toEntity()).toList();
+        return data
+            .map(
+              (e) =>
+                  CashShiftModel.fromJson(
+                    Map<String, dynamic>.from(e),
+                  ).toEntity(),
+            )
+            .toList();
       });
 
       return right((shifts: shifts, totalCount: response.count));
     } on PostgrestException catch (e, stack) {
-      developer.log('PostgrestException en getShifts', error: e, stackTrace: stack);
+      developer.log(
+        'PostgrestException en getShifts',
+        error: e,
+        stackTrace: stack,
+      );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
       developer.log('Error general en getShifts', error: e, stackTrace: stack);
@@ -256,10 +267,18 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
       }
       return right(income - expense);
     } on PostgrestException catch (e, stack) {
-      developer.log('PostgrestException en calcExpected', error: e, stackTrace: stack);
+      developer.log(
+        'PostgrestException en calcExpected',
+        error: e,
+        stackTrace: stack,
+      );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
-      developer.log('Error general en calcExpected', error: e, stackTrace: stack);
+      developer.log(
+        'Error general en calcExpected',
+        error: e,
+        stackTrace: stack,
+      );
       return left(Failure.from(e));
     }
   }
@@ -272,7 +291,9 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
       final shiftData =
           await _supabase
               .from('cash_shifts')
-              .select('id, status, account_id') // Solo los campos mínimos necesarios
+              .select(
+                'id, status, account_id',
+              ) // Solo los campos mínimos necesarios
               .eq('account_id', accountId)
               .eq('status', 'OPEN')
               .maybeSingle();
@@ -291,10 +312,18 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
       return right(shift);
     } on PostgrestException catch (e, stack) {
       // Capturamos el error específico de Supabase para trazabilidad
-      developer.log('PostgrestException en checkActiveShift', error: e, stackTrace: stack);
+      developer.log(
+        'PostgrestException en checkActiveShift',
+        error: e,
+        stackTrace: stack,
+      );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
-      developer.log('Error general en checkActiveShift', error: e, stackTrace: stack);
+      developer.log(
+        'Error general en checkActiveShift',
+        error: e,
+        stackTrace: stack,
+      );
       return left(Failure.from(e));
     }
   }
@@ -307,19 +336,29 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
           .select('id, full_name')
           .neq('role', 'customer')
           .order('full_name');
-          
+
       return right(List<Map<String, dynamic>>.from(res));
     } on PostgrestException catch (e, stack) {
-      developer.log('PostgrestException en getStaffProfiles', error: e, stackTrace: stack);
+      developer.log(
+        'PostgrestException en getStaffProfiles',
+        error: e,
+        stackTrace: stack,
+      );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
-      developer.log('Error general en getStaffProfiles', error: e, stackTrace: stack);
+      developer.log(
+        'Error general en getStaffProfiles',
+        error: e,
+        stackTrace: stack,
+      );
       return left(Failure.from(e));
     }
   }
 
   @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> getAvailableAccounts(Set<String> openAccountIds) async {
+  Future<Either<Failure, List<Map<String, dynamic>>>> getAvailableAccounts(
+    Set<String> openAccountIds,
+  ) async {
     try {
       final res = await _supabase
           .from('financial_accounts')
@@ -328,17 +367,25 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
           .eq('type', 'CAJA')
           .order('name');
 
-      final accounts = (res as List).map((e) => Map<String, dynamic>.from(e)).toList();
-      final availableAccounts = accounts
-          .where((a) => !openAccountIds.contains(a['id']))
-          .toList();
-          
+      final accounts =
+          (res as List).map((e) => Map<String, dynamic>.from(e)).toList();
+      final availableAccounts =
+          accounts.where((a) => !openAccountIds.contains(a['id'])).toList();
+
       return right(availableAccounts);
     } on PostgrestException catch (e, stack) {
-      developer.log('PostgrestException en getAvailableAccounts', error: e, stackTrace: stack);
+      developer.log(
+        'PostgrestException en getAvailableAccounts',
+        error: e,
+        stackTrace: stack,
+      );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
-      developer.log('Error general en getAvailableAccounts', error: e, stackTrace: stack);
+      developer.log(
+        'Error general en getAvailableAccounts',
+        error: e,
+        stackTrace: stack,
+      );
       return left(Failure.from(e));
     }
   }

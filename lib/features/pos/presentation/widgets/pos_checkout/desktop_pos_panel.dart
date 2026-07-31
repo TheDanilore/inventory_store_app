@@ -172,9 +172,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     }
 
     try {
-      final shiftResult = await _checkActiveShiftUc.call(
-        _selectedAccountId!,
-      );
+      final shiftResult = await _checkActiveShiftUc.call(_selectedAccountId!);
       shiftResult.fold(
         (_) {
           if (mounted) setState(() => _activeShift = null);
@@ -472,7 +470,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
 
       final soldQuantities = {
         for (final item in cartCubit.state.items.values)
-          item.productId: item.quantity
+          item.productId: item.quantity,
       };
 
       posCubit.removeClient();
@@ -490,20 +488,25 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                 isDraft: isDraft,
                 onPrint: () async {
                   try {
-                    final fetchResult = await _checkoutService.fetchOrderForReceipt(orderId);
-                    
+                    final fetchResult = await _checkoutService
+                        .fetchOrderForReceipt(orderId);
+
                     fetchResult.fold(
                       (failure) {
                         if (dialogContext.mounted) {
                           AppSnackbar.show(
                             dialogContext,
-                            message: 'Error al obtener orden: ${failure.message}',
+                            message:
+                                'Error al obtener orden: ${failure.message}',
                             type: SnackbarType.error,
                           );
                         }
                       },
                       (result) async {
-                        await OrderPdfGenerator.shareTicket(result.order, items: result.items);
+                        await OrderPdfGenerator.shareTicket(
+                          result.order,
+                          items: result.items,
+                        );
                       },
                     );
                   } catch (e) {
@@ -747,14 +750,17 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
 
                     // Resumen Total
                     ListenableBuilder(
-                      listenable: Listenable.merge([_descuentoCtrl, _isDiscountPercentage]),
+                      listenable: Listenable.merge([
+                        _descuentoCtrl,
+                        _isDiscountPercentage,
+                      ]),
                       builder: (context, _) {
                         return _buildSummarySection(
                           pointsToSolesRatio,
                           earningRate,
                           isLoyaltyEnabled,
                         );
-                      }
+                      },
                     ),
                   ],
                 ),
@@ -763,10 +769,13 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
 
             // Action Bar inferior
             ListenableBuilder(
-              listenable: Listenable.merge([_descuentoCtrl, _isDiscountPercentage]),
+              listenable: Listenable.merge([
+                _descuentoCtrl,
+                _isDiscountPercentage,
+              ]),
               builder: (context, _) {
                 return _buildStickyActionBar(pointsToSolesRatio);
-              }
+              },
             ),
           ],
         ),

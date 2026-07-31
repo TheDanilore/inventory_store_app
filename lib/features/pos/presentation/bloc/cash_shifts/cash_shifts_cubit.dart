@@ -38,7 +38,8 @@ class CashShiftsCubit extends Cubit<CashShiftsState> {
     final res = await _repository.getStaffProfiles();
     res.fold(
       (failure) => emit(state.copyWith(isLoadingProfiles: false)),
-      (profiles) => emit(state.copyWith(isLoadingProfiles: false, profiles: profiles)),
+      (profiles) =>
+          emit(state.copyWith(isLoadingProfiles: false, profiles: profiles)),
     );
   }
 
@@ -220,9 +221,6 @@ class CashShiftsCubit extends Cubit<CashShiftsState> {
 
   Future<List<Map<String, dynamic>>> getAvailableAccounts() async {
     final res = await _repository.getAvailableAccounts(state.openAccountIds);
-    return res.fold(
-      (failure) => [],
-      (accounts) => accounts,
-    );
+    return res.fold((failure) => [], (accounts) => accounts);
   }
 }

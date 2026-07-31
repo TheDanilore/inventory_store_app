@@ -253,10 +253,16 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                         cubit,
                                         isEdit,
                                       ),
-                                    BlocSelector<ProductFormCubit, ProductFormState, bool>(
+                                    BlocSelector<
+                                      ProductFormCubit,
+                                      ProductFormState,
+                                      bool
+                                    >(
                                       selector: (state) => state.isSaving,
                                       builder: (context, isSaving) {
-                                        if (!isSaving) return const SizedBox.shrink();
+                                        if (!isSaving) {
+                                          return const SizedBox.shrink();
+                                        }
                                         return Positioned.fill(
                                           child: BackdropFilter(
                                             filter: ImageFilter.blur(
@@ -264,9 +270,12 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                               sigmaY: 5.0,
                                             ),
                                             child: Container(
-                                              color: Colors.black.withValues(alpha: 0.1),
+                                              color: Colors.black.withValues(
+                                                alpha: 0.1,
+                                              ),
                                               child: const Center(
-                                                child: CircularProgressIndicator(),
+                                                child:
+                                                    CircularProgressIndicator(),
                                               ),
                                             ),
                                           ),

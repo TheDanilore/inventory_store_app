@@ -186,13 +186,16 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         });
 
         // Cargar imágenes precargadas
-        final productImagesOnly = targetProduct.images.where((img) => img.variantId == null).toList();
+        final productImagesOnly =
+            targetProduct.images.where((img) => img.variantId == null).toList();
         _formImages.addAll(
           productImagesOnly.map((img) => FormImageItem(existing: img)),
         );
 
         // Cargar variantes precargadas
-        final drafts = targetProduct.productVariants.map((v) => VariantDraftEntity.fromVariant(v));
+        final drafts = targetProduct.productVariants.map(
+          (v) => VariantDraftEntity.fromVariant(v),
+        );
         _variantDrafts.addAll(drafts.map(VariantDraftFormModel.fromEntity));
 
         await Future.wait([

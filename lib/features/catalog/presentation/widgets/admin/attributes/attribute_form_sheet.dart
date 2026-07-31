@@ -150,7 +150,7 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
                             ),
                   ),
                 );
-              }
+              },
             ),
             const SizedBox(height: 20),
           ],

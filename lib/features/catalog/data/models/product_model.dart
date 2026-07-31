@@ -167,10 +167,10 @@ class ProductModel {
           json['total_stock'] != null
               ? (json['total_stock'] as num).toInt()
               : batchesList.fold<int>(
-                  0,
-                  (prev, b) =>
-                      prev + ((b['available_quantity'] as num?)?.toInt() ?? 0),
-                ),
+                0,
+                (prev, b) =>
+                    prev + ((b['available_quantity'] as num?)?.toInt() ?? 0),
+              ),
     );
   }
 

@@ -19,7 +19,9 @@ class FakeAuthCubit extends Cubit<AuthState> implements AuthCubit {
 }
 
 void main() {
-  testWidgets('Prueba inicial de inicialización de la aplicacion', (WidgetTester tester) async {
+  testWidgets('Prueba inicial de inicialización de la aplicacion', (
+    WidgetTester tester,
+  ) async {
     final fakeAuthCubit = FakeAuthCubit();
 
     // Creamos una configuración de enrutamiento básica para el árbol de prueba.
@@ -35,10 +37,7 @@ void main() {
 
     // Inicializamos la UI inyectando los parámetros requeridos por el constructor de MyApp.
     await tester.pumpWidget(
-      MyApp(
-        authCubit: fakeAuthCubit,
-        router: testRouter,
-      ),
+      MyApp(authCubit: fakeAuthCubit, router: testRouter),
     );
 
     // Confirmación atómica de compilación y montaje exitoso en el árbol de widgets.

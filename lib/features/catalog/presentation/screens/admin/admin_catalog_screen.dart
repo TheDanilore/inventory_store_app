@@ -164,7 +164,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
       builder: (context, constraints) {
         final isDesktop = constraints.maxWidth >= 900;
         final cubit = context.read<AdminCatalogCubit>();
-        
+
         final bodyContent = BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
           builder: (context, state) {
             const double fabsBottomPadding = 54;
@@ -180,7 +180,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
                         child: Container(
-                          color: const Color(0xFFF9FAFB).withValues(alpha: 0.85),
+                          color: const Color(
+                            0xFFF9FAFB,
+                          ).withValues(alpha: 0.85),
                           child: OverflowBox(
                             alignment: Alignment.topCenter,
                             maxHeight: double.infinity,
@@ -189,12 +191,22 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               children: [
                                 CatalogHeader(
                                   searchController: _searchCtrl,
-                                  isExporting: state.actionState == ViewState.loading,
-                                  onExport: () => _exportCatalogPdf(context, cubit, state),
+                                  isExporting:
+                                      state.actionState == ViewState.loading,
+                                  onExport:
+                                      () => _exportCatalogPdf(
+                                        context,
+                                        cubit,
+                                        state,
+                                      ),
                                   onSearchChanged: cubit.setSearchTerm,
                                   searchByIngredient: state.searchByIngredient,
-                                  onToggleIngredientSearch: cubit.toggleSearchByIngredient,
-                                  onAddProduct: () => context.go('/admin/products/product-form'),
+                                  onToggleIngredientSearch:
+                                      cubit.toggleSearchByIngredient,
+                                  onAddProduct:
+                                      () => context.go(
+                                        '/admin/products/product-form',
+                                      ),
                                 ),
                                 if (state.actionState == ViewState.loading)
                                   const LinearProgressIndicator(
@@ -210,23 +222,25 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   ),
                 );
 
-                final chipsSliver = (state.categories.isNotEmpty && !state.searchByIngredient)
-                    ? SliverToBoxAdapter(
-                        child: CategoryChips(
-                          categories: state.categories,
-                          selectedCategoryId: state.selectedCategoryId,
-                          onSelected: cubit.setCategory,
-                          filterIsActive: state.filterIsActive,
-                          onStatusSelected: cubit.setFilterIsActive,
-                          sortOption: state.sortOption,
-                          onSortSelected: cubit.setSortOption,
-                          stockFilter: state.stockFilter,
-                          onStockFilterSelected: cubit.setStockFilter,
-                        ),
-                      )
-                    : null;
+                final chipsSliver =
+                    (state.categories.isNotEmpty && !state.searchByIngredient)
+                        ? SliverToBoxAdapter(
+                          child: CategoryChips(
+                            categories: state.categories,
+                            selectedCategoryId: state.selectedCategoryId,
+                            onSelected: cubit.setCategory,
+                            filterIsActive: state.filterIsActive,
+                            onStatusSelected: cubit.setFilterIsActive,
+                            sortOption: state.sortOption,
+                            onSortSelected: cubit.setSortOption,
+                            stockFilter: state.stockFilter,
+                            onStockFilterSelected: cubit.setStockFilter,
+                          ),
+                        )
+                        : null;
 
-                if (state.catalogState == ViewState.loading || state.catalogState == ViewState.initial) {
+                if (state.catalogState == ViewState.loading ||
+                    state.catalogState == ViewState.initial) {
                   return RefreshIndicator(
                     color: Theme.of(context).colorScheme.primary,
                     onRefresh: () async => cubit.refreshProducts(),
@@ -237,12 +251,13 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         SliverPadding(
                           padding: const EdgeInsets.all(16),
                           sliver: SliverGrid(
-                            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 300,
-                              mainAxisExtent: 280,
-                              crossAxisSpacing: 16,
-                              mainAxisSpacing: 16,
-                            ),
+                            gridDelegate:
+                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 300,
+                                  mainAxisExtent: 280,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 16,
+                                ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) => const AdminProductSkeleton(),
                               childCount: 20,
@@ -274,7 +289,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 }
 
                 if (state.products.isEmpty &&
-                    (state.catalogState == ViewState.success || state.catalogState == ViewState.empty)) {
+                    (state.catalogState == ViewState.success ||
+                        state.catalogState == ViewState.empty)) {
                   return RefreshIndicator(
                     color: Theme.of(context).colorScheme.primary,
                     onRefresh: () async => cubit.refreshProducts(),
@@ -309,7 +325,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     pageSize: 20,
                     currentPage: state.currentPage,
                     onPageChanged: cubit.setPage,
-                    onSale: widget.onAddToCart ?? (product) => PosAddToCartSheet.show(context, product),
+                    onSale:
+                        widget.onAddToCart ??
+                        (product) => PosAddToCartSheet.show(context, product),
                     onToggleActive: (p) => _toggleProductoActivo(p, cubit),
                     searchByIngredient: state.searchByIngredient,
                     matchedIngredients: state.matchedIngredients,
@@ -357,38 +375,39 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             );
 
             if (isDesktop) {
-              return Container(
-                color: AppColors.background,
-                child: catalogBody,
-              );
+              return Container(color: AppColors.background, child: catalogBody);
             }
 
             return catalogBody;
           },
         );
 
-        final floatingBtn = isDesktop
-            ? null
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  if (widget.floatingActionButton != null) widget.floatingActionButton!,
-                  const SizedBox(height: 12),
-                  CatalogAddProductFab(
-                    onTap: () {
-                      context.go('/admin/products/product-form');
-                    },
-                  ),
-                ],
-              );
+        final floatingBtn =
+            isDesktop
+                ? null
+                : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (widget.floatingActionButton != null)
+                      widget.floatingActionButton!,
+                    const SizedBox(height: 12),
+                    CatalogAddProductFab(
+                      onTap: () {
+                        context.go('/admin/products/product-form');
+                      },
+                    ),
+                  ],
+                );
 
         return AdminLayout(
           title: 'Catálogo',
           showSettingsButton: true,
           settingsActions: _buildMenuItems(cubit.state),
-          onSettingsSelected: (value) => _handleMenuSelection(value, cubit, cubit.state, context),
+          onSettingsSelected:
+              (value) =>
+                  _handleMenuSelection(value, cubit, cubit.state, context),
           showAppBar: true,
           actions: [
             if (isDesktop)
@@ -409,10 +428,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 icon: const Icon(Icons.point_of_sale_rounded, size: 16),
                 label: const Text(
                   'Abrir Caja',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
               ),
           ],

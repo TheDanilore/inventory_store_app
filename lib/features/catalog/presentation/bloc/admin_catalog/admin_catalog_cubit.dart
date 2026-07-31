@@ -42,19 +42,19 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
   Future<void> _fetchCategories() async {
     final result = await getCategoriesUC();
-    result.fold(
-      (failure) {
-        developer.log('Error fetching categories: ${failure.message}', error: failure);
-      },
-      (cats) => emit(state.copyWith(categories: cats)),
-    );
+    result.fold((failure) {
+      developer.log(
+        'Error fetching categories: ${failure.message}',
+        error: failure,
+      );
+    }, (cats) => emit(state.copyWith(categories: cats)));
   }
 
   // Filters
 
   void setSearchTerm(String term) {
     if (state.searchTerm == term) return;
-    
+
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       emit(state.copyWith(searchTerm: term, currentPage: 0));
@@ -118,18 +118,19 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
   void decrementStockLocal(Map<String, int> soldQuantities) {
     if (state.products.isEmpty) return;
-    
-    final updatedProducts = state.products.map((product) {
-      if (soldQuantities.containsKey(product.id) && product.stockControl) {
-        final soldQty = soldQuantities[product.id]!;
-        // Aquí restamos el stock de la entidad principal. Si usa lotes/variantes es más complejo,
-        // pero para stock general basta con reducir totalStock en UI cache.
-        final newStock = product.totalStock - soldQty;
-        // Nota: ProductEntity es inmutable, así que creamos un copyWith.
-        return product.copyWith(totalStock: newStock < 0 ? 0 : newStock);
-      }
-      return product;
-    }).toList();
+
+    final updatedProducts =
+        state.products.map((product) {
+          if (soldQuantities.containsKey(product.id) && product.stockControl) {
+            final soldQty = soldQuantities[product.id]!;
+            // Aquí restamos el stock de la entidad principal. Si usa lotes/variantes es más complejo,
+            // pero para stock general basta con reducir totalStock en UI cache.
+            final newStock = product.totalStock - soldQty;
+            // Nota: ProductEntity es inmutable, así que creamos un copyWith.
+            return product.copyWith(totalStock: newStock < 0 ? 0 : newStock);
+          }
+          return product;
+        }).toList();
 
     emit(state.copyWith(products: updatedProducts));
   }

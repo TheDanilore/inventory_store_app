@@ -122,9 +122,10 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
         },
       },
       child: BlocListener<CartCubit, CartState>(
-        listenWhen: (previous, current) => 
-            previous.errorMessage != current.errorMessage ||
-            previous.items.length != current.items.length,
+        listenWhen:
+            (previous, current) =>
+                previous.errorMessage != current.errorMessage ||
+                previous.items.length != current.items.length,
         listener: (context, state) {
           if (state.errorMessage != null) {
             AppSnackbar.show(
@@ -243,7 +244,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                       ),
                       child: DesktopPosPanel(
                         onSaleCompleted: (soldQuantities) {
-                          context.read<AdminCatalogCubit>().decrementStockLocal(soldQuantities);
+                          context.read<AdminCatalogCubit>().decrementStockLocal(
+                            soldQuantities,
+                          );
                         },
                       ),
                     ),

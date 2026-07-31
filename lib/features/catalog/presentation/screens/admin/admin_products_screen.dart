@@ -69,10 +69,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             elevation: 0,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 10,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
@@ -101,9 +98,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(
-                            AppColors.radius,
-                          ),
+                          borderRadius: BorderRadius.circular(AppColors.radius),
                           border: Border.all(color: AppColors.border),
                           boxShadow: AppColors.cardShadow(),
                         ),
@@ -139,9 +134,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                           vertical: 14,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppColors.radius,
-                          ),
+                          borderRadius: BorderRadius.circular(AppColors.radius),
                         ),
                       ),
                     ),
@@ -252,7 +245,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         ),
       );
     }
-    
+
     Widget contentList;
     if (isDesktop) {
       contentList = LayoutBuilder(
@@ -474,7 +467,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         },
       );
     }
-    
+
     return Column(
       children: [
         Expanded(

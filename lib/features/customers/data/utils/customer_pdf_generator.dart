@@ -42,7 +42,7 @@ class CustomerPdfGenerator {
     final boldFont = await PdfGoogleFonts.interBold();
     final italicFont = await PdfGoogleFonts.interItalic();
 
-    // EXIGENCIA SENIOR / CORRECCIÓN DE TIPOS: Extraemos los bytes de los objetos 
+    // EXIGENCIA SENIOR / CORRECCIÓN DE TIPOS: Extraemos los bytes de los objetos
     // mapeándolos dinámicamente de forma segura para saltar conflictos de tipos del linter.
     final dynamic reg = regularFont;
     final dynamic bld = boldFont;

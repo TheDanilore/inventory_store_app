@@ -129,48 +129,49 @@ class _SortFilterChip extends StatelessWidget {
     return PopupMenuButton<CatalogSortOption>(
       tooltip: 'Ordenar por',
       onSelected: onSelected,
-      itemBuilder: (ctx) => [
-        PopupMenuItem(
-          value: CatalogSortOption.recent,
-          child: _buildSortItem(
-            'Recientes',
-            Icons.access_time_rounded,
-            currentSort == CatalogSortOption.recent,
-          ),
-        ),
-        PopupMenuItem(
-          value: CatalogSortOption.nameAsc,
-          child: _buildSortItem(
-            'Nombre (A-Z)',
-            Icons.sort_by_alpha_rounded,
-            currentSort == CatalogSortOption.nameAsc,
-          ),
-        ),
-        PopupMenuItem(
-          value: CatalogSortOption.priceAsc,
-          child: _buildSortItem(
-            'Precio: Menor a Mayor',
-            Icons.arrow_upward_rounded,
-            currentSort == CatalogSortOption.priceAsc,
-          ),
-        ),
-        PopupMenuItem(
-          value: CatalogSortOption.priceDesc,
-          child: _buildSortItem(
-            'Precio: Mayor a Menor',
-            Icons.arrow_downward_rounded,
-            currentSort == CatalogSortOption.priceDesc,
-          ),
-        ),
-        PopupMenuItem(
-          value: CatalogSortOption.highStock,
-          child: _buildSortItem(
-            'Mayor Stock',
-            Icons.inventory_2_rounded,
-            currentSort == CatalogSortOption.highStock,
-          ),
-        ),
-      ],
+      itemBuilder:
+          (ctx) => [
+            PopupMenuItem(
+              value: CatalogSortOption.recent,
+              child: _buildSortItem(
+                'Recientes',
+                Icons.access_time_rounded,
+                currentSort == CatalogSortOption.recent,
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogSortOption.nameAsc,
+              child: _buildSortItem(
+                'Nombre (A-Z)',
+                Icons.sort_by_alpha_rounded,
+                currentSort == CatalogSortOption.nameAsc,
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogSortOption.priceAsc,
+              child: _buildSortItem(
+                'Precio: Menor a Mayor',
+                Icons.arrow_upward_rounded,
+                currentSort == CatalogSortOption.priceAsc,
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogSortOption.priceDesc,
+              child: _buildSortItem(
+                'Precio: Mayor a Menor',
+                Icons.arrow_downward_rounded,
+                currentSort == CatalogSortOption.priceDesc,
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogSortOption.highStock,
+              child: _buildSortItem(
+                'Mayor Stock',
+                Icons.inventory_2_rounded,
+                currentSort == CatalogSortOption.highStock,
+              ),
+            ),
+          ],
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
@@ -181,7 +182,11 @@ class _SortFilterChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.sort_rounded, size: 14, color: AppColors.textMuted),
+            const Icon(
+              Icons.sort_rounded,
+              size: 14,
+              color: AppColors.textMuted,
+            ),
             const SizedBox(width: 6),
             Text(
               currentSort.label,
@@ -234,32 +239,33 @@ class _StockFilterChip extends StatelessWidget {
     return PopupMenuButton<CatalogStockFilter>(
       tooltip: 'Filtrar por Stock',
       onSelected: onChanged,
-      itemBuilder: (ctx) => [
-        PopupMenuItem(
-          value: CatalogStockFilter.all,
-          child: _buildSortItem(
-            'Todos',
-            Icons.all_inclusive_rounded,
-            stockFilterState == CatalogStockFilter.all,
-          ),
-        ),
-        PopupMenuItem(
-          value: CatalogStockFilter.inStock,
-          child: _buildSortItem(
-            'En Stock',
-            Icons.check_circle_outline_rounded,
-            stockFilterState == CatalogStockFilter.inStock,
-          ),
-        ),
-        PopupMenuItem(
-          value: CatalogStockFilter.outOfStock,
-          child: _buildSortItem(
-            'Agotados',
-            Icons.error_outline_rounded,
-            stockFilterState == CatalogStockFilter.outOfStock,
-          ),
-        ),
-      ],
+      itemBuilder:
+          (ctx) => [
+            PopupMenuItem(
+              value: CatalogStockFilter.all,
+              child: _buildSortItem(
+                'Todos',
+                Icons.all_inclusive_rounded,
+                stockFilterState == CatalogStockFilter.all,
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogStockFilter.inStock,
+              child: _buildSortItem(
+                'En Stock',
+                Icons.check_circle_outline_rounded,
+                stockFilterState == CatalogStockFilter.inStock,
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogStockFilter.outOfStock,
+              child: _buildSortItem(
+                'Agotados',
+                Icons.error_outline_rounded,
+                stockFilterState == CatalogStockFilter.outOfStock,
+              ),
+            ),
+          ],
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
@@ -273,7 +279,9 @@ class _StockFilterChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              hasFilter ? Icons.inventory_2_rounded : Icons.inventory_2_outlined,
+              hasFilter
+                  ? Icons.inventory_2_rounded
+                  : Icons.inventory_2_outlined,
               size: 14,
               color: hasFilter ? const Color(0xFF059669) : AppColors.textMuted,
             ),
@@ -283,7 +291,8 @@ class _StockFilterChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: hasFilter ? const Color(0xFF065F46) : AppColors.textPrimary,
+                color:
+                    hasFilter ? const Color(0xFF065F46) : AppColors.textPrimary,
               ),
             ),
           ],

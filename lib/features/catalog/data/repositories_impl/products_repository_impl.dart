@@ -120,9 +120,10 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
       final responseData = response.data as List;
       final entities = await Isolate.run(() {
-        final models = List<Map<String, dynamic>>.from(responseData)
-            .map(ProductModel.fromJson)
-            .toList();
+        final models =
+            List<Map<String, dynamic>>.from(
+              responseData,
+            ).map(ProductModel.fromJson).toList();
         return models.map((m) => m.toEntity()).toList();
       });
 
@@ -266,9 +267,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
-  Future<Either<Failure, AttributeEntity>> createAttribute(
-    String name,
-  ) async {
+  Future<Either<Failure, AttributeEntity>> createAttribute(String name) async {
     try {
       final res =
           await _supabase
@@ -317,7 +316,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
               .insert({'attribute_id': attributeId, 'value': value.trim()})
               .select()
               .single();
-      return right(AttributeValueEntity(id: res['id'], attributeId: res['attribute_id'], value: res['value']));
+      return right(
+        AttributeValueEntity(
+          id: res['id'],
+          attributeId: res['attribute_id'],
+          value: res['value'],
+        ),
+      );
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -354,22 +359,30 @@ class ProductsRepositoryImpl implements ProductsRepository {
     try {
       final response = await _supabase
           .from('attributes')
-          .select('id, name, description, attribute_values(id, attribute_id, value)')
+          .select(
+            'id, name, description, attribute_values(id, attribute_id, value)',
+          )
           .order('name');
-      
-      final list = List<Map<String, dynamic>>.from(response).map((row) {
-        final valuesList = (row['attribute_values'] as List?) ?? [];
-        return AttributeEntity(
-          id: row['id'],
-          name: row['name'],
-          description: row['description'],
-          values: valuesList.map((v) => AttributeValueEntity(
-            id: v['id'],
-            attributeId: v['attribute_id'] ?? row['id'],
-            value: v['value'],
-          )).toList(),
-        );
-      }).toList();
+
+      final list =
+          List<Map<String, dynamic>>.from(response).map((row) {
+            final valuesList = (row['attribute_values'] as List?) ?? [];
+            return AttributeEntity(
+              id: row['id'],
+              name: row['name'],
+              description: row['description'],
+              values:
+                  valuesList
+                      .map(
+                        (v) => AttributeValueEntity(
+                          id: v['id'],
+                          attributeId: v['attribute_id'] ?? row['id'],
+                          value: v['value'],
+                        ),
+                      )
+                      .toList(),
+            );
+          }).toList();
 
       return right(list);
     } catch (e, st) {
@@ -900,9 +913,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
-  Future<Either<Failure, void>> saveProductComplete(Map<String, dynamic> payload) async {
+  Future<Either<Failure, void>> saveProductComplete(
+    Map<String, dynamic> payload,
+  ) async {
     try {
-      await _supabase.rpc('save_product_complete', params: {'payload': payload});
+      await _supabase.rpc(
+        'save_product_complete',
+        params: {'payload': payload},
+      );
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);

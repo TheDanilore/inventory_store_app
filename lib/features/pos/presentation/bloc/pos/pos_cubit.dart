@@ -34,7 +34,9 @@ class PosCubit extends Cubit<PosState> {
   int _searchRequestId = 0;
 
   Future<void> initPosData({bool forceRefresh = false}) async {
-    if (!forceRefresh && state.warehouses.isNotEmpty && state.accounts.isNotEmpty) {
+    if (!forceRefresh &&
+        state.warehouses.isNotEmpty &&
+        state.accounts.isNotEmpty) {
       return; // Hit caché de datos iniciales
     }
     emit(state.copyWith(isLoading: true, errorMessage: ''));
@@ -45,11 +47,13 @@ class PosCubit extends Cubit<PosState> {
     res.fold(
       (failure) {
         developer.log('Error loading initial POS data', error: failure.message);
-        emit(state.copyWith(
-          isLoading: false, 
-          errorMessage: failure.message,
-          status: PosStatus.error,
-        ));
+        emit(
+          state.copyWith(
+            isLoading: false,
+            errorMessage: failure.message,
+            status: PosStatus.error,
+          ),
+        );
       },
       (data) {
         String? initialAccountId;
@@ -62,7 +66,7 @@ class PosCubit extends Cubit<PosState> {
           );
           initialAccountId = firstAcc['id'] as String;
           if (state.paymentMethod != 'CRÉDITO') {
-             initialPaymentMethod = firstAcc['name'] as String? ?? 'EFECTIVO';
+            initialPaymentMethod = firstAcc['name'] as String? ?? 'EFECTIVO';
           }
         }
 
@@ -140,7 +144,9 @@ class PosCubit extends Cubit<PosState> {
     emit(state.copyWith(batchOverrides: {}));
   }
 
-  Future<Either<Failure, OrderDetailsResult>> fetchOrderDetailsForTicket(String orderId) async {
+  Future<Either<Failure, OrderDetailsResult>> fetchOrderDetailsForTicket(
+    String orderId,
+  ) async {
     return await _getOrderDetails.call(orderId);
   }
 
@@ -154,7 +160,7 @@ class PosCubit extends Cubit<PosState> {
       emit(state.copyWith(clientMatches: []));
       return;
     }
-    
+
     final requestId = ++_searchRequestId;
 
     try {
@@ -167,10 +173,14 @@ class PosCubit extends Cubit<PosState> {
         },
         (matches) {
           emit(state.copyWith(clientMatches: matches));
-        }
+        },
       );
     } catch (e, stack) {
-      developer.log('Unexpected error searching clients', error: e, stackTrace: stack);
+      developer.log(
+        'Unexpected error searching clients',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -191,18 +201,24 @@ class PosCubit extends Cubit<PosState> {
       shiftRes.fold(
         (failure) {
           developer.log('Error checking active shift', error: failure.message);
-          emit(state.copyWith(
-            status: PosStatus.error,
-            errorMessage: 'Error verificando turno: ${failure.message}',
-            activeShift: null, // ensure null when failing
-          ));
+          emit(
+            state.copyWith(
+              status: PosStatus.error,
+              errorMessage: 'Error verificando turno: ${failure.message}',
+              activeShift: null, // ensure null when failing
+            ),
+          );
         },
         (shift) {
           emit(state.copyWith(activeShift: shift)); // Can be null if closed
-        }
+        },
       );
     } catch (e, stack) {
-      developer.log('Unexpected error checking active shift', error: e, stackTrace: stack);
+      developer.log(
+        'Unexpected error checking active shift',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -215,10 +231,14 @@ class PosCubit extends Cubit<PosState> {
         },
         (creditInfo) {
           emit(state.copyWith(creditInfo: creditInfo));
-        }
+        },
       );
     } catch (e, stack) {
-      developer.log('Unexpected error fetching client credit', error: e, stackTrace: stack);
+      developer.log(
+        'Unexpected error fetching client credit',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -227,9 +247,16 @@ class PosCubit extends Cubit<PosState> {
     String warehouseId,
   ) async {
     try {
-      return await _posRepository.fetchBatchesForVariant(variantId, warehouseId);
+      return await _posRepository.fetchBatchesForVariant(
+        variantId,
+        warehouseId,
+      );
     } catch (e, stack) {
-      developer.log('Unexpected error fetching batches', error: e, stackTrace: stack);
+      developer.log(
+        'Unexpected error fetching batches',
+        error: e,
+        stackTrace: stack,
+      );
       return Left(ServerFailure(message: 'Unexpected error: $e'));
     }
   }
@@ -280,16 +307,17 @@ class PosCubit extends Cubit<PosState> {
 
       final isCredito = state.paymentMethod == 'CRÉDITO';
 
-      final saleItems = cartState.items.values.map((item) {
-        return SaleItemEntity(
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          unitCost: item.unitCost,
-          appliedPrice: item.unitPrice,
-          batchAssignments: state.batchOverrides[item.cartKey] ?? [],
-        );
-      }).toList();
+      final saleItems =
+          cartState.items.values.map((item) {
+            return SaleItemEntity(
+              productId: item.productId,
+              variantId: item.variantId,
+              quantity: item.quantity,
+              unitCost: item.unitCost,
+              appliedPrice: item.unitPrice,
+              batchAssignments: state.batchOverrides[item.cartKey] ?? [],
+            );
+          }).toList();
 
       final sale = SaleEntity(
         items: saleItems,
@@ -300,7 +328,8 @@ class PosCubit extends Cubit<PosState> {
         customerId: state.selectedClientId,
         customerName: state.selectedClientName ?? customClientName,
         accountId: accountId,
-        paymentStatus: isCredito ? SalePaymentStatus.pending : SalePaymentStatus.paid,
+        paymentStatus:
+            isCredito ? SalePaymentStatus.pending : SalePaymentStatus.paid,
         discountAmount: descuentoExtra,
         amountPaid: isCredito ? 0 : totalFinal,
         pointsUsed: puntosUsados,
@@ -317,24 +346,29 @@ class PosCubit extends Cubit<PosState> {
       result.fold(
         (failure) {
           developer.log('Error processing sale', error: failure.message);
-          emit(state.copyWith(
-            status: PosStatus.error,
-            errorMessage: failure.message,
-          ));
+          emit(
+            state.copyWith(
+              status: PosStatus.error,
+              errorMessage: failure.message,
+            ),
+          );
         },
         (orderId) {
-          emit(state.copyWith(
-            status: PosStatus.success,
-            lastOrderId: orderId,
-          ));
-        }
+          emit(state.copyWith(status: PosStatus.success, lastOrderId: orderId));
+        },
       );
     } catch (e, stack) {
-      developer.log('Unexpected error processing sale', error: e, stackTrace: stack);
-      emit(state.copyWith(
-        status: PosStatus.error,
-        errorMessage: 'Error inesperado procesando la venta',
-      ));
+      developer.log(
+        'Unexpected error processing sale',
+        error: e,
+        stackTrace: stack,
+      );
+      emit(
+        state.copyWith(
+          status: PosStatus.error,
+          errorMessage: 'Error inesperado procesando la venta',
+        ),
+      );
     }
   }
 }

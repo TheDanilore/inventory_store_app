@@ -238,7 +238,6 @@ class _CatalogHeaderState extends State<CatalogHeader> {
   }
 
   Widget _buildSearchField() {
-
     return CompositedTransformTarget(
       link: _layerLink,
       child: AnimatedContainer(

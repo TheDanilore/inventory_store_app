@@ -48,7 +48,7 @@ class AttributesCubit extends Cubit<AttributesState> {
 
   Future<bool> saveAttribute(String name, {String? id}) async {
     emit(state.copyWith(isSaving: true));
-    
+
     if (id == null) {
       final result = await createAttributeUseCase(name);
       return result.fold(
@@ -57,16 +57,25 @@ class AttributesCubit extends Cubit<AttributesState> {
           return false;
         },
         (createdAttr) {
-          final currentAttributes = List<AttributeEntity>.from(state.attributes);
+          final currentAttributes = List<AttributeEntity>.from(
+            state.attributes,
+          );
           currentAttributes.add(createdAttr);
-          currentAttributes.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-          
-          emit(state.copyWith(
-            isSaving: false,
-            clearErrorMessage: true,
-            attributes: currentAttributes,
-            viewState: currentAttributes.isEmpty ? ViewState.empty : ViewState.success,
-          ));
+          currentAttributes.sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
+
+          emit(
+            state.copyWith(
+              isSaving: false,
+              clearErrorMessage: true,
+              attributes: currentAttributes,
+              viewState:
+                  currentAttributes.isEmpty
+                      ? ViewState.empty
+                      : ViewState.success,
+            ),
+          );
           return true;
         },
       );
@@ -78,19 +87,30 @@ class AttributesCubit extends Cubit<AttributesState> {
           return false;
         },
         (_) {
-          final currentAttributes = List<AttributeEntity>.from(state.attributes);
+          final currentAttributes = List<AttributeEntity>.from(
+            state.attributes,
+          );
           final index = currentAttributes.indexWhere((a) => a.id == id);
           if (index != -1) {
-            currentAttributes[index] = currentAttributes[index].copyWith(name: name);
+            currentAttributes[index] = currentAttributes[index].copyWith(
+              name: name,
+            );
           }
-          currentAttributes.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-          
-          emit(state.copyWith(
-            isSaving: false,
-            clearErrorMessage: true,
-            attributes: currentAttributes,
-            viewState: currentAttributes.isEmpty ? ViewState.empty : ViewState.success,
-          ));
+          currentAttributes.sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
+
+          emit(
+            state.copyWith(
+              isSaving: false,
+              clearErrorMessage: true,
+              attributes: currentAttributes,
+              viewState:
+                  currentAttributes.isEmpty
+                      ? ViewState.empty
+                      : ViewState.success,
+            ),
+          );
           return true;
         },
       );
@@ -106,13 +126,17 @@ class AttributesCubit extends Cubit<AttributesState> {
         return false;
       },
       (_) {
-        final currentAttributes = state.attributes.where((a) => a.id != id).toList();
-        emit(state.copyWith(
-          isSaving: false,
-          clearErrorMessage: true,
-          attributes: currentAttributes,
-          viewState: currentAttributes.isEmpty ? ViewState.empty : ViewState.success,
-        ));
+        final currentAttributes =
+            state.attributes.where((a) => a.id != id).toList();
+        emit(
+          state.copyWith(
+            isSaving: false,
+            clearErrorMessage: true,
+            attributes: currentAttributes,
+            viewState:
+                currentAttributes.isEmpty ? ViewState.empty : ViewState.success,
+          ),
+        );
         return true;
       },
     );
@@ -124,7 +148,7 @@ class AttributesCubit extends Cubit<AttributesState> {
     String? valueId,
   }) async {
     emit(state.copyWith(isSaving: true));
-    
+
     if (valueId == null) {
       final result = await createAttributeValueUC(attributeId, value);
       return result.fold(
@@ -133,21 +157,27 @@ class AttributesCubit extends Cubit<AttributesState> {
           return false;
         },
         (createdVal) {
-          final currentAttributes = List<AttributeEntity>.from(state.attributes);
-          final attrIndex = currentAttributes.indexWhere((a) => a.id == attributeId);
-          
+          final currentAttributes = List<AttributeEntity>.from(
+            state.attributes,
+          );
+          final attrIndex = currentAttributes.indexWhere(
+            (a) => a.id == attributeId,
+          );
+
           if (attrIndex != -1) {
             final attr = currentAttributes[attrIndex];
             final currentValues = List<AttributeValueEntity>.from(attr.values);
             currentValues.add(createdVal);
             currentAttributes[attrIndex] = attr.copyWith(values: currentValues);
           }
-          
-          emit(state.copyWith(
-            isSaving: false,
-            clearErrorMessage: true,
-            attributes: currentAttributes,
-          ));
+
+          emit(
+            state.copyWith(
+              isSaving: false,
+              clearErrorMessage: true,
+              attributes: currentAttributes,
+            ),
+          );
           return true;
         },
       );
@@ -159,24 +189,32 @@ class AttributesCubit extends Cubit<AttributesState> {
           return false;
         },
         (_) {
-          final currentAttributes = List<AttributeEntity>.from(state.attributes);
-          final attrIndex = currentAttributes.indexWhere((a) => a.id == attributeId);
-          
+          final currentAttributes = List<AttributeEntity>.from(
+            state.attributes,
+          );
+          final attrIndex = currentAttributes.indexWhere(
+            (a) => a.id == attributeId,
+          );
+
           if (attrIndex != -1) {
             final attr = currentAttributes[attrIndex];
             final currentValues = List<AttributeValueEntity>.from(attr.values);
             final valIndex = currentValues.indexWhere((v) => v.id == valueId);
             if (valIndex != -1) {
-              currentValues[valIndex] = currentValues[valIndex].copyWith(value: value);
+              currentValues[valIndex] = currentValues[valIndex].copyWith(
+                value: value,
+              );
             }
             currentAttributes[attrIndex] = attr.copyWith(values: currentValues);
           }
-          
-          emit(state.copyWith(
-            isSaving: false,
-            clearErrorMessage: true,
-            attributes: currentAttributes,
-          ));
+
+          emit(
+            state.copyWith(
+              isSaving: false,
+              clearErrorMessage: true,
+              attributes: currentAttributes,
+            ),
+          );
           return true;
         },
       );
@@ -196,17 +234,20 @@ class AttributesCubit extends Cubit<AttributesState> {
         for (int i = 0; i < currentAttributes.length; i++) {
           final attr = currentAttributes[i];
           if (attr.values.any((v) => v.id == valueId)) {
-            final newValues = attr.values.where((v) => v.id != valueId).toList();
+            final newValues =
+                attr.values.where((v) => v.id != valueId).toList();
             currentAttributes[i] = attr.copyWith(values: newValues);
             break;
           }
         }
-        
-        emit(state.copyWith(
-          isSaving: false,
-          clearErrorMessage: true,
-          attributes: currentAttributes,
-        ));
+
+        emit(
+          state.copyWith(
+            isSaving: false,
+            clearErrorMessage: true,
+            attributes: currentAttributes,
+          ),
+        );
         return true;
       },
     );

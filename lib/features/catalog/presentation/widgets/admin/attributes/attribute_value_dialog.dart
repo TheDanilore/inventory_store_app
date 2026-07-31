@@ -82,7 +82,7 @@ class _AttributeValueDialogState extends State<AttributeValueDialog> {
                 ),
               ],
             );
-          }
+          },
         ),
       ],
     );

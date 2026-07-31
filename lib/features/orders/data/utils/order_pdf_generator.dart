@@ -61,7 +61,11 @@ class OrderPdfGenerator {
       try {
         final supabase = Supabase.instance.client;
         final info =
-            await supabase.from('business_info').select().limit(1).maybeSingle();
+            await supabase
+                .from('business_info')
+                .select()
+                .limit(1)
+                .maybeSingle();
 
         if (info != null) {
           businessName = info['business_name'] ?? businessName;

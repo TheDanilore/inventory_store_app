@@ -145,7 +145,8 @@ class SaveProductUseCase {
           'unit_cost': draft.unitCost,
           'sale_price': draft.salePrice ?? payload.baseSalePrice,
           'wholesale_price': draft.wholesalePrice ?? payload.baseWholesalePrice,
-          'wholesale_min_quantity': draft.wholesaleMinQuantity ?? payload.baseWholesaleMinQuantity,
+          'wholesale_min_quantity':
+              draft.wholesaleMinQuantity ?? payload.baseWholesaleMinQuantity,
           'reorder_point': draft.reorderPoint ?? 3,
           'is_active': draft.isActive,
           'clear_images': draft.clearImages,

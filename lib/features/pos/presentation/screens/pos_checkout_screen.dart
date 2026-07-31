@@ -184,7 +184,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         );
         return;
       }
-      final disp = PosCalculatorUtils.getCreditDisponible(posCubit.state.creditInfo);
+      final disp = PosCalculatorUtils.getCreditDisponible(
+        posCubit.state.creditInfo,
+      );
       if (disp < totalFinal) {
         AppSnackbar.show(
           context,
@@ -728,7 +730,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
             if (isCredito) ...[
               _CreditWarningCard(
                 clienteSeleccionado: posCubit.state.selectedClientId != null,
-                creditActivo: PosCalculatorUtils.isCreditActivo(posCubit.state.creditInfo),
+                creditActivo: PosCalculatorUtils.isCreditActivo(
+                  posCubit.state.creditInfo,
+                ),
                 creditDisponible: PosCalculatorUtils.getCreditDisponible(
                   posCubit.state.creditInfo,
                 ),
@@ -1036,7 +1040,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               ratio: ratio,
             );
 
-            final disp = PosCalculatorUtils.getCreditDisponible(posCubit.state.creditInfo);
+            final disp = PosCalculatorUtils.getCreditDisponible(
+              posCubit.state.creditInfo,
+            );
             final creditoInsuficiente =
                 isCredito &&
                 posCubit.state.selectedClientId != null &&
@@ -1045,7 +1051,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
             final creditoSinCliente =
                 isCredito && posCubit.state.selectedClientId == null;
             final isCajaAccount = posCubit.state.accounts.any(
-              (a) => a['id'] == posCubit.state.selectedAccountId && a['type'] == 'CAJA',
+              (a) =>
+                  a['id'] == posCubit.state.selectedAccountId &&
+                  a['type'] == 'CAJA',
             );
             final noCajaAbierta =
                 !isCredito &&

@@ -40,20 +40,27 @@ class PosRepositoryImpl implements PosRepository {
       return right(
         PosInitData(
           warehouses:
-              warehouses
-                  .map((e) => WarehouseModel.fromJson(e))
-                  .toList(),
+              warehouses.map((e) => WarehouseModel.fromJson(e)).toList(),
           accounts: accData,
         ),
       );
     } on PostgrestException catch (e, stack) {
-      developer.log('PostgrestException en loadInitialData', error: e, stackTrace: stack);
+      developer.log(
+        'PostgrestException en loadInitialData',
+        error: e,
+        stackTrace: stack,
+      );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
-      developer.log('Error general en loadInitialData', error: e, stackTrace: stack);
+      developer.log(
+        'Error general en loadInitialData',
+        error: e,
+        stackTrace: stack,
+      );
       return left(Failure.from(e));
     }
   }
+
   @override
   Future<Either<Failure, List<Map<String, dynamic>>>> searchClients(
     String text,
@@ -124,7 +131,11 @@ class PosRepositoryImpl implements PosRepository {
 
       return right(batches);
     } catch (e, stack) {
-      developer.log('Error en fetchBatchesForVariant', error: e, stackTrace: stack);
+      developer.log(
+        'Error en fetchBatchesForVariant',
+        error: e,
+        stackTrace: stack,
+      );
       return left(Failure.from(e));
     }
   }
@@ -149,20 +160,30 @@ class PosRepositoryImpl implements PosRepository {
         'accountId': sale.accountId,
         'activeShiftId': sale.activeShift?.id,
         'createdBy': null,
-        'items': sale.items.map((item) => {
-          'productId': item.productId,
-          'variantId': item.variantId,
-          'quantity': item.quantity,
-          'unitCost': item.unitCost,
-          'appliedPrice': item.appliedPrice,
-          'subtotal': item.subtotal,
-          'netProfit': item.netProfit,
-          'batchAssignments': item.batchAssignments?.map((b) => {
-            'batchId': b.batchId,
-            'take': b.assigned,
-            'batchNumber': b.batchNumber,
-          }).toList(),
-        }).toList(),
+        'items':
+            sale.items
+                .map(
+                  (item) => {
+                    'productId': item.productId,
+                    'variantId': item.variantId,
+                    'quantity': item.quantity,
+                    'unitCost': item.unitCost,
+                    'appliedPrice': item.appliedPrice,
+                    'subtotal': item.subtotal,
+                    'netProfit': item.netProfit,
+                    'batchAssignments':
+                        item.batchAssignments
+                            ?.map(
+                              (b) => {
+                                'batchId': b.batchId,
+                                'take': b.assigned,
+                                'batchNumber': b.batchNumber,
+                              },
+                            )
+                            .toList(),
+                  },
+                )
+                .toList(),
       };
 
       final response = await _supabase.rpc(
@@ -179,16 +200,18 @@ class PosRepositoryImpl implements PosRepository {
   }
 
   @override
-  Future<Either<Failure, ({OrderModel order, List<OrderItemModel> items})>> fetchOrderForReceipt(String orderId) async {
+  Future<Either<Failure, ({OrderModel order, List<OrderItemModel> items})>>
+  fetchOrderForReceipt(String orderId) async {
     try {
-      final orderResp = await _supabase
-          .from('orders')
-          .select(
-            'id, customer_name, customer_id, total_amount, total_profit, discount_amount, payment_method, payment_status, amount_paid, status, points_used, points_earned, created_at, warehouse_id, profiles!orders_customer_id_fkey(full_name, phone), warehouses(name)',
-          )
-          .eq('id', orderId)
-          .single();
-          
+      final orderResp =
+          await _supabase
+              .from('orders')
+              .select(
+                'id, customer_name, customer_id, total_amount, total_profit, discount_amount, payment_method, payment_status, amount_paid, status, points_used, points_earned, created_at, warehouse_id, profiles!orders_customer_id_fkey(full_name, phone), warehouses(name)',
+              )
+              .eq('id', orderId)
+              .single();
+
       final itemsResp = await _supabase
           .from('order_items')
           .select(
@@ -199,15 +222,20 @@ class PosRepositoryImpl implements PosRepository {
       // Delegar la deserialización a un Isolate
       final result = await Isolate.run(() {
         final order = OrderModel.fromJson(orderResp);
-        final items = List<Map<String, dynamic>>.from(itemsResp)
-            .map((x) => OrderItemModel.fromJson(x))
-            .toList();
+        final items =
+            List<Map<String, dynamic>>.from(
+              itemsResp,
+            ).map((x) => OrderItemModel.fromJson(x)).toList();
         return (order: order, items: items);
       });
 
       return right(result);
     } catch (e, stack) {
-      developer.log('Error en fetchOrderForReceipt', error: e, stackTrace: stack);
+      developer.log(
+        'Error en fetchOrderForReceipt',
+        error: e,
+        stackTrace: stack,
+      );
       return left(Failure.from(e));
     }
   }

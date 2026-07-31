@@ -35,7 +35,6 @@ class _AllCashShiftsBody extends StatefulWidget {
 }
 
 class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
-
   @override
   void initState() {
     super.initState();
@@ -45,7 +44,10 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
     });
   }
 
-  void _showUserPickerBottomSheet(CashShiftsCubit cubit, CashShiftsState state) {
+  void _showUserPickerBottomSheet(
+    CashShiftsCubit cubit,
+    CashShiftsState state,
+  ) {
     if (state.isLoadingProfiles) return;
 
     showModalBottomSheet(
@@ -177,7 +179,9 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
           String selectedUserName = 'Todos los usuarios';
           if (state.profileFilter != null) {
             final p =
-                state.profiles.where((p) => p['id'] == state.profileFilter).firstOrNull;
+                state.profiles
+                    .where((p) => p['id'] == state.profileFilter)
+                    .firstOrNull;
             if (p != null) selectedUserName = p['full_name'] as String;
           }
 
