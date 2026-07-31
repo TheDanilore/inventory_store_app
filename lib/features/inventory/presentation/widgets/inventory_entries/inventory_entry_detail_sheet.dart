@@ -130,7 +130,6 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Proveedor (jerarquía corregida: label → nombre)
                         const Text(
                           'PROVEEDOR',
                           style: TextStyle(

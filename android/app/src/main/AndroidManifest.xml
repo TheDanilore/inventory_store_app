@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"> <!-- URL OFICIAL CORREGIDA -->
+    xmlns:tools="http://schemas.android.com/tools">
     
     <!-- Permisos de Red y Conectividad (Requeridos por Supabase, Http y Connectivity_plus) -->
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -50,7 +50,7 @@
         android:label="Inventory Store"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
-        tools:replace="android:allowBackup"> <!-- AÑADIDA REGLA DE UNIFICACIÓN PARA PROCESAR EL EMBEBIDO -->
+        tools:replace="android:allowBackup"> <!-- REGLA DE UNIFICACIÓN PARA PROCESAR EL EMBEBIDO -->
         
         <activity
             android:name=".MainActivity"

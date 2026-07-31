@@ -3,8 +3,6 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    // BORRA O COMENTA la línea antigua de kotlin-android
-    // id("kotlin-android") 
     id("dev.flutter.flutter-gradle-plugin")
 }
 
