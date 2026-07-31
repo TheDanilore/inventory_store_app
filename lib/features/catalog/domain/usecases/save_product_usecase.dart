@@ -102,20 +102,15 @@ class SaveProductUseCase {
 
   Future<Either<Failure, void>> call(SaveProductPayload payload) async {
     try {
-      final String productId = await _unwrap(
-        repository.saveProductMaster(payload.product, payload.profileId),
-      );
-
-      // Imágenes del Producto
-      final imagesPayload = <Map<String, dynamic>>[];
+      // 1. Subir imágenes del producto
+      final productImagesJson = <Map<String, dynamic>>[];
       for (var i = 0; i < payload.images.length; i++) {
         final item = payload.images[i];
         final isMain = (i == 0);
 
         if (item.existingId != null) {
-          imagesPayload.add({
+          productImagesJson.add({
             'id': item.existingId,
-            'product_id': productId,
             'image_url': item.existingUrl,
             'display_order': i,
             'is_main': isMain,
@@ -125,8 +120,7 @@ class SaveProductUseCase {
             repository.uploadImageToStorage(item.newBytes!, 'productos'),
           );
           if (url != null) {
-            imagesPayload.add({
-              'product_id': productId,
+            productImagesJson.add({
               'image_url': url,
               'display_order': i,
               'is_main': isMain,
@@ -135,124 +129,79 @@ class SaveProductUseCase {
         }
       }
 
-      if (imagesPayload.isNotEmpty) {
-        await _unwrap(repository.syncProductImages(imagesPayload));
+      // 2. Subir imágenes de las variantes y preparar JSON de variantes
+      final variantsJson = <Map<String, dynamic>>[];
+      for (final draft in payload.variants) {
+        String? newImageUrl;
+        if (draft.newImageBytes != null) {
+          newImageUrl = await _unwrap(
+            repository.uploadImageToStorage(draft.newImageBytes!, 'variantes'),
+          );
+        }
+
+        variantsJson.add({
+          'id': draft.id,
+          'sku': draft.sku,
+          'unit_cost': draft.unitCost,
+          'sale_price': draft.salePrice ?? payload.baseSalePrice,
+          'wholesale_price': draft.wholesalePrice ?? payload.baseWholesalePrice,
+          'wholesale_min_quantity': draft.wholesaleMinQuantity ?? payload.baseWholesaleMinQuantity,
+          'reorder_point': draft.reorderPoint ?? 3,
+          'is_active': draft.isActive,
+          'clear_images': draft.clearImages,
+          'new_image_url': newImageUrl,
+          'attribute_value_ids': draft.attributeValueIds,
+        });
       }
 
-      // Variantes Eliminadas
-      for (final variantId in payload.removedVariantIds) {
-        await _unwrap(repository.deactivateVariant(variantId));
-      }
-
-      // Variantes
-      String primaryVariantId = '';
-
-      if (payload.variants.isEmpty) {
-        final variantData = {
+      // Si no hay variantes, crear una por defecto
+      if (variantsJson.isEmpty) {
+        variantsJson.add({
           'is_active': true,
           'sale_price': payload.baseSalePrice,
           'wholesale_price': payload.baseWholesalePrice,
           'wholesale_min_quantity': payload.baseWholesaleMinQuantity,
-        };
-        if (payload.isUpdating) {
-          final vid = await _unwrap(repository.getFirstVariantId(productId));
-          if (vid != null) {
-            primaryVariantId = vid;
-            await _unwrap(
-              repository.saveVariant(
-                productId: productId,
-                variantId: vid,
-                variantData: variantData,
-                profileId: payload.profileId,
-              ),
-            );
-            await _unwrap(
-              repository.saveVariantAttributes(primaryVariantId, []),
-            );
-          }
-        } else {
-          primaryVariantId = await _unwrap(
-            repository.saveVariant(
-              productId: productId,
-              variantData: variantData,
-              profileId: payload.profileId,
-            ),
-          );
-          await _unwrap(repository.saveVariantAttributes(primaryVariantId, []));
-        }
-      } else {
-        for (var i = 0; i < payload.variants.length; i++) {
-          final draft = payload.variants[i];
-          final variantData = {
-            'sku': draft.sku,
-            'unit_cost': draft.unitCost,
-            'sale_price': draft.salePrice,
-            'wholesale_price': draft.wholesalePrice,
-            'wholesale_min_quantity': draft.wholesaleMinQuantity,
-            'reorder_point': draft.reorderPoint ?? 3,
-            'is_active': draft.isActive,
-          };
-
-          final vId = await _unwrap(
-            repository.saveVariant(
-              productId: productId,
-              variantData: variantData,
-              variantId: draft.id,
-              profileId: payload.profileId,
-            ),
-          );
-
-          if (i == 0) primaryVariantId = vId;
-          await _unwrap(
-            repository.saveVariantAttributes(vId, draft.attributeValueIds),
-          );
-
-          if (draft.id != null && draft.clearImages) {
-            await _unwrap(repository.clearVariantImages(vId));
-          }
-
-          if (draft.newImageBytes != null) {
-            final url = await _unwrap(
-              repository.uploadImageToStorage(
-                draft.newImageBytes!,
-                'variantes',
-              ),
-            );
-            if (url != null) {
-              await _unwrap(
-                repository.syncProductImages([
-                  {
-                    'product_id': productId,
-                    'variant_id': vId,
-                    'image_url': url,
-                    'display_order': 0,
-                    'is_main': false,
-                  },
-                ]),
-              );
-            }
-          }
-        }
+          'unit_cost': 0.0,
+          'attribute_value_ids': [],
+        });
       }
 
-      // Ingredientes
+      // 3. Preparar JSON de ingredientes
+      final ingredientsJson = <Map<String, dynamic>>[];
       if (payload.ingredientsEnabled) {
-        await _unwrap(ingredientsRepository.clearProductIngredients(productId));
-
         for (final ing in payload.ingredients) {
-          final ingPayload = {
-            'product_id': productId,
+          ingredientsJson.add({
             'ingredient_id': ing.ingredientId,
             'concentration': ing.concentration,
             'unit': ing.unit,
-          };
-          await _unwrap(
-            ingredientsRepository.insertProductIngredient(ingPayload),
-          );
+          });
         }
-      } else {
-        await _unwrap(ingredientsRepository.clearProductIngredients(productId));
       }
+
+      // 4. Armar Payload final JSON
+      final jsonPayload = {
+        'is_updating': payload.isUpdating,
+        'profile_id': payload.profileId,
+        'product': {
+          'id': payload.product.id,
+          'name': payload.product.name,
+          'description': payload.product.description,
+          'category_id': payload.product.categoryId,
+          'is_active': payload.product.isActive,
+          'details': payload.product.details,
+          'product_type': payload.product.productType,
+          'stock_control': payload.product.stockControl,
+          'uses_batches': payload.product.usesBatches,
+        },
+        'removed_variant_ids': payload.removedVariantIds,
+        'images': productImagesJson,
+        'variants': variantsJson,
+        'ingredients_enabled': payload.ingredientsEnabled,
+        'ingredients': ingredientsJson,
+      };
+
+      // 5. Enviar JSON al RPC atómico
+      await _unwrap(repository.saveProductComplete(jsonPayload));
 
       return right(null);
     } catch (e) {

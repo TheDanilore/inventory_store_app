@@ -1349,20 +1349,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i927.GetCurrentProfileIdUseCase>(
       () => _i927.GetCurrentProfileIdUseCase(gh<_i813.GetCurrentUserUseCase>()),
     );
-    gh.factory<_i73.ProductFormCubit>(
-      () => _i73.ProductFormCubit(
-        gh<_i700.GetCategoriesUC>(),
-        gh<_i567.GetProductByIdUC>(),
-        gh<_i1014.GetProductImagesUC>(),
-        gh<_i597.GetProductIngredientsUC>(),
-        gh<_i929.GetVariantsDraftsUC>(),
-        gh<_i1014.DeleteProductImageUC>(),
-        gh<_i929.DeleteVariantUC>(),
-        gh<_i929.HasVariantSalesUC>(),
-        gh<_i927.GetCurrentProfileIdUseCase>(),
-        gh<_i1064.SaveProductUseCase>(),
-      ),
-    );
     gh.factory<_i54.SupplierCreditsCubit>(
       () => _i54.SupplierCreditsCubit(
         fetchSupplierCreditsUseCase: gh<_i817.FetchSupplierCreditsUseCase>(),
@@ -1519,6 +1505,18 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i927.GetCurrentProfileIdUseCase>(),
         gh<_i600.GetWishlistUseCase>(),
         gh<_i600.RemoveFromWishlistUseCase>(),
+      ),
+    );
+    gh.factory<_i73.ProductFormCubit>(
+      () => _i73.ProductFormCubit(
+        gh<_i700.GetCategoriesUC>(),
+        gh<_i567.GetProductByIdUC>(),
+        gh<_i597.GetProductIngredientsUC>(),
+        gh<_i1014.DeleteProductImageUC>(),
+        gh<_i929.DeleteVariantUC>(),
+        gh<_i929.HasVariantSalesUC>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+        gh<_i1064.SaveProductUseCase>(),
       ),
     );
     gh.factory<_i1009.CategoriesCubit>(

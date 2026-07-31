@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:isolate';
 import 'dart:typed_data';
+import 'dart:developer' as developer;
 import 'package:injectable/injectable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_form_models.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_form_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
@@ -23,9 +26,7 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/product_f
 class ProductFormCubit extends Cubit<ProductFormState> {
   final GetCategoriesUC _getCategoriesUC;
   final GetProductByIdUC _getProductByIdUC;
-  final GetProductImagesUC _getProductImagesUC;
   final GetProductIngredientsUC _getProductIngredientsUC;
-  final GetVariantsDraftsUC _getVariantsDraftsUC;
   final DeleteProductImageUC _deleteProductImageUC;
   final DeleteVariantUC _deleteVariantUC;
   final HasVariantSalesUC _hasVariantSalesUC;
@@ -63,9 +64,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   ProductFormCubit(
     this._getCategoriesUC,
     this._getProductByIdUC,
-    this._getProductImagesUC,
     this._getProductIngredientsUC,
-    this._getVariantsDraftsUC,
     this._deleteProductImageUC,
     this._deleteVariantUC,
     this._hasVariantSalesUC,
@@ -186,11 +185,19 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           _detailRows.add(DetailModel(key: key, value: value.toString()));
         });
 
+        // Cargar imágenes precargadas
+        final productImagesOnly = targetProduct.images.where((img) => img.variantId == null).toList();
+        _formImages.addAll(
+          productImagesOnly.map((img) => FormImageItem(existing: img)),
+        );
+
+        // Cargar variantes precargadas
+        final drafts = targetProduct.productVariants.map((v) => VariantDraftEntity.fromVariant(v));
+        _variantDrafts.addAll(drafts.map(VariantDraftFormModel.fromEntity));
+
         await Future.wait([
           _fetchCategories(),
-          _fetchProductImages(targetProduct.id),
           _fetchIngredients(targetProduct.id),
-          _fetchVariants(targetProduct.id),
         ]);
       } else {
         await _fetchCategories();
@@ -220,16 +227,6 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     _syncState();
   }
 
-  Future<void> _fetchProductImages(String productId) async {
-    final images = await _unwrap(_getProductImagesUC.call(productId));
-    final productImagesOnly =
-        images.where((img) => img.variantId == null).toList();
-    _formImages.addAll(
-      productImagesOnly.map((img) => FormImageItem(existing: img)),
-    );
-    _syncState();
-  }
-
   Future<void> _fetchIngredients(String productId) async {
     final list = await _unwrap(_getProductIngredientsUC.call(productId));
     for (final row in list) {
@@ -244,14 +241,6 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       );
     }
     if (_ingredientRows.isNotEmpty) _ingredientsEnabled = true;
-    _syncState();
-  }
-
-  Future<void> _fetchVariants(String productId) async {
-    try {
-      final drafts = await _unwrap(_getVariantsDraftsUC.call(productId));
-      _variantDrafts.addAll(drafts.map(VariantDraftFormModel.fromEntity));
-    } catch (_) {}
     _syncState();
   }
 
@@ -700,18 +689,23 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   Future<Uint8List> _optimizarImagen(Uint8List bytesOriginales) async {
     if (bytesOriginales.lengthInBytes < 250 * 1024) return bytesOriginales;
     try {
-      final bytesComprimidos = await FlutterImageCompress.compressWithList(
-        bytesOriginales,
-        minWidth: 1024,
-        minHeight: 1024,
-        quality: 75,
-        format: CompressFormat.jpeg,
-      );
-      if (bytesComprimidos.isNotEmpty &&
-          bytesComprimidos.lengthInBytes < bytesOriginales.lengthInBytes) {
-        return bytesComprimidos;
-      }
-    } catch (_) {}
+      return await Isolate.run(() async {
+        final bytesComprimidos = await FlutterImageCompress.compressWithList(
+          bytesOriginales,
+          minWidth: 1024,
+          minHeight: 1024,
+          quality: 75,
+          format: CompressFormat.jpeg,
+        );
+        if (bytesComprimidos.isNotEmpty &&
+            bytesComprimidos.lengthInBytes < bytesOriginales.lengthInBytes) {
+          return bytesComprimidos;
+        }
+        return bytesOriginales;
+      });
+    } catch (e, st) {
+      developer.log('Error comprimiendo imagen', error: e, stackTrace: st);
+    }
     return bytesOriginales;
   }
 

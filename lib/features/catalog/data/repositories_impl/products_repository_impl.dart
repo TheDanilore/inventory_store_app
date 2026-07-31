@@ -895,6 +895,17 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
   @override
   Future<Either<Failure, void>> clearCache() async {
+    // Implementación futura si hay caché local
     return right(null);
+  }
+
+  @override
+  Future<Either<Failure, void>> saveProductComplete(Map<String, dynamic> payload) async {
+    try {
+      await _supabase.rpc('save_product_complete', params: {'payload': payload});
+      return right(null);
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
   }
 }

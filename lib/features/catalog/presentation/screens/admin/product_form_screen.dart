@@ -185,9 +185,11 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
           );
         }
       },
-      child: BlocBuilder<ProductFormCubit, ProductFormState>(
-        builder: (context, state) {
+      child: BlocSelector<ProductFormCubit, ProductFormState, bool>(
+        selector: (state) => state.isInitializingData || state.hasErrorLoading,
+        builder: (context, isInitializingOrError) {
           final cubit = context.read<ProductFormCubit>();
+          final state = cubit.state;
           return PopScope(
             canPop: false,
             onPopInvokedWithResult: (didPop, result) async {
@@ -251,26 +253,26 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                         cubit,
                                         isEdit,
                                       ),
-
-                                    if (state.isSaving)
-                                      Positioned.fill(
-                                        child: BackdropFilter(
-                                          filter: ImageFilter.blur(
-                                            sigmaX: 5.0,
-                                            sigmaY: 5.0,
-                                          ),
-                                          child: Container(
-                                            color: AppColors.surface.withValues(
-                                              alpha: 0.4,
+                                    BlocSelector<ProductFormCubit, ProductFormState, bool>(
+                                      selector: (state) => state.isSaving,
+                                      builder: (context, isSaving) {
+                                        if (!isSaving) return const SizedBox.shrink();
+                                        return Positioned.fill(
+                                          child: BackdropFilter(
+                                            filter: ImageFilter.blur(
+                                              sigmaX: 5.0,
+                                              sigmaY: 5.0,
                                             ),
-                                            child: const Center(
-                                              child: CircularProgressIndicator(
-                                                color: AppColors.primary,
+                                            child: Container(
+                                              color: Colors.black.withValues(alpha: 0.1),
+                                              child: const Center(
+                                                child: CircularProgressIndicator(),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      ),
+                                        );
+                                      },
+                                    ),
                                   ],
                                 ),
                               );
