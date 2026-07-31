@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:math';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
@@ -98,37 +99,44 @@ class PointsCubit extends Cubit<PointsState> {
       final currentDayUtc = DateTime.utc(now.year, now.month, now.day);
       final yesterday = currentDay.subtract(const Duration(days: 1));
 
+      // Ejecutar consultas concurrentes
+      final results = await Future.wait([
+        getTodayCheckinUC(profileId, todayDate),
+        getLatestCheckinUC(profileId),
+        getTodayMiniGamesUC(profileId, currentDayUtc.toIso8601String()),
+        getWalletMovementsUC(profileId: profileId, limit: _movementsLimit, offset: 0),
+      ]);
+
+      final todayCheckinResult = results[0];
+      final latestCheckinResult = results[1];
+      final miniGamesResult = results[2];
+      final movsResult = results[3];
+
       // 2. Checkin Hoy
-      final todayCheckinResult = await getTodayCheckinUC(profileId, todayDate);
       final hasTodayCheckin = todayCheckinResult.fold(
         (l) => false,
         (r) => r != null,
       );
 
       // 3. Último checkin (Racha)
-      final latestCheckinResult = await getLatestCheckinUC(profileId);
       final latestCheckin = latestCheckinResult.fold((l) => null, (r) => r);
 
       final latestCheckinDate =
           latestCheckin != null
-              ? DateTime.tryParse(latestCheckin.checkinDate)
+              ? DateTime.tryParse((latestCheckin as dynamic).checkinDate)
               : null;
       final isStreakActive =
           latestCheckinDate != null &&
           (_isSameDay(latestCheckinDate, currentDay) ||
               _isSameDay(latestCheckinDate, yesterday));
 
-      final streakDay = latestCheckin?.streakDay ?? 0;
+      final streakDay = (latestCheckin as dynamic)?.streakDay ?? 0;
       final currentStreak = isStreakActive ? streakDay : 0;
       final nextStreakDay = currentStreak > 0 ? currentStreak + 1 : 1;
       final nextCheckinReward = _rewardForStreakDay(nextStreakDay);
 
       // 4. Mini juegos
-      final miniGamesResult = await getTodayMiniGamesUC(
-        profileId,
-        currentDayUtc.toIso8601String(),
-      );
-      final todayGames = miniGamesResult.fold((l) => [], (r) => r);
+      final todayGames = miniGamesResult.fold((l) => [], (r) => r as List<dynamic>);
 
       final boxGame =
           todayGames
@@ -136,14 +144,9 @@ class PointsCubit extends Cubit<PointsState> {
               .firstOrNull;
 
       // 5. Movimientos
-      final movsResult = await getWalletMovementsUC(
-        profileId: profileId,
-        limit: _movementsLimit,
-        offset: 0,
-      );
       final movements =
           movsResult
-              .fold((l) => [], (r) => r)
+              .fold((l) => [], (r) => r as List<dynamic>)
               .map(
                 (e) => {
                   'points': e.points,
@@ -232,7 +235,8 @@ class PointsCubit extends Cubit<PointsState> {
                 },
               )
               .subscribe();
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error en fetchPointsData', error: e, stackTrace: st);
       if (!isClosed) {
         emit(
           state.copyWith(
@@ -277,6 +281,8 @@ class PointsCubit extends Cubit<PointsState> {
           hasMoreMovements: moreMovs.length == _movementsLimit,
         ),
       );
+    } catch (e, st) {
+      developer.log('Error en loadMoreMovements', error: e, stackTrace: st);
     } finally {
       if (!isClosed) emit(state.copyWith(isLoadingMore: false));
     }
@@ -306,9 +312,6 @@ class PointsCubit extends Cubit<PointsState> {
     try {
       final result = await claimDailyCheckinUC(
         profileId: state.profileId!,
-        todayDate: todayDate,
-        points: rewardForToday,
-        streakDay: nextStreakDay,
         actionByProfileId: state.profileId!,
       );
 
@@ -316,7 +319,7 @@ class PointsCubit extends Cubit<PointsState> {
         if (isClosed) return;
         final newMovement = {
           'points': rewardForToday,
-          'description': 'Check-in diario del \$todayDate',
+          'description': 'Check-in diario del $todayDate',
           'created_at': now.toIso8601String(),
         };
 
@@ -382,6 +385,7 @@ class PointsCubit extends Cubit<PointsState> {
     emit(state.copyWith(isPlayingMiniGame: true));
 
     final now = DateTime.now();
+    final todayDate = DateFormat('yyyy-MM-dd').format(now);
     final isForFun =
         state.boxesPlaysToday >= boxesLimit || state.profileId == null;
     final reward = state.miniGameBoxes[boxIndex];
@@ -392,14 +396,14 @@ class PointsCubit extends Cubit<PointsState> {
           profileId: state.profileId!,
           movementType: 'MINI_GAME_BOXES',
           points: reward,
-          description: 'Juego de cajas del \$todayDate',
+          description: 'Juego de cajas del $todayDate',
         );
 
         result.fold((l) => null, (_) {
           if (!isClosed) {
             final newMovement = {
               'points': reward,
-              'description': 'Juego de cajas del \$todayDate',
+              'description': 'Juego de cajas del $todayDate',
               'created_at': now.toIso8601String(),
             };
             emit(
@@ -461,8 +465,8 @@ class PointsCubit extends Cubit<PointsState> {
           );
         }
       });
-    } catch (e) {
-      // Ignorar errores
+    } catch (e, st) {
+      developer.log('Error al guardar minijuego', error: e, stackTrace: st);
     }
   }
 

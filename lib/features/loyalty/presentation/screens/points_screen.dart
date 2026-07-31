@@ -73,6 +73,7 @@ class _PointsScreenState extends State<PointsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final config = context.watch<AppConfigCubit>();
     return CustomerLayout(
       title: 'Mis Monedas',
       showBackButton: true,
@@ -83,7 +84,6 @@ class _PointsScreenState extends State<PointsScreen> {
         color: PointsDS.bg,
         child: BlocBuilder<PointsCubit, PointsState>(
           builder: (context, state) {
-            final config = context.watch<AppConfigCubit>();
 
             if (!config.loyaltyGlobalEnabled ||
                 !config.loyaltyCustomerVisible) {

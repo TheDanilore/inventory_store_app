@@ -11,16 +11,10 @@ class ClaimDailyCheckinUC {
 
   Future<Either<Failure, void>> call({
     required String profileId,
-    required String todayDate,
-    required int points,
-    required int streakDay,
     required String actionByProfileId,
   }) async {
     return await repository.claimDailyCheckin(
       profileId: profileId,
-      todayDate: todayDate,
-      points: points,
-      streakDay: streakDay,
       actionByProfileId: actionByProfileId,
     );
   }

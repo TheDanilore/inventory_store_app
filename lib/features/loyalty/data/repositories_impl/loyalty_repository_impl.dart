@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -17,11 +18,12 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
 
   LoyaltyRepositoryImpl(this._supabase);
 
-  Either<Failure, T> _handleError<T>(Object e) {
+  Either<Failure, T> _handleError<T>(Object e, StackTrace st) {
+    developer.log('LoyaltyRepositoryError', error: e, stackTrace: st);
     if (e is PostgrestException) {
-      return left(Failure.from('Error de base de datos: '));
+      return left(Failure.from('Error de base de datos: ${e.message}'));
     }
-    return left(Failure.from('Error inesperado: '));
+    return left(Failure.from('Error inesperado: $e'));
   }
 
   @override
@@ -40,8 +42,8 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
         return left(Failure.from('No se encontró el perfil'));
       }
       return right(LoyaltyProfileModel.fromJson(response).toEntity());
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -60,8 +62,8 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
       }
       final balance = (response['wallet_balance'] as num?)?.toInt() ?? 0;
       return right(balance);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -81,8 +83,8 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
 
       if (response == null) return right(null);
       return right(DailyCheckinModel.fromJson(response).toEntity());
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -102,8 +104,8 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
 
       if (response == null) return right(null);
       return right(DailyCheckinModel.fromJson(response).toEntity());
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -125,8 +127,8 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
             response,
           ).map(WalletMovementModel.fromJson).toList();
       return right(models.map((m) => m.toEntity()).toList());
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -149,17 +151,14 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
             response,
           ).map(WalletMovementModel.fromJson).toList();
       return right(models.map((m) => m.toEntity()).toList());
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
   @override
   Future<Either<Failure, void>> claimDailyCheckin({
     required String profileId,
-    required String todayDate,
-    required int points,
-    required int streakDay,
     required String actionByProfileId,
   }) async {
     try {
@@ -167,15 +166,12 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
         'claim_daily_checkin',
         params: {
           'p_profile_id': profileId,
-          'p_checkin_date': todayDate,
-          'p_points': points,
-          'p_streak_day': streakDay,
           'p_action_by': actionByProfileId,
         },
       );
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -197,8 +193,8 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
         },
       );
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -258,8 +254,8 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
               .toList();
 
       return right(customers);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 }

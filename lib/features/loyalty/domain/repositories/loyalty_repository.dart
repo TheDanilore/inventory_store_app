@@ -34,9 +34,6 @@ abstract class LoyaltyRepository {
 
   Future<Either<Failure, void>> claimDailyCheckin({
     required String profileId,
-    required String todayDate,
-    required int points,
-    required int streakDay,
     required String actionByProfileId,
   });
 
