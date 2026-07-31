@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -73,7 +75,6 @@ class _OrderDetailSheetContent extends StatefulWidget {
 class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
   final TextEditingController _pointsUsedCtrl = TextEditingController();
   final TextEditingController _manualNameCtrl = TextEditingController();
-  List<TextEditingController> _quantityControllers = [];
   bool _isEditing = false;
 
   @override
@@ -86,20 +87,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
     _manualNameCtrl.text = widget.order.customerName.trim();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OrderDetailCubit>().fetchData(widget.order.id).then((_) {
-        if (mounted) {
-          final state = context.read<OrderDetailCubit>().state;
-          setState(() {
-            _quantityControllers =
-                state.items
-                    .map(
-                      (item) =>
-                          TextEditingController(text: item.quantity.toString()),
-                    )
-                    .toList();
-          });
-        }
-      });
+      context.read<OrderDetailCubit>().fetchData(widget.order.id);
     });
   }
 
@@ -107,9 +95,6 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
   void dispose() {
     _pointsUsedCtrl.dispose();
     _manualNameCtrl.dispose();
-    for (final controller in _quantityControllers) {
-      controller.dispose();
-    }
     super.dispose();
   }
 
@@ -206,8 +191,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
     double rate,
   ) async {
     final cubit = context.read<OrderDetailCubit>();
-    final controller = _quantityControllers[idx];
-    final currentQty = controller.text;
+    final currentQty = cubit.state.items[idx].quantity.toString();
 
     final newQtyStr = await showDialog<String>(
       context: context,
@@ -252,7 +236,6 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
     if (!mounted || newQtyStr == null) return;
     final qty = int.tryParse(newQtyStr) ?? 1;
     if (qty > 0) {
-      controller.text = qty.toString();
       cubit.updateItemQuantity(idx, qty, ratio, rate);
     }
   }
@@ -294,7 +277,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
 
     if (!mounted) return;
     cubit.updatePaymentMethod(method, ratio, rate);
-    if (method == 'CRÉDITO') {
+    if (selectedAccount['type'] == 'CREDITO') {
       _pointsUsedCtrl.text = '0';
     }
   }
@@ -332,6 +315,9 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
 
         final isEditing = state.canToggleEdit;
         final isCompleted = state.isCompleted;
+        final isCreditMethod = state.accounts.any(
+          (a) => a['name'] == state.paymentMethod && a['type'] == 'CREDITO',
+        );
         final maxPtsUser =
             state.selectedCustomerId != null
                 ? state.profiles.firstWhere(
@@ -529,74 +515,81 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                 ),
                               ],
                               const SizedBox(height: 16),
-                              OrderDetailItemsSection(
-                                items: state.items,
-                                isLoading: state.isLoading,
-                                isEditing: _isEditing,
-                                isLocked:
-                                    state.currentStatus.toUpperCase() !=
-                                    'PENDING',
-                                batchesByVariant: state.batchesByVariant,
-                                usesBatchesMap: state.usesBatchesMap,
-                                batchOverrides: state.batchOverrides,
-                                quantityControllers: _quantityControllers,
-                                onDecrease: (idx) {
-                                  if (state.items[idx].quantity > 1) {
-                                    context
-                                        .read<OrderDetailCubit>()
-                                        .updateItemQuantity(
+                              BlocSelector<OrderDetailCubit, OrderDetailState, _ItemsSectionData>(
+                                selector: (state) => _ItemsSectionData(
+                                  items: state.items,
+                                  isLoading: state.isLoading,
+                                  currentStatus: state.currentStatus,
+                                  batchesByVariant: state.batchesByVariant,
+                                  usesBatchesMap: state.usesBatchesMap,
+                                  batchOverrides: state.batchOverrides,
+                                ),
+                                builder: (context, data) {
+                                  return OrderDetailItemsSection(
+                                    items: data.items,
+                                    isLoading: data.isLoading,
+                                    isEditing: _isEditing,
+                                    isLocked:
+                                        data.currentStatus.toUpperCase() !=
+                                        'PENDING',
+                                    batchesByVariant: data.batchesByVariant,
+                                    usesBatchesMap: data.usesBatchesMap,
+                                    batchOverrides: data.batchOverrides,
+                                    onDecrease: (idx) {
+                                      if (data.items[idx].quantity > 1) {
+                                        context
+                                            .read<OrderDetailCubit>()
+                                            .updateItemQuantity(
+                                              idx,
+                                              data.items[idx].quantity - 1,
+                                              pointsToSolesRatio,
+                                              earningRate,
+                                            );
+                                      }
+                                    },
+                                    onIncrease: (idx) {
+                                      context
+                                          .read<OrderDetailCubit>()
+                                          .updateItemQuantity(
+                                            idx,
+                                            data.items[idx].quantity + 1,
+                                            pointsToSolesRatio,
+                                            earningRate,
+                                          );
+                                    },
+                                    onQuantityChanged: (idx, val) {
+                                      final qty = int.tryParse(val) ?? 1;
+                                      if (qty > 0) {
+                                        context
+                                            .read<OrderDetailCubit>()
+                                            .updateItemQuantity(
+                                              idx,
+                                              qty,
+                                              pointsToSolesRatio,
+                                              earningRate,
+                                            );
+                                      }
+                                    },
+                                    onEditBatches:
+                                        (item) => OrderDetailBatchSheet.show(
+                                          context,
+                                          item,
+                                        ),
+                                    onQuantityTap:
+                                        (idx) => _showQuantityDialog(
+                                          context,
                                           idx,
-                                          state.items[idx].quantity - 1,
                                           pointsToSolesRatio,
                                           earningRate,
-                                        );
-                                    _quantityControllers[idx].text =
-                                        state.items[idx].quantity.toString();
-                                  }
+                                        ),
+                                  );
                                 },
-                                onIncrease: (idx) {
-                                  context
-                                      .read<OrderDetailCubit>()
-                                      .updateItemQuantity(
-                                        idx,
-                                        state.items[idx].quantity + 1,
-                                        pointsToSolesRatio,
-                                        earningRate,
-                                      );
-                                  _quantityControllers[idx].text =
-                                      state.items[idx].quantity.toString();
-                                },
-                                onQuantityChanged: (idx, val) {
-                                  final qty = int.tryParse(val) ?? 1;
-                                  if (qty > 0) {
-                                    context
-                                        .read<OrderDetailCubit>()
-                                        .updateItemQuantity(
-                                          idx,
-                                          qty,
-                                          pointsToSolesRatio,
-                                          earningRate,
-                                        );
-                                  }
-                                },
-                                onEditBatches:
-                                    (item) => OrderDetailBatchSheet.show(
-                                      context,
-                                      item,
-                                    ),
-                                onQuantityTap:
-                                    (idx) => _showQuantityDialog(
-                                      context,
-                                      idx,
-                                      pointsToSolesRatio,
-                                      earningRate,
-                                    ),
                               ),
                               const SizedBox(height: 16),
                               if (config.loyaltyGlobalEnabled &&
                                   state.selectedCustomerId != null &&
                                   state.selectedCustomerId!.isNotEmpty &&
-                                  state.paymentMethod != 'CRÉDITO') ...[
+                                  !isCreditMethod) ...[
                                 OrderDetailPointsSection(
                                   isEditing: _isEditing,
                                   pointsUsed: state.pointsUsed,
@@ -795,4 +788,44 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
       },
     );
   }
+}
+
+class _ItemsSectionData {
+  final List<OrderItemEntity> items;
+  final bool isLoading;
+  final String currentStatus;
+  final Map<String, List<Map<String, dynamic>>> batchesByVariant;
+  final Map<String, bool> usesBatchesMap;
+  final Map<String, List<BatchAssignmentModel>> batchOverrides;
+
+  _ItemsSectionData({
+    required this.items,
+    required this.isLoading,
+    required this.currentStatus,
+    required this.batchesByVariant,
+    required this.usesBatchesMap,
+    required this.batchOverrides,
+  });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is _ItemsSectionData &&
+        other.items == items &&
+        other.isLoading == isLoading &&
+        other.currentStatus == currentStatus &&
+        other.batchesByVariant == batchesByVariant &&
+        other.usesBatchesMap == usesBatchesMap &&
+        other.batchOverrides == batchOverrides;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        items,
+        isLoading,
+        currentStatus,
+        batchesByVariant,
+        usesBatchesMap,
+        batchOverrides,
+      );
 }

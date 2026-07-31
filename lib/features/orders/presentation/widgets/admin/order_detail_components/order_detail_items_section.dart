@@ -5,13 +5,12 @@ import 'package:inventory_store_app/features/inventory/data/models/batch_assignm
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_section_card.dart';
 
-class OrderDetailItemCard extends StatelessWidget {
+class OrderDetailItemCard extends StatefulWidget {
   final OrderItemEntity item;
   final bool isEditing;
   final bool usesBatches;
   final List<Map<String, dynamic>> batches;
   final List<BatchAssignmentModel>? batchAssignments;
-  final TextEditingController quantityController;
   final VoidCallback onDecrease;
   final VoidCallback onIncrease;
   final ValueChanged<String> onQuantityChanged;
@@ -25,13 +24,39 @@ class OrderDetailItemCard extends StatelessWidget {
     required this.usesBatches,
     this.batches = const [],
     this.batchAssignments,
-    required this.quantityController,
     required this.onDecrease,
     required this.onIncrease,
     required this.onQuantityChanged,
     this.onQuantityTap,
     this.onEditBatches,
   });
+
+  @override
+  State<OrderDetailItemCard> createState() => _OrderDetailItemCardState();
+}
+
+class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
+  late TextEditingController _quantityController;
+
+  @override
+  void initState() {
+    super.initState();
+    _quantityController = TextEditingController(text: widget.item.quantity.toString());
+  }
+
+  @override
+  void didUpdateWidget(covariant OrderDetailItemCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.quantity != widget.item.quantity) {
+      _quantityController.text = widget.item.quantity.toString();
+    }
+  }
+
+  @override
+  void dispose() {
+    _quantityController.dispose();
+    super.dispose();
+  }
 
   String _formatExpiry(dynamic raw) {
     if (raw == null) return '';
@@ -45,14 +70,14 @@ class OrderDetailItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subtotal = item.subtotal;
-    final imageUrl = item.displayImageUrl;
+    final subtotal = widget.item.subtotal;
+    final imageUrl = widget.item.displayImageUrl;
 
-    final bool canEditBatches = onEditBatches != null && usesBatches;
-    final bool hasBatchOverride = canEditBatches && batchAssignments != null;
+    final bool canEditBatches = widget.onEditBatches != null && widget.usesBatches;
+    final bool hasBatchOverride = canEditBatches && widget.batchAssignments != null;
     final activeBatches =
         hasBatchOverride
-            ? batchAssignments!.where((b) => b.assigned > 0).toList()
+            ? widget.batchAssignments!.where((b) => b.assigned > 0).toList()
             : <BatchAssignmentModel>[];
 
     return Card(
@@ -102,7 +127,7 @@ class OrderDetailItemCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.productName ?? 'Producto sin nombre',
+                    widget.item.productName ?? 'Producto sin nombre',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
@@ -110,24 +135,24 @@ class OrderDetailItemCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    item.variantLabel,
+                    widget.item.variantLabel,
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'SKU: ${item.sku ?? 'N/A'}',
+                    'SKU: ${widget.item.sku ?? 'N/A'}',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'P. unit: S/ ${item.appliedPrice.toStringAsFixed(2)}',
+                    'P. unit: S/ ${widget.item.appliedPrice.toStringAsFixed(2)}',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
                   ),
 
                   if (canEditBatches) ...[
                     const SizedBox(height: 6),
                     GestureDetector(
-                      onTap: onEditBatches,
+                      onTap: widget.onEditBatches,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -204,13 +229,13 @@ class OrderDetailItemCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ] else if (batches.isNotEmpty) ...[
+                  ] else if (widget.batches.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 4,
                       runSpacing: 4,
                       children:
-                          batches.map((b) {
+                          widget.batches.map((b) {
                             final batchNumber =
                                 b['batch_number'] as String? ?? '';
                             final qty = b['quantity'] as int? ?? 0;
@@ -261,7 +286,7 @@ class OrderDetailItemCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (isEditing)
+                if (widget.isEditing)
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final bool isDesktop =
@@ -277,7 +302,7 @@ class OrderDetailItemCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             InkWell(
-                              onTap: onDecrease,
+                              onTap: widget.onDecrease,
                               borderRadius: const BorderRadius.horizontal(
                                 left: Radius.circular(24),
                               ),
@@ -297,7 +322,7 @@ class OrderDetailItemCard extends StatelessWidget {
                               SizedBox(
                                 width: 44,
                                 child: TextField(
-                                  controller: quantityController,
+                                  controller: _quantityController,
                                   keyboardType: TextInputType.number,
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
@@ -312,12 +337,12 @@ class OrderDetailItemCard extends StatelessWidget {
                                     ),
                                     border: InputBorder.none,
                                   ),
-                                  onChanged: onQuantityChanged,
+                                  onChanged: widget.onQuantityChanged,
                                 ),
                               )
                             else
                               GestureDetector(
-                                onTap: onQuantityTap,
+                                onTap: widget.onQuantityTap,
                                 child: Container(
                                   constraints: const BoxConstraints(
                                     minWidth: 32,
@@ -330,7 +355,7 @@ class OrderDetailItemCard extends StatelessWidget {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
-                                        quantityController.text,
+                                        _quantityController.text,
                                         style: const TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
@@ -347,7 +372,7 @@ class OrderDetailItemCard extends StatelessWidget {
                                 ),
                               ),
                             InkWell(
-                              onTap: onIncrease,
+                              onTap: widget.onIncrease,
                               borderRadius: const BorderRadius.horizontal(
                                 right: Radius.circular(24),
                               ),
@@ -370,7 +395,7 @@ class OrderDetailItemCard extends StatelessWidget {
                   )
                 else
                   Text(
-                    'x${item.quantity}',
+                    'x${widget.item.quantity}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 const SizedBox(height: 6),
@@ -407,7 +432,6 @@ class OrderDetailItemsSection extends StatelessWidget {
   final Map<String, List<Map<String, dynamic>>> batchesByVariant;
   final Map<String, bool> usesBatchesMap;
   final Map<String, List<BatchAssignmentModel>> batchOverrides;
-  final List<TextEditingController> quantityControllers;
   final void Function(int index) onDecrease;
   final void Function(int index) onIncrease;
   final void Function(int index, String value) onQuantityChanged;
@@ -423,7 +447,6 @@ class OrderDetailItemsSection extends StatelessWidget {
     this.batchesByVariant = const {},
     required this.usesBatchesMap,
     this.batchOverrides = const {},
-    required this.quantityControllers,
     required this.onDecrease,
     required this.onIncrease,
     required this.onQuantityChanged,
@@ -462,7 +485,6 @@ class OrderDetailItemsSection extends StatelessWidget {
                     usesBatches: usesBatches,
                     batches: batches,
                     batchAssignments: batchOverrides[item.id],
-                    quantityController: quantityControllers[index],
                     onDecrease: () => onDecrease(index),
                     onIncrease: () => onIncrease(index),
                     onQuantityChanged:
