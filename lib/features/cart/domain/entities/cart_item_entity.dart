@@ -99,10 +99,26 @@ class CartItemEntity {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is CartItemEntity && other.cartKey == cartKey);
+      (other is CartItemEntity &&
+          runtimeType == other.runtimeType &&
+          cartKey == other.cartKey &&
+          quantity == other.quantity &&
+          unitPrice == other.unitPrice &&
+          unitCost == other.unitCost &&
+          availableStock == other.availableStock &&
+          isSelected == other.isSelected &&
+          variantId == other.variantId);
 
   @override
-  int get hashCode => cartKey.hashCode;
+  int get hashCode => Object.hash(
+        cartKey,
+        quantity,
+        unitPrice,
+        unitCost,
+        availableStock,
+        isSelected,
+        variantId,
+      );
 
   @override
   String toString() =>

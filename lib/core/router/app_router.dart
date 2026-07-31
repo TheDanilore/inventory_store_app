@@ -20,8 +20,11 @@ import 'package:inventory_store_app/features/dashboard/presentation/routes/dashb
 import 'package:inventory_store_app/features/financial/presentation/routes/financial_routes.dart';
 import 'package:inventory_store_app/features/inventory/presentation/routes/inventory_routes.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/routes/loyalty_routes.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/routes/orders_routes.dart';
 import 'package:inventory_store_app/features/pos/presentation/routes/pos_routes.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 import 'package:inventory_store_app/features/purchases/presentation/routes/purchases_routes.dart';
 import 'package:inventory_store_app/features/users/presentation/routes/users_routes.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/admin_catalog_screen.dart';
@@ -139,6 +142,12 @@ class AppRouter {
                   BlocProvider(
                     create: (_) => sl<CartCubit>()..initCart(cartType: 'pos'),
                   ),
+                  BlocProvider(
+                    create: (_) => sl<PosCubit>(),
+                  ),
+                  BlocProvider(
+                    create: (_) => sl<CashShiftsCubit>(),
+                  ),
                 ],
                 child: child,
               ),
@@ -181,6 +190,9 @@ class AppRouter {
                   BlocProvider(
                     create:
                         (_) => sl<CartCubit>()..initCart(cartType: 'customer'),
+                  ),
+                  BlocProvider(
+                    create: (_) => sl<WalletCubit>(),
                   ),
                 ],
                 child: CustomerLayout(

@@ -277,6 +277,75 @@ class PosCartItemRow extends StatelessWidget {
                     ),
                   ),
                 ],
+                if (item.availableStock <= 0) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.dangerLight,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: AppColors.danger.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 10,
+                          color: AppColors.danger,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Sin stock en almacén seleccionado',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else if (!item.hasEnoughStock) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.warningLight,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: AppColors.warningDark.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          size: 10,
+                          color: AppColors.warningDark,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Excede stock disponible (${item.availableStock} disp.)',
+                          style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.warningDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 4),
                 Row(
                   children: [

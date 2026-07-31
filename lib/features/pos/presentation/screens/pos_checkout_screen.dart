@@ -612,6 +612,11 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               matches: posCubit.state.clientMatches,
               selectedClientId: posCubit.state.selectedClientId,
               onClientTap: _selectClient,
+              onClearClient: () {
+                posCubit.removeClient();
+                posCubit.setPuntosAUsar(0);
+                _clienteCtrl.clear();
+              },
               saldoActualCliente: posCubit.state.saldoActualCliente,
               creditInfo: posCubit.state.creditInfo,
               isCredito: isCredito,
