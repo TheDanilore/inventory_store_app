@@ -44,8 +44,9 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     final result = await getCategoriesUC();
     result.fold((failure) {
       developer.log(
-        'Error fetching categories: ${failure.message}',
+        'AdminCatalogCubit: Error al cargar categorías: ${failure.message}',
         error: failure,
+        stackTrace: StackTrace.current,
       );
     }, (cats) => emit(state.copyWith(categories: cats)));
   }

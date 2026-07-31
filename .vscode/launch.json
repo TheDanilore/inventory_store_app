@@ -9,9 +9,8 @@
             "request": "launch",
             "type": "dart",
             "program": "lib/main.dart",
-            "toolArgs": [
-                "--dart-define-from-file",
-                "env.json"
+            "args": [
+                "--dart-define-from-file=env.json"
             ]
         },
         {

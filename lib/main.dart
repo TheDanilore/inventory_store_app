@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:inventory_store_app/core/config/env_config.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/network/network_cubit.dart';
 import 'package:inventory_store_app/core/router/app_router.dart';
@@ -27,30 +28,15 @@ Future<void> main() async {
   // Carga de persistencia local inicial
   final prefs = await SharedPreferences.getInstance();
 
-  // 1. Buscamos primero en el almacenamiento local (porque el ERP permite cambiarlas dinámicamente)
-  // 2. Si no hay nada guardado, usamos la variable de entorno inyectada de forma segura
-  // 3. Como último recurso absoluto, dejamos un string vacío para forzar un fallo controlado
-  final defaultUrl = const String.fromEnvironment(
-    'SUPABASE_URL',
-    defaultValue: '',
-  );
-  final defaultKey = const String.fromEnvironment(
-    'SUPABASE_KEY',
-    defaultValue: '',
-  );
-
-  final url = prefs.getString('SUPABASE_URL') ?? defaultUrl;
-  final key = prefs.getString('SUPABASE_KEY') ?? defaultKey;
-
-  if (url.isEmpty || key.isEmpty) {
-    throw Exception(
-      'FALLO CRÍTICO: Las credenciales de Supabase no están configuradas.',
-    );
-  }
+  // Carga resiliente de credenciales (fromEnvironment -> rootBundle env.json -> SharedPreferences)
+  await EnvConfig.load(prefs);
 
   try {
     // Inicialización idempotente y segura de Supabase
-    await Supabase.initialize(url: url, publishableKey: key);
+    await Supabase.initialize(
+      url: EnvConfig.supabaseUrl,
+      publishableKey: EnvConfig.supabaseKey,
+    );
   } catch (error, stackTrace) {
     // Logs con StackTrace
     debugPrint('FALLO CRÍTICO SUPABASE: $error\n$stackTrace');
