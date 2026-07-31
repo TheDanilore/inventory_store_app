@@ -269,9 +269,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
       (a) => a['name'] == method,
       orElse: () => <String, dynamic>{},
     );
-    final isCashAccount =
-        selectedAccount['type'] == 'CAJA' ||
-        method.toUpperCase().contains('CAJA');
+    final isCashAccount = selectedAccount['type'] == 'CAJA';
 
     if (isCashAccount) {
       final hasShift = await cubit.hasActiveCashShift();

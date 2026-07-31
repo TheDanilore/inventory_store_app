@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_section_card.dart';
 
 class OrderDetailInfoBox extends StatelessWidget {
@@ -44,14 +47,17 @@ class OrderDetailCustomerSection extends StatelessWidget {
   });
 
   void _showCustomerSearchSheet(BuildContext context) {
+    // Capturar el método de búsqueda desde el cubit actual
+    final cubit = context.read<OrderDetailCubit>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
           (ctx) => _CustomerSearchSheet(
-            profiles: profiles,
+            initialProfiles: profiles,
             selectedCustomerId: selectedCustomerId,
+            onSearch: cubit.searchCustomers,
             onSelectCustomer: (id) {
               onSelectCustomer(id);
               Navigator.pop(ctx);
@@ -158,14 +164,16 @@ class OrderDetailCustomerSection extends StatelessWidget {
 }
 
 class _CustomerSearchSheet extends StatefulWidget {
-  final List<Map<String, dynamic>> profiles;
+  final List<Map<String, dynamic>> initialProfiles;
   final String? selectedCustomerId;
   final ValueChanged<String> onSelectCustomer;
+  final Future<List<Map<String, dynamic>>> Function(String) onSearch;
 
   const _CustomerSearchSheet({
-    required this.profiles,
+    required this.initialProfiles,
     required this.selectedCustomerId,
     required this.onSelectCustomer,
+    required this.onSearch,
   });
 
   @override
@@ -175,34 +183,47 @@ class _CustomerSearchSheet extends StatefulWidget {
 class _CustomerSearchSheetState extends State<_CustomerSearchSheet> {
   final TextEditingController _searchCtrl = TextEditingController();
   List<Map<String, dynamic>> _filteredProfiles = [];
+  bool _isLoading = false;
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
-    _filteredProfiles = widget.profiles;
-    _searchCtrl.addListener(_filterProfiles);
+    _filteredProfiles = widget.initialProfiles;
+    _searchCtrl.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
-  void _filterProfiles() {
-    final q = _searchCtrl.text.trim().toLowerCase();
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _performSearch();
+    });
+  }
+
+  Future<void> _performSearch() async {
+    final q = _searchCtrl.text.trim();
     if (q.isEmpty) {
-      setState(() => _filteredProfiles = widget.profiles);
+      setState(() {
+        _filteredProfiles = widget.initialProfiles;
+        _isLoading = false;
+      });
       return;
     }
+    
+    setState(() => _isLoading = true);
+    final results = await widget.onSearch(q);
+    if (!mounted) return;
+    
     setState(() {
-      _filteredProfiles =
-          widget.profiles.where((p) {
-            final name = (p['full_name'] as String? ?? '').toLowerCase();
-            final doc = (p['document_number'] as String? ?? '').toLowerCase();
-            final phone = (p['phone'] as String? ?? '').toLowerCase();
-            return name.contains(q) || doc.contains(q) || phone.contains(q);
-          }).toList();
+      _filteredProfiles = results;
+      _isLoading = false;
     });
   }
 

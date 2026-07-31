@@ -49,6 +49,19 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     final supabase = Supabase.instance.client;
 
     try {
+      // FIX: Data Egress - Fetch solo el perfil del cliente actual (si existe) en lugar de TODOS los perfiles.
+      dynamic profileQuery;
+      final currentCustomerId = state.order?.customerId ?? state.selectedCustomerId;
+      if (currentCustomerId != null && currentCustomerId.isNotEmpty) {
+        profileQuery = supabase
+            .from('profiles')
+            .select('id, full_name, phone, wallet_balance')
+            .eq('id', currentCustomerId)
+            .maybeSingle();
+      } else {
+        profileQuery = Future.value(null);
+      }
+
       final results = await Future.wait<dynamic>([
         getOrderDetailsUc(orderId),
         supabase
@@ -56,16 +69,13 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
             .select('id, name, type, balance')
             .eq('is_active', true)
             .order('name'),
-        supabase
-            .from('profiles')
-            .select('id, full_name, phone, wallet_balance')
-            .order('full_name'),
+        profileQuery,
       ]);
 
-      final result =
-          results[0] as dynamic; // Using dynamic for Either compatibility
+      final result = results[0] as dynamic; // Using dynamic for Either compatibility
       final accountsData = List<Map<String, dynamic>>.from(results[1] as List);
-      final profilesData = List<Map<String, dynamic>>.from(results[2] as List);
+      final profileResult = results[2] as Map<String, dynamic>?;
+      final profilesData = profileResult != null ? [profileResult] : <Map<String, dynamic>>[];
 
       result.fold(
         (failure) {
@@ -163,6 +173,22 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
       ),
     );
     _recalculatePoints(ratio, earnRate);
+  }
+
+  Future<List<Map<String, dynamic>>> searchCustomers(String query) async {
+    if (query.trim().isEmpty) return [];
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('profiles')
+          .select('id, full_name, phone, document_number')
+          .or('full_name.ilike.%$query%,phone.ilike.%$query%,document_number.ilike.%$query%')
+          .limit(20);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('🔴 [OrderDetailCubit] Error searching customers: $e');
+      return [];
+    }
   }
 
   void updatePaymentMethod(String method, double ratio, double earnRate) {

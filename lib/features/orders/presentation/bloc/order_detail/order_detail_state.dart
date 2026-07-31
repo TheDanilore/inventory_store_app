@@ -56,7 +56,8 @@ class OrderDetailState extends Equatable {
 
   bool get canToggleEdit =>
       currentStatus.toUpperCase() != 'CANCELLED' &&
-      currentStatus.toUpperCase() != 'RETURNED';
+      currentStatus.toUpperCase() != 'RETURNED' &&
+      currentStatus.toUpperCase() != 'COMPLETED';
   bool get isCompleted => currentStatus.toUpperCase() == 'COMPLETED';
 
   OrderDetailState copyWith({
