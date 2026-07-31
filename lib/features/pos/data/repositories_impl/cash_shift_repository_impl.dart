@@ -1,5 +1,5 @@
-import 'dart:isolate';
 import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/utils/isolate_utils.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -67,7 +67,7 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
       final data = response.data as List;
 
       // Isolate para evitar jank en el parseo JSON
-      final shifts = await Isolate.run(() {
+      final shifts = await IsolateUtils.run(() {
         return data
             .map(
               (e) =>

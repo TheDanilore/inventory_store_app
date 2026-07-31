@@ -1,6 +1,6 @@
-import 'dart:isolate';
 import 'dart:developer' as developer;
 import 'dart:typed_data';
+import 'package:inventory_store_app/core/utils/isolate_utils.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -83,7 +83,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }) async {
     try {
       String selectString =
-          'id, name, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, image_url, is_main), categories(name), warehouse_stock_batches(available_quantity), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active)';
+          'id, name, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), warehouse_stock_batches(available_quantity), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active)';
 
       if (searchByIngredient &&
           searchQuery != null &&
@@ -119,7 +119,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
       final response = await transformQuery.count(CountOption.exact);
 
       final responseData = response.data as List;
-      final entities = await Isolate.run(() {
+      final entities = await IsolateUtils.run(() {
         final models =
             List<Map<String, dynamic>>.from(
               responseData,

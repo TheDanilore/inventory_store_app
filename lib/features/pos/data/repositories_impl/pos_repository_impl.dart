@@ -1,3 +1,4 @@
+import 'package:inventory_store_app/core/utils/isolate_utils.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,7 +9,6 @@ import 'package:inventory_store_app/features/inventory/data/models/batch_assignm
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/sale_entity.dart';
 import 'dart:developer' as developer;
-import 'dart:isolate';
 import 'package:inventory_store_app/features/pos/domain/repositories/pos_repository.dart';
 
 @LazySingleton(as: PosRepository)
@@ -219,8 +219,8 @@ class PosRepositoryImpl implements PosRepository {
           )
           .eq('order_id', orderId);
 
-      // Delegar la deserialización a un Isolate
-      final result = await Isolate.run(() {
+      // Delegar la deserialización a un Isolate de forma segura
+      final result = await IsolateUtils.run(() {
         final order = OrderModel.fromJson(orderResp);
         final items =
             List<Map<String, dynamic>>.from(

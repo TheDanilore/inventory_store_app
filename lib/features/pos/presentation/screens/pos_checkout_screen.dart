@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:isolate';
+import 'package:inventory_store_app/core/utils/isolate_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
@@ -388,7 +388,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
 
                           final order = details.order;
                           final items = details.items;
-                          final bytes = await Isolate.run(() {
+                          final bytes = await IsolateUtils.run(() {
                             return OrderPdfGenerator.buildPdfBytes(
                               order,
                               items: items,

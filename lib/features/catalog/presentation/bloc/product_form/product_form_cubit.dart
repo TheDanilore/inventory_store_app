@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:isolate';
+import 'package:inventory_store_app/core/utils/isolate_utils.dart';
 import 'dart:typed_data';
 import 'dart:developer' as developer;
 import 'package:injectable/injectable.dart';
@@ -696,7 +696,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   Future<Uint8List> _optimizarImagen(Uint8List bytesOriginales) async {
     if (bytesOriginales.lengthInBytes < 250 * 1024) return bytesOriginales;
     try {
-      return await Isolate.run(() async {
+      return await IsolateUtils.run(() async {
         final bytesComprimidos = await FlutterImageCompress.compressWithList(
           bytesOriginales,
           minWidth: 1024,

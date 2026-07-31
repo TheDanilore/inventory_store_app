@@ -22,14 +22,14 @@ class ProductImageModel {
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
   factory ProductImageModel.fromJson(Map<String, dynamic> json) {
     return ProductImageModel(
-      id: json['id'] as String,
-      productId: json['product_id'] as String,
+      id: json['id'] as String? ?? '',
+      productId: json['product_id'] as String? ?? '',
       variantId: json['variant_id'] as String?,
-      imageUrl: json['image_url'] as String,
+      imageUrl: json['image_url'] as String? ?? '',
       displayOrder: (json['display_order'] as num? ?? 0).toInt(),
       createdAt:
           json['created_at'] != null
-              ? DateTime.parse(json['created_at'] as String)
+              ? DateTime.tryParse(json['created_at'] as String)
               : null,
       isMain: json['is_main'] as bool? ?? false,
     );

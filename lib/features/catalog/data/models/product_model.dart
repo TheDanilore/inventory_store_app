@@ -116,12 +116,12 @@ class ProductModel {
     }
 
     return ProductModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
       isActive: json['is_active'] as bool? ?? true,
       createdAt:
           json['created_at'] != null
-              ? DateTime.parse(json['created_at'] as String)
+              ? DateTime.tryParse(json['created_at'] as String)
               : null,
       categoryId: json['category_id'] as String?,
       // ¡Aquí obtenemos el nombre real desde la consulta de la base de datos!
@@ -129,7 +129,7 @@ class ProductModel {
       description: json['description'] as String?,
       updatedAt:
           json['updated_at'] != null
-              ? DateTime.parse(json['updated_at'] as String)
+              ? DateTime.tryParse(json['updated_at'] as String)
               : null,
       details: rawDetails,
       createdBy: json['created_by'] as String?,
