@@ -133,8 +133,9 @@ abstract class ProductsRepository {
   Future<Either<Failure, Map<String, List<ProductVariantEntity>>>>
   fetchVariantsByProductIds(List<String> productIds);
   Future<Either<Failure, Map<String, int>>> fetchVariantStockByVariantIds(
-    List<String> variantIds,
-  );
+    List<String> variantIds, {
+    String? warehouseId,
+  });
 
   // Misc
   Future<Either<Failure, bool>> checkWishlistState(

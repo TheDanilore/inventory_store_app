@@ -26,6 +26,8 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 
 class PosCheckoutScreen extends StatefulWidget {
   final VoidCallback? onSaleCompleted;
@@ -108,6 +110,35 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
 
   //  CÁLCULOS (Movidos a PosCalculatorUtils)
 
+  Future<void> _updateCartItemsStockForWarehouse(String warehouseId) async {
+    final cartCubit = context.read<CartCubit>();
+    final items = cartCubit.state.items.values.toList();
+    if (items.isEmpty) return;
+
+    final variantIds = items
+        .where((i) => i.variantId != null && i.variantId!.isNotEmpty)
+        .map((i) => i.variantId!)
+        .toSet()
+        .toList();
+
+    if (variantIds.isEmpty) return;
+
+    final repo = sl<ProductsRepository>();
+    final res = await repo.fetchVariantStockByVariantIds(
+      variantIds,
+      warehouseId: warehouseId,
+    );
+
+    res.fold((_) => null, (stockMap) {
+      for (final item in items) {
+        if (item.variantId != null) {
+          final stock = stockMap[item.variantId] ?? 0;
+          cartCubit.updateAvailableStock(item.cartKey, stock);
+        }
+      }
+    });
+  }
+
   Future<void> _processSale(
     PosCubit posCubit,
     CartCubit cartCubit, {
@@ -125,6 +156,17 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       AppSnackbar.show(
         context,
         message: 'La caja está vacía.',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+    final hasNoStockItem =
+        cartCubit.state.items.values.any((i) => i.availableStock <= 0);
+    if (!isDraft && hasNoStockItem) {
+      AppSnackbar.show(
+        context,
+        message:
+            'Hay productos sin stock en la tienda/almacén seleccionado.',
         type: SnackbarType.error,
       );
       return;
@@ -693,7 +735,12 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                   }
                 }
               },
-              onWarehouseChanged: (v) => posCubit.setWarehouse(v),
+              onWarehouseChanged: (v) {
+                posCubit.setWarehouse(v);
+                if (v != null) {
+                  _updateCartItemsStockForWarehouse(v);
+                }
+              },
               onAccountChanged: (v) {
                 posCubit.setSelectedAccountId(v);
                 if (v != null) {

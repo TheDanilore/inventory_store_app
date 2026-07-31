@@ -132,8 +132,11 @@ class PosCartItemRow extends StatelessWidget {
                   backgroundColor: AppColors.tealDark,
                 ),
                 onPressed: () {
-                  final newQty = int.tryParse(qtyCtrl.text.trim());
+                  var newQty = int.tryParse(qtyCtrl.text.trim());
                   if (newQty != null && newQty > 0) {
+                    if (item.availableStock > 0 && newQty > item.availableStock) {
+                      newQty = item.availableStock;
+                    }
                     context.read<CartCubit>().updateQuantity(
                       item.cartKey,
                       newQty,
@@ -301,45 +304,11 @@ class PosCartItemRow extends StatelessWidget {
                         ),
                         SizedBox(width: 4),
                         Text(
-                          'Sin stock en almacén seleccionado',
+                          'Sin stock en la tienda / almacén seleccionado',
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w800,
                             color: AppColors.danger,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else if (!item.hasEnoughStock) ...[
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.warningLight,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: AppColors.warningDark.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.warning_amber_rounded,
-                          size: 10,
-                          color: AppColors.warningDark,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Excede stock disponible (${item.availableStock} disp.)',
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.warningDark,
                           ),
                         ),
                       ],
@@ -403,27 +372,35 @@ class PosCartItemRow extends StatelessWidget {
                               ),
                             ),
                           ),
-                          InkWell(
-                            onTap: () {
-                              // Permite incrementar validando opcionalmente si hay stock definido,
-                              // o quítalo temporalmente si el stock viene en 0 por los lotes.
-                              context.read<CartCubit>().updateQuantity(
-                                item.cartKey,
-                                item.quantity + 1,
+                          Builder(
+                            builder: (context) {
+                              final canIncrement = item.availableStock <= 0 ||
+                                  item.quantity < item.availableStock;
+                              return InkWell(
+                                onTap: canIncrement
+                                    ? () {
+                                        context.read<CartCubit>().updateQuantity(
+                                          item.cartKey,
+                                          item.quantity + 1,
+                                        );
+                                      }
+                                    : null,
+                                borderRadius: const BorderRadius.horizontal(
+                                  right: Radius.circular(6),
+                                ),
+                                child: Container(
+                                  width: 28,
+                                  alignment: Alignment.center,
+                                  child: Icon(
+                                    Icons.add_rounded,
+                                    size: 14,
+                                    color: canIncrement
+                                        ? AppColors.textSecondary
+                                        : AppColors.textMuted,
+                                  ),
+                                ),
                               );
                             },
-                            borderRadius: const BorderRadius.horizontal(
-                              right: Radius.circular(6),
-                            ),
-                            child: Container(
-                              width: 28,
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                Icons.add_rounded,
-                                size: 14,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
                           ),
                         ],
                       ),

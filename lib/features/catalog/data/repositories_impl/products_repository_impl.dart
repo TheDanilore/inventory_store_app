@@ -867,21 +867,41 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
   @override
   Future<Either<Failure, Map<String, int>>> fetchVariantStockByVariantIds(
-    List<String> variantIds,
-  ) async {
+    List<String> variantIds, {
+    String? warehouseId,
+  }) async {
     try {
       if (variantIds.isEmpty) return right({});
-      final response = await _supabase
-          .from('product_stock_summary')
-          .select('variant_id, total_stock')
-          .inFilter('variant_id', variantIds);
-      final map = <String, int>{};
-      for (final row in List<Map<String, dynamic>>.from(response)) {
-        final vid = row['variant_id'] as String?;
-        final stock = (row['total_stock'] as num?)?.toInt() ?? 0;
-        if (vid != null) map[vid] = stock;
+      if (warehouseId != null && warehouseId.isNotEmpty) {
+        final response = await _supabase
+            .from('warehouse_stock_batches')
+            .select('variant_id, available_quantity')
+            .inFilter('variant_id', variantIds)
+            .eq('warehouse_id', warehouseId);
+
+        final map = <String, int>{};
+        for (final row in List<Map<String, dynamic>>.from(response)) {
+          final vid = row['variant_id'] as String?;
+          final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
+          if (vid != null) {
+            map[vid] = (map[vid] ?? 0) + stock;
+          }
+        }
+        return right(map);
+      } else {
+        final response = await _supabase
+            .from('product_stock_summary')
+            .select('variant_id, total_stock')
+            .inFilter('variant_id', variantIds);
+
+        final map = <String, int>{};
+        for (final row in List<Map<String, dynamic>>.from(response)) {
+          final vid = row['variant_id'] as String?;
+          final stock = (row['total_stock'] as num?)?.toInt() ?? 0;
+          if (vid != null) map[vid] = stock;
+        }
+        return right(map);
       }
-      return right(map);
     } catch (e, st) {
       return _handleError(e, st);
     }
