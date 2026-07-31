@@ -465,13 +465,13 @@ BEGIN
   END IF;
 
   -- Handle optional UUIDs
-  IF payload->>'customerId' IS NOT NULL THEN v_customer_id := (payload->>'customerId')::uuid; END IF;
-  IF payload->>'accountId' IS NOT NULL THEN v_account_id := (payload->>'accountId')::uuid; END IF;
-  IF payload->>'activeShiftId' IS NOT NULL THEN v_shift_id := (payload->>'activeShiftId')::uuid; END IF;
+  IF payload->>'customerId' IS NOT NULL AND payload->>'customerId' != '' THEN v_customer_id := (payload->>'customerId')::uuid; END IF;
+  IF payload->>'accountId' IS NOT NULL AND payload->>'accountId' != '' THEN v_account_id := (payload->>'accountId')::uuid; END IF;
+  IF payload->>'activeShiftId' IS NOT NULL AND payload->>'activeShiftId' != '' THEN v_shift_id := (payload->>'activeShiftId')::uuid; END IF;
 
   v_order_status := CASE WHEN v_is_draft THEN 'PENDING' ELSE 'COMPLETED' END;
 
-  -- Insert order centralizada
+  -- Insertar orden principal
   INSERT INTO orders (
     customer_id,
     customer_name,
@@ -508,11 +508,12 @@ BEGIN
     v_variant_id := (item->>'variantId')::uuid;
     v_quantity := (item->>'quantity')::int;
     
+    -- Validado con esquema de tabla order_items
     INSERT INTO order_items (
-      order_id, product_id, variant_id, quantity, unit_cost, unit_price, subtotal, net_profit
+      order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit
     ) VALUES (
       v_order_id, (item->>'productId')::uuid, v_variant_id, v_quantity,
-      (item->>'unitCost')::numeric, (item->>'appliedPrice')::numeric, (item->>'subtotal')::numeric, (item->>'netProfit')::numeric
+      (item->>'unitCost')::numeric, (item->>'appliedPrice')::numeric, (item->>'netProfit')::numeric
     );
 
     IF NOT v_is_draft THEN
@@ -525,12 +526,10 @@ BEGIN
           v_take := (batch_assign->>'take')::int;
           v_batch_number := batch_assign->>'batchNumber';
           
-          -- Bloqueo pesimista del lote específico para evitar sobreventa concurrente
           SELECT available_quantity INTO v_old_qty 
           FROM warehouse_stock_batches 
           WHERE id = (batch_assign->>'batchId')::uuid FOR UPDATE;
           
-          -- Validación crítica de quiebre de stock en asignación manual
           IF v_old_qty < v_take THEN
             RAISE EXCEPTION 'Stock insuficiente en el lote manual % para la variante %. Disponible: %, Solicitado: %', 
               v_batch_number, v_variant_id, v_old_qty, v_take;
@@ -540,10 +539,11 @@ BEGIN
           SET available_quantity = available_quantity - v_take
           WHERE id = (batch_assign->>'batchId')::uuid;
           
+          -- Validado con esquema de tabla inventory_movements (con order_id)
           INSERT INTO inventory_movements (
-            variant_id, warehouse_id, stock_batch_id, quantity, previous_stock, new_stock, unit_cost, reason, notes, created_by
+            variant_id, warehouse_id, stock_batch_id, order_id, quantity, previous_stock, new_stock, unit_cost, reason, notes, created_by
           ) VALUES (
-            v_variant_id, v_warehouse_id, (batch_assign->>'batchId')::uuid, -v_take, v_old_qty, v_old_qty - v_take, (item->>'unitCost')::numeric, 'SALE', 
+            v_variant_id, v_warehouse_id, (batch_assign->>'batchId')::uuid, v_order_id, -v_take, v_old_qty, v_old_qty - v_take, (item->>'unitCost')::numeric, 'SALE', 
             'Venta POS - ' || COALESCE(payload->>'paymentMethod', 'N/A') || ' • Lote: ' || v_batch_number, v_created_by
           );
         END LOOP;
@@ -555,7 +555,7 @@ BEGIN
           FROM warehouse_stock_batches 
           WHERE variant_id = v_variant_id AND warehouse_id = v_warehouse_id AND available_quantity > 0 
           ORDER BY expiry_date ASC NULLS LAST
-          FOR UPDATE -- Bloquea la fila del lote secuencialmente
+          FOR UPDATE
         LOOP
           IF v_remaining_qty <= 0 THEN EXIT; END IF;
           
@@ -570,16 +570,15 @@ BEGIN
           WHERE id = batch_row.id;
           
           INSERT INTO inventory_movements (
-            variant_id, warehouse_id, stock_batch_id, quantity, previous_stock, new_stock, unit_cost, reason, notes, created_by
+            variant_id, warehouse_id, stock_batch_id, order_id, quantity, previous_stock, new_stock, unit_cost, reason, notes, created_by
           ) VALUES (
-            v_variant_id, v_warehouse_id, batch_row.id, -v_take, batch_row.available_quantity, batch_row.available_quantity - v_take, (item->>'unitCost')::numeric, 'SALE', 
+            v_variant_id, v_warehouse_id, batch_row.id, v_order_id, -v_take, batch_row.available_quantity, batch_row.available_quantity - v_take, (item->>'unitCost')::numeric, 'SALE', 
             'Venta POS - ' || COALESCE(payload->>'paymentMethod', 'N/A') || ' • Lote: ' || batch_row.batch_number, v_created_by
           );
           
           v_remaining_qty := v_remaining_qty - v_take;
         END LOOP;
         
-        -- Si termina el algoritmo FEFO y falta stock, cancela la transacción entera (ROLLBACK)
         IF v_remaining_qty > 0 THEN
           RAISE EXCEPTION 'Stock insuficiente global en almacén para el ítem variante %', v_variant_id;
         END IF;
@@ -590,17 +589,17 @@ BEGIN
   -- 3. FLUJOS FINANCIEROS Y DE FIDELIZACIÓN COMPLEMENTARIOS
   IF NOT v_is_draft THEN
     
-    -- Control de Cajas y Cuentas Financieras (Anti-Race Conditions)
+    -- Control de Cajas y Cuentas Financieras
     IF v_account_id IS NOT NULL AND v_shift_id IS NOT NULL THEN
-      -- Bloqueo preventivo de la cuenta de dinero para evitar descuadres concurrentes
       SELECT balance INTO v_current_balance 
       FROM financial_accounts 
       WHERE id = v_account_id FOR UPDATE;
 
+      -- Validado con esquema de tabla account_movements (usando description en lugar de reason/notes)
       INSERT INTO account_movements (
-        account_id, shift_id, movement_type, amount, reason, reference_id, reference_type, notes, created_by
+        account_id, shift_id, movement_type, amount, description, reference_id, reference_type, created_by
       ) VALUES (
-        v_account_id, v_shift_id, 'INCOME', v_amount_paid, 'SALE', v_order_id, 'ORDER', 'Venta POS #' || substring(v_order_id::text, 1, 8), v_created_by
+        v_account_id, v_shift_id, 'INCOME', v_amount_paid, 'Venta POS #' || substring(v_order_id::text, 1, 8), v_order_id, 'ORDER', v_created_by
       );
       
       UPDATE financial_accounts
@@ -608,28 +607,29 @@ BEGIN
       WHERE id = v_account_id;
     END IF;
 
-    -- Actualización Segura del Wallet de Puntos del Cliente
+    -- Actualización Segura de Wallet de Puntos del Cliente
     IF (v_points_earned > 0 OR v_points_used > 0) AND v_customer_id IS NOT NULL THEN
       UPDATE profiles
       SET wallet_balance = wallet_balance + v_points_earned - v_points_used
       WHERE id = v_customer_id;
       
+      -- Validado con esquema de tabla wallet_movements (usando points, order_id, sin created_by)
       INSERT INTO wallet_movements (
-        profile_id, amount, movement_type, description, reference_id, reference_type, created_by
+        profile_id, order_id, points, movement_type, description
       ) VALUES (
-        v_customer_id, v_points_earned - v_points_used, 
+        v_customer_id, v_order_id, v_points_earned - v_points_used, 
         CASE WHEN (v_points_earned - v_points_used) >= 0 THEN 'EARNED' ELSE 'REDEEMED' END,
-        'Puntos por Venta #' || substring(v_order_id::text, 1, 8), v_order_id, 'ORDER', v_created_by
+        'Puntos por Venta #' || substring(v_order_id::text, 1, 8)
       );
     END IF;
 
-    -- Flujo de Crédito a Clientes Blindado con Bloqueo de Fila
+    -- Flujo de Crédito a Clientes
     IF v_is_credit AND v_customer_id IS NOT NULL THEN
       SELECT id, current_debt, credit_limit INTO v_credit_id, v_current_debt, v_credit_limit
       FROM customer_credits
       WHERE profile_id = v_customer_id
       ORDER BY created_at DESC LIMIT 1
-      FOR UPDATE; -- Serializa las solicitudes de crédito del mismo cliente
+      FOR UPDATE;
       
       IF v_credit_id IS NOT NULL THEN
         IF (v_current_debt + v_total_amount) > v_credit_limit THEN
@@ -640,10 +640,11 @@ BEGIN
         SET current_debt = current_debt + v_total_amount
         WHERE id = v_credit_id;
         
+        -- Validado con esquema de tabla customer_credit_movements (usando customer_credit_id, order_id, notes)
         INSERT INTO customer_credit_movements (
-          credit_id, amount, movement_type, description, reference_id, created_by
+          customer_credit_id, order_id, amount, movement_type, notes, created_by
         ) VALUES (
-          v_credit_id, v_total_amount, 'CHARGE', 'Crédito Venta POS #' || substring(v_order_id::text, 1, 8), v_order_id, v_created_by
+          v_credit_id, v_order_id, v_total_amount, 'CHARGE', 'Crédito Venta POS #' || substring(v_order_id::text, 1, 8), v_created_by
         );
       ELSE
         RAISE EXCEPTION 'El cliente no cuenta con una línea de crédito activa configurada.';

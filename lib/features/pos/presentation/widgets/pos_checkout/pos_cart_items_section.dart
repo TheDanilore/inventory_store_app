@@ -163,48 +163,56 @@ class PosCartItemRow extends StatelessWidget {
         .batchOverrides
         .containsKey(item.cartKey);
 
-    return Padding(
+    final bool isOutOfStock = item.availableStock <= 0;
+
+    return Container(
+      color: isOutOfStock
+          ? AppColors.dangerLight.withValues(alpha: 0.2)
+          : Colors.transparent,
       padding: const EdgeInsets.all(12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child:
-                  item.imageUrl != null
-                      ? CachedNetworkImage(
-                        imageUrl: item.imageUrl!,
-                        fit: BoxFit.cover,
-                        placeholder:
-                            (context, url) => const Center(
-                              child: SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+          Opacity(
+            opacity: isOutOfStock ? 0.55 : 1.0,
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child:
+                    item.imageUrl != null
+                        ? CachedNetworkImage(
+                          imageUrl: item.imageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder:
+                              (context, url) => const Center(
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 ),
                               ),
-                            ),
-                        errorWidget:
-                            (context, url, error) => const Icon(
-                              Icons.image_not_supported,
-                              color: AppColors.textMuted,
-                              size: 20,
-                            ),
-                      )
-                      : const Icon(
-                        Icons.inventory_2_outlined,
-                        color: AppColors.textMuted,
-                        size: 20,
-                      ),
+                          errorWidget:
+                              (context, url, error) => const Icon(
+                                Icons.image_not_supported,
+                                color: AppColors.textMuted,
+                                size: 20,
+                              ),
+                        )
+                        : const Icon(
+                          Icons.inventory_2_outlined,
+                          color: AppColors.textMuted,
+                          size: 20,
+                        ),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -212,16 +220,21 @@ class PosCartItemRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.productName,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                    height: 1.2,
+                Opacity(
+                  opacity: isOutOfStock ? 0.6 : 1.0,
+                  child: Text(
+                    item.productName,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: isOutOfStock
+                          ? AppColors.textSecondary
+                          : AppColors.textPrimary,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 if (item.variantLabel != null) ...[
                   const SizedBox(height: 2),

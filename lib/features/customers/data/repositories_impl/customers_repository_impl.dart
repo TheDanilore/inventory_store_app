@@ -483,16 +483,17 @@ class CustomersRepositoryImpl implements CustomersRepository {
       final res = await _supabase
           .from('order_items')
           .select(
-            'product_name, quantity, unit_price, order:orders!inner(customer_id, status)',
+            'quantity, applied_price, products(name), order:orders!inner(customer_id, status)',
           )
           .eq('order.customer_id', customerId)
           .eq('order.status', 'COMPLETED');
 
       final productMap = <String, ({int qty, double spent})>{};
       for (var row in res) {
-        final pname = row['product_name'] as String? ?? 'Producto';
+        final productsObj = row['products'] as Map<String, dynamic>?;
+        final pname = productsObj?['name'] as String? ?? 'Producto';
         final qty = (row['quantity'] as num?)?.toInt() ?? 0;
-        final price = (row['unit_price'] as num?)?.toDouble() ?? 0.0;
+        final price = (row['applied_price'] as num?)?.toDouble() ?? 0.0;
         final current = productMap[pname] ?? (qty: 0, spent: 0.0);
         productMap[pname] = (
           qty: current.qty + qty,
