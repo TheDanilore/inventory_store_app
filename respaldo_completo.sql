@@ -69,6 +69,37 @@ CREATE TYPE "public"."user_role" AS ENUM (
 ALTER TYPE "public"."user_role" OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."award_mini_game_points"("p_profile_id" "uuid", "p_movement_type" "text", "p_points" integer, "p_description" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+    -- 1. Validaciones básicas Anti-Fraude
+    IF p_points <= 0 THEN
+        RAISE EXCEPTION 'Los puntos otorgados deben ser mayores a cero.';
+    END IF;
+
+    -- (Opcional) Límite de seguridad estricto (Cortafuegos por si interceptan la petición)
+    -- Asumimos que un minijuego nunca debería dar más de 500 puntos de un solo golpe.
+    IF p_points > 500 THEN
+        RAISE EXCEPTION 'La cantidad de puntos solicitada excede el límite permitido por seguridad.';
+    END IF;
+
+    -- 2. Registrar Movimiento
+    INSERT INTO public.wallet_movements (profile_id, movement_type, points, description)
+    VALUES (p_profile_id, p_movement_type, p_points, p_description);
+
+    -- 3. Actualizar Saldo Final
+    UPDATE public.profiles
+    SET wallet_balance = COALESCE(wallet_balance, 0) + p_points
+    WHERE id = p_profile_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."award_mini_game_points"("p_profile_id" "uuid", "p_movement_type" "text", "p_points" integer, "p_description" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."cancel_purchase_order_rpc"("p_purchase_order_id" "uuid", "p_account_id" "uuid" DEFAULT NULL::"uuid", "p_profile_id" "uuid" DEFAULT NULL::"uuid", "p_reason" "text" DEFAULT 'Anulación de orden de compra'::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -176,6 +207,64 @@ $$;
 
 
 ALTER FUNCTION "public"."cancel_purchase_order_rpc"("p_purchase_order_id" "uuid", "p_account_id" "uuid", "p_profile_id" "uuid", "p_reason" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."claim_daily_checkin"("p_profile_id" "uuid", "p_action_by" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+    v_today date := CURRENT_DATE;
+    v_yesterday date := CURRENT_DATE - INTERVAL '1 day';
+    v_yesterday_checkin record;
+    v_today_checkin record;
+    v_new_streak integer;
+    v_points integer;
+BEGIN
+    -- 1. Validar si ya existe el check-in de hoy (Protección contra doble clic/ataque de red)
+    SELECT id INTO v_today_checkin 
+    FROM public.daily_checkins 
+    WHERE profile_id = p_profile_id AND checkin_date = v_today;
+    
+    IF v_today_checkin.id IS NOT NULL THEN
+        RAISE EXCEPTION 'Ya realizaste tu check-in hoy.';
+    END IF;
+
+    -- 2. Consultar el streak (racha) de ayer
+    SELECT streak_day INTO v_yesterday_checkin 
+    FROM public.daily_checkins 
+    WHERE profile_id = p_profile_id AND checkin_date = v_yesterday 
+    LIMIT 1;
+
+    IF v_yesterday_checkin.streak_day IS NOT NULL THEN
+        v_new_streak := v_yesterday_checkin.streak_day + 1;
+    ELSE
+        -- Si no hizo checkin ayer, se reinicia la racha a 1
+        v_new_streak := 1;
+    END IF;
+
+    -- 3. Calcular Puntos de Recompensa
+    -- Regla de Negocio Base: 20 puntos base + 10 por cada día consecutivo
+    v_points := 20 + ((v_new_streak - 1) * 10);
+
+    -- 4. Insertar Check-in
+    INSERT INTO public.daily_checkins (profile_id, checkin_date, streak_day)
+    VALUES (p_profile_id, v_today, v_new_streak);
+
+    -- 5. Insertar Movimiento en la Billetera (Auditoría)
+    INSERT INTO public.wallet_movements (profile_id, movement_type, points, description)
+    VALUES (p_profile_id, 'CHECKIN', v_points, 'Check-in diario del ' || v_today::text);
+
+    -- 6. Actualizar Saldo Final del Usuario Atómicamente
+    UPDATE public.profiles
+    SET wallet_balance = COALESCE(wallet_balance, 0) + v_points
+    WHERE id = p_profile_id;
+
+END;
+$$;
+
+
+ALTER FUNCTION "public"."claim_daily_checkin"("p_profile_id" "uuid", "p_action_by" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid" DEFAULT NULL::"uuid", "p_active_shift_id" "uuid" DEFAULT NULL::"uuid", "p_due_date" "date" DEFAULT NULL::"date", "p_document_date" "date" DEFAULT NULL::"date", "p_document_type" "text" DEFAULT 'NINGUNO'::"text", "p_document_number" "text" DEFAULT NULL::"text", "p_notes" "text" DEFAULT NULL::"text", "p_profile_id" "uuid" DEFAULT NULL::"uuid", "p_items" "jsonb" DEFAULT '[]'::"jsonb") RETURNS "jsonb"
@@ -3666,9 +3755,21 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."award_mini_game_points"("p_profile_id" "uuid", "p_movement_type" "text", "p_points" integer, "p_description" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."award_mini_game_points"("p_profile_id" "uuid", "p_movement_type" "text", "p_points" integer, "p_description" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."award_mini_game_points"("p_profile_id" "uuid", "p_movement_type" "text", "p_points" integer, "p_description" "text") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."cancel_purchase_order_rpc"("p_purchase_order_id" "uuid", "p_account_id" "uuid", "p_profile_id" "uuid", "p_reason" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."cancel_purchase_order_rpc"("p_purchase_order_id" "uuid", "p_account_id" "uuid", "p_profile_id" "uuid", "p_reason" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."cancel_purchase_order_rpc"("p_purchase_order_id" "uuid", "p_account_id" "uuid", "p_profile_id" "uuid", "p_reason" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."claim_daily_checkin"("p_profile_id" "uuid", "p_action_by" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."claim_daily_checkin"("p_profile_id" "uuid", "p_action_by" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."claim_daily_checkin"("p_profile_id" "uuid", "p_action_by" "uuid") TO "service_role";
 
 
 
