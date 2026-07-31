@@ -30,27 +30,27 @@ class WarehouseStockBatchModel {
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
   factory WarehouseStockBatchModel.fromJson(Map<String, dynamic> json) {
     return WarehouseStockBatchModel(
-      id: json['id'] as String,
-      variantId: json['variant_id'] as String,
-      warehouseId: json['warehouse_id'] as String,
+      id: json['id'] as String? ?? '',
+      variantId: json['variant_id'] as String? ?? '',
+      warehouseId: json['warehouse_id'] as String? ?? '',
       batchNumber: json['batch_number'] as String? ?? 'DEFAULT',
       expiryDate:
           json['expiry_date'] != null
-              ? DateTime.parse(json['expiry_date'] as String)
+              ? DateTime.tryParse(json['expiry_date'] as String)
               : null,
       // Conversión segura de campos numéricos (numeric de SQL a double de Dart)
       availableQuantity: (json['available_quantity'] as num? ?? 0).toDouble(),
       createdAt:
           json['created_at'] != null
-              ? DateTime.parse(json['created_at'] as String)
+              ? DateTime.tryParse(json['created_at'] as String)
               : null,
       updatedAt:
           json['updated_at'] != null
-              ? DateTime.parse(json['updated_at'] as String)
+              ? DateTime.tryParse(json['updated_at'] as String)
               : null,
       createdBy: json['created_by'] as String?,
       updatedBy: json['updated_by'] as String?,
-      productId: json['product_id'] as String,
+      productId: json['product_id'] as String? ?? '',
     );
   }
 
