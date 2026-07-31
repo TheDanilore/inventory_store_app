@@ -194,7 +194,7 @@ Para configurarlo, puedes duplicar el archivo `env.json.example` incluido en el 
    flutter pub get
 
    # 2. Reconstruir inyección de dependencias y modelos generados
-   dart run build_runner build -d --delete-conflicting-outputs
+   dart run build_runner build --delete-conflicting-outputs
 
    # 3. Compilar según la plataforma o necesidad:
    
