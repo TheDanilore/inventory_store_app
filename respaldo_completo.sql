@@ -960,6 +960,377 @@ $$;
 ALTER FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."rpc_cancel_order"("payload" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_order_id uuid;
+    v_customer_id uuid;
+    v_current_profile_id uuid;
+    v_notes_override text;
+    
+    v_order record;
+    v_mov record;
+    v_new_stock integer;
+    v_credit_id uuid;
+    v_current_debt numeric;
+    v_net_reduction numeric;
+    
+    v_acc_mov record;
+BEGIN
+    v_order_id := (payload->>'order_id')::uuid;
+    v_customer_id := (payload->>'selected_customer_id')::uuid;
+    v_current_profile_id := (payload->>'current_profile_id')::uuid;
+    v_notes_override := payload->>'notes_override';
+
+    -- 1. Fetch Order Data
+    SELECT status, warehouse_id, total_amount, amount_paid, payment_method, customer_id
+    INTO v_order
+    FROM orders
+    WHERE id = v_order_id;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Order not found';
+    END IF;
+
+    IF v_order.status = 'COMPLETED' THEN
+        -- 2. Revert Stock
+        FOR v_mov IN 
+            SELECT variant_id, stock_batch_id, quantity, unit_cost 
+            FROM inventory_movements 
+            WHERE order_id = v_order_id AND reason = 'SALE'
+        LOOP
+            IF v_mov.stock_batch_id IS NOT NULL AND v_mov.quantity < 0 THEN
+                -- Revert deduction
+                UPDATE warehouse_stock_batches
+                SET available_quantity = available_quantity + ABS(v_mov.quantity)
+                WHERE id = v_mov.stock_batch_id
+                RETURNING available_quantity INTO v_new_stock;
+                
+                INSERT INTO inventory_movements 
+                    (variant_id, warehouse_id, stock_batch_id, order_id, quantity, previous_stock, new_stock, unit_cost, reason, notes, created_by)
+                VALUES 
+                    (v_mov.variant_id, v_order.warehouse_id, v_mov.stock_batch_id, v_order_id, ABS(v_mov.quantity), v_new_stock - ABS(v_mov.quantity), v_new_stock, v_mov.unit_cost, 'RETURN', COALESCE(v_notes_override, 'Devolución de inventario — Pedido #' || v_order_id), v_current_profile_id);
+            END IF;
+        END LOOP;
+
+        -- 3. Revert Credit Debt or Financial Movement
+        IF v_order.payment_method = 'CRÉDITO' AND v_order.customer_id IS NOT NULL THEN
+            SELECT id, current_debt INTO v_credit_id, v_current_debt
+            FROM customer_credits WHERE profile_id = v_order.customer_id;
+            
+            IF FOUND THEN
+                v_net_reduction := v_order.total_amount - v_order.amount_paid;
+                
+                UPDATE customer_credits 
+                SET current_debt = GREATEST(current_debt - v_net_reduction, 0), updated_at = NOW()
+                WHERE id = v_credit_id;
+                
+                INSERT INTO customer_credit_movements (customer_credit_id, order_id, movement_type, amount, notes, created_by)
+                VALUES (v_credit_id, v_order_id, 'PAYMENT', v_order.total_amount, COALESCE(v_notes_override, 'Reversión por cancelación de pedido #' || v_order_id), v_current_profile_id);
+            END IF;
+        END IF;
+        
+        -- Revert Financial Movement
+        FOR v_acc_mov IN
+            SELECT id, account_id, amount, shift_id
+            FROM account_movements
+            WHERE reference_type = 'orders' AND reference_id = v_order_id AND movement_type = 'INCOME'
+        LOOP
+            UPDATE financial_accounts
+            SET balance = balance - v_acc_mov.amount
+            WHERE id = v_acc_mov.account_id;
+            
+            INSERT INTO account_movements (account_id, movement_type, amount, description, reference_type, reference_id, shift_id, created_by)
+            VALUES (v_acc_mov.account_id, 'EXPENSE', v_acc_mov.amount, COALESCE(v_notes_override, 'Extorno por cancelación de venta — Pedido #' || v_order_id), 'orders', v_order_id, v_acc_mov.shift_id, v_current_profile_id);
+        END LOOP;
+    END IF;
+
+    -- 4. Revert Loyalty Points
+    IF v_order.customer_id IS NOT NULL THEN
+        FOR v_mov IN SELECT points, movement_type FROM wallet_movements WHERE order_id = v_order_id LOOP
+            IF v_mov.movement_type = 'EARNED' THEN
+                UPDATE profiles SET wallet_balance = GREATEST(COALESCE(wallet_balance, 0) - v_mov.points, 0) WHERE id = v_order.customer_id;
+                INSERT INTO wallet_movements (profile_id, order_id, points, movement_type, description)
+                VALUES (v_order.customer_id, v_order_id, -v_mov.points, 'ADJUSTMENT', 'Reversión de puntos ganados por cancelación');
+            ELSIF v_mov.movement_type = 'REDEEMED' THEN
+                UPDATE profiles SET wallet_balance = COALESCE(wallet_balance, 0) + ABS(v_mov.points) WHERE id = v_order.customer_id;
+                INSERT INTO wallet_movements (profile_id, order_id, points, movement_type, description)
+                VALUES (v_order.customer_id, v_order_id, ABS(v_mov.points), 'ADJUSTMENT', 'Reversión de canje por cancelación');
+            END IF;
+        END LOOP;
+    END IF;
+
+    -- 5. Update Order Status
+    UPDATE orders
+    SET status = CASE WHEN v_order.status = 'COMPLETED' THEN 'RETURNED' ELSE 'CANCELLED' END,
+        payment_status = 'PAID',
+        amount_paid = 0
+    WHERE id = v_order_id;
+
+    RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_cancel_order"("payload" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_complete_order"("payload" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_order_id uuid;
+    v_warehouse_id uuid;
+    v_payment_method text;
+    v_customer_id uuid;
+    v_customer_name text;
+    v_points_used integer;
+    v_points_earned integer;
+    v_total_amount numeric;
+    v_total_profit numeric;
+    v_current_profile_id uuid;
+    
+    v_item jsonb;
+    v_items jsonb;
+    v_overrides jsonb;
+    v_override jsonb;
+    
+    v_account_id uuid;
+    v_account_type text;
+    v_account_balance numeric;
+    v_shift_id uuid;
+    
+    v_credit_id uuid;
+    v_credit_limit numeric;
+    v_current_debt numeric;
+    v_is_credit_active boolean;
+    v_new_debt numeric;
+    
+    v_wallet_balance integer;
+    
+    v_qty_needed integer;
+    v_remaining integer;
+    v_batch_id uuid;
+    v_batch record;
+    v_take integer;
+BEGIN
+    -- 1. Extract payload fields
+    v_order_id := (payload->>'order_id')::uuid;
+    v_payment_method := payload->>'payment_method';
+    v_customer_id := (payload->>'selected_customer_id')::uuid;
+    v_customer_name := payload->>'customer_name_to_save';
+    v_points_used := COALESCE((payload->>'points_used')::integer, 0);
+    v_points_earned := COALESCE((payload->>'points_earned')::integer, 0);
+    v_total_amount := COALESCE((payload->>'total_amount')::numeric, 0);
+    v_total_profit := COALESCE((payload->>'total_profit')::numeric, 0);
+    v_current_profile_id := (payload->>'current_profile_id')::uuid;
+    v_items := payload->'items';
+    v_overrides := payload->'batch_overrides';
+
+    -- Fetch warehouse_id from order
+    SELECT warehouse_id INTO v_warehouse_id FROM orders WHERE id = v_order_id;
+    IF v_warehouse_id IS NULL THEN
+        RAISE EXCEPTION 'El pedido no tiene almacén asignado.';
+    END IF;
+
+    -- 2. Validate Payment Method for Completion
+    IF v_payment_method = 'POR ACORDAR' OR TRIM(v_payment_method) = '' THEN
+        RAISE EXCEPTION '__PAYMENT_METHOD_REQUIRED__';
+    END IF;
+
+    -- 3. Validate Credit (If Credit Payment)
+    IF v_payment_method = 'CRÉDITO' THEN
+        IF v_customer_id IS NULL THEN
+            RAISE EXCEPTION 'No hay cliente asignado para validar el crédito.';
+        END IF;
+
+        SELECT id, credit_limit, current_debt, is_active
+        INTO v_credit_id, v_credit_limit, v_current_debt, v_is_credit_active
+        FROM customer_credits
+        WHERE profile_id = v_customer_id;
+
+        IF NOT FOUND OR v_is_credit_active = false THEN
+            RAISE EXCEPTION 'El cliente no tiene línea de crédito activa.';
+        END IF;
+
+        IF (v_credit_limit - v_current_debt) < v_total_amount THEN
+            RAISE EXCEPTION 'Crédito insuficiente. Disponible: S/ %', (v_credit_limit - v_current_debt);
+        END IF;
+    END IF;
+
+    -- 4. Process Inventory Items & Stock Deduction
+    FOR v_item IN SELECT * FROM jsonb_array_elements(v_items)
+    LOOP
+        v_qty_needed := (v_item->>'quantity')::integer;
+        v_remaining := v_qty_needed;
+        
+        -- Check if we have overrides for this item id
+        IF v_overrides ? (v_item->>'id') THEN
+            FOR v_override IN SELECT * FROM jsonb_array_elements(v_overrides->(v_item->>'id'))
+            LOOP
+                v_take := (v_override->>'assigned')::integer;
+                v_batch_id := (v_override->>'batch_id')::uuid;
+                
+                IF v_take > 0 THEN
+                    -- Deduct from specific batch
+                    UPDATE warehouse_stock_batches
+                    SET available_quantity = available_quantity - v_take
+                    WHERE id = v_batch_id AND available_quantity >= v_take
+                    RETURNING available_quantity INTO v_take; -- v_take here is dummy check
+                    
+                    IF NOT FOUND THEN
+                        RAISE EXCEPTION 'Stock insuficiente en el lote asignado (override).';
+                    END IF;
+
+                    INSERT INTO inventory_movements 
+                        (variant_id, warehouse_id, stock_batch_id, order_id, quantity, unit_cost, reason, notes, created_by)
+                    VALUES 
+                        ((v_item->>'variant_id')::uuid, v_warehouse_id, v_batch_id, v_order_id, -v_take, (v_item->>'unit_cost')::numeric, 'SALE', 'Pedido completado desde detalles', v_current_profile_id);
+                        
+                    v_remaining := v_remaining - (v_override->>'assigned')::integer;
+                END IF;
+            END LOOP;
+            
+            IF v_remaining != 0 THEN
+                RAISE EXCEPTION 'Asignación de lotes inválida para producto.';
+            END IF;
+        ELSE
+            -- FEFO Automatic Allocation
+            FOR v_batch IN 
+                SELECT id, available_quantity, batch_number
+                FROM warehouse_stock_batches
+                WHERE warehouse_id = v_warehouse_id 
+                  AND variant_id = (v_item->>'variant_id')::uuid 
+                  AND available_quantity > 0
+                ORDER BY expiry_date ASC NULLS LAST
+            LOOP
+                IF v_remaining <= 0 THEN EXIT; END IF;
+                
+                IF v_batch.available_quantity >= v_remaining THEN
+                    v_take := v_remaining;
+                ELSE
+                    v_take := v_batch.available_quantity;
+                END IF;
+
+                UPDATE warehouse_stock_batches
+                SET available_quantity = available_quantity - v_take
+                WHERE id = v_batch.id;
+
+                INSERT INTO inventory_movements 
+                    (variant_id, warehouse_id, stock_batch_id, order_id, quantity, unit_cost, reason, notes, created_by)
+                VALUES 
+                    ((v_item->>'variant_id')::uuid, v_warehouse_id, v_batch.id, v_order_id, -v_take, (v_item->>'unit_cost')::numeric, 'SALE', 'Pedido completado desde detalles (FEFO) · Lote: ' || v_batch.batch_number, v_current_profile_id);
+
+                v_remaining := v_remaining - v_take;
+            END LOOP;
+            
+            IF v_remaining > 0 THEN
+                RAISE EXCEPTION 'Stock insuficiente para aplicar FEFO automático.';
+            END IF;
+        END IF;
+        
+        -- Update the individual order item
+        UPDATE order_items
+        SET quantity = (v_item->>'quantity')::integer,
+            unit_cost = (v_item->>'unit_cost')::numeric,
+            net_profit = ((v_item->>'applied_price')::numeric - (v_item->>'unit_cost')::numeric) * (v_item->>'quantity')::integer
+        WHERE id = (v_item->>'id')::uuid;
+
+    END LOOP;
+
+    -- 5. Register Payment or Debt
+    IF v_payment_method = 'CRÉDITO' THEN
+        -- Add Debt
+        v_new_debt := v_current_debt + v_total_amount;
+        
+        UPDATE customer_credits 
+        SET current_debt = v_new_debt, updated_at = NOW()
+        WHERE id = v_credit_id;
+        
+        INSERT INTO customer_credit_movements 
+            (customer_credit_id, order_id, movement_type, amount, notes, created_by)
+        VALUES 
+            (v_credit_id, v_order_id, 'CHARGE', v_total_amount, 'Activación de pedido desde detalles', v_current_profile_id);
+    ELSE
+        -- Find Financial Account matching payment method
+        SELECT id, type, balance INTO v_account_id, v_account_type, v_account_balance
+        FROM financial_accounts
+        WHERE is_active = true 
+          AND (UPPER(name) LIKE '%' || UPPER(v_payment_method) || '%' OR UPPER(v_payment_method) LIKE '%' || UPPER(name) || '%')
+        LIMIT 1;
+        
+        IF v_account_id IS NULL THEN
+            -- Fallback to the first active account if not found
+            SELECT id, type, balance INTO v_account_id, v_account_type, v_account_balance
+            FROM financial_accounts
+            WHERE is_active = true LIMIT 1;
+        END IF;
+
+        IF v_account_id IS NOT NULL THEN
+            IF v_account_type = 'CAJA' THEN
+                SELECT id INTO v_shift_id
+                FROM cash_shifts
+                WHERE account_id = v_account_id AND status = 'OPEN'
+                LIMIT 1;
+            END IF;
+            
+            INSERT INTO account_movements 
+                (account_id, movement_type, amount, description, reference_type, reference_id, shift_id, created_by)
+            VALUES 
+                (v_account_id, 'INCOME', v_total_amount, 'Cobro de venta — Pedido #' || v_order_id, 'orders', v_order_id, v_shift_id, v_current_profile_id);
+                
+            UPDATE financial_accounts
+            SET balance = balance + v_total_amount
+            WHERE id = v_account_id;
+        END IF;
+    END IF;
+
+    -- 6. Loyalty Points Logic
+    IF v_customer_id IS NOT NULL THEN
+        SELECT wallet_balance INTO v_wallet_balance FROM profiles WHERE id = v_customer_id;
+        
+        IF v_points_earned > 0 AND v_payment_method != 'CRÉDITO' THEN
+            IF NOT EXISTS (SELECT 1 FROM wallet_movements WHERE order_id = v_order_id AND movement_type = 'EARNED') THEN
+                UPDATE profiles SET wallet_balance = COALESCE(wallet_balance, 0) + v_points_earned WHERE id = v_customer_id;
+                INSERT INTO wallet_movements (profile_id, order_id, points, movement_type, description)
+                VALUES (v_customer_id, v_order_id, v_points_earned, 'EARNED', 'Monedas obtenidas al completar pedido');
+            END IF;
+        END IF;
+
+        IF v_points_used > 0 THEN
+            IF NOT EXISTS (SELECT 1 FROM wallet_movements WHERE order_id = v_order_id AND movement_type = 'REDEEMED') THEN
+                UPDATE profiles SET wallet_balance = GREATEST(COALESCE(wallet_balance, 0) - v_points_used, 0) WHERE id = v_customer_id;
+                INSERT INTO wallet_movements (profile_id, order_id, points, movement_type, description)
+                VALUES (v_customer_id, v_order_id, -v_points_used, 'REDEEMED', 'Canje aplicado al completar pedido');
+            END IF;
+        END IF;
+    END IF;
+
+    -- 7. Update the Order
+    UPDATE orders
+    SET customer_id = v_customer_id,
+        customer_name = COALESCE(v_customer_name, customer_name),
+        status = 'COMPLETED',
+        payment_method = v_payment_method,
+        payment_status = CASE WHEN v_payment_method = 'CRÉDITO' THEN 'PENDING' ELSE 'PAID' END,
+        amount_paid = CASE WHEN v_payment_method = 'CRÉDITO' THEN 0 ELSE v_total_amount END,
+        total_amount = v_total_amount,
+        total_profit = v_total_profit,
+        points_used = CASE WHEN v_payment_method = 'CRÉDITO' THEN 0 ELSE v_points_used END,
+        points_earned = CASE WHEN v_payment_method = 'CRÉDITO' THEN 0 ELSE v_points_earned END,
+        updated_by = v_current_profile_id,
+        updated_at = NOW()
+    WHERE id = v_order_id;
+
+    RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_complete_order"("payload" "jsonb") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."save_product_complete"("payload" "jsonb") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
@@ -3795,6 +4166,18 @@ GRANT ALL ON FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uu
 GRANT ALL ON FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."rpc_cancel_order"("payload" "jsonb") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_cancel_order"("payload" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_cancel_order"("payload" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."rpc_complete_order"("payload" "jsonb") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_complete_order"("payload" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_complete_order"("payload" "jsonb") TO "service_role";
 
 
 
