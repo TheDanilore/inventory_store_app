@@ -505,6 +505,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                         cubit.updateVariantDraft(
                           index,
                           state.variantDrafts[index].copyWith(isActive: val),
+                          syncState: true,
                         );
                       },
                       onPickImage: () => cubit.pickVariantImage(index),
@@ -637,6 +638,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
               cubit.updateVariantDraft(
                 index,
                 state.variantDrafts[index].copyWith(isActive: val),
+                syncState: true,
               );
             },
             onPickImage: () => cubit.pickVariantImage(index),

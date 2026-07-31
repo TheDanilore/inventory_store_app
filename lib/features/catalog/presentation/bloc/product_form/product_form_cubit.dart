@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_form_models.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_form_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
@@ -275,13 +276,12 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     _syncState();
   }
 
-  /// Actualiza los datos de una fila de ingrediente desde la UI.
-  void updateIngredientRow(int index, IngredientRowModel updated) {
+  void updateIngredientRow(int index, IngredientRowModel updated, {bool syncState = false}) {
     final rows = List.of(_ingredientRows);
     rows[index] = updated;
     _ingredientRows = rows;
     markAsDirty();
-    _syncState();
+    if (syncState) _syncState();
   }
 
   // ── Imágenes ─────────────────────────────────────────────────────────────────
@@ -476,12 +476,12 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     }
   }
 
-  void updateVariantDraft(int index, VariantDraftFormModel updated) {
+  void updateVariantDraft(int index, VariantDraftFormModel updated, {bool syncState = false}) {
     final list = List.of(_variantDrafts);
     list[index] = updated;
     _variantDrafts = list;
     markAsDirty();
-    _syncState();
+    if (syncState) _syncState();
   }
 
   // ── Guardado ─────────────────────────────────────────────────────────────────
@@ -664,7 +664,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           );
         },
       );
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error saving product', error: e, stackTrace: st);
       emit(state.copyWith(snackError: _parseNetworkError(e)));
     } finally {
       _isSaving = false;
@@ -680,6 +681,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       return e.message ?? 'La operación tardó demasiado. Intenta de nuevo.';
     }
     final s = e.toString().toLowerCase();
+    if (s.contains('23505') || s.contains('unique_violation') || s.contains('ya existe')) {
+      return 'El código o SKU ingresado ya existe en la base de datos.';
+    }
     if (s.contains('socketexception') ||
         s.contains('clientexception') ||
         s.contains('failed host lookup') ||

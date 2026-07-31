@@ -914,15 +914,120 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
   @override
   Future<Either<Failure, void>> saveProductComplete(
-    Map<String, dynamic> payload,
+    SaveProductPayload payload,
   ) async {
+    final List<String> uploadedPaths = [];
     try {
+      final imageUploadFutures = payload.images.asMap().entries.map((entry) async {
+        final i = entry.key;
+        final item = entry.value;
+        final isMain = (i == 0);
+        
+        if (item.existingId != null) {
+          return {
+            'id': item.existingId,
+            'image_url': item.existingUrl,
+            'display_order': i,
+            'is_main': isMain,
+          };
+        } else if (item.newBytes != null) {
+           final fileName = '${DateTime.now().millisecondsSinceEpoch}_p$i.jpg';
+           final path = 'productos/$fileName';
+           await _supabase.storage.from('products').uploadBinary(path, item.newBytes!);
+           uploadedPaths.add(path);
+           final publicUrl = _supabase.storage.from('products').getPublicUrl(path);
+           return {
+              'image_url': publicUrl,
+              'display_order': i,
+              'is_main': isMain,
+           };
+        }
+        return null;
+      }).toList();
+
+      final variantFutures = payload.variants.asMap().entries.map((entry) async {
+        final i = entry.key;
+        final draft = entry.value;
+        String? newImageUrl;
+        if (draft.newImageBytes != null) {
+           final fileName = '${DateTime.now().millisecondsSinceEpoch}_v$i.jpg';
+           final path = 'variantes/$fileName';
+           await _supabase.storage.from('products').uploadBinary(path, draft.newImageBytes!);
+           uploadedPaths.add(path);
+           newImageUrl = _supabase.storage.from('products').getPublicUrl(path);
+        }
+        return {
+          'id': draft.id,
+          'sku': draft.sku,
+          'unit_cost': draft.unitCost,
+          'sale_price': draft.salePrice ?? payload.baseSalePrice,
+          'wholesale_price': draft.wholesalePrice ?? payload.baseWholesalePrice,
+          'wholesale_min_quantity': draft.wholesaleMinQuantity ?? payload.baseWholesaleMinQuantity,
+          'reorder_point': draft.reorderPoint ?? 3,
+          'is_active': draft.isActive,
+          'clear_images': draft.clearImages,
+          'new_image_url': newImageUrl,
+          'attribute_value_ids': draft.attributeValueIds,
+        };
+      }).toList();
+
+      final imagesResults = await Future.wait(imageUploadFutures);
+      final variantsResults = await Future.wait(variantFutures);
+
+      final productImagesJson = imagesResults.where((e) => e != null).toList();
+      final variantsJson = variantsResults.toList();
+
+      if (variantsJson.isEmpty) {
+        variantsJson.add({
+          'is_active': true,
+          'sale_price': payload.baseSalePrice,
+          'wholesale_price': payload.baseWholesalePrice,
+          'wholesale_min_quantity': payload.baseWholesaleMinQuantity,
+          'unit_cost': 0.0,
+          'attribute_value_ids': [],
+        });
+      }
+
+      final ingredientsJson = payload.ingredientsEnabled ? payload.ingredients.map((ing) => {
+        'ingredient_id': ing.ingredientId,
+        'concentration': ing.concentration,
+        'unit': ing.unit,
+      }).toList() : [];
+
+      final jsonPayload = {
+        'is_updating': payload.isUpdating,
+        'profile_id': payload.profileId,
+        'product': {
+          'id': payload.product.id,
+          'name': payload.product.name,
+          'description': payload.product.description,
+          'category_id': payload.product.categoryId,
+          'is_active': payload.product.isActive,
+          'details': payload.product.details,
+          'product_type': payload.product.productType,
+          'stock_control': payload.product.stockControl,
+          'uses_batches': payload.product.usesBatches,
+        },
+        'removed_variant_ids': payload.removedVariantIds,
+        'images': productImagesJson,
+        'variants': variantsJson,
+        'ingredients_enabled': payload.ingredientsEnabled,
+        'ingredients': ingredientsJson,
+      };
+
       await _supabase.rpc(
         'save_product_complete',
-        params: {'payload': payload},
+        params: {'payload': jsonPayload},
       );
       return right(null);
     } catch (e, st) {
+      if (uploadedPaths.isNotEmpty) {
+        try {
+          await _supabase.storage.from('products').remove(uploadedPaths);
+        } catch (err) {
+          developer.log('Rollback failed for images', error: err);
+        }
+      }
       return _handleError(e, st);
     }
   }

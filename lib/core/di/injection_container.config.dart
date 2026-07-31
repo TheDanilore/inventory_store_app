@@ -721,12 +721,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i74.InventoryEntriesRepository>(),
       ),
     );
-    gh.lazySingleton<_i1064.SaveProductUseCase>(
-      () => _i1064.SaveProductUseCase(
-        gh<_i570.ProductsRepository>(),
-        gh<_i850.IngredientsRepository>(),
-      ),
-    );
     gh.lazySingleton<_i359.FetchSupplierCreditMovementsUseCase>(
       () => _i359.FetchSupplierCreditMovementsUseCase(
         gh<_i115.SupplierCreditMovementsRepository>(),
@@ -1230,6 +1224,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i222.GetProductsUC>(
       () => _i222.GetProductsUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i1064.SaveProductUseCase>(
+      () => _i1064.SaveProductUseCase(gh<_i570.ProductsRepository>()),
     );
     gh.lazySingleton<_i839.ToggleWishlistUseCase>(
       () => _i839.ToggleWishlistUseCase(gh<_i570.ProductsRepository>()),

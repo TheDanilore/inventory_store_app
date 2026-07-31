@@ -145,6 +145,82 @@ abstract class ProductsRepository {
 
   // Guardado Atómico (RPC)
   Future<Either<Failure, void>> saveProductComplete(
-    Map<String, dynamic> payload,
+    SaveProductPayload payload,
   );
+}
+
+class SaveProductPayload {
+  final ProductEntity product;
+  final String? profileId;
+  final bool isUpdating;
+  final double? baseSalePrice;
+  final double? baseWholesalePrice;
+  final int baseWholesaleMinQuantity;
+  final List<ImagePayload> images;
+  final List<String> removedVariantIds;
+  final List<VariantPayload> variants;
+  final bool ingredientsEnabled;
+  final List<IngredientPayload> ingredients;
+
+  SaveProductPayload({
+    required this.product,
+    this.profileId,
+    required this.isUpdating,
+    this.baseSalePrice,
+    this.baseWholesalePrice,
+    this.baseWholesaleMinQuantity = 3,
+    required this.images,
+    required this.removedVariantIds,
+    required this.variants,
+    required this.ingredientsEnabled,
+    required this.ingredients,
+  });
+}
+
+class ImagePayload {
+  final String? existingId;
+  final String? existingUrl;
+  final Uint8List? newBytes;
+
+  ImagePayload({this.existingId, this.existingUrl, this.newBytes});
+}
+
+class VariantPayload {
+  final String? id;
+  final String? sku;
+  final double unitCost;
+  final double? salePrice;
+  final double? wholesalePrice;
+  final int? wholesaleMinQuantity;
+  final int? reorderPoint;
+  final bool isActive;
+  final List<String> attributeValueIds;
+  final bool clearImages;
+  final Uint8List? newImageBytes;
+
+  VariantPayload({
+    this.id,
+    this.sku,
+    required this.unitCost,
+    this.salePrice,
+    this.wholesalePrice,
+    this.wholesaleMinQuantity,
+    this.reorderPoint,
+    required this.isActive,
+    required this.attributeValueIds,
+    required this.clearImages,
+    this.newImageBytes,
+  });
+}
+
+class IngredientPayload {
+  final String ingredientId;
+  final double? concentration;
+  final String? unit;
+
+  IngredientPayload({
+    required this.ingredientId,
+    this.concentration,
+    this.unit,
+  });
 }
