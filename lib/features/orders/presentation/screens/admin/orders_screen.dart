@@ -209,7 +209,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     return AdminLayout(
       title: widget.customTitle ?? 'Gestión de Pedidos',
-      showBackButton: false,
+      showBackButton: true,
       actions: const [],
       body: LayoutBuilder(
         builder: (context, constraints) {

@@ -8,6 +8,7 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/users/presentation/bloc/users/users_cubit.dart';
 import 'package:inventory_store_app/features/users/presentation/bloc/users/users_state.dart';
 import 'package:inventory_store_app/features/users/presentation/widgets/users/users_tab.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class UsersManagementScreen extends StatefulWidget {
   const UsersManagementScreen({super.key});
@@ -64,8 +65,9 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
   Widget build(BuildContext context) {
     return BlocProvider.value(
       value: _countsCubit,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
+      child: AdminLayout(
+        title: 'Gestión de Usuarios',
+        showBackButton: true,
         body: Column(
           children: [
             // ─── BUSCADOR Y FILTROS ──────────────────────────────────────────

@@ -254,6 +254,15 @@ class _AppDrawerState extends State<AppDrawer> {
                       routePath: '',
                       children: [
                         _DrawerSubItem(
+                          icon: Icons.category_outlined,
+                          title: 'Productos',
+                          routePath: '/admin/products',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/admin/products');
+                          },
+                        ),
+                        _DrawerSubItem(
                           icon: Icons.grid_view_rounded,
                           title: 'Stock inventario',
                           routePath: '/admin/inventory',

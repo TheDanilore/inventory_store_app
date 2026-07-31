@@ -85,7 +85,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
   Widget build(BuildContext context) {
     return AdminLayout(
       title: 'Clientes',
-      showBackButton: false,
+      showBackButton: true,
       settingsActions: const [
         PopupMenuItem(value: 'export', child: Text('Exportar a PDF')),
       ],

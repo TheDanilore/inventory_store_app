@@ -183,7 +183,6 @@ class _CustomerSearchSheet extends StatefulWidget {
 class _CustomerSearchSheetState extends State<_CustomerSearchSheet> {
   final TextEditingController _searchCtrl = TextEditingController();
   List<Map<String, dynamic>> _filteredProfiles = [];
-  bool _isLoading = false;
   Timer? _debounce;
 
   @override
@@ -212,18 +211,15 @@ class _CustomerSearchSheetState extends State<_CustomerSearchSheet> {
     if (q.isEmpty) {
       setState(() {
         _filteredProfiles = widget.initialProfiles;
-        _isLoading = false;
       });
       return;
     }
     
-    setState(() => _isLoading = true);
     final results = await widget.onSearch(q);
     if (!mounted) return;
     
     setState(() {
       _filteredProfiles = results;
-      _isLoading = false;
     });
   }
 

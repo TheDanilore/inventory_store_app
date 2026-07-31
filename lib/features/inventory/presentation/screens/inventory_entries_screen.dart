@@ -179,7 +179,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
         return AdminLayout(
           title: 'Historial de Entradas',
-          showBackButton: false,
+          showBackButton: true,
           floatingActionButton: _buildFloatingAction(context),
           body: LayoutBuilder(
             builder: (context, constraints) {

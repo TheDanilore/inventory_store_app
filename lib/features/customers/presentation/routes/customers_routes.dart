@@ -5,12 +5,12 @@ import 'package:inventory_store_app/features/customers/domain/entities/customer_
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_stats_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/top_customers/top_customers_cubit.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/customer_credit_movements_screen.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/customer_credits_screen.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/customer_detail_screen.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/customers_screen.dart';
+import 'package:inventory_store_app/features/customers/presentation/screens/admin/customer_credit_movements_screen.dart';
+import 'package:inventory_store_app/features/customers/presentation/screens/admin/customer_credits_screen.dart';
+import 'package:inventory_store_app/features/customers/presentation/screens/admin/customer_detail_screen.dart';
+import 'package:inventory_store_app/features/customers/presentation/screens/admin/customers_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/location_management_screen.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/wishlist_screen.dart';
+import 'package:inventory_store_app/features/customers/presentation/screens/customer/wishlist_screen.dart';
 import 'package:inventory_store_app/features/auth/presentation/screens/profile_screen.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';

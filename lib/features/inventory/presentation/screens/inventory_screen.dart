@@ -42,7 +42,7 @@ class _InventoryScreenState extends State<InventoryScreen>
   Widget build(BuildContext context) {
     return AdminLayout(
       title: 'Inventario',
-      showBackButton: false,
+      showBackButton: true,
       body: Column(
         children: [
           // ── Tab Bar ──

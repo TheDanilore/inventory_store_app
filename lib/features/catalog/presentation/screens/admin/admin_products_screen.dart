@@ -61,7 +61,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
     return AdminLayout(
       title: 'Inventario de Productos',
-      showBackButton: false,
+      showBackButton: true,
       actions: [
         ElevatedButton.icon(
           onPressed: () => context.go('/admin/products/product-form'),

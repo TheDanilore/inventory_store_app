@@ -154,7 +154,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 
         return AdminLayout(
           title: 'Salidas de Inventario',
-          showBackButton: false,
+          showBackButton: true,
           onSettingsSelected: (val) {
             if (val != 'pdf') return;
             if (cubit.state.exits.isNotEmpty) {

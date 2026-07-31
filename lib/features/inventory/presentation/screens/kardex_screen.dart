@@ -207,7 +207,7 @@ class _KardexScreenState extends State<KardexScreen> {
 
             return AdminLayout(
               title: 'Kardex',
-              showBackButton: false,
+              showBackButton: true,
               body: Column(
                 children: [
                   // Acciones principales en Tablet

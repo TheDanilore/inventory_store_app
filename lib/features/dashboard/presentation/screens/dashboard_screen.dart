@@ -55,6 +55,7 @@ class _DashboardScreenContent extends StatelessWidget {
 
     return AdminLayout(
       title: 'Dashboard',
+      showBackButton: true,
       showDrawerButton: true,
       showProfileButton: true,
       body: RefreshIndicator(

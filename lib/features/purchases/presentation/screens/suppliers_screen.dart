@@ -66,7 +66,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       },
       child: AdminLayout(
         title: 'Directorio de Proveedores',
-        showBackButton: false,
+        showBackButton: true,
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _openSupplierModal(context),
           backgroundColor: AppColors.teal,

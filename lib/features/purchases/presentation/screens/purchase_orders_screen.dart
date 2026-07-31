@@ -217,7 +217,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   Widget build(BuildContext context) {
     return AdminLayout(
       title: 'Órdenes de Compra',
-      showBackButton: false,
+      showBackButton: true,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isTablet = constraints.maxWidth >= 800;

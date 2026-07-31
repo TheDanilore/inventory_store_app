@@ -183,7 +183,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     routePath: '',
                     children: [
                       AdminSidebarItem(
-                        icon: Icons.inventory_2_outlined,
+                        icon: Icons.category_outlined,
                         title: 'Productos',
                         routePath: '/admin/products',
                       ),

@@ -126,7 +126,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
       },
       child: AdminLayout(
         title: 'Créditos de Proveedores',
-        showBackButton: false,
+        showBackButton: true,
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _openCreateAccountModal,
           backgroundColor: Colors.blue.shade700,

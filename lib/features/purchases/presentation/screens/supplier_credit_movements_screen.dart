@@ -12,6 +12,7 @@ import 'package:inventory_store_app/features/purchases/presentation/bloc/supplie
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credit_movements/summary_header.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credit_movements/movement_card.dart';
 import 'package:inventory_store_app/features/purchases/domain/repositories/supplier_credit_movements_repository.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class SupplierCreditMovementsScreen extends StatefulWidget {
   final String creditId;
@@ -125,82 +126,69 @@ class _SupplierCreditMovementsScreenState
           context.read<SupplierCreditMovementsCubit>().clearError();
         }
       },
-      child: Scaffold(
-        backgroundColor:
-            Colors.transparent, // Inherited from AdminLayout in app_router
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: const BackButton(color: AppColors.textPrimary),
-          title: const Text(
-            'Historial de Cuenta',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-          actions: [
-            BlocBuilder<
-              SupplierCreditMovementsCubit,
-              SupplierCreditMovementsState
-            >(
-              builder: (context, state) {
-                final isExporting =
-                    state is SupplierCreditMovementsLoading &&
-                    state
-                        .currentMovements
-                        .isNotEmpty; // Roughly indicates working if not initial load
-                final currentFilter =
-                    state is SupplierCreditMovementsLoaded
-                        ? state.dateFilter
-                        : (state is SupplierCreditMovementsLoading
-                            ? state.dateFilter
-                            : MovementDateFilter.thisMonth);
+      child: AdminLayout(
+        title: 'Historial de Cuenta',
+        showBackButton: true,
+        actions: [
+          BlocBuilder<
+            SupplierCreditMovementsCubit,
+            SupplierCreditMovementsState
+          >(
+            builder: (context, state) {
+              final isExporting =
+                  state is SupplierCreditMovementsLoading &&
+                  state
+                      .currentMovements
+                      .isNotEmpty; // Roughly indicates working if not initial load
+              final currentFilter =
+                  state is SupplierCreditMovementsLoaded
+                      ? state.dateFilter
+                      : (state is SupplierCreditMovementsLoading
+                          ? state.dateFilter
+                          : MovementDateFilter.thisMonth);
 
-                if (isExporting) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
+              if (isExporting) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     ),
-                  );
-                }
-
-                return PopupMenuButton<String>(
-                  icon: const Icon(
-                    Icons.more_vert,
-                    color: AppColors.textPrimary,
                   ),
-                  onSelected: (value) {
-                    if (value == 'export') {
-                      context
-                          .read<SupplierCreditMovementsCubit>()
-                          .exportToPdf();
-                    } else if (value == 'filter') {
-                      _showFilterSheet(context, currentFilter);
-                    }
-                  },
-                  itemBuilder:
-                      (context) => [
-                        const PopupMenuItem(
-                          value: 'export',
-                          child: Text('Exportar a PDF'),
-                        ),
-                        const PopupMenuItem(
-                          value: 'filter',
-                          child: Text('Filtrar por fecha'),
-                        ),
-                      ],
                 );
-              },
-            ),
-          ],
-        ),
+              }
+
+              return PopupMenuButton<String>(
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: AppColors.textPrimary,
+                ),
+                onSelected: (value) {
+                  if (value == 'export') {
+                    context
+                        .read<SupplierCreditMovementsCubit>()
+                        .exportToPdf();
+                  } else if (value == 'filter') {
+                    _showFilterSheet(context, currentFilter);
+                  }
+                },
+                itemBuilder:
+                    (context) => [
+                      const PopupMenuItem(
+                        value: 'export',
+                        child: Text('Exportar a PDF'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'filter',
+                        child: Text('Filtrar por fecha'),
+                      ),
+                    ],
+              );
+            },
+          ),
+        ],
         body: BlocBuilder<
           SupplierCreditMovementsCubit,
           SupplierCreditMovementsState

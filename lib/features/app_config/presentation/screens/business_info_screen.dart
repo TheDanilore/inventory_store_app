@@ -201,7 +201,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
           return AdminLayout(
             title: 'Información del Negocio',
-            showBackButton: false,
+            showBackButton: true,
             bottomNavigationBar:
                 (!isLoading && !hasError)
                     ? SafeArea(
