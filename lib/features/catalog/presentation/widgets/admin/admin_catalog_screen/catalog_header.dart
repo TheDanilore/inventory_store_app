@@ -63,7 +63,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
   }
 
   void _onSearchTextChange() {
-    if (mounted) setState(() {});
+    // setState removed to prevent rebuilding the entire header on every keystroke
   }
 
   void _addToHistory(String term) {
@@ -238,7 +238,6 @@ class _CatalogHeaderState extends State<CatalogHeader> {
   }
 
   Widget _buildSearchField() {
-    final hasText = widget.searchController.text.isNotEmpty;
 
     return CompositedTransformTarget(
       link: _layerLink,
@@ -303,18 +302,21 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                       size: 20,
                     ),
                   ),
-                  suffixIcon:
-                      hasText
-                          ? IconButton(
-                            icon: const Icon(
-                              Icons.close_rounded,
-                              size: 18,
-                              color: AppColors.textMuted,
-                            ),
-                            onPressed: _clearSearch,
-                            tooltip: 'Borrar búsqueda',
-                          )
-                          : null,
+                  suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: widget.searchController,
+                    builder: (context, value, child) {
+                      if (value.text.isEmpty) return const SizedBox.shrink();
+                      return IconButton(
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: AppColors.textMuted,
+                        ),
+                        onPressed: _clearSearch,
+                        tooltip: 'Borrar búsqueda',
+                      );
+                    },
+                  ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),

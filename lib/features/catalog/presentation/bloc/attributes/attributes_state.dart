@@ -1,10 +1,11 @@
 import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 
+import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
+
 class AttributesState extends Equatable {
   final ViewState viewState;
-  final List<Map<String, dynamic>>
-  attributes; // Para simplificar asumo que es map por ahora
+  final List<AttributeEntity> attributes;
   final String? errorMessage;
   final bool isSaving;
 
@@ -17,7 +18,7 @@ class AttributesState extends Equatable {
 
   AttributesState copyWith({
     ViewState? viewState,
-    List<Map<String, dynamic>>? attributes,
+    List<AttributeEntity>? attributes,
     String? errorMessage,
     bool? isSaving,
     bool clearErrorMessage = false,

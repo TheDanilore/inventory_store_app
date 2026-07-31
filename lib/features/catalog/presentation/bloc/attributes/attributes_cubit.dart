@@ -3,6 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_attributes_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_attribute_mutations_uc.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes/attributes_state.dart';
 
 @injectable
@@ -47,22 +48,53 @@ class AttributesCubit extends Cubit<AttributesState> {
 
   Future<bool> saveAttribute(String name, {String? id}) async {
     emit(state.copyWith(isSaving: true));
-    final result =
-        id == null
-            ? await createAttributeUseCase(name)
-            : await updateAttributeUC(id, name);
-
-    return result.fold(
-      (failure) {
-        emit(state.copyWith(isSaving: false, errorMessage: failure.message));
-        return false;
-      },
-      (_) async {
-        emit(state.copyWith(isSaving: false, clearErrorMessage: true));
-        await loadAttributes();
-        return true;
-      },
-    );
+    
+    if (id == null) {
+      final result = await createAttributeUseCase(name);
+      return result.fold(
+        (failure) {
+          emit(state.copyWith(isSaving: false, errorMessage: failure.message));
+          return false;
+        },
+        (createdAttr) {
+          final currentAttributes = List<AttributeEntity>.from(state.attributes);
+          currentAttributes.add(createdAttr);
+          currentAttributes.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+          
+          emit(state.copyWith(
+            isSaving: false,
+            clearErrorMessage: true,
+            attributes: currentAttributes,
+            viewState: currentAttributes.isEmpty ? ViewState.empty : ViewState.success,
+          ));
+          return true;
+        },
+      );
+    } else {
+      final result = await updateAttributeUC(id, name);
+      return result.fold(
+        (failure) {
+          emit(state.copyWith(isSaving: false, errorMessage: failure.message));
+          return false;
+        },
+        (_) {
+          final currentAttributes = List<AttributeEntity>.from(state.attributes);
+          final index = currentAttributes.indexWhere((a) => a.id == id);
+          if (index != -1) {
+            currentAttributes[index] = currentAttributes[index].copyWith(name: name);
+          }
+          currentAttributes.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+          
+          emit(state.copyWith(
+            isSaving: false,
+            clearErrorMessage: true,
+            attributes: currentAttributes,
+            viewState: currentAttributes.isEmpty ? ViewState.empty : ViewState.success,
+          ));
+          return true;
+        },
+      );
+    }
   }
 
   Future<bool> deleteAttribute(String id) async {
@@ -73,9 +105,14 @@ class AttributesCubit extends Cubit<AttributesState> {
         emit(state.copyWith(isSaving: false, errorMessage: failure.message));
         return false;
       },
-      (_) async {
-        emit(state.copyWith(isSaving: false, clearErrorMessage: true));
-        await loadAttributes();
+      (_) {
+        final currentAttributes = state.attributes.where((a) => a.id != id).toList();
+        emit(state.copyWith(
+          isSaving: false,
+          clearErrorMessage: true,
+          attributes: currentAttributes,
+          viewState: currentAttributes.isEmpty ? ViewState.empty : ViewState.success,
+        ));
         return true;
       },
     );
@@ -87,22 +124,63 @@ class AttributesCubit extends Cubit<AttributesState> {
     String? valueId,
   }) async {
     emit(state.copyWith(isSaving: true));
-    final result =
-        valueId == null
-            ? await createAttributeValueUC(attributeId, value)
-            : await updateAttributeValueUC(valueId, value);
-
-    return result.fold(
-      (failure) {
-        emit(state.copyWith(isSaving: false, errorMessage: failure.message));
-        return false;
-      },
-      (_) async {
-        emit(state.copyWith(isSaving: false, clearErrorMessage: true));
-        await loadAttributes();
-        return true;
-      },
-    );
+    
+    if (valueId == null) {
+      final result = await createAttributeValueUC(attributeId, value);
+      return result.fold(
+        (failure) {
+          emit(state.copyWith(isSaving: false, errorMessage: failure.message));
+          return false;
+        },
+        (createdVal) {
+          final currentAttributes = List<AttributeEntity>.from(state.attributes);
+          final attrIndex = currentAttributes.indexWhere((a) => a.id == attributeId);
+          
+          if (attrIndex != -1) {
+            final attr = currentAttributes[attrIndex];
+            final currentValues = List<AttributeValueEntity>.from(attr.values);
+            currentValues.add(createdVal);
+            currentAttributes[attrIndex] = attr.copyWith(values: currentValues);
+          }
+          
+          emit(state.copyWith(
+            isSaving: false,
+            clearErrorMessage: true,
+            attributes: currentAttributes,
+          ));
+          return true;
+        },
+      );
+    } else {
+      final result = await updateAttributeValueUC(valueId, value);
+      return result.fold(
+        (failure) {
+          emit(state.copyWith(isSaving: false, errorMessage: failure.message));
+          return false;
+        },
+        (_) {
+          final currentAttributes = List<AttributeEntity>.from(state.attributes);
+          final attrIndex = currentAttributes.indexWhere((a) => a.id == attributeId);
+          
+          if (attrIndex != -1) {
+            final attr = currentAttributes[attrIndex];
+            final currentValues = List<AttributeValueEntity>.from(attr.values);
+            final valIndex = currentValues.indexWhere((v) => v.id == valueId);
+            if (valIndex != -1) {
+              currentValues[valIndex] = currentValues[valIndex].copyWith(value: value);
+            }
+            currentAttributes[attrIndex] = attr.copyWith(values: currentValues);
+          }
+          
+          emit(state.copyWith(
+            isSaving: false,
+            clearErrorMessage: true,
+            attributes: currentAttributes,
+          ));
+          return true;
+        },
+      );
+    }
   }
 
   Future<bool> deleteAttributeValue(String valueId) async {
@@ -113,9 +191,22 @@ class AttributesCubit extends Cubit<AttributesState> {
         emit(state.copyWith(isSaving: false, errorMessage: failure.message));
         return false;
       },
-      (_) async {
-        emit(state.copyWith(isSaving: false, clearErrorMessage: true));
-        await loadAttributes();
+      (_) {
+        final currentAttributes = List<AttributeEntity>.from(state.attributes);
+        for (int i = 0; i < currentAttributes.length; i++) {
+          final attr = currentAttributes[i];
+          if (attr.values.any((v) => v.id == valueId)) {
+            final newValues = attr.values.where((v) => v.id != valueId).toList();
+            currentAttributes[i] = attr.copyWith(values: newValues);
+            break;
+          }
+        }
+        
+        emit(state.copyWith(
+          isSaving: false,
+          clearErrorMessage: true,
+          attributes: currentAttributes,
+        ));
         return true;
       },
     );

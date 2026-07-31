@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
@@ -9,6 +10,7 @@ import 'package:inventory_store_app/features/catalog/domain/usecases/get_categor
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_products_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_stock_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/export_catalog_pdf_usecase.dart';
+import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
 
 @injectable
@@ -41,7 +43,9 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   Future<void> _fetchCategories() async {
     final result = await getCategoriesUC();
     result.fold(
-      (failure) {}, // silently fail
+      (failure) {
+        developer.log('Error fetching categories: ${failure.message}', error: failure);
+      },
       (cats) => emit(state.copyWith(categories: cats)),
     );
   }
@@ -50,11 +54,10 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
   void setSearchTerm(String term) {
     if (state.searchTerm == term) return;
-    emit(state.copyWith(searchTerm: term));
-
+    
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      emit(state.copyWith(currentPage: 0));
+      emit(state.copyWith(searchTerm: term, currentPage: 0));
       refreshProducts();
     });
   }
@@ -91,13 +94,13 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     refreshProducts();
   }
 
-  void setSortOption(String option) {
+  void setSortOption(CatalogSortOption option) {
     if (state.sortOption == option) return;
     emit(state.copyWith(sortOption: option, currentPage: 0));
     refreshProducts();
   }
 
-  void setStockFilter(int filter) {
+  void setStockFilter(CatalogStockFilter filter) {
     if (state.stockFilter == filter) return;
     emit(state.copyWith(stockFilter: filter, currentPage: 0));
     refreshProducts();
@@ -165,25 +168,15 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         );
       },
       (data) async {
-        final ids = data.products.map((p) => p.id).toList();
-        Map<String, int> stock = {};
-        if (ids.isNotEmpty) {
-          final stockResult = await getProductStockUC(productIds: ids);
-          stockResult.fold((_) {}, (s) => stock = s);
-        }
+        List<ProductEntity> enriched = data.products;
 
-        List<ProductEntity> enriched =
-            data.products
-                .map((p) => p.copyWith(totalStock: stock[p.id] ?? 0))
-                .toList();
-
-        // 1. Filtrar por stock (0: Todos, 1: En Stock, 2: Agotados)
-        if (state.stockFilter == 1) {
+        // 1. Filtrar por stock
+        if (state.stockFilter == CatalogStockFilter.inStock) {
           enriched =
               enriched
                   .where((p) => !p.stockControl || p.totalStock > 0)
                   .toList();
-        } else if (state.stockFilter == 2) {
+        } else if (state.stockFilter == CatalogStockFilter.outOfStock) {
           enriched =
               enriched
                   .where((p) => p.stockControl && p.totalStock == 0)
@@ -191,21 +184,21 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         }
 
         // 2. Ordenar según sortOption
-        if (state.sortOption == 'Nombre (A-Z)') {
+        if (state.sortOption == CatalogSortOption.nameAsc) {
           enriched.sort(
             (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
           );
-        } else if (state.sortOption == 'Precio: Menor a Mayor') {
+        } else if (state.sortOption == CatalogSortOption.priceAsc) {
           enriched.sort(
             (a, b) =>
                 (a.displaySalePrice ?? 0).compareTo(b.displaySalePrice ?? 0),
           );
-        } else if (state.sortOption == 'Precio: Mayor a Menor') {
+        } else if (state.sortOption == CatalogSortOption.priceDesc) {
           enriched.sort(
             (a, b) =>
                 (b.displaySalePrice ?? 0).compareTo(a.displaySalePrice ?? 0),
           );
-        } else if (state.sortOption == 'Mayor Stock') {
+        } else if (state.sortOption == CatalogSortOption.highStock) {
           enriched.sort((a, b) => b.totalStock.compareTo(a.totalStock));
         }
 

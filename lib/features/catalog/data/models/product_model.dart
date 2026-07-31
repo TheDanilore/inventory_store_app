@@ -163,11 +163,14 @@ class ProductModel {
                   )
                   .toList()
               : const [],
-      // totalStock no viene del JSON de Supabase; se inyecta externamente.
       totalStock:
           json['total_stock'] != null
               ? (json['total_stock'] as num).toInt()
-              : 0,
+              : batchesList.fold<int>(
+                  0,
+                  (prev, b) =>
+                      prev + ((b['available_quantity'] as num?)?.toInt() ?? 0),
+                ),
     );
   }
 

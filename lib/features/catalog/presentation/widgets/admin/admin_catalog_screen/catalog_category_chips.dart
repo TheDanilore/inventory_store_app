@@ -1,332 +1,195 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-/// Fila horizontal de chips de ordenamiento, filtros rápidos (Recién Creados, Activos, Con Stock) y categorías.
 class CategoryChips extends StatelessWidget {
   final List<CategoryEntity> categories;
   final String? selectedCategoryId;
   final ValueChanged<String?> onSelected;
   final bool? filterIsActive;
   final ValueChanged<bool?>? onStatusSelected;
-  final String sortOption;
-  final ValueChanged<String>? onSortSelected;
-  final int stockFilter;
-  final ValueChanged<int>? onStockFilterSelected;
+  final CatalogSortOption sortOption;
+  final ValueChanged<CatalogSortOption> onSortSelected;
+  final CatalogStockFilter stockFilter;
+  final ValueChanged<CatalogStockFilter> onStockFilterSelected;
 
   const CategoryChips({
     super.key,
     required this.categories,
-    required this.selectedCategoryId,
+    this.selectedCategoryId,
     required this.onSelected,
     this.filterIsActive,
     this.onStatusSelected,
-    this.sortOption = 'Recientes',
-    this.onSortSelected,
-    this.stockFilter = 0,
-    this.onStockFilterSelected,
+    this.sortOption = CatalogSortOption.recent,
+    required this.onSortSelected,
+    this.stockFilter = CatalogStockFilter.all,
+    required this.onStockFilterSelected,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    if (categories.isEmpty) return const SizedBox.shrink();
 
     return Container(
-      color: theme.colorScheme.surface,
-      child: Column(
-        children: [
-          const Divider(height: 1, color: AppColors.border),
-          SizedBox(
-            height: 52,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              children: [
-                if (onStatusSelected != null) ...[
-                  _StatusFilterChip(
-                    filterIsActive: filterIsActive,
-                    onChanged: onStatusSelected!,
-                  ),
-                  const SizedBox(width: 8),
-                ],
-
-                // Chip de Ordenamiento
-                _SortFilterChip(
-                  currentSort: sortOption,
-                  onSelected: onSortSelected ?? (_) {},
-                ),
-                const SizedBox(width: 8),
-
-                // Chip de Filtro de Stock
-                _StockFilterChip(
-                  stockFilterState: stockFilter,
-                  onChanged: onStockFilterSelected ?? (_) {},
-                ),
-                const SizedBox(width: 8),
-
-                const VerticalDivider(
-                  indent: 6,
-                  endIndent: 6,
-                  color: AppColors.border,
-                  width: 16,
-                ),
-                const SizedBox(width: 8),
-
-                // Chip por defecto: Óptimo (Todas)
-                _CategoryChip(
-                  label: 'Óptimo (Todas)',
-                  selected: selectedCategoryId == null,
-                  onTap: () => onSelected(null),
-                ),
-
-                ...categories.map(
-                  (cat) => _CategoryChip(
-                    label: cat.name,
-                    selected: selectedCategoryId == cat.id,
-                    onTap: () => onSelected(cat.id),
-                  ),
-                ),
-              ],
+      color: AppColors.background,
+      width: double.infinity,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            _SortFilterChip(
+              currentSort: sortOption,
+              onSelected: onSortSelected,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusFilterChip extends StatelessWidget {
-  final bool? filterIsActive;
-  final ValueChanged<bool?> onChanged;
-
-  const _StatusFilterChip({
-    required this.filterIsActive,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    String label = 'Todos';
-    Color color = AppColors.textSecondary;
-    Color bgColor = AppColors.background;
-    IconData icon = Icons.tune_rounded;
-
-    if (filterIsActive == true) {
-      label = 'Activos';
-      color = AppColors.success;
-      bgColor = AppColors.success.withValues(alpha: 0.1);
-      icon = Icons.check_circle_outline_rounded;
-    } else if (filterIsActive == false) {
-      label = 'Inactivos';
-      color = AppColors.danger;
-      bgColor = AppColors.danger.withValues(alpha: 0.1);
-      icon = Icons.cancel_outlined;
-    }
-
-    return Semantics(
-      label: 'Filtro de estado: $label. Tocar para cambiar.',
-      button: true,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            // Ciclo de filtrado: null (Todos) -> true (Activos) -> false (Inactivos) -> null...
-            if (filterIsActive == null) {
-              onChanged(true);
-            } else if (filterIsActive == true) {
-              onChanged(false);
-            } else {
-              onChanged(null);
-            }
-          },
-          borderRadius: BorderRadius.circular(20),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color:
-                    filterIsActive != null
-                        ? color.withValues(alpha: 0.5)
-                        : AppColors.border,
-              ),
+            const SizedBox(width: 8),
+            _StockFilterChip(
+              stockFilterState: stockFilter,
+              onChanged: onStockFilterSelected,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 14, color: color),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                  ),
+            const SizedBox(width: 8),
+            Container(width: 1, height: 24, color: AppColors.border),
+            const SizedBox(width: 8),
+            _buildChip(
+              label: 'Todos',
+              isSelected: selectedCategoryId == null,
+              onTap: () => onSelected(null),
+            ),
+            const SizedBox(width: 8),
+            ...categories.map((category) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _buildChip(
+                  label: category.name,
+                  isSelected: selectedCategoryId == category.id,
+                  onTap: () => onSelected(category.id),
                 ),
-              ],
-            ),
-          ),
+              );
+            }),
+          ],
         ),
       ),
     );
   }
-}
 
-class _CategoryChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _CategoryChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-
-    return Semantics(
-      label: 'Categoría $label',
-      selected: selected,
-      button: true,
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(20),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: selected ? primaryColor : AppColors.background,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: selected ? primaryColor : AppColors.border,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: selected ? Colors.white : AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-          ),
+  Widget _buildChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return ActionChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? Colors.white : AppColors.textPrimary,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          fontSize: 13,
         ),
       ),
+      backgroundColor: isSelected ? AppColors.primary : Colors.white,
+      side: BorderSide(
+        color: isSelected ? AppColors.primary : AppColors.border,
+      ),
+      onPressed: onTap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     );
   }
 }
 
 class _SortFilterChip extends StatelessWidget {
-  final String currentSort;
-  final ValueChanged<String> onSelected;
+  final CatalogSortOption currentSort;
+  final ValueChanged<CatalogSortOption> onSelected;
 
   const _SortFilterChip({required this.currentSort, required this.onSelected});
 
-  static const List<String> _sortOptions = [
-    'Recientes',
-    'Nombre (A-Z)',
-    'Precio: Menor a Mayor',
-    'Precio: Mayor a Menor',
-    'Mayor Stock',
-  ];
+  Widget _buildSortItem(String label, IconData icon, bool isSelected) {
+    return Row(
+      children: [
+        Icon(
+          isSelected ? Icons.check_circle_rounded : icon,
+          size: 16,
+          color: isSelected ? AppColors.primary : AppColors.textMuted,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
+    return PopupMenuButton<CatalogSortOption>(
       tooltip: 'Ordenar por',
       onSelected: onSelected,
-      itemBuilder:
-          (ctx) =>
-              _sortOptions
-                  .map(
-                    (opt) => PopupMenuItem<String>(
-                      value: opt,
-                      child: Row(
-                        children: [
-                          Icon(
-                            opt == currentSort
-                                ? Icons.check_circle_rounded
-                                : Icons.radio_button_unchecked_rounded,
-                            size: 16,
-                            color:
-                                opt == currentSort
-                                    ? AppColors.primary
-                                    : AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            opt,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight:
-                                  opt == currentSort
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                  .toList(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color:
-              currentSort != 'Recientes'
-                  ? AppColors.primary.withValues(alpha: 0.1)
-                  : AppColors.background,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color:
-                currentSort != 'Recientes'
-                    ? AppColors.primary.withValues(alpha: 0.5)
-                    : AppColors.border,
+      itemBuilder: (ctx) => [
+        PopupMenuItem(
+          value: CatalogSortOption.recent,
+          child: _buildSortItem(
+            'Recientes',
+            Icons.access_time_rounded,
+            currentSort == CatalogSortOption.recent,
           ),
+        ),
+        PopupMenuItem(
+          value: CatalogSortOption.nameAsc,
+          child: _buildSortItem(
+            'Nombre (A-Z)',
+            Icons.sort_by_alpha_rounded,
+            currentSort == CatalogSortOption.nameAsc,
+          ),
+        ),
+        PopupMenuItem(
+          value: CatalogSortOption.priceAsc,
+          child: _buildSortItem(
+            'Precio: Menor a Mayor',
+            Icons.arrow_upward_rounded,
+            currentSort == CatalogSortOption.priceAsc,
+          ),
+        ),
+        PopupMenuItem(
+          value: CatalogSortOption.priceDesc,
+          child: _buildSortItem(
+            'Precio: Mayor a Menor',
+            Icons.arrow_downward_rounded,
+            currentSort == CatalogSortOption.priceDesc,
+          ),
+        ),
+        PopupMenuItem(
+          value: CatalogSortOption.highStock,
+          child: _buildSortItem(
+            'Mayor Stock',
+            Icons.inventory_2_rounded,
+            currentSort == CatalogSortOption.highStock,
+          ),
+        ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(AppColors.radius),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.sort_rounded,
-              size: 14,
-              color:
-                  currentSort != 'Recientes'
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
-            ),
+            const Icon(Icons.sort_rounded, size: 14, color: AppColors.textMuted),
             const SizedBox(width: 6),
             Text(
-              currentSort,
-              style: TextStyle(
+              currentSort.label,
+              style: const TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color:
-                    currentSort != 'Recientes'
-                        ? AppColors.primary
-                        : AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
               ),
-            ),
-            Icon(
-              Icons.arrow_drop_down_rounded,
-              size: 18,
-              color:
-                  currentSort != 'Recientes'
-                      ? AppColors.primary
-                      : AppColors.textMuted,
             ),
           ],
         ),
@@ -336,62 +199,91 @@ class _SortFilterChip extends StatelessWidget {
 }
 
 class _StockFilterChip extends StatelessWidget {
-  final int stockFilterState;
-  final ValueChanged<int> onChanged;
+  final CatalogStockFilter stockFilterState;
+  final ValueChanged<CatalogStockFilter> onChanged;
 
   const _StockFilterChip({
     required this.stockFilterState,
     required this.onChanged,
   });
 
+  Widget _buildSortItem(String label, IconData icon, bool isSelected) {
+    return Row(
+      children: [
+        Icon(
+          isSelected ? Icons.check_circle_rounded : icon,
+          size: 16,
+          color: isSelected ? AppColors.primary : AppColors.textMuted,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    String label = 'Stock: Todos';
-    Color color = AppColors.textSecondary;
-    IconData icon = Icons.inventory_2_outlined;
+    final hasFilter = stockFilterState != CatalogStockFilter.all;
 
-    if (stockFilterState == 1) {
-      label = 'En Stock';
-      color = AppColors.success;
-      icon = Icons.check_circle_outline_rounded;
-    } else if (stockFilterState == 2) {
-      label = 'Agotados';
-      color = AppColors.warning;
-      icon = Icons.error_outline_rounded;
-    }
-
-    return InkWell(
-      onTap: () {
-        final nextState = (stockFilterState + 1) % 3;
-        onChanged(nextState);
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color:
-              stockFilterState != 0
-                  ? color.withValues(alpha: 0.1)
-                  : AppColors.background,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color:
-                stockFilterState != 0
-                    ? color.withValues(alpha: 0.5)
-                    : AppColors.border,
+    return PopupMenuButton<CatalogStockFilter>(
+      tooltip: 'Filtrar por Stock',
+      onSelected: onChanged,
+      itemBuilder: (ctx) => [
+        PopupMenuItem(
+          value: CatalogStockFilter.all,
+          child: _buildSortItem(
+            'Todos',
+            Icons.all_inclusive_rounded,
+            stockFilterState == CatalogStockFilter.all,
           ),
+        ),
+        PopupMenuItem(
+          value: CatalogStockFilter.inStock,
+          child: _buildSortItem(
+            'En Stock',
+            Icons.check_circle_outline_rounded,
+            stockFilterState == CatalogStockFilter.inStock,
+          ),
+        ),
+        PopupMenuItem(
+          value: CatalogStockFilter.outOfStock,
+          child: _buildSortItem(
+            'Agotados',
+            Icons.error_outline_rounded,
+            stockFilterState == CatalogStockFilter.outOfStock,
+          ),
+        ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: hasFilter ? const Color(0xFFF0FDF4) : AppColors.background,
+          border: Border.all(
+            color: hasFilter ? const Color(0xFF10B981) : AppColors.border,
+          ),
+          borderRadius: BorderRadius.circular(AppColors.radius),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: color),
+            Icon(
+              hasFilter ? Icons.inventory_2_rounded : Icons.inventory_2_outlined,
+              size: 14,
+              color: hasFilter ? const Color(0xFF059669) : AppColors.textMuted,
+            ),
             const SizedBox(width: 6),
             Text(
-              label,
+              stockFilterState.label,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: stockFilterState != 0 ? color : AppColors.textPrimary,
+                color: hasFilter ? const Color(0xFF065F46) : AppColors.textPrimary,
               ),
             ),
           ],

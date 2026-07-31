@@ -5,6 +5,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
 
 abstract class ProductsRepository {
   // Productos (Lectura)
@@ -37,10 +38,10 @@ abstract class ProductsRepository {
   );
 
   // Atributos
-  Future<Either<Failure, Map<String, dynamic>>> createAttribute(String name);
+  Future<Either<Failure, AttributeEntity>> createAttribute(String name);
   Future<Either<Failure, void>> updateAttribute(String id, String name);
   Future<Either<Failure, void>> deleteAttribute(String id);
-  Future<Either<Failure, Map<String, dynamic>>> createAttributeValue(
+  Future<Either<Failure, AttributeValueEntity>> createAttributeValue(
     String attributeId,
     String value,
   );
@@ -49,7 +50,7 @@ abstract class ProductsRepository {
     String value,
   );
   Future<Either<Failure, void>> deleteAttributeValue(String valueId);
-  Future<Either<Failure, List<Map<String, dynamic>>>> getAttributes();
+  Future<Either<Failure, List<AttributeEntity>>> getAttributes();
 
   // Imágenes
   Future<Either<Failure, List<ProductImageEntity>>> getProductImages(

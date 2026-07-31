@@ -1,4 +1,5 @@
 import 'dart:isolate';
+import 'dart:developer' as developer;
 import 'dart:typed_data';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
@@ -8,6 +9,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
@@ -19,7 +21,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
   ProductsRepositoryImpl(this._supabase);
 
-  Either<Failure, T> _handleError<T>(Object e) {
+  Either<Failure, T> _handleError<T>(Object e, [StackTrace? st]) {
+    developer.log('ProductsRepositoryImpl Error', error: e, stackTrace: st);
     if (e is PostgrestException) {
       return left(Failure.from('Error de BD: ${e.message}'));
     }
@@ -39,8 +42,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .eq('orders.customer_id', profileId)
           .limit(1);
       return right(purchases.isNotEmpty);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -61,8 +64,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
         'comment': comment,
       });
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -80,7 +83,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }) async {
     try {
       String selectString =
-          'id, name, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(*), categories(name), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active)';
+          'id, name, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, image_url, is_main), categories(name), warehouse_stock_batches(available_quantity), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active)';
 
       if (searchByIngredient &&
           searchQuery != null &&
@@ -124,8 +127,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
       });
 
       return right((products: entities, totalCount: response.count));
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -144,8 +147,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
       if (response == null) return right(null);
       final model = ProductModel.fromJson(response);
       return right(model.toEntity());
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -170,8 +173,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
         }
       }
       return right(map);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -186,8 +189,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .update({'is_active': isActive})
           .eq('id', productId);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -208,8 +211,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
       if (response == null) return right(null);
       final model = ProductVariantModel.fromJson(response);
       return right(model.toEntity());
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -232,8 +235,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
         }
       }
       return right(map);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -257,13 +260,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
             return VariantDraftEntity.fromVariant(variant.toEntity());
           }).toList();
       return right(drafts);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
   @override
-  Future<Either<Failure, Map<String, dynamic>>> createAttribute(
+  Future<Either<Failure, AttributeEntity>> createAttribute(
     String name,
   ) async {
     try {
@@ -273,9 +276,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
               .insert({'name': name.trim()})
               .select()
               .single();
-      return right(res);
-    } catch (e) {
-      return _handleError(e);
+      return right(AttributeEntity(id: res['id'], name: res['name']));
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -287,8 +290,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .update({'name': name.trim()})
           .eq('id', id);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -297,13 +300,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
     try {
       await _supabase.from('attributes').delete().eq('id', id);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
   @override
-  Future<Either<Failure, Map<String, dynamic>>> createAttributeValue(
+  Future<Either<Failure, AttributeValueEntity>> createAttributeValue(
     String attributeId,
     String value,
   ) async {
@@ -314,9 +317,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
               .insert({'attribute_id': attributeId, 'value': value.trim()})
               .select()
               .single();
-      return right(res);
-    } catch (e) {
-      return _handleError(e);
+      return right(AttributeValueEntity(id: res['id'], attributeId: res['attribute_id'], value: res['value']));
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -331,8 +334,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .update({'value': value.trim()})
           .eq('id', valueId);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -341,21 +344,36 @@ class ProductsRepositoryImpl implements ProductsRepository {
     try {
       await _supabase.from('attribute_values').delete().eq('id', valueId);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
   @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> getAttributes() async {
+  Future<Either<Failure, List<AttributeEntity>>> getAttributes() async {
     try {
       final response = await _supabase
           .from('attributes')
-          .select('id, name, attribute_values(id, value)')
+          .select('id, name, description, attribute_values(id, attribute_id, value)')
           .order('name');
-      return right(List<Map<String, dynamic>>.from(response));
-    } catch (e) {
-      return _handleError(e);
+      
+      final list = List<Map<String, dynamic>>.from(response).map((row) {
+        final valuesList = (row['attribute_values'] as List?) ?? [];
+        return AttributeEntity(
+          id: row['id'],
+          name: row['name'],
+          description: row['description'],
+          values: valuesList.map((v) => AttributeValueEntity(
+            id: v['id'],
+            attributeId: v['attribute_id'] ?? row['id'],
+            value: v['value'],
+          )).toList(),
+        );
+      }).toList();
+
+      return right(list);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -374,8 +392,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
             response,
           ).map(ProductImageModel.fromJson).toList();
       return right(models.map((m) => m.toEntity()).toList());
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -390,8 +408,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
       await _supabase.storage.from('products').uploadBinary(path, bytes);
       final publicUrl = _supabase.storage.from('products').getPublicUrl(path);
       return right(publicUrl);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -411,8 +429,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
         }
       }
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -423,8 +441,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
     try {
       await _supabase.from('product_images').upsert(payload, onConflict: 'id');
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -433,8 +451,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
     try {
       await _supabase.from('product_variants').delete().eq('id', variantId);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -446,8 +464,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .update({'is_active': false})
           .eq('id', variantId);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -460,8 +478,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .eq('variant_id', variantId)
           .count(CountOption.exact);
       return right(count.count > 0);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -473,8 +491,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .update({'variant_id': null})
           .eq('variant_id', variantId);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -513,8 +531,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
                 .single();
         return right(res['id'] as String);
       }
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -547,8 +565,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
                 .single();
         return right(res['id'] as String);
       }
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -576,8 +594,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
                 .toList(),
           );
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -592,8 +610,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
               .limit(1)
               .maybeSingle();
       return right(vResp?['id'] as String?);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -633,8 +651,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
         });
         return right(true);
       }
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -652,8 +670,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .eq('orders.status', 'COMPLETED')
           .limit(500);
       return right(List<Map<String, dynamic>>.from(response as List));
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -762,8 +780,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
         reviews: List<Map<String, dynamic>>.from(results[3] as List),
         ingredients: List<Map<String, dynamic>>.from(results[4] as List),
       ));
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -783,8 +801,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
         if (vid != null) map[vid] = stock;
       }
       return right(map);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -802,8 +820,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .eq('is_active', true)
           .order('sku');
       return right(List<Map<String, dynamic>>.from(response));
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -829,8 +847,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
             .add(ProductVariantModel.fromJson(row).toEntity());
       }
       return right(map);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -851,8 +869,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
         if (vid != null) map[vid] = stock;
       }
       return right(map);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -870,8 +888,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
               .eq('product_id', productId)
               .maybeSingle();
       return right(res != null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 

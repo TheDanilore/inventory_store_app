@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 
 class AdminCatalogState extends Equatable {
   final ViewState catalogState;
@@ -13,8 +14,8 @@ class AdminCatalogState extends Equatable {
   final String searchTerm;
   final bool searchByIngredient;
   final bool? filterIsActive;
-  final String sortOption;
-  final int stockFilter;
+  final CatalogSortOption sortOption;
+  final CatalogStockFilter stockFilter;
   final int totalCount;
   final int currentPage;
   final String? errorMessage;
@@ -29,8 +30,8 @@ class AdminCatalogState extends Equatable {
     this.searchTerm = '',
     this.searchByIngredient = false,
     this.filterIsActive,
-    this.sortOption = 'Recientes',
-    this.stockFilter = 0,
+    this.sortOption = CatalogSortOption.recent,
+    this.stockFilter = CatalogStockFilter.all,
     this.totalCount = 0,
     this.currentPage = 0,
     this.errorMessage,
@@ -51,8 +52,8 @@ class AdminCatalogState extends Equatable {
     String? searchTerm,
     bool? searchByIngredient,
     bool? filterIsActive,
-    String? sortOption,
-    int? stockFilter,
+    CatalogSortOption? sortOption,
+    CatalogStockFilter? stockFilter,
     int? totalCount,
     int? currentPage,
     String? errorMessage,

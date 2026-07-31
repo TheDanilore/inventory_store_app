@@ -10,6 +10,8 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 
 class AttributesManagementScreen extends StatefulWidget {
@@ -54,13 +56,13 @@ class _AttributesManagementScreenState
     super.dispose();
   }
 
-  void _showAttributeForm([Map<String, dynamic>? attribute]) {
+  void _showAttributeForm([AttributeEntity? attribute]) {
     final isDesktop = MediaQuery.of(context).size.width >= 900;
     if (isDesktop) {
       setState(() {
-        _editingAttributeId = attribute?['id'];
-        _desktopNameCtrl.text = attribute?['name'] ?? '';
-        _desktopDescCtrl.text = attribute?['description'] ?? '';
+        _editingAttributeId = attribute?.id;
+        _desktopNameCtrl.text = attribute?.name ?? '';
+        _desktopDescCtrl.text = attribute?.description ?? '';
       });
       return;
     }
@@ -345,6 +347,16 @@ class _AttributesManagementScreenState
         state.viewState == ViewState.initial) {
       return const AttributesSkeleton(key: ValueKey('skeleton'), itemCount: 4);
     }
+
+    if (state.errorMessage != null && state.attributes.isEmpty) {
+      return Center(
+        child: CatalogErrorState(
+          message: state.errorMessage!,
+          onRetry: () => cubit.loadAttributes(),
+        ),
+      );
+    }
+
     if (state.attributes.isEmpty) {
       return ListView(
         controller: _scrollController,
@@ -406,7 +418,7 @@ class _AttributesManagementScreenState
                       ),
                     ),
                     content: Text(
-                      '¿Estás seguro de eliminar la propiedad "${attr['name']}"? Se eliminarán también todos sus valores.',
+                      '¿Estás seguro de eliminar la propiedad "${attr.name}"? Se eliminarán también todos sus valores.',
                       style: const TextStyle(color: AppColors.textSecondary),
                     ),
                     actions: [
@@ -432,17 +444,17 @@ class _AttributesManagementScreenState
             );
 
             if (confirmed == true && context.mounted) {
-              final success = await cubit.deleteAttribute(attr['id']);
+              final success = await cubit.deleteAttribute(attr.id);
               if (success && context.mounted) {
                 AppSnackbar.show(
                   context,
-                  message: 'Propiedad "${attr['name']}" eliminada',
+                  message: 'Propiedad "${attr.name}" eliminada',
                   type: SnackbarType.success,
                 );
               }
             }
           },
-          onAddValue: () => _showAddValueForm(attr['id'], attr['name']),
+          onAddValue: () => _showAddValueForm(attr.id, attr.name),
         );
       },
     );
@@ -452,7 +464,7 @@ class _AttributesManagementScreenState
 // WIDGETS PRIVADOS
 
 class _AttributeCard extends StatefulWidget {
-  final Map<String, dynamic> attribute;
+  final AttributeEntity attribute;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onAddValue;
@@ -474,7 +486,7 @@ class _AttributeCardState extends State<_AttributeCard> {
 
   @override
   Widget build(BuildContext context) {
-    final values = (widget.attribute['attribute_values'] as List?) ?? [];
+    final values = widget.attribute.values;
     final isSaving = context.watch<AttributesCubit>().state.isSaving;
 
     return Material(
@@ -531,7 +543,7 @@ class _AttributeCardState extends State<_AttributeCard> {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          widget.attribute['name'],
+                          widget.attribute.name,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -562,8 +574,8 @@ class _AttributeCardState extends State<_AttributeCard> {
                     ),
                   ],
                 ),
-                if (widget.attribute['description'] != null &&
-                    widget.attribute['description'].toString().isNotEmpty)
+                if (widget.attribute.description != null &&
+                    widget.attribute.description!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(
                       bottom: 12,
@@ -571,7 +583,7 @@ class _AttributeCardState extends State<_AttributeCard> {
                       left: 52,
                     ),
                     child: Text(
-                      widget.attribute['description'],
+                      widget.attribute.description!,
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,
@@ -625,7 +637,7 @@ class _AttributeCardState extends State<_AttributeCard> {
 }
 
 class _ValueChip extends StatefulWidget {
-  final Map<String, dynamic> value;
+  final AttributeValueEntity value;
 
   const _ValueChip({required this.value});
 
@@ -639,7 +651,7 @@ class _ValueChipState extends State<_ValueChip> {
   void _handleDelete() async {
     setState(() => _isDeleting = true);
     final success = await context.read<AttributesCubit>().deleteAttributeValue(
-      widget.value['id'],
+      widget.value.id,
     );
     if (success && mounted) {
       AppSnackbar.show(
@@ -657,7 +669,7 @@ class _ValueChipState extends State<_ValueChip> {
   Widget build(BuildContext context) {
     return InputChip(
       label: Text(
-        widget.value['value'],
+        widget.value.value,
         style: const TextStyle(
           fontSize: 13,
           color: AppColors.textPrimary,

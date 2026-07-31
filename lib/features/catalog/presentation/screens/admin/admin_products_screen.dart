@@ -9,6 +9,8 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 
 class AdminProductsScreen extends StatefulWidget {
   const AdminProductsScreen({super.key});
@@ -55,114 +57,113 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
-      builder: (context, state) {
-        final cubit = context.read<AdminCatalogCubit>();
+    final cubit = context.read<AdminCatalogCubit>();
 
-        return AdminLayout(
-          title: 'Inventario de Productos',
-          showBackButton: false,
-          actions: [
-            ElevatedButton.icon(
-              onPressed: () => context.go('/admin/products/product-form'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                ),
-              ),
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text(
-                'Nuevo Producto',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-              ),
+    return AdminLayout(
+      title: 'Inventario de Productos',
+      showBackButton: false,
+      actions: [
+        ElevatedButton.icon(
+          onPressed: () => context.go('/admin/products/product-form'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 10,
             ),
-          ],
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              final isDesktop = constraints.maxWidth >= 900;
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
+            ),
+          ),
+          icon: const Icon(Icons.add_rounded, size: 18),
+          label: const Text(
+            'Nuevo Producto',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+        ),
+      ],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isDesktop = constraints.maxWidth >= 900;
 
-              return Container(
-                color: AppColors.background,
-                padding: EdgeInsets.all(isDesktop ? 24.0 : 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          return Container(
+            color: AppColors.background,
+            padding: EdgeInsets.all(isDesktop ? 24.0 : 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Barra de Búsqueda y Filtros ────────────────────────
+                Row(
                   children: [
-                    // ── Barra de Búsqueda y Filtros ────────────────────────
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(
-                                AppColors.radius,
-                              ),
-                              border: Border.all(color: AppColors.border),
-                              boxShadow: AppColors.cardShadow(),
-                            ),
-                            child: TextField(
-                              controller: _searchCtrl,
-                              onChanged: cubit.setSearchTerm,
-                              decoration: const InputDecoration(
-                                hintText: 'Buscar por nombre, código o SKU...',
-                                prefixIcon: Icon(
-                                  Icons.search_rounded,
-                                  color: AppColors.textMuted,
-                                ),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
-                                ),
-                              ),
-                            ),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radius,
                           ),
+                          border: Border.all(color: AppColors.border),
+                          boxShadow: AppColors.cardShadow(),
                         ),
-                        const SizedBox(width: 12),
-                        OutlinedButton.icon(
-                          onPressed: () => cubit.refreshProducts(),
-                          icon: const Icon(Icons.refresh_rounded, size: 18),
-                          label:
-                              isDesktop
-                                  ? const Text('Actualizar')
-                                  : const SizedBox.shrink(),
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isDesktop ? 16 : 14,
+                        child: TextField(
+                          controller: _searchCtrl,
+                          onChanged: cubit.setSearchTerm,
+                          decoration: const InputDecoration(
+                            hintText: 'Buscar por nombre, código o SKU...',
+                            prefixIcon: Icon(
+                              Icons.search_rounded,
+                              color: AppColors.textMuted,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
                               vertical: 14,
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppColors.radius,
-                              ),
-                            ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 20),
-
-                    // ── Contenido Camaleónico (Desktop vs Mobile) ──────────
-                    Expanded(
-                      child:
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      onPressed: () => cubit.refreshProducts(),
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label:
                           isDesktop
-                              ? _buildDesktopTableContainer(state, cubit)
-                              : _buildMobileCardList(state, cubit),
+                              ? const Text('Actualizar')
+                              : const SizedBox.shrink(),
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isDesktop ? 16 : 14,
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radius,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              );
-            },
-          ),
-        );
-      },
+                const SizedBox(height: 20),
+
+                // ── Contenido Camaleónico (Desktop vs Mobile) ──────────
+                Expanded(
+                  child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+                    builder: (context, state) {
+                      return isDesktop
+                          ? _buildDesktopTableContainer(state, cubit)
+                          : _buildMobileCardList(state, cubit);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -219,6 +220,15 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
           );
     }
 
+    if (state.errorMessage != null && state.products.isEmpty) {
+      return Center(
+        child: CatalogErrorState(
+          message: state.errorMessage!,
+          onRetry: () => cubit.refreshProducts(),
+        ),
+      );
+    }
+
     if (state.products.isEmpty) {
       return Center(
         child: Column(
@@ -242,11 +252,14 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         ),
       );
     }
+    
+    Widget contentList;
     if (isDesktop) {
-      return LayoutBuilder(
+      contentList = LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
             scrollDirection: Axis.vertical,
+            physics: const AlwaysScrollableScrollPhysics(),
             child: ConstrainedBox(
               constraints: BoxConstraints(minWidth: constraints.maxWidth),
               child: DataTable(
@@ -373,7 +386,8 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       );
     } else {
       // 📱 Listado de Tarjetas Flotantes para Móvil (Filosofía Apple / HIG)
-      return ListView.builder(
+      contentList = ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
         itemCount: state.products.length,
         itemBuilder: (context, index) {
           final product = state.products[index];
@@ -460,6 +474,40 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         },
       );
     }
+    
+    return Column(
+      children: [
+        Expanded(
+          child: RefreshIndicator(
+            color: Theme.of(context).colorScheme.primary,
+            onRefresh: () async => cubit.refreshProducts(),
+            child: contentList,
+          ),
+        ),
+        if (state.products.isNotEmpty && state.totalPages > 1)
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: AdminPageBlocks(
+                currentPage: state.currentPage,
+                totalPages: state.totalPages,
+                onPageChanged: cubit.setPage,
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   // ── Componentes de Apoyo y Diseño Atómico ───────────────────────────────

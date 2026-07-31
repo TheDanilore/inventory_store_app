@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes/attributes_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes/attributes_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
+import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
+
 class AttributeFormSheet extends StatefulWidget {
-  final Map<String, dynamic>? attribute;
+  final AttributeEntity? attribute;
 
   const AttributeFormSheet({super.key, this.attribute});
 
@@ -20,9 +23,9 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
   @override
   void initState() {
     super.initState();
-    _nameCtrl = TextEditingController(text: widget.attribute?['name'] ?? '');
+    _nameCtrl = TextEditingController(text: widget.attribute?.name ?? '');
     _descCtrl = TextEditingController(
-      text: widget.attribute?['description'] ?? '',
+      text: widget.attribute?.description ?? '',
     );
   }
 
@@ -39,7 +42,7 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
     final cubit = context.read<AttributesCubit>();
     final success = await cubit.saveAttribute(
       _nameCtrl.text,
-      id: widget.attribute?['id'],
+      id: widget.attribute?.id,
     );
 
     if (success && mounted) {
@@ -51,7 +54,6 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final isEditing = widget.attribute != null;
-    final isSaving = context.watch<AttributesCubit>().state.isSaving;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -113,37 +115,42 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+            BlocSelector<AttributesCubit, AttributesState, bool>(
+              selector: (state) => state.isSaving,
+              builder: (context, isSaving) {
+                return SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: isSaving ? null : _save,
+                    child:
+                        isSaving
+                            ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                            : Text(
+                              isEditing ? 'Actualizar' : 'Crear Propiedad',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
                   ),
-                ),
-                onPressed: isSaving ? null : _save,
-                child:
-                    isSaving
-                        ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                        : Text(
-                          isEditing ? 'Actualizar' : 'Crear Propiedad',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-              ),
+                );
+              }
             ),
             const SizedBox(height: 20),
           ],

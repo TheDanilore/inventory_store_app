@@ -3,11 +3,13 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 
+import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
+
 @lazySingleton
 class CreateAttributeUseCase {
   final ProductsRepository repository;
   CreateAttributeUseCase(this.repository);
-  Future<Either<Failure, Map<String, dynamic>>> call(String name) async {
+  Future<Either<Failure, AttributeEntity>> call(String name) async {
     return await repository.createAttribute(name);
   }
 }
@@ -34,7 +36,7 @@ class DeleteAttributeUC {
 class CreateAttributeValueUC {
   final ProductsRepository repository;
   CreateAttributeValueUC(this.repository);
-  Future<Either<Failure, Map<String, dynamic>>> call(
+  Future<Either<Failure, AttributeValueEntity>> call(
     String attributeId,
     String value,
   ) async {
