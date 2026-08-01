@@ -71,28 +71,73 @@ ALTER TYPE "public"."user_role" OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."award_mini_game_points"("p_profile_id" "uuid", "p_movement_type" "text", "p_points" integer, "p_description" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
     AS $$
+DECLARE
+  v_safe_points INT;
+  v_game_id TEXT;
+  v_limit_key TEXT;
+  v_daily_limit INT;
+  v_plays_today INT;
+  v_max_possible_points INT;
 BEGIN
-    -- 1. Validaciones básicas Anti-Fraude
-    IF p_points <= 0 THEN
-        RAISE EXCEPTION 'Los puntos otorgados deben ser mayores a cero.';
-    END IF;
+  -- 1. Extraer el identificador del juego (ej: 'MINI_GAME_BOXES' -> 'boxes')
+  v_game_id := LOWER(REPLACE(p_movement_type, 'MINI_GAME_', ''));
+  
+  -- Ajustar mapeos específicos según los nombres en AppConfigCubit
+  IF v_game_id = 'memory' THEN v_game_id := 'memorama'; END IF;
+  
+  v_limit_key := v_game_id || '_daily_limit';
 
-    -- (Opcional) Límite de seguridad estricto (Cortafuegos por si interceptan la petición)
-    -- Asumimos que un minijuego nunca debería dar más de 500 puntos de un solo golpe.
-    IF p_points > 500 THEN
-        RAISE EXCEPTION 'La cantidad de puntos solicitada excede el límite permitido por seguridad.';
-    END IF;
+  -- 2. Obtener el límite diario desde la tabla app_settings (por defecto 1 si no existe)
+  SELECT COALESCE((SELECT value::numeric::int FROM app_settings WHERE key = v_limit_key), 1)
+  INTO v_daily_limit;
 
-    -- 2. Registrar Movimiento
-    INSERT INTO public.wallet_movements (profile_id, movement_type, points, description)
-    VALUES (p_profile_id, p_movement_type, p_points, p_description);
+  -- 3. Contar cuántas veces ha jugado hoy este juego
+  SELECT COUNT(*) INTO v_plays_today
+  FROM wallet_movements
+  WHERE profile_id = p_profile_id
+    AND movement_type = p_movement_type
+    AND DATE(created_at AT TIME ZONE 'UTC') = DATE(NOW() AT TIME ZONE 'UTC');
 
-    -- 3. Actualizar Saldo Final
-    UPDATE public.profiles
-    SET wallet_balance = COALESCE(wallet_balance, 0) + p_points
-    WHERE id = p_profile_id;
+  -- 4. Validar el límite diario de forma 100% segura en el servidor
+  IF v_plays_today >= v_daily_limit THEN
+    RAISE EXCEPTION 'Límite diario superado para el juego %', p_movement_type;
+  END IF;
+
+  -- 5. Calcular el máximo de puntos permitidos dinámicamente
+  -- Para evitar una condicional masiva, buscamos el premio mayor global configurado
+  -- y lo multiplicamos por 10 (margen seguro para juegos acumulativos como memorama o catcher).
+  SELECT COALESCE(MAX(value::numeric::int), 50) * 10
+  INTO v_max_possible_points
+  FROM app_settings
+  WHERE key LIKE '%_prize%' OR key LIKE '%_reward%';
+
+  IF p_points > v_max_possible_points THEN
+    v_safe_points := v_max_possible_points;
+  ELSE
+    v_safe_points := p_points;
+  END IF;
+
+  -- 6. Insertar el movimiento en el historial
+  INSERT INTO wallet_movements (
+    profile_id,
+    movement_type,
+    points,
+    description,
+    created_at
+  ) VALUES (
+    p_profile_id,
+    p_movement_type,
+    v_safe_points,
+    p_description,
+    NOW()
+  );
+
+  -- 7. Actualizar el saldo del perfil atómicamente
+  UPDATE profiles
+  SET wallet_balance = wallet_balance + v_safe_points
+  WHERE id = p_profile_id;
+  
 END;
 $$;
 
@@ -420,6 +465,476 @@ $$;
 
 
 ALTER FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_top_customers"("p_limit" integer DEFAULT 10) RETURNS TABLE("id" "uuid", "full_name" "text", "avatar_url" "text", "is_active" boolean, "wallet_balance" integer, "created_at" timestamp with time zone, "total_revenue" numeric)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    p.id,
+    p.full_name,
+    p.avatar_url,
+    p.is_active,
+    p.wallet_balance,
+    p.created_at,
+    COALESCE(SUM(o.total_amount), 0) AS total_revenue
+  FROM profiles p
+  JOIN orders o ON o.customer_id = p.id
+  WHERE o.status = 'COMPLETED'
+  GROUP BY p.id
+  ORDER BY total_revenue DESC
+  LIMIT p_limit;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_top_customers"("p_limit" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_order_id UUID;
+  v_item RECORD;
+  v_variant_record RECORD;
+  v_stock INT;
+  v_total_amount NUMERIC := 0;
+  v_total_cost NUMERIC := 0;
+  v_total_profit NUMERIC := 0;
+  v_points_used INT := 0;
+  v_points_earned INT := 0;
+  v_points_to_soles_ratio NUMERIC := 0.01;
+  v_earning_rate NUMERIC := 1.0;
+  v_customer_balance INT := 0;
+  v_max_discount NUMERIC := 0;
+  v_item_price NUMERIC;
+  v_item_wholesale NUMERIC;
+  v_item_cost NUMERIC;
+BEGIN
+  -- 1. Obtener configuraciones globales (Evitar manipulación desde el cliente)
+  SELECT COALESCE((SELECT value::numeric FROM app_settings WHERE key = 'points_to_soles_ratio'), 0.01) INTO v_points_to_soles_ratio;
+  SELECT COALESCE((SELECT value::numeric FROM app_settings WHERE key = 'loyalty_earning_rate'), 1.0) INTO v_earning_rate;
+
+  -- 2. Validar stock atómicamente y calcular totales
+  FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(product_id UUID, variant_id UUID, quantity INT)
+  LOOP
+    SELECT total_stock INTO v_stock
+    FROM product_stock_summary
+    WHERE variant_id = v_item.variant_id
+    FOR UPDATE;
+
+    IF v_stock IS NULL OR v_stock < v_item.quantity THEN
+      RAISE EXCEPTION 'Stock insuficiente para la variante %', v_item.variant_id;
+    END IF;
+
+    SELECT unit_price, wholesale_price, unit_cost INTO v_variant_record
+    FROM product_variants
+    WHERE id = v_item.variant_id;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Variante no encontrada: %', v_item.variant_id;
+    END IF;
+
+    v_item_price := v_variant_record.unit_price;
+    v_item_wholesale := COALESCE(v_variant_record.wholesale_price, v_item_price);
+    v_item_cost := v_variant_record.unit_cost;
+
+    v_total_amount := v_total_amount + (v_item_price * v_item.quantity);
+    v_total_cost := v_total_cost + (v_item_cost * v_item.quantity);
+    
+    IF v_item_price > v_item_wholesale THEN
+      v_max_discount := v_max_discount + ((v_item_price - v_item_wholesale) * v_item.quantity);
+    END IF;
+  END LOOP;
+
+  -- 3. Calcular Descuentos y Puntos
+  IF p_use_points AND p_customer_id IS NOT NULL THEN
+    SELECT wallet_balance INTO v_customer_balance
+    FROM profiles
+    WHERE id = p_customer_id
+    FOR UPDATE;
+
+    DECLARE
+      v_needed_points INT;
+    BEGIN
+      v_needed_points := CEIL(v_max_discount / v_points_to_soles_ratio);
+      
+      IF v_customer_balance >= v_needed_points THEN
+        v_points_used := v_needed_points;
+      ELSE
+        v_points_used := v_customer_balance;
+      END IF;
+    END;
+    
+    v_total_amount := v_total_amount - (v_points_used * v_points_to_soles_ratio);
+    
+    IF v_points_used > 0 THEN
+      UPDATE profiles
+      SET wallet_balance = wallet_balance - v_points_used
+      WHERE id = p_customer_id;
+      
+      INSERT INTO wallet_movements (profile_id, movement_type, points, description, created_at)
+      VALUES (p_customer_id, 'PURCHASE_DISCOUNT', -v_points_used, 'Descuento aplicado en compra', NOW());
+    END IF;
+  END IF;
+
+  v_total_profit := v_total_amount - v_total_cost;
+
+  IF v_earning_rate > 0 AND p_customer_id IS NOT NULL THEN
+    v_points_earned := FLOOR(v_total_amount / v_earning_rate);
+  END IF;
+
+  -- 4. Insertar la Orden
+  INSERT INTO orders (
+    customer_id, created_by, warehouse_id, 
+    total_amount, total_profit, discount_amount,
+    points_used, points_earned,
+    status, payment_status, payment_method, 
+    created_at
+  ) VALUES (
+    p_customer_id, p_customer_id, p_warehouse_id,
+    v_total_amount, v_total_profit, (v_points_used * v_points_to_soles_ratio),
+    v_points_used, v_points_earned,
+    'PENDING', 'PENDING', 'POR ACORDAR',
+    NOW()
+  ) RETURNING id INTO v_order_id;
+
+  -- 5. Insertar Ítems
+  FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(product_id UUID, variant_id UUID, quantity INT)
+  LOOP
+    SELECT unit_price, wholesale_price, unit_cost INTO v_variant_record
+    FROM product_variants
+    WHERE id = v_item.variant_id;
+
+    v_item_price := v_variant_record.unit_price;
+    v_item_cost := v_variant_record.unit_cost;
+
+    INSERT INTO order_items (
+      order_id, product_id, variant_id, quantity,
+      unit_cost, applied_price, net_profit
+    ) VALUES (
+      v_order_id, v_item.product_id, v_item.variant_id, v_item.quantity,
+      v_item_cost, v_item_price, (v_item_price - v_item_cost) * v_item.quantity
+    );
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'order_id', v_order_id,
+    'total_amount', v_total_amount,
+    'points_used', v_points_used
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."process_inventory_entry_rpc"("p_warehouse_id" "uuid", "p_supplier_id" "uuid", "p_purchase_order_id" "uuid", "p_payment_mode" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_document_type" "text", "p_document_number" "text", "p_document_date" "date", "p_notes" "text", "p_items" "jsonb") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_entry_id UUID;
+  v_total_amount DECIMAL(12, 2) := 0;
+  v_account_type TEXT;
+  v_current_balance DECIMAL(12, 2);
+  v_stock_batch_id UUID;
+  v_previous_stock DECIMAL(12, 2);
+  v_new_stock DECIMAL(12, 2);
+  v_supplier_credit_id UUID;
+  v_current_debt DECIMAL(12, 2);
+  v_supplier_name TEXT;
+  item JSONB;
+  v_item_qty DECIMAL(12, 2);
+  v_item_cost DECIMAL(12, 2);
+  v_item_subtotal DECIMAL(12, 2);
+  v_user_id UUID;
+BEGIN
+  -- Obtener el ID del usuario actual (si se llama desde cliente autenticado)
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+     -- Para uso en backend o testing si auth.uid() falla
+     -- v_user_id := ... (Opcional)
+  END IF;
+
+  -- 1. Calcular el monto total del ingreso
+  FOR item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    v_total_amount := v_total_amount + ((item->>'quantity')::DECIMAL * (item->>'unitCost')::DECIMAL);
+  END LOOP;
+
+  -- 2. Validaciones Financieras y Débitos (SOLO si no viene de una orden de compra)
+  IF p_purchase_order_id IS NULL THEN
+    
+    -- Pago al CONTADO
+    IF p_payment_mode = 'CONTADO' THEN
+      IF p_account_id IS NULL THEN
+        RAISE EXCEPTION 'Debe proporcionar una cuenta para pagos al contado.';
+      END IF;
+
+      -- SELECT FOR UPDATE previene condiciones de carrera
+      SELECT type, balance INTO v_account_type, v_current_balance
+      FROM public.financial_accounts
+      WHERE id = p_account_id
+      FOR UPDATE;
+
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'La cuenta financiera no existe.';
+      END IF;
+
+      -- Verificar saldo suficiente
+      IF v_current_balance < v_total_amount THEN
+        RAISE EXCEPTION 'Saldo insuficiente en la cuenta (Disponible: %)', v_current_balance;
+      END IF;
+
+      -- Verificar turno si es CAJA (aunque en la BD se maneja con p_active_shift_id)
+      IF v_account_type = 'CAJA' AND p_active_shift_id IS NULL THEN
+        RAISE EXCEPTION 'La caja seleccionada no tiene un turno abierto.';
+      END IF;
+
+      -- Actualizar Saldo
+      UPDATE public.financial_accounts
+      SET balance = balance - v_total_amount,
+          updated_at = NOW()
+      WHERE id = p_account_id;
+
+      -- Obtener nombre de proveedor para glosa
+      v_supplier_name := '';
+      IF p_supplier_id IS NOT NULL THEN
+         SELECT name INTO v_supplier_name FROM public.suppliers WHERE id = p_supplier_id;
+      END IF;
+
+      -- Registrar movimiento bancario/caja
+      INSERT INTO public.account_movements (
+        account_id, shift_id, movement_type, amount, description, reference_type, reference_id, created_by
+      ) VALUES (
+        p_account_id, p_active_shift_id, 'EXPENSE', v_total_amount, 
+        'Compra de inventario' || CASE WHEN v_supplier_name != '' THEN ' · ' || v_supplier_name ELSE '' END,
+        'inventory_entry', NULL, v_user_id
+      ) RETURNING id INTO item; -- Reusamos item solo temporalmente si se requiere;
+
+    -- Pago a CRÉDITO
+    ELSIF p_payment_mode = 'CRÉDITO' THEN
+      IF p_supplier_id IS NULL THEN
+        RAISE EXCEPTION 'Debe seleccionar un proveedor para compras a crédito.';
+      END IF;
+
+      SELECT id, current_debt INTO v_supplier_credit_id, v_current_debt
+      FROM public.supplier_credits
+      WHERE supplier_id = p_supplier_id
+      FOR UPDATE;
+
+      IF v_supplier_credit_id IS NULL THEN
+        -- Crear nuevo crédito si no existe
+        INSERT INTO public.supplier_credits (supplier_id, current_debt, created_by)
+        VALUES (p_supplier_id, v_total_amount, v_user_id)
+        RETURNING id INTO v_supplier_credit_id;
+      ELSE
+        -- Actualizar deuda existente
+        UPDATE public.supplier_credits
+        SET current_debt = current_debt + v_total_amount,
+            updated_at = NOW()
+        WHERE id = v_supplier_credit_id;
+      END IF;
+
+      -- El supplier_credit_movement se insertará después de crear la entrada para enlazarlo a la nota.
+    END IF;
+  END IF;
+
+  -- 3. Crear Registro Cabecera (inventory_entries)
+  INSERT INTO public.inventory_entries (
+    warehouse_id, supplier_id, purchase_order_id, payment_mode, 
+    account_id, shift_id, document_type, document_number, document_date, 
+    total_amount, notes, status, created_by
+  ) VALUES (
+    p_warehouse_id, p_supplier_id, p_purchase_order_id, p_payment_mode,
+    p_account_id, p_active_shift_id, p_document_type, p_document_number, p_document_date,
+    v_total_amount, p_notes, 'COMPLETED', v_user_id
+  ) RETURNING id INTO v_entry_id;
+
+  -- Actualizar el account_movement con el reference_id de la entrada
+  IF p_purchase_order_id IS NULL AND p_payment_mode = 'CONTADO' THEN
+      UPDATE public.account_movements 
+      SET reference_id = v_entry_id 
+      WHERE reference_type = 'inventory_entry' AND reference_id IS NULL AND created_by = v_user_id
+      -- Nota: Para mejor precisión, podríamos haber insertado el movimiento DESPUÉS de la entrada.
+      -- Esto asume una transacción rápida.
+      ;
+  END IF;
+
+  IF p_purchase_order_id IS NULL AND p_payment_mode = 'CRÉDITO' THEN
+      INSERT INTO public.supplier_credit_movements (
+          supplier_credit_id, movement_type, amount, notes, created_by
+      ) VALUES (
+          v_supplier_credit_id, 'CHARGE', v_total_amount, 'Compra a crédito — Entrada #' || v_entry_id, v_user_id
+      );
+  END IF;
+
+  -- 4. Procesar Items: inventory_entry_items, Kárdex, Batches
+  FOR item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    v_item_qty := (item->>'quantity')::DECIMAL;
+    v_item_cost := (item->>'unitCost')::DECIMAL;
+    v_item_subtotal := v_item_qty * v_item_cost;
+
+    -- Insertar item
+    INSERT INTO public.inventory_entry_items (
+      entry_id, product_id, variant_id, batch_number, expiry_date, quantity, unit_cost
+    ) VALUES (
+      v_entry_id, 
+      (item->>'productId')::UUID, 
+      (item->>'variantId')::UUID, 
+      item->>'batchNumber', 
+      (item->>'expiryDate')::DATE,
+      v_item_qty, 
+      v_item_cost
+    );
+
+    -- Actualizar o Crear Batch de Stock
+    SELECT id, available_quantity INTO v_stock_batch_id, v_previous_stock
+    FROM public.warehouse_stock_batches
+    WHERE variant_id = (item->>'variantId')::UUID 
+      AND warehouse_id = p_warehouse_id 
+      AND batch_number = (item->>'batchNumber')
+    FOR UPDATE;
+
+    IF v_stock_batch_id IS NOT NULL THEN
+      v_new_stock := v_previous_stock + v_item_qty;
+      UPDATE public.warehouse_stock_batches
+      SET available_quantity = v_new_stock,
+          updated_at = NOW(),
+          updated_by = v_user_id
+      WHERE id = v_stock_batch_id;
+    ELSE
+      v_previous_stock := 0;
+      v_new_stock := v_item_qty;
+      
+      INSERT INTO public.warehouse_stock_batches (
+        variant_id, warehouse_id, product_id, supplier_id, batch_number, expiry_date,
+        available_quantity, created_by, updated_by
+      ) VALUES (
+        (item->>'variantId')::UUID, p_warehouse_id, (item->>'productId')::UUID, p_supplier_id,
+        item->>'batchNumber', (item->>'expiryDate')::DATE, v_new_stock, v_user_id, v_user_id
+      ) RETURNING id INTO v_stock_batch_id;
+    END IF;
+
+    -- Actualizar Costo Unitario de la Variante
+    UPDATE public.product_variants
+    SET unit_cost = v_item_cost,
+        updated_by = v_user_id
+    WHERE id = (item->>'variantId')::UUID;
+
+    -- Registrar Movimiento en Kárdex (inventory_movements)
+    INSERT INTO public.inventory_movements (
+      variant_id, warehouse_id, stock_batch_id, inventory_entry_id, quantity,
+      previous_stock, new_stock, unit_cost, total_cost, reason, notes, created_by
+    ) VALUES (
+      (item->>'variantId')::UUID, p_warehouse_id, v_stock_batch_id, v_entry_id, v_item_qty,
+      v_previous_stock, v_new_stock, v_item_cost, v_item_subtotal, 'ENTRY', p_notes, v_user_id
+    );
+
+  END LOOP;
+
+  -- 5. Sincronizar Orden de Compra si existe
+  IF p_purchase_order_id IS NOT NULL THEN
+    PERFORM public.sync_purchase_order_reception_rpc(p_purchase_order_id);
+  END IF;
+
+  RETURN v_entry_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."process_inventory_entry_rpc"("p_warehouse_id" "uuid", "p_supplier_id" "uuid", "p_purchase_order_id" "uuid", "p_payment_mode" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_document_type" "text", "p_document_number" "text", "p_document_date" "date", "p_notes" "text", "p_items" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."process_inventory_exit_rpc"("p_warehouse_id" "uuid", "p_reason" "text", "p_notes" "text", "p_items" "jsonb") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_exit_id UUID;
+  v_stock_batch_id UUID;
+  v_previous_stock DECIMAL(12, 2);
+  v_new_stock DECIMAL(12, 2);
+  item JSONB;
+  v_item_qty DECIMAL(12, 2);
+  v_item_unit_cost DECIMAL(12, 2);
+  v_item_total_cost DECIMAL(12, 2);
+  v_user_id UUID;
+BEGIN
+  -- Obtener el ID del usuario actual (si se llama desde cliente autenticado)
+  v_user_id := auth.uid();
+
+  -- 1. Crear Registro Cabecera (inventory_exits)
+  INSERT INTO public.inventory_exits (
+    warehouse_id, reason, notes, created_by
+  ) VALUES (
+    p_warehouse_id, p_reason, p_notes, v_user_id
+  ) RETURNING id INTO v_exit_id;
+
+  -- 2. Procesar Items: inventory_exit_items, Kárdex, Batches
+  FOR item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    v_item_qty := (item->>'quantity')::DECIMAL;
+    v_item_unit_cost := (item->>'unit_cost')::DECIMAL;
+    v_item_total_cost := (item->>'total_cost')::DECIMAL;
+
+    -- Validar y Bloquear el Lote (SELECT FOR UPDATE)
+    SELECT id, available_quantity INTO v_stock_batch_id, v_previous_stock
+    FROM public.warehouse_stock_batches
+    WHERE id = (item->>'batch_id')::UUID 
+    FOR UPDATE;
+
+    IF v_stock_batch_id IS NULL THEN
+       RAISE EXCEPTION 'El lote % no existe en la base de datos.', item->>'batch_number';
+    END IF;
+
+    v_new_stock := v_previous_stock - v_item_qty;
+
+    IF v_new_stock < 0 THEN
+       RAISE EXCEPTION 'Stock insuficiente para % (Lote: %). Disponible: %', 
+          item->>'product_name', item->>'batch_number', v_previous_stock;
+    END IF;
+
+    -- Insertar Detalle de Salida
+    INSERT INTO public.inventory_exit_items (
+      exit_id, product_id, variant_id, batch_number, quantity, unit_cost
+    ) VALUES (
+      v_exit_id, 
+      (item->>'product_id')::UUID, 
+      (item->>'variant_id')::UUID, 
+      item->>'batch_number', 
+      v_item_qty, 
+      v_item_unit_cost
+    );
+
+    -- Actualizar Batch de Stock
+    UPDATE public.warehouse_stock_batches
+    SET available_quantity = v_new_stock,
+        updated_at = NOW(),
+        updated_by = v_user_id
+    WHERE id = v_stock_batch_id;
+
+    -- Registrar Movimiento en Kárdex (inventory_movements)
+    INSERT INTO public.inventory_movements (
+      variant_id, warehouse_id, stock_batch_id, inventory_exit_id, quantity,
+      previous_stock, new_stock, unit_cost, total_cost, reason, notes, created_by
+    ) VALUES (
+      (item->>'variant_id')::UUID, p_warehouse_id, v_stock_batch_id, v_exit_id, -v_item_qty,
+      v_previous_stock, v_new_stock, v_item_unit_cost, v_item_total_cost, 'EXIT', 'Salida por: ' || p_reason, v_user_id
+    );
+
+  END LOOP;
+
+  RETURN v_exit_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."process_inventory_exit_rpc"("p_warehouse_id" "uuid", "p_reason" "text", "p_notes" "text", "p_items" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."process_pos_sale"("payload" "jsonb") RETURNS "uuid"
@@ -960,6 +1475,44 @@ $$;
 ALTER FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."rpc_adjust_wallet"("p_user_id" "uuid", "p_amount" integer) RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_new_balance INT;
+BEGIN
+  -- Actualiza saldo con cl\u00e1usula GREATEST/LEAST para evitar
+  -- valores negativos o desbordamientos, y bloquea la fila
+  -- con FOR UPDATE para evitar race conditions concurrentes.
+  UPDATE profiles
+  SET wallet_balance = GREATEST(0, LEAST(wallet_balance + p_amount, 9999999))
+  WHERE id = p_user_id
+  RETURNING wallet_balance INTO v_new_balance;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Usuario no encontrado: %', p_user_id;
+  END IF;
+
+  -- Registra el movimiento dentro de la misma transacci\u00f3n
+  INSERT INTO wallet_movements (profile_id, points, movement_type, description)
+  VALUES (
+    p_user_id,
+    p_amount,
+    'MANUAL_BONUS',
+    CASE
+      WHEN p_amount > 0 THEN 'Abono manual de administrador'
+      ELSE 'Descuento manual de administrador'
+    END
+  );
+
+  RETURN v_new_balance;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_adjust_wallet"("p_user_id" "uuid", "p_amount" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."rpc_cancel_order"("payload" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -1074,6 +1627,69 @@ $$;
 
 
 ALTER FUNCTION "public"."rpc_cancel_order"("payload" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_close_cash_shift"("p_shift_id" "uuid", "p_actual_amount" numeric, "p_closed_by" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS json
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    v_shift RECORD;
+    v_income NUMERIC := 0;
+    v_expense NUMERIC := 0;
+    v_expected NUMERIC;
+    v_difference NUMERIC;
+    v_closed_shift RECORD;
+BEGIN
+    -- 1. Bloquear el turno para lectura/escritura (FOR UPDATE)
+    SELECT * INTO v_shift 
+    FROM cash_shifts 
+    WHERE id = p_shift_id 
+    FOR UPDATE;
+
+    IF v_shift IS NULL THEN
+        RAISE EXCEPTION 'El turno de caja especificado no existe.';
+    END IF;
+
+    IF v_shift.status = 'CLOSED' THEN
+        RAISE EXCEPTION 'Este turno de caja ya se encuentra cerrado.';
+    END IF;
+
+    -- 2. Calcular los ingresos de todos los movimientos de este turno
+    SELECT COALESCE(SUM(amount), 0) INTO v_income
+    FROM account_movements
+    WHERE shift_id = p_shift_id AND movement_type = 'INCOME';
+
+    -- 3. Calcular los egresos de todos los movimientos de este turno
+    SELECT COALESCE(SUM(amount), 0) INTO v_expense
+    FROM account_movements
+    WHERE shift_id = p_shift_id AND movement_type = 'EXPENSE';
+
+    -- 4. Recalcular el expected_amount atómicamente
+    v_expected := v_shift.opening_amount + v_income - v_expense;
+    
+    -- 5. Calcular la diferencia final
+    v_difference := p_actual_amount - v_expected;
+
+    -- 6. Actualizar y cerrar el turno
+    UPDATE cash_shifts
+    SET 
+        status = 'CLOSED',
+        closed_by = p_closed_by,
+        closed_at = now(),
+        expected_amount = v_expected,
+        actual_amount = p_actual_amount,
+        difference_amount = v_difference,
+        notes = COALESCE(p_notes, notes)
+    WHERE id = p_shift_id
+    RETURNING * INTO v_closed_shift;
+
+    -- Devolver el registro modificado
+    RETURN row_to_json(v_closed_shift);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_close_cash_shift"("p_shift_id" "uuid", "p_actual_amount" numeric, "p_closed_by" "uuid", "p_notes" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."rpc_complete_order"("payload" "jsonb") RETURNS "jsonb"
@@ -4151,6 +4767,30 @@ GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid
 
 
 
+GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) TO "anon";
+GRANT ALL ON FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."process_inventory_entry_rpc"("p_warehouse_id" "uuid", "p_supplier_id" "uuid", "p_purchase_order_id" "uuid", "p_payment_mode" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_document_type" "text", "p_document_number" "text", "p_document_date" "date", "p_notes" "text", "p_items" "jsonb") TO "anon";
+GRANT ALL ON FUNCTION "public"."process_inventory_entry_rpc"("p_warehouse_id" "uuid", "p_supplier_id" "uuid", "p_purchase_order_id" "uuid", "p_payment_mode" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_document_type" "text", "p_document_number" "text", "p_document_date" "date", "p_notes" "text", "p_items" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."process_inventory_entry_rpc"("p_warehouse_id" "uuid", "p_supplier_id" "uuid", "p_purchase_order_id" "uuid", "p_payment_mode" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_document_type" "text", "p_document_number" "text", "p_document_date" "date", "p_notes" "text", "p_items" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."process_inventory_exit_rpc"("p_warehouse_id" "uuid", "p_reason" "text", "p_notes" "text", "p_items" "jsonb") TO "anon";
+GRANT ALL ON FUNCTION "public"."process_inventory_exit_rpc"("p_warehouse_id" "uuid", "p_reason" "text", "p_notes" "text", "p_items" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."process_inventory_exit_rpc"("p_warehouse_id" "uuid", "p_reason" "text", "p_notes" "text", "p_items" "jsonb") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."process_pos_sale"("payload" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."process_pos_sale"("payload" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."process_pos_sale"("payload" "jsonb") TO "service_role";
@@ -4169,9 +4809,21 @@ GRANT ALL ON FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplie
 
 
 
+GRANT ALL ON FUNCTION "public"."rpc_adjust_wallet"("p_user_id" "uuid", "p_amount" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_adjust_wallet"("p_user_id" "uuid", "p_amount" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_adjust_wallet"("p_user_id" "uuid", "p_amount" integer) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."rpc_cancel_order"("payload" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_cancel_order"("payload" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_cancel_order"("payload" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."rpc_close_cash_shift"("p_shift_id" "uuid", "p_actual_amount" numeric, "p_closed_by" "uuid", "p_notes" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_close_cash_shift"("p_shift_id" "uuid", "p_actual_amount" numeric, "p_closed_by" "uuid", "p_notes" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_close_cash_shift"("p_shift_id" "uuid", "p_actual_amount" numeric, "p_closed_by" "uuid", "p_notes" "text") TO "service_role";
 
 
 
