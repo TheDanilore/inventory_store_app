@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form/inventory_exit_form_state.dart';
-import 'package:inventory_store_app/features/inventory/domain/usecases/get_batches_for_variant_usecase.dart';
-import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/add_exit_product/add_exit_product_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/add_exit_product/add_exit_product_state.dart';
 
 class AddExitProductSheet extends StatefulWidget {
   final List<ProductModel> allProducts;
@@ -27,77 +29,40 @@ class AddExitProductSheet extends StatefulWidget {
 }
 
 class _AddExitProductSheetState extends State<AddExitProductSheet> {
-  final _getBatchesUseCase = sl<GetBatchesForVariantUseCase>();
+  late final ProductsRepository _repository;
+  late final AddExitProductCubit _cubit;
 
   ProductModel? _selectedProduct;
   ProductVariantModel? _selectedVariant;
   Map<String, dynamic>? _selectedBatch;
 
-  List<ProductVariantModel> _availableVariants = [];
-  List<Map<String, dynamic>> _availableBatches = [];
-  bool _loadingBatches = false;
-
   double _quantity = 1;
+  String? _quantityError;
 
-  Future<void> _onProductSelected(ProductModel? p) async {
+  @override
+  void initState() {
+    super.initState();
+    _repository = GetIt.I<ProductsRepository>();
+    _cubit = AddExitProductCubit(_repository);
+  }
+
+  @override
+  void dispose() {
+    _cubit.close();
+    super.dispose();
+  }
+
+  void _onProductSelected(ProductModel? p) {
     setState(() {
       _selectedProduct = p;
       _selectedVariant = null;
       _selectedBatch = null;
-      _availableBatches = [];
-      _availableVariants = [];
       _quantity = 1;
+      _quantityError = null;
     });
 
     if (p != null) {
-      try {
-        // Lógica replicada exactamente de add_entry_product_sheet
-        final variantsData = await Supabase.instance.client
-            .from('product_variants')
-            .select(
-              '*, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name)))',
-            )
-            .eq('product_id', p.id)
-            .eq('is_active', true);
-
-        if (mounted) {
-          final List<ProductVariantModel> parsedVariants =
-              variantsData.map((v) {
-                if (v['variant_attribute_values'] is List) {
-                  final Map<String, dynamic> flatAttributes = {};
-                  for (final vav in v['variant_attribute_values'] as List) {
-                    if (vav is Map && vav['attribute_values'] is Map) {
-                      final av = vav['attribute_values'] as Map;
-                      if (av['attributes'] is Map) {
-                        final attr = av['attributes'] as Map;
-                        if (attr['name'] != null) {
-                          flatAttributes[attr['name'].toString()] =
-                              av['value']?.toString() ?? '';
-                        }
-                      }
-                    }
-                  }
-                  v['attributes'] = flatAttributes;
-                }
-                return ProductVariantModel.fromJson(v);
-              }).toList();
-
-          parsedVariants.sort((a, b) => a.label.compareTo(b.label));
-
-          setState(() {
-            _availableVariants = parsedVariants;
-            if (parsedVariants.length == 1) {
-              _selectedVariant = parsedVariants.first;
-            }
-          });
-
-          if (_availableVariants.length == 1) {
-            await _fetchBatchesForVariant(_availableVariants.first.id);
-          }
-        }
-      } catch (e) {
-        debugPrint('Error fetching variants: $e');
-      }
+      _cubit.loadVariantsAndBatches(p.id, p.usesBatches, widget.warehouseId);
     }
   }
 
@@ -105,39 +70,11 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
     setState(() {
       _selectedVariant = v;
       _selectedBatch = null;
-      _availableBatches = [];
       _quantity = 1;
+      _quantityError = null;
     });
     if (v != null) {
-      _fetchBatchesForVariant(v.id);
-    }
-  }
-
-  Future<void> _fetchBatchesForVariant(String variantId) async {
-    setState(() => _loadingBatches = true);
-    try {
-      final batches = await _getBatchesUseCase.call(
-        variantId,
-        widget.warehouseId,
-      );
-      if (mounted) {
-        setState(() {
-          _availableBatches = List<Map<String, dynamic>>.from(batches);
-          if (_availableBatches.isNotEmpty) {
-            _selectedBatch = _availableBatches.first;
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Error cargando stock: $e',
-          type: SnackbarType.error,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loadingBatches = false);
+      _cubit.loadBatches(v.id, widget.warehouseId);
     }
   }
 
@@ -191,8 +128,14 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                   final newQty = double.tryParse(qtyCtrl.text.trim());
                   if (newQty != null && newQty > 0) {
                     setState(() {
-                      _quantity =
-                          newQty > _maxAvailable ? _maxAvailable : newQty;
+                      if (newQty > _maxAvailable) {
+                        _quantityError =
+                            'Supera el stock actual (${_maxAvailable.toInt()})';
+                        _quantity = _maxAvailable;
+                      } else {
+                        _quantityError = null;
+                        _quantity = newQty;
+                      }
                     });
                   }
                   Navigator.pop(dialogContext);
@@ -216,7 +159,13 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
       return;
     }
 
-    final finalQty = _quantity > _maxAvailable ? _maxAvailable : _quantity;
+    if (_quantity > _maxAvailable) {
+      setState(() {
+        _quantityError = 'Supera el stock actual (${_maxAvailable.toInt()})';
+      });
+      return;
+    }
+
     final double vCost = _selectedVariant!.unitCost ?? 0.0;
     final double pCost = _selectedProduct!.defaultVariant?.unitCost ?? 0.0;
     final double finalUnitCost = vCost > 0 ? vCost : pCost;
@@ -225,7 +174,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
       product: _selectedProduct!,
       variant: _selectedVariant!,
       selectedBatch: _selectedBatch,
-      quantity: finalQty,
+      quantity: _quantity,
       unitCost: finalUnitCost,
     );
 
@@ -250,432 +199,486 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final availableVariants = _availableVariants;
-    final currentImageUrl = _resolveCurrentImageUrl();
+    return BlocProvider.value(
+      value: _cubit,
+      child: BlocConsumer<AddExitProductCubit, AddExitProductState>(
+        listener: (context, state) {
+          if (state.errorMessage != null) {
+            AppSnackbar.show(
+              context,
+              message: state.errorMessage!,
+              type: SnackbarType.error,
+            );
+          }
+        },
+        builder: (context, state) {
+          final availableVariants = state.availableVariants;
+          final currentImageUrl = _resolveCurrentImageUrl();
 
-    double displayCost = 0.0;
-    if (_selectedProduct != null) {
-      final double varCost = _selectedVariant?.unitCost ?? 0.0;
-      displayCost =
-          varCost > 0
-              ? varCost
-              : (_selectedProduct!.defaultVariant?.unitCost ?? 0.0);
-    }
+          double displayCost = 0.0;
+          if (_selectedProduct != null) {
+            final double varCost = _selectedVariant?.unitCost ?? 0.0;
+            displayCost =
+                varCost > 0
+                    ? varCost
+                    : (_selectedProduct!.defaultVariant?.unitCost ?? 0.0);
+          }
 
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
-    final mediaQuery = MediaQuery.of(context);
+          final theme = Theme.of(context);
+          final colorScheme = theme.colorScheme;
+          final textTheme = theme.textTheme;
+          final mediaQuery = MediaQuery.of(context);
 
-    double overlayWidth = mediaQuery.size.width - 48;
-    if (overlayWidth > 492) {
-      overlayWidth = 492;
-    }
+          double overlayWidth = mediaQuery.size.width - 48;
+          if (overlayWidth > 492) {
+            overlayWidth = 492;
+          }
 
-    return SafeArea(
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 540),
-          child: Container(
-            padding: EdgeInsets.fromLTRB(
-              24,
-              0,
-              24,
-              mediaQuery.viewInsets.bottom + 24,
-            ),
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(32),
-              ),
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 14),
-                      width: 40,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(2.5),
-                      ),
+          return SafeArea(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 540),
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    0,
+                    24,
+                    mediaQuery.viewInsets.bottom + 24,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(32),
                     ),
                   ),
-                  Text(
-                    'Agregar a la Salida',
-                    style: textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.3,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(vertical: 14),
+                            width: 40,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: AppColors.border,
+                              borderRadius: BorderRadius.circular(2.5),
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'Agregar a la Salida',
+                          style: textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.3,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
 
-                  // ── BUSCADOR DE PRODUCTO ──
-                  const _FieldLabel('Producto'),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Autocomplete<ProductModel>(
-                      displayStringForOption: (p) => p.name,
-                      // Lógica de búsqueda copiada exactamente de add_entry_product_sheet
-                      optionsBuilder: (textEditingValue) async {
-                        if (textEditingValue.text.isEmpty) {
-                          return const Iterable<ProductModel>.empty();
-                        }
-                        try {
-                          final res = await Supabase.instance.client
-                              .from('products')
-                              .select('*, product_images(*)')
-                              .ilike('name', '%${textEditingValue.text}%')
-                              .eq('is_active', true)
-                              .limit(20);
-                          return res.map((p) => ProductModel.fromJson(p));
-                        } catch (e) {
-                          debugPrint('Error en autocomplete: $e');
-                          return const Iterable<ProductModel>.empty();
-                        }
-                      },
-                      onSelected: (val) {
-                        HapticFeedback.lightImpact();
-                        _onProductSelected(val);
-                      },
-                      fieldViewBuilder: (
-                        context,
-                        textEditingController,
-                        focusNode,
-                        onFieldSubmitted,
-                      ) {
-                        if (_selectedProduct != null &&
-                            textEditingController.text !=
-                                _selectedProduct!.name) {
-                          textEditingController.text = _selectedProduct!.name;
-                        }
-                        return TextField(
-                          controller: textEditingController,
-                          focusNode: focusNode,
-                          decoration: InputDecoration(
-                            hintText: 'Buscar producto...',
-                            hintStyle: textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textMuted,
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.search_rounded,
-                              color: AppColors.textMuted,
-                            ),
-                            suffixIcon:
-                                _selectedProduct != null
-                                    ? GestureDetector(
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        textEditingController.clear();
-                                        _onProductSelected(null);
+                        // ── BUSCADOR DE PRODUCTO ──
+                        const _FieldLabel('Producto'),
+                        const SizedBox(height: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Autocomplete<ProductModel>(
+                            displayStringForOption: (p) => p.name,
+                            // Lógica de búsqueda copiada exactamente de add_entry_product_sheet
+                            optionsBuilder: (textEditingValue) async {
+                              if (textEditingValue.text.isEmpty) {
+                                return const Iterable<ProductModel>.empty();
+                              }
+                              try {
+                                final res = await _repository
+                                    .searchProductsForEntry(
+                                      textEditingValue.text,
+                                    );
+                                return res.fold(
+                                  (l) => const Iterable<ProductModel>.empty(),
+                                  (r) => r.map((p) => ProductModel.fromJson(p)),
+                                );
+                              } catch (e) {
+                                debugPrint('Error en autocomplete: $e');
+                                return const Iterable<ProductModel>.empty();
+                              }
+                            },
+                            onSelected: (val) {
+                              HapticFeedback.lightImpact();
+                              _onProductSelected(val);
+                            },
+                            fieldViewBuilder: (
+                              context,
+                              textEditingController,
+                              focusNode,
+                              onFieldSubmitted,
+                            ) {
+                              if (_selectedProduct != null &&
+                                  textEditingController.text !=
+                                      _selectedProduct!.name) {
+                                textEditingController.text =
+                                    _selectedProduct!.name;
+                              }
+                              return TextField(
+                                controller: textEditingController,
+                                focusNode: focusNode,
+                                decoration: InputDecoration(
+                                  hintText: 'Buscar producto...',
+                                  hintStyle: textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textMuted,
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.search_rounded,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  suffixIcon:
+                                      _selectedProduct != null
+                                          ? GestureDetector(
+                                            onTap: () {
+                                              HapticFeedback.lightImpact();
+                                              textEditingController.clear();
+                                              _onProductSelected(null);
+                                            },
+                                            behavior: HitTestBehavior.opaque,
+                                            child: const SizedBox(
+                                              width: 48,
+                                              height: 48,
+                                              child: Icon(
+                                                Icons.clear_rounded,
+                                                size: 20,
+                                                color: AppColors.textMuted,
+                                              ),
+                                            ),
+                                          )
+                                          : null,
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
+                                ),
+                              );
+                            },
+                            optionsViewBuilder: (context, onSelected, options) {
+                              return Align(
+                                alignment: Alignment.topLeft,
+                                child: Material(
+                                  elevation: 8,
+                                  shadowColor: Colors.black.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  color: colorScheme.surface,
+                                  clipBehavior: Clip.antiAlias,
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxHeight: 250,
+                                      maxWidth: overlayWidth,
+                                    ),
+                                    child: ListView.separated(
+                                      padding: EdgeInsets.zero,
+                                      shrinkWrap: true,
+                                      itemCount: options.length,
+                                      separatorBuilder:
+                                          (_, _) => const Divider(height: 1),
+                                      itemBuilder: (context, index) {
+                                        final p = options.elementAt(index);
+
+                                        // Lógica de imagen para la lista copiada de add_entry_product_sheet
+                                        String? imgUrl;
+                                        if (p.images.isNotEmpty) {
+                                          imgUrl =
+                                              p.images
+                                                  .firstWhere(
+                                                    (img) => img.isMain,
+                                                    orElse:
+                                                        () => p.images.first,
+                                                  )
+                                                  .imageUrl;
+                                        }
+
+                                        return ListTile(
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 16,
+                                                vertical: 4,
+                                              ),
+                                          leading: _ProductThumbnail(
+                                            imageUrl: imgUrl,
+                                            size: 40,
+                                          ),
+                                          title: Text(
+                                            p.name,
+                                            style: textTheme.bodyMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                          onTap: () {
+                                            HapticFeedback.lightImpact();
+                                            onSelected(p);
+                                          },
+                                        );
                                       },
-                                      behavior: HitTestBehavior.opaque,
-                                      child: const SizedBox(
-                                        width: 48,
-                                        height: 48,
-                                        child: Icon(
-                                          Icons.clear_rounded,
-                                          size: 20,
-                                          color: AppColors.textMuted,
-                                        ),
-                                      ),
-                                    )
-                                    : null,
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                          ),
-                        );
-                      },
-                      optionsViewBuilder: (context, onSelected, options) {
-                        return Align(
-                          alignment: Alignment.topLeft,
-                          child: Material(
-                            elevation: 8,
-                            shadowColor: Colors.black.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(16),
-                            color: colorScheme.surface,
-                            clipBehavior: Clip.antiAlias,
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxHeight: 250,
-                                maxWidth: overlayWidth,
-                              ),
-                              child: ListView.separated(
-                                padding: EdgeInsets.zero,
-                                shrinkWrap: true,
-                                itemCount: options.length,
-                                separatorBuilder:
-                                    (_, _) => const Divider(height: 1),
-                                itemBuilder: (context, index) {
-                                  final p = options.elementAt(index);
-
-                                  // Lógica de imagen para la lista copiada de add_entry_product_sheet
-                                  String? imgUrl;
-                                  if (p.images.isNotEmpty) {
-                                    imgUrl =
-                                        p.images
-                                            .firstWhere(
-                                              (img) => img.isMain,
-                                              orElse: () => p.images.first,
-                                            )
-                                            .imageUrl;
-                                  }
-
-                                  return ListTile(
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 4,
-                                    ),
-                                    leading: _ProductThumbnail(
-                                      imageUrl: imgUrl,
-                                      size: 40,
-                                    ),
-                                    title: Text(
-                                      p.name,
-                                      style: textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    onTap: () {
-                                      HapticFeedback.lightImpact();
-                                      onSelected(p);
-                                    },
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // ── VARIANTE ──
-                  if (availableVariants.length > 1) ...[
-                    DropdownButtonFormField<ProductVariantModel>(
-                      initialValue: _selectedVariant,
-                      isExpanded: true,
-                      icon: const Icon(Icons.expand_more_rounded),
-                      decoration: _dropdownDecoration(
-                        'Selecciona la Variante (Obligatorio)',
-                      ),
-                      items:
-                          availableVariants
-                              .map(
-                                (v) => DropdownMenuItem(
-                                  value: v,
-                                  child: Text(
-                                    v.label,
-                                    style: textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
-                              )
-                              .toList(),
-                      onChanged: (val) {
-                        HapticFeedback.lightImpact();
-                        _onVariantSelected(val);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 16),
 
-                  // ── IMAGEN Y COSTO (SOLO LECTURA) ──
-                  if (_selectedProduct != null) ...[
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        _ProductThumbnail(imageUrl: currentImageUrl, size: 64),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: TextField(
-                            readOnly: true,
-                            controller: TextEditingController(
-                              text: displayCost.toStringAsFixed(2),
+                        // ── VARIANTE ──
+                        if (state.isLoadingVariants) ...[
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24.0),
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
+                        ] else if (availableVariants.length > 1) ...[
+                          DropdownButtonFormField<ProductVariantModel>(
+                            initialValue: _selectedVariant,
+                            isExpanded: true,
+                            icon: const Icon(Icons.expand_more_rounded),
+                            decoration: _dropdownDecoration(
+                              'Selecciona la Variante (Obligatorio)',
                             ),
-                            style: textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
+                            items:
+                                availableVariants
+                                    .map(
+                                      (v) => DropdownMenuItem(
+                                        value: v,
+                                        child: Text(
+                                          v.label,
+                                          style: textTheme.bodyMedium?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                            onChanged: (val) {
+                              HapticFeedback.lightImpact();
+                              _onVariantSelected(val);
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // ── IMAGEN Y COSTO (SOLO LECTURA) ──
+                        if (_selectedProduct != null) ...[
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              _ProductThumbnail(
+                                imageUrl: currentImageUrl,
+                                size: 64,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: TextField(
+                                  readOnly: true,
+                                  controller: TextEditingController(
+                                    text: displayCost.toStringAsFixed(2),
+                                  ),
+                                  style: textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                  decoration: InputDecoration(
+                                    labelText: 'Costo Unitario (S/)',
+                                    labelStyle: textTheme.bodyMedium?.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    filled: true,
+                                    fillColor: AppColors.background,
+                                    prefixText: 'S/ ',
+                                    prefixStyle: textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(
+                                        color: AppColors.border,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(
+                                        color: AppColors.border,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+
+                        // ── LOTE Y STOCK ──
+                        if (_selectedVariant != null) ...[
+                          if (state.isLoadingBatches)
+                            const Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16.0),
+                                child: CircularProgressIndicator(),
+                              ),
+                            )
+                          else if (state.availableBatches.isEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.danger.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Text(
+                                'No hay stock disponible de esta variante en el almacén seleccionado.',
+                                style: TextStyle(
+                                  color: AppColors.danger,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                            decoration: InputDecoration(
-                              labelText: 'Costo Unitario (S/)',
-                              labelStyle: textTheme.bodyMedium?.copyWith(
+                            const SizedBox(height: 20),
+                          ] else if (_selectedProduct?.usesBatches == true) ...[
+                            DropdownButtonFormField<Map<String, dynamic>>(
+                              initialValue: _selectedBatch,
+                              isExpanded: true,
+                              icon: const Icon(Icons.expand_more_rounded),
+                              decoration: _dropdownDecoration(
+                                'Lote disponible en el Almacén',
+                              ),
+                              items:
+                                  state.availableBatches.map((b) {
+                                    final qty = (b['available_quantity'] as num)
+                                        .toStringAsFixed(0);
+                                    return DropdownMenuItem(
+                                      value: b,
+                                      child: Text(
+                                        '${b['batch_number']} (Stock: $qty)',
+                                        style: textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                              onChanged: (val) {
+                                HapticFeedback.lightImpact();
+                                setState(() {
+                                  _selectedBatch = val;
+                                  _quantity = 1;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ],
+
+                        // ── CANTIDAD ──
+                        if (_selectedBatch != null && _maxAvailable > 0) ...[
+                          const _FieldLabel('Cantidad a retirar'),
+                          const SizedBox(height: 8),
+                          _HorizontalStepper(
+                            value: _quantity,
+                            onAdd: () {
+                              if (_quantity < _maxAvailable) {
+                                HapticFeedback.lightImpact();
+                                setState(() {
+                                  _quantity++;
+                                  _quantityError = null;
+                                });
+                              } else {
+                                setState(() {
+                                  _quantityError = 'Límite de stock alcanzado';
+                                });
+                              }
+                            },
+                            onRemove:
+                                _quantity > 1
+                                    ? () {
+                                      HapticFeedback.lightImpact();
+                                      setState(() {
+                                        _quantity--;
+                                        _quantityError = null;
+                                      });
+                                    }
+                                    : null,
+                            onTapValue: _showQuantityDialog,
+                          ),
+                          if (_quantityError != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                _quantityError!,
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: AppColors.danger,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          Center(
+                            child: Text(
+                              'Máximo disponible: ${_maxAvailable.toInt()}',
+                              style: textTheme.labelMedium?.copyWith(
                                 color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
                               ),
-                              filled: true,
-                              fillColor: AppColors.background,
-                              prefixText: 'S/ ',
-                              prefixStyle: textTheme.titleMedium?.copyWith(
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // ── BOTÓN GUARDAR ──
+                        SizedBox(
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed:
+                                (_selectedProduct != null &&
+                                        _selectedVariant != null &&
+                                        _selectedBatch != null &&
+                                        _maxAvailable > 0)
+                                    ? () {
+                                      HapticFeedback.mediumImpact();
+                                      _onSave();
+                                    }
+                                    : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.danger,
+                              foregroundColor: colorScheme.onPrimary,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: Text(
+                              'Agregar a la lista',
+                              style: textTheme.labelLarge?.copyWith(
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(
-                                  color: AppColors.border,
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(
-                                  color: AppColors.border,
-                                ),
+                                color: Colors.white,
                               ),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                  ],
-
-                  // ── LOTE Y STOCK ──
-                  if (_selectedVariant != null) ...[
-                    if (_loadingBatches)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16.0),
-                          child: CircularProgressIndicator(),
-                        ),
-                      )
-                    else if (_availableBatches.isEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.danger.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Text(
-                          'No hay stock disponible de esta variante en el almacén seleccionado.',
-                          style: TextStyle(
-                            color: AppColors.danger,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ] else if (_selectedProduct?.usesBatches == true) ...[
-                      DropdownButtonFormField<Map<String, dynamic>>(
-                        initialValue: _selectedBatch,
-                        isExpanded: true,
-                        icon: const Icon(Icons.expand_more_rounded),
-                        decoration: _dropdownDecoration(
-                          'Lote disponible en el Almacén',
-                        ),
-                        items:
-                            _availableBatches.map((b) {
-                              final qty = (b['available_quantity'] as num)
-                                  .toStringAsFixed(0);
-                              return DropdownMenuItem(
-                                value: b,
-                                child: Text(
-                                  '${b['batch_number']} (Stock: $qty)',
-                                  style: textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                        onChanged: (val) {
-                          HapticFeedback.lightImpact();
-                          setState(() {
-                            _selectedBatch = val;
-                            _quantity = 1;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                  ],
-
-                  // ── CANTIDAD ──
-                  if (_selectedBatch != null && _maxAvailable > 0) ...[
-                    const _FieldLabel('Cantidad a retirar'),
-                    const SizedBox(height: 8),
-                    _HorizontalStepper(
-                      value: _quantity,
-                      onAdd: () {
-                        if (_quantity < _maxAvailable) {
-                          HapticFeedback.lightImpact();
-                          setState(() => _quantity++);
-                        }
-                      },
-                      onRemove:
-                          _quantity > 1
-                              ? () {
-                                HapticFeedback.lightImpact();
-                                setState(() => _quantity--);
-                              }
-                              : null,
-                      onTapValue: _showQuantityDialog,
-                    ),
-                    const SizedBox(height: 8),
-                    Center(
-                      child: Text(
-                        'Máximo disponible: ${_maxAvailable.toInt()}',
-                        style: textTheme.labelMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // ── BOTÓN GUARDAR ──
-                  SizedBox(
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed:
-                          (_selectedProduct != null &&
-                                  _selectedVariant != null &&
-                                  _selectedBatch != null &&
-                                  _maxAvailable > 0)
-                              ? () {
-                                HapticFeedback.mediumImpact();
-                                _onSave();
-                              }
-                              : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.danger,
-                        foregroundColor: colorScheme.onPrimary,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: Text(
-                        'Agregar a la lista',
-                        style: textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
