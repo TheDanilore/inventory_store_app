@@ -792,12 +792,21 @@ BEGIN
 
       -- Verificar saldo suficiente
       IF v_current_balance < v_total_amount THEN
-        RAISE EXCEPTION 'Saldo insuficiente en la cuenta (Disponible: %)', v_current_balance;
+        RAISE EXCEPTION 'Saldo insuficiente en la cuenta financiera.';
       END IF;
 
-      -- Verificar turno si es CAJA (aunque en la BD se maneja con p_active_shift_id)
-      IF v_account_type = 'CAJA' AND p_active_shift_id IS NULL THEN
-        RAISE EXCEPTION 'La caja seleccionada no tiene un turno abierto.';
+      -- VALIDACIÓN ATÓMICA DE TURNO (ignora el parámetro de cliente)
+      IF v_account_type = 'CAJA' THEN
+        SELECT id INTO p_active_shift_id
+        FROM cash_shifts
+        WHERE account_id = p_account_id AND status = 'OPEN'
+        FOR UPDATE;
+        
+        IF NOT FOUND THEN
+          RAISE EXCEPTION 'La caja seleccionada no tiene un turno abierto para realizar el pago al contado.';
+        END IF;
+      ELSE
+        p_active_shift_id := NULL;
       END IF;
 
       -- Actualizar Saldo
@@ -945,6 +954,7 @@ BEGIN
 
   -- 5. Sincronizar Orden de Compra si existe
   IF p_purchase_order_id IS NOT NULL THEN
+    -- El RPC de recepción ya hace todo internamente!
     PERFORM public.sync_purchase_order_reception_rpc(p_purchase_order_id);
   END IF;
 
