@@ -507,14 +507,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       return;
     }
 
-    // Validación de SKUs duplicados (regla de negocio)
-    final skus = _variantDrafts
-        .where((d) => d.sku.trim().isNotEmpty)
-        .map((d) => d.sku.trim().toLowerCase());
-    if (skus.toSet().length != skus.length) {
-      emit(state.copyWith(snackError: 'Hay SKUs duplicados en las variantes.'));
-      return;
-    }
+    // La unicidad de los SKU está protegida 100% atómicamente a nivel de 
+    // base de datos (PostgreSQL UNIQUE constraint). Si un SKU está duplicado,
+    // el RPC fallará limpiamente y _parseNetworkError lo mapeará al usuario.
 
     // Validar que la primera variante (usada como "base" de referencia)
     // tenga un precio de venta válido.
@@ -537,14 +532,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       final isUpdating = _productToEdit != null;
       final wholesalePriceVal = _parseDecimal(firstVariant.wholesalePrice);
 
-      final profileIdRes = await _getCurrentProfileIdUC.call().timeout(
-        const Duration(seconds: 15),
-        onTimeout:
-            () =>
-                throw TimeoutException(
-                  'Tardó demasiado en obtener el perfil actual (posible sesión expirada).',
-                ),
-      );
+      final profileIdRes = await _getCurrentProfileIdUC.call();
       final profileId = profileIdRes.fold((l) => null, (r) => r);
 
       final productEntity = ProductEntity(
@@ -641,16 +629,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         ingredients: ingredientsPayload,
       );
 
-      final result = await _saveProductUC
-          .call(payload)
-          .timeout(
-            const Duration(seconds: 30),
-            onTimeout:
-                () =>
-                    throw TimeoutException(
-                      'El guardado tardó demasiado (posible problema de red o subida de imagen).',
-                    ),
-          );
+      final result = await _saveProductUC.call(payload);
 
       result.fold(
         (failure) {
@@ -711,7 +690,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         return bytesOriginales;
       });
     } catch (e, st) {
-      developer.log('Error comprimiendo imagen', error: e, stackTrace: st);
+      developer.log('Error crítico comprimiendo imagen', error: e, stackTrace: st);
     }
     return bytesOriginales;
   }

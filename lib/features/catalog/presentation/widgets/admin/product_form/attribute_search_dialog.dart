@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'dart:developer' as developer;
 
 enum AttributeSearchMode { attribute, value }
 
@@ -36,6 +38,13 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
     _search('');
   }
 
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
   void _search(String term) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
@@ -43,32 +52,36 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
       setState(() => _isLoading = true);
       try {
         final isAttrMode = widget.mode == AttributeSearchMode.attribute;
-        final tableName = isAttrMode ? 'attributes' : 'attribute_values';
-        final fieldName = isAttrMode ? 'name' : 'value';
+        final repository = sl<ProductsRepository>();
+        
+        final result = isAttrMode 
+            ? await repository.searchAttributes(term)
+            : await repository.searchAttributeValues(widget.parentAttributeId!, term);
 
-        dynamic query = Supabase.instance.client
-            .from(tableName)
-            .select('id, $fieldName');
-
-        if (term.trim().isNotEmpty) {
-          query = query.ilike(fieldName, '%${term.trim()}%');
-        }
-
-        if (!isAttrMode && widget.parentAttributeId != null) {
-          query = query.eq('attribute_id', widget.parentAttributeId!);
-        }
-
-        final res = await query.order(fieldName).limit(15);
-
+        result.fold(
+          (failure) {
+            developer.log('Error searching attributes', error: failure.message);
+            if (mounted) {
+              AppSnackbar.show(context, message: 'Error de red al buscar', type: SnackbarType.error);
+              setState(() => _isLoading = false);
+            }
+          },
+          (data) {
+            if (mounted) {
+              setState(() {
+                _results = data;
+                _hasSearched = term.trim().isNotEmpty;
+                _isLoading = false;
+              });
+            }
+          }
+        );
+      } catch (e, st) {
+        developer.log('Critical Error searching attributes', error: e, stackTrace: st);
         if (mounted) {
-          setState(() {
-            _results = List<Map<String, dynamic>>.from(res);
-            _hasSearched = term.trim().isNotEmpty;
-            _isLoading = false;
-          });
+           AppSnackbar.show(context, message: 'Ocurrió un error inesperado', type: SnackbarType.error);
+           setState(() => _isLoading = false);
         }
-      } catch (e) {
-        if (mounted) setState(() => _isLoading = false);
       }
     });
   }
@@ -80,65 +93,45 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
     setState(() => _isLoading = true);
 
     try {
+      final repository = sl<ProductsRepository>();
       if (widget.mode == AttributeSearchMode.attribute) {
-        // Buscar exacto primero
-        final exist =
-            await Supabase.instance.client
-                .from('attributes')
-                .select('id, name')
-                .ilike('name', term)
-                .maybeSingle();
-
-        if (exist != null) {
-          if (mounted) Navigator.pop(context, exist);
-          return;
-        }
-
-        final res =
-            await Supabase.instance.client
-                .from('attributes')
-                .insert({'name': term})
-                .select('id, name')
-                .single();
-
-        if (mounted) Navigator.pop(context, res);
+        final result = await repository.getOrCreateAttribute(term);
+        result.fold(
+          (failure) {
+            if (mounted) {
+              AppSnackbar.show(context, message: failure.message, type: SnackbarType.error);
+              setState(() => _isLoading = false);
+            }
+          },
+          (data) {
+            if (mounted) Navigator.pop(context, data);
+          }
+        );
       } else {
-        // Modo Valor
         if (widget.parentAttributeId == null) {
           throw Exception('No se puede crear un valor sin un atributo padre.');
         }
 
-        final exist =
-            await Supabase.instance.client
-                .from('attribute_values')
-                .select('id, value')
-                .eq('attribute_id', widget.parentAttributeId!)
-                .ilike('value', term)
-                .maybeSingle();
-
-        if (exist != null) {
-          if (mounted) Navigator.pop(context, exist);
-          return;
-        }
-
-        final res =
-            await Supabase.instance.client
-                .from('attribute_values')
-                .insert({
-                  'attribute_id': widget.parentAttributeId!,
-                  'value': term,
-                })
-                .select('id, value')
-                .single();
-
-        if (mounted) Navigator.pop(context, res);
+        final result = await repository.getOrCreateAttributeValue(widget.parentAttributeId!, term);
+        result.fold(
+          (failure) {
+            if (mounted) {
+              AppSnackbar.show(context, message: failure.message, type: SnackbarType.error);
+              setState(() => _isLoading = false);
+            }
+          },
+          (data) {
+            if (mounted) Navigator.pop(context, data);
+          }
+        );
       }
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error creating attribute', error: e, stackTrace: st);
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: 'Error al crear: $e',
-          backgroundColor: Colors.red,
+          message: 'Error al crear',
+          type: SnackbarType.error,
         );
         setState(() => _isLoading = false);
       }

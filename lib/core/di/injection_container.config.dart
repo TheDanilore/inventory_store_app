@@ -549,10 +549,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i992.OrdersRepository>(
       () => _i647.OrdersRepositoryImpl(),
     );
-    gh.factory<_i753.GetActiveProductsAndVariantsUseCase>(
-      () =>
-          _i753.GetActiveProductsAndVariantsUseCase(gh<_i454.SupabaseClient>()),
-    );
     gh.factory<_i664.GetActiveSuppliersUseCase>(
       () => _i664.GetActiveSuppliersUseCase(gh<_i454.SupabaseClient>()),
     );
@@ -1093,14 +1089,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i561.AccountMovementsRepository>(),
       ),
     );
-    gh.factory<_i401.InventoryExitFormCubit>(
-      () => _i401.InventoryExitFormCubit(
-        getActiveWarehousesUseCase: gh<_i160.GetActiveWarehousesExitsUseCase>(),
-        getActiveProductsAndVariantsUseCase:
-            gh<_i753.GetActiveProductsAndVariantsUseCase>(),
-        createInventoryExitUseCase: gh<_i738.CreateInventoryExitUseCase>(),
-      ),
-    );
     gh.factory<_i851.CustomerCreditListCubit>(
       () => _i851.CustomerCreditListCubit(
         gh<_i749.GetCreditAccountsUseCase>(),
@@ -1247,6 +1235,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i987.CheckCustomerPurchaseUseCase>(
       () => _i987.CheckCustomerPurchaseUseCase(gh<_i570.ProductsRepository>()),
+    );
+    gh.factory<_i753.GetActiveProductsAndVariantsUseCase>(
+      () => _i753.GetActiveProductsAndVariantsUseCase(
+        gh<_i570.ProductsRepository>(),
+      ),
     );
     gh.factory<_i828.GetDefaultAddressUc>(
       () => _i828.GetDefaultAddressUc(gh<_i760.CheckoutRepository>()),
@@ -1479,6 +1472,14 @@ extension GetItInjectableX on _i174.GetIt {
         claimDailyCheckinUC: gh<_i380.ClaimDailyCheckinUC>(),
         recordMiniGameUC: gh<_i626.RecordMiniGameUC>(),
         supabase: gh<_i454.SupabaseClient>(),
+      ),
+    );
+    gh.factory<_i401.InventoryExitFormCubit>(
+      () => _i401.InventoryExitFormCubit(
+        getActiveWarehousesUseCase: gh<_i160.GetActiveWarehousesExitsUseCase>(),
+        getActiveProductsAndVariantsUseCase:
+            gh<_i753.GetActiveProductsAndVariantsUseCase>(),
+        createInventoryExitUseCase: gh<_i738.CreateInventoryExitUseCase>(),
       ),
     );
     gh.factory<_i1039.ProductDetailCubit>(

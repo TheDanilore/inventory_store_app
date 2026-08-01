@@ -28,6 +28,7 @@ abstract class ProductsRepository {
     required String productId,
     required bool isActive,
   });
+  Future<Either<Failure, Map<String, dynamic>>> getActiveProductsAndVariants();
 
   // Variantes (Lectura)
   Future<Either<Failure, ProductVariantEntity?>> getVariantById(
@@ -51,6 +52,12 @@ abstract class ProductsRepository {
     String value,
   );
   Future<Either<Failure, void>> deleteAttributeValue(String valueId);
+
+  // Búsqueda para el UI
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributes(String term);
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributeValues(String attributeId, String term);
+  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttribute(String name);
+  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttributeValue(String attributeId, String value);
   Future<Either<Failure, List<AttributeEntity>>> getAttributes();
 
   // Imágenes

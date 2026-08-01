@@ -185,11 +185,9 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
           );
         }
       },
-      child: BlocSelector<ProductFormCubit, ProductFormState, bool>(
-        selector: (state) => state.isInitializingData || state.hasErrorLoading,
-        builder: (context, isInitializingOrError) {
+      child: BlocBuilder<ProductFormCubit, ProductFormState>(
+        builder: (context, state) {
           final cubit = context.read<ProductFormCubit>();
-          final state = cubit.state;
           return PopScope(
             canPop: false,
             onPopInvokedWithResult: (didPop, result) async {

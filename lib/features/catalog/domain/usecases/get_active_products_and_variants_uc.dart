@@ -1,32 +1,17 @@
 import 'package:injectable/injectable.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 
 @injectable
 class GetActiveProductsAndVariantsUseCase {
-  final SupabaseClient _supabase;
+  final ProductsRepository repository;
 
-  GetActiveProductsAndVariantsUseCase(this._supabase);
+  GetActiveProductsAndVariantsUseCase(this.repository);
 
   Future<Map<String, dynamic>> call() async {
-    final response = await _supabase
-        .from('products')
-        .select('*, product_variants(*)')
-        .eq('is_active', true)
-        .eq('product_variants.is_active', true);
-
-    final products = <Map<String, dynamic>>[];
-    final variants = <Map<String, dynamic>>[];
-
-    for (var product in response) {
-      final pVariants = product['product_variants'] as List<dynamic>? ?? [];
-      products.add({
-        ...product,
-        'product_variants':
-            null, // Remueve los anidados para limpiar el modelo de producto
-      });
-      variants.addAll(pVariants.map((v) => Map<String, dynamic>.from(v)));
-    }
-
-    return {'products': products, 'variants': variants};
+    final result = await repository.getActiveProductsAndVariants();
+    return result.fold(
+      (failure) => throw Exception(failure.message),
+      (data) => data,
+    );
   }
 }

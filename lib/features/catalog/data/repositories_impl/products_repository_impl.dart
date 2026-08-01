@@ -271,6 +271,34 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
+  Future<Either<Failure, Map<String, dynamic>>> getActiveProductsAndVariants() async {
+    try {
+      final response = await _supabase
+          .from('products')
+          .select('id, name, is_active, product_variants(id, product_id, sku, sale_price, is_active)')
+          .eq('is_active', true)
+          .eq('product_variants.is_active', true);
+
+      final products = <Map<String, dynamic>>[];
+      final variants = <Map<String, dynamic>>[];
+
+      for (var product in response) {
+        final pVariants = product['product_variants'] as List<dynamic>? ?? [];
+        products.add({
+          'id': product['id'],
+          'name': product['name'],
+          'is_active': product['is_active']
+        });
+        variants.addAll(pVariants.map((v) => Map<String, dynamic>.from(v)));
+      }
+
+      return right({'products': products, 'variants': variants});
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  @override
   Future<Either<Failure, AttributeEntity>> createAttribute(String name) async {
     try {
       final res =
@@ -343,6 +371,73 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .update({'value': value.trim()})
           .eq('id', valueId);
       return right(null);
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  // --- BÚSQUEDA PARA UI (ATRIBUTOS) ---
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributes(String term) async {
+    try {
+      var query = _supabase.from('attributes').select('id, name');
+      if (term.trim().isNotEmpty) {
+        query = query.ilike('name', '%${term.trim()}%');
+      }
+      final res = await query.order('name').limit(15);
+      return right(List<Map<String, dynamic>>.from(res));
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributeValues(String attributeId, String term) async {
+    try {
+      var query = _supabase.from('attribute_values').select('id, value').eq('attribute_id', attributeId);
+      if (term.trim().isNotEmpty) {
+        query = query.ilike('value', '%${term.trim()}%');
+      }
+      final res = await query.order('value').limit(15);
+      return right(List<Map<String, dynamic>>.from(res));
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttribute(String name) async {
+    try {
+      // Uso de un RPC o query atómico sería ideal, pero simulamos un upsert atómico:
+      // Supabase no tiene 'ON CONFLICT DO NOTHING RETURNING id' directo en insert simple si no hay un constraint unique definido en 'name',
+      // pero asumiendo que 'name' es unique, podemos intentar insertar y si falla buscar, 
+      // o usar el método seguro de Supabase upsert (onConflict).
+      // Para no romper la DB si 'name' no es un constraint real, hacemos el select primero por ahora o preferiblemente upsert.
+      final exist = await _supabase.from('attributes').select('id, name').ilike('name', name.trim()).maybeSingle();
+      if (exist != null) return right(exist);
+
+      final res = await _supabase.from('attributes').insert({'name': name.trim()}).select('id, name').single();
+      return right(res);
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttributeValue(String attributeId, String value) async {
+    try {
+      final exist = await _supabase.from('attribute_values')
+          .select('id, value')
+          .eq('attribute_id', attributeId)
+          .ilike('value', value.trim())
+          .maybeSingle();
+      if (exist != null) return right(exist);
+
+      final res = await _supabase.from('attribute_values')
+          .insert({'attribute_id': attributeId, 'value': value.trim()})
+          .select('id, value')
+          .single();
+      return right(res);
     } catch (e, st) {
       return _handleError(e, st);
     }
