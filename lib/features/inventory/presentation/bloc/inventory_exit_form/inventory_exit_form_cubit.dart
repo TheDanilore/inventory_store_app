@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
@@ -17,7 +17,7 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
   final GetActiveWarehousesExitsUseCase getActiveWarehousesUseCase;
   final GetActiveProductsAndVariantsUseCase getActiveProductsAndVariantsUseCase;
   final CreateInventoryExitUseCase createInventoryExitUseCase;
-  final _supabase = Supabase.instance.client;
+  
   static const _draftKey = 'inventory_exit_draft';
 
   InventoryExitFormCubit({
@@ -30,8 +30,13 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
     emit(state.copyWith(isLoading: true, errorMessage: '', isSuccess: false));
 
     try {
-      final warehousesData = await getActiveWarehousesUseCase.call();
-      final productsData = await getActiveProductsAndVariantsUseCase.call();
+      final futures = await Future.wait([
+        getActiveWarehousesUseCase.call(),
+        getActiveProductsAndVariantsUseCase.call()
+      ]);
+
+      final warehousesData = futures[0] as List<WarehouseModel>;
+      final productsData = futures[1] as Map<String, dynamic>;
 
       final warehouses =
           warehousesData
@@ -69,8 +74,8 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
 
       await _loadDraft();
       emit(state.copyWith(isLoading: false));
-    } catch (e) {
-      debugPrint('Error loading form data: $e');
+    } catch (e, st) {
+      debugPrint('Error loading form data: $e\n$st');
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
@@ -143,18 +148,6 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
     emit(state.copyWith(isSaving: true, errorMessage: '', isSuccess: false));
 
     try {
-      String? createdByProfileId;
-      final currentUser = _supabase.auth.currentUser;
-      if (currentUser != null) {
-        final profile =
-            await _supabase
-                .from('profiles')
-                .select('id')
-                .eq('auth_user_id', currentUser.id)
-                .maybeSingle();
-        createdByProfileId = profile?['id'] as String?;
-      }
-
       final itemsData =
           state.items.map((item) {
             return {
@@ -173,15 +166,15 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
         warehouseId: state.selectedWarehouseId!,
         reason: state.selectedReason,
         notes: notes?.isEmpty == true ? null : notes,
-        createdByProfileId: createdByProfileId,
+        createdByProfileId: null,
         items: itemsData,
       );
 
       await clearDraft();
 
       emit(state.copyWith(isSaving: false, isSuccess: true));
-    } catch (e) {
-      debugPrint('Error saving exit: $e');
+    } catch (e, st) {
+      debugPrint('Error saving exit: $e\n$st');
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||

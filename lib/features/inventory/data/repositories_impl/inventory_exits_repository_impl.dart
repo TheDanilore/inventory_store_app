@@ -130,84 +130,18 @@ class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
     required String? createdByProfileId,
     required List<dynamic> items,
   }) async {
-    // 1. Cabecera
-    final exitHeader =
-        await _supabase
-            .from('inventory_exits')
-            .insert({
-              'warehouse_id': warehouseId,
-              'reason': reason,
-              'notes': notes,
-              'created_by': createdByProfileId,
-            })
-            .select('id')
-            .single();
-
-    final exitId = exitHeader['id'] as String;
-
-    for (final item in items) {
-      final String batchId = item['batch_id'];
-      final double quantity = item['quantity'];
-      final String batchNumber = item['batch_number'];
-      final String variantId = item['variant_id'];
-      final String productId = item['product_id'];
-      final double unitCost = item['unit_cost'];
-      final double totalCost = item['total_cost'];
-      final String productName = item['product_name'];
-
-      // RE-VALIDACIÓN
-      final currentBatch =
-          await _supabase
-              .from('warehouse_stock_batches')
-              .select('available_quantity')
-              .eq('id', batchId)
-              .single();
-
-      final double previousStock =
-          (currentBatch['available_quantity'] as num).toDouble();
-      final double newStock = previousStock - quantity;
-
-      if (newStock < 0) {
-        throw Exception(
-          'Stock insuficiente para $productName (Lote: $batchNumber). Disponible actual: $previousStock',
-        );
+    try {
+      await _supabase.rpc('process_inventory_exit_rpc', params: {
+        'p_warehouse_id': warehouseId,
+        'p_reason': reason,
+        'p_notes': notes,
+        'p_items': items,
+      });
+    } catch (e) {
+      if (e.toString().contains('Stock insuficiente')) {
+        throw Exception(e.toString().replaceAll('Exception: ', ''));
       }
-
-      // Detalle de salida
-      await _supabase.from('inventory_exit_items').insert({
-        'exit_id': exitId,
-        'product_id': productId,
-        'variant_id': variantId,
-        'quantity': quantity,
-        'batch_number': batchNumber,
-        'unit_cost': unitCost,
-      });
-
-      // Actualización Kardex Físico
-      await _supabase
-          .from('warehouse_stock_batches')
-          .update({
-            'available_quantity': newStock,
-            'updated_at': DateTime.now().toIso8601String(),
-            'updated_by': createdByProfileId,
-          })
-          .eq('id', batchId);
-
-      // Movimiento Kardex Valorizado
-      await _supabase.from('inventory_movements').insert({
-        'variant_id': variantId,
-        'warehouse_id': warehouseId,
-        'stock_batch_id': batchId,
-        'inventory_exit_id': exitId,
-        'quantity': -quantity,
-        'previous_stock': previousStock,
-        'new_stock': newStock,
-        'unit_cost': unitCost,
-        'total_cost': totalCost,
-        'reason': 'EXIT',
-        'notes': 'Salida por: $reason',
-        'created_by': createdByProfileId,
-      });
+      rethrow;
     }
   }
 }
