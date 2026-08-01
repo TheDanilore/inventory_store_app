@@ -1,9 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders/orders_cubit.dart';
-import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders/customer_orders_cubit.dart';
@@ -27,20 +24,8 @@ class OrdersRoutes {
     GoRoute(
       path: '/orders',
       builder:
-          (context, state) => MultiBlocProvider(
-            providers: [
-              BlocProvider(
-                create: (ctx) {
-                  final userId =
-                      ctx.read<AuthCubit>().state.currentUser?.id ??
-                      Supabase.instance.client.auth.currentUser?.id;
-                  return sl<CustomerOrdersCubit>()..init(userId);
-                },
-              ),
-              BlocProvider(
-                create: (_) => sl<CartCubit>()..initCart(cartType: 'customer'),
-              ),
-            ],
+          (context, state) => BlocProvider(
+            create: (ctx) => sl<CustomerOrdersCubit>(),
             child: const CustomerOrdersScreen(),
           ),
     ),

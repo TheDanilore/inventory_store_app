@@ -11,7 +11,7 @@ class ProcessCheckoutUc {
 
   ProcessCheckoutUc(this.repository);
 
-  Future<Either<Failure, String>> call({
+  Future<Either<Failure, Map<String, dynamic>>> call({
     required String? customerId,
     required double totalAmount,
     required int pointsUsed,

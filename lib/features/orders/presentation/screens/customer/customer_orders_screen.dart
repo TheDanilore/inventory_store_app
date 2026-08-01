@@ -11,7 +11,6 @@ import 'package:inventory_store_app/features/orders/presentation/bloc/customer_o
 import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders/customer_orders_state.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/orders/customer_order_card.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/orders/customer_order_detail_sheet.dart';
-import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 
@@ -38,12 +37,6 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userId = context.read<AuthCubit>().state.currentUser?.id;
-      if (userId != null && userId.isNotEmpty) {
-        context.read<CustomerOrdersCubit>().init(userId);
-      }
-    });
   }
 
   @override
@@ -76,41 +69,52 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
 
   Future<void> _handleReorder(String orderId) async {
     try {
-      final items = await context.read<CustomerOrdersCubit>().fetchOrderItems(
+      final result = await context.read<CustomerOrdersCubit>().fetchOrderItems(
         orderId,
       );
       if (!mounted) return;
 
-      final cartCubit = context.read<CartCubit>();
-      for (final item in items) {
-        final cartItem = CartItemEntity(
-          productId: item.productId ?? '',
-          productName: item.productName ?? 'Producto',
-          cartKey: item.variantId ?? item.productId ?? item.id,
-          quantity: item.quantity,
-          unitPrice: item.appliedPrice,
-          unitCost: item.unitCost,
-          availableStock: 999,
-          usesBatches: false,
-          variantId: item.variantId,
-          variantLabel: item.variantDisplayName,
-          imageUrl: item.displayImageUrl,
-          sku: item.sku,
-          isSelected: true,
-        );
-        cartCubit.addItem(cartItem);
-      }
+      result.fold(
+        (failure) {
+          AppSnackbar.show(
+            context,
+            message: 'Error al recuperar los productos: ${failure.message}',
+            type: SnackbarType.error,
+          );
+        },
+        (items) {
+          final cartCubit = context.read<CartCubit>();
+          for (final item in items) {
+            final cartItem = CartItemEntity(
+              productId: item.productId ?? '',
+              productName: item.productName ?? 'Producto',
+              cartKey: item.variantId ?? item.productId ?? item.id,
+              quantity: item.quantity,
+              unitPrice: item.appliedPrice,
+              unitCost: item.unitCost,
+              availableStock: 999,
+              usesBatches: false,
+              variantId: item.variantId,
+              variantLabel: item.variantDisplayName,
+              imageUrl: item.displayImageUrl,
+              sku: item.sku,
+              isSelected: true,
+            );
+            cartCubit.addItem(cartItem);
+          }
 
-      AppSnackbar.show(
-        context,
-        message: '¡Productos de la orden añadidos al carrito!',
-        type: SnackbarType.success,
+          AppSnackbar.show(
+            context,
+            message: '¡Productos de la orden añadidos al carrito!',
+            type: SnackbarType.success,
+          );
+        }
       );
     } catch (e) {
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: 'Error al recuperar los productos del pedido.',
+          message: 'Error inesperado al recuperar los productos.',
           type: SnackbarType.error,
         );
       }
@@ -118,27 +122,30 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   }
 
   Future<void> _showOrderDetails(OrderEntity order) async {
-    try {
-      final items = await context.read<CustomerOrdersCubit>().fetchOrderItems(
-        order.id,
-      );
+    final result = await context.read<CustomerOrdersCubit>().fetchOrderItems(
+      order.id,
+    );
 
-      if (!mounted) return;
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (ctx) => CustomerOrderDetailSheet(order: order, items: items),
-      );
-    } catch (e) {
-      if (mounted) {
+    if (!mounted) return;
+    
+    result.fold(
+      (failure) {
         AppSnackbar.show(
           context,
-          message: 'Error al recuperar detalles del pedido.',
+          message: failure.message,
           type: SnackbarType.error,
         );
+      },
+      (items) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder:
+              (context) => CustomerOrderDetailSheet(order: order, items: items),
+        );
       }
-    }
+    );
   }
 
   @override

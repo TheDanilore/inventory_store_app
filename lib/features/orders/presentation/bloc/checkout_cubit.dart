@@ -186,40 +186,15 @@ class CheckoutCubit extends Cubit<CheckoutState> {
       return;
     }
 
-    // 2. Calcular totales
+    // 2. Enviar a RPC
     emit(state.copyWith(status: CheckoutStatus.sending));
 
-    final totalAmount = cartCubit.state.selectedTotalAmount;
-    final usedPoints = calculateApplicablePoints(
-      cartCubit,
-      pointsToSolesRatio,
-      saldoPuntos,
-    );
-    final discountAmount = usedPoints * pointsToSolesRatio;
-    final totalAPagar = totalAmount - discountAmount;
-    final pointsEarned =
-        conversionRate > 0 ? (totalAPagar / conversionRate).floor() : 0;
-
-    double totalProfit = 0;
-    for (final item in itemsToBuy) {
-      double profitPerUnit = item.unitPrice - item.unitCost;
-      final usedPts = getAppliedPointsForItem(
-        item,
-        cartCubit,
-        pointsToSolesRatio,
-        saldoPuntos,
-      );
-      profitPerUnit -= (usedPts * pointsToSolesRatio) / item.quantity;
-      totalProfit += profitPerUnit * item.quantity;
-    }
-
-    // 3. Registrar en base de datos
     final result = await processCheckoutUc(
       customerId: profileId,
-      totalAmount: totalAPagar,
-      pointsUsed: usedPoints,
-      pointsEarned: pointsEarned,
-      totalProfit: totalProfit,
+      totalAmount: 0, // Ignored by new RPC
+      pointsUsed: state.usePoints ? 1 : 0, // Used as boolean flag
+      pointsEarned: 0,
+      totalProfit: 0,
       warehouseId: activeWarehouseId,
       itemsToBuy: itemsToBuy,
     );
@@ -231,7 +206,12 @@ class CheckoutCubit extends Cubit<CheckoutState> {
           errorMessage: failure.message,
         ),
       ),
-      (orderId) async {
+      (payload) async {
+        // 3. Extraer totales calculados por el servidor
+        final orderId = payload['order_id'] as String;
+        final totalAPagar = (payload['total_amount'] as num).toDouble();
+        final usedPoints = (payload['points_used'] as num).toInt();
+
         // 4. Limpiar carrito
         cartCubit.removeSelected();
 

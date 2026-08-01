@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'dart:developer' as developer;
 import 'package:fpdart/fpdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
@@ -25,7 +25,7 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
               .maybeSingle();
       return Right(res);
     } catch (e, st) {
-      debugPrint('🔴 [CheckoutRepository] Error en fetchDefaultAddress: $e\n$st');
+      developer.log('Error en fetchDefaultAddress', error: e, stackTrace: st);
       return Left(ServerFailure(message: 'Error fetching address: $e'));
     }
   }
@@ -40,7 +40,8 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
               .limit(1)
               .maybeSingle();
       return Right(warehouseResp?['id']);
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error fetching warehouse', error: e, stackTrace: st);
       return Left(ServerFailure(message: 'Error fetching warehouse: $e'));
     }
   }
@@ -68,13 +69,13 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
 
       return Right(stockMap);
     } catch (e, st) {
-      debugPrint('🔴 [CheckoutRepository] Error en fetchStockForVariants: $e\n$st');
+      developer.log('Error en fetchStockForVariants', error: e, stackTrace: st);
       return Left(ServerFailure(message: 'Error fetching stock: $e'));
     }
   }
 
   @override
-  Future<Either<Failure, String>> processOrder({
+  Future<Either<Failure, Map<String, dynamic>>> processOrder({
     required String? customerId,
     required double totalAmount,
     required int pointsUsed,
@@ -84,46 +85,26 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
     required List<CartItemEntity> itemsToBuy,
   }) async {
     try {
-      // 1. Crear Orden
-      final orderResp =
-          await _supabase
-              .from('orders')
-              .insert({
-                'customer_id': customerId,
-                'created_by': customerId,
-                'total_amount': totalAmount,
-                'points_used': pointsUsed,
-                'points_earned': pointsEarned,
-                'total_profit': totalProfit,
-                'payment_method': 'POR ACORDAR',
-                'status': 'PENDING',
-                'payment_status': 'PENDING',
-                'warehouse_id': warehouseId,
-              })
-              .select('id')
-              .single();
+      final itemsJson = itemsToBuy.map((item) => {
+        'product_id': item.productId,
+        'variant_id': item.variantId,
+        'quantity': item.quantity,
+      }).toList();
 
-      final orderId = orderResp['id'];
+      final orderResp = await _supabase.rpc(
+        'process_customer_checkout',
+        params: {
+          'p_customer_id': customerId,
+          'p_warehouse_id': warehouseId,
+          'p_items': itemsJson,
+          'p_use_points': pointsUsed > 0,
+        },
+      );
 
-      // 2. Insertar items
-      final itemsToInsert =
-          itemsToBuy.map((item) {
-            return {
-              'order_id': orderId,
-              'product_id': item.productId,
-              'variant_id': item.variantId,
-              'quantity': item.quantity,
-              'unit_cost': item.unitCost,
-              'applied_price': item.unitPrice,
-              'net_profit': (item.unitPrice - item.unitCost) * item.quantity,
-            };
-          }).toList();
-
-      await _supabase.from('order_items').insert(itemsToInsert);
-
-      return Right(orderId);
+      final payload = orderResp as Map<String, dynamic>;
+      return Right(payload);
     } catch (e, st) {
-      debugPrint('🔴 [CheckoutRepository] Error en processOrder: $e\n$st');
+      developer.log('Error en processOrder RPC', error: e, stackTrace: st);
       return Left(ServerFailure(message: 'Error processing order: $e'));
     }
   }

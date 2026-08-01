@@ -3,7 +3,7 @@ import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 
 abstract class CheckoutRepository {
-  Future<Either<Failure, String>> processOrder({
+  Future<Either<Failure, Map<String, dynamic>>> processOrder({
     required String? customerId,
     required double totalAmount,
     required int pointsUsed,

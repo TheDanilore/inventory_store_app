@@ -1,4 +1,7 @@
+import 'dart:developer' as developer;
+import 'package:fpdart/fpdart.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
@@ -66,6 +69,7 @@ class OrdersCubit extends Cubit<OrdersState> {
 
     result.fold(
       (failure) {
+        developer.log('Error en loadOrders', error: failure.message);
         emit(
           state.copyWith(
             isLoading: false,
@@ -118,11 +122,14 @@ class OrdersCubit extends Cubit<OrdersState> {
     loadOrders(reset: true);
   }
 
-  Future<List<OrderItemEntity>> fetchOrderItems(String orderId) async {
+  Future<Either<Failure, List<OrderItemEntity>>> fetchOrderItems(String orderId) async {
     final result = await _getOrderItemsUc(orderId);
     return result.fold(
-      (failure) => throw Exception(failure.message),
-      (items) => items,
+      (failure) {
+        developer.log('Error en fetchOrderItems (Admin)', error: failure.message);
+        return Left(failure);
+      },
+      (items) => Right(items),
     );
   }
 
@@ -139,6 +146,7 @@ class OrdersCubit extends Cubit<OrdersState> {
 
         await itemsResult.fold(
           (failure) async {
+            developer.log('Error al cargar items antes de completar', error: failure.message);
             emit(state.copyWith(errorMessage: failure.message));
           },
           (items) async {
@@ -164,7 +172,10 @@ class OrdersCubit extends Cubit<OrdersState> {
             );
 
             saveRes.fold(
-              (failure) => emit(state.copyWith(errorMessage: failure.message)),
+              (failure) {
+                developer.log('Error al guardar cambios de orden', error: failure.message);
+                emit(state.copyWith(errorMessage: failure.message));
+              },
               (_) => null,
             );
           },
@@ -181,7 +192,10 @@ class OrdersCubit extends Cubit<OrdersState> {
         );
 
         cancelRes.fold(
-          (failure) => emit(state.copyWith(errorMessage: failure.message)),
+          (failure) {
+            developer.log('Error cancelando orden', error: failure.message);
+            emit(state.copyWith(errorMessage: failure.message));
+          },
           (_) => null,
         );
       } else {
@@ -192,7 +206,8 @@ class OrdersCubit extends Cubit<OrdersState> {
       }
 
       await loadOrders(background: true);
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error inesperado actualizando estado', error: e, stackTrace: st);
       emit(state.copyWith(errorMessage: 'Error actualizando estado: $e'));
     } finally {
       final updatedProcessing = Set<String>.from(state.processingOrders)
@@ -210,6 +225,7 @@ class OrdersCubit extends Cubit<OrdersState> {
 
       await rawItemsResult.fold(
         (failure) async {
+          developer.log('Error obteniendo items para PDF', error: failure.message);
           emit(state.copyWith(errorMessage: failure.message));
         },
         (rawItems) async {
@@ -224,7 +240,8 @@ class OrdersCubit extends Cubit<OrdersState> {
           );
         },
       );
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error generando PDF', error: e, stackTrace: st);
       emit(state.copyWith(errorMessage: 'Error generando PDF: $e'));
     } finally {
       emit(state.copyWith(generatingPdfOrderId: null));

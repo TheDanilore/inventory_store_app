@@ -225,24 +225,32 @@ class _CustomerOrderCardState extends State<CustomerOrderCard> {
     setState(() => _isLoadingDetails = true);
     try {
       final cubit = context.read<CustomerOrdersCubit>();
-      final items = await cubit.fetchOrderItems(order.id);
+      final result = await cubit.fetchOrderItems(order.id);
 
       if (!mounted) return;
       setState(() => _isLoadingDetails = false);
 
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder:
-            (context) => CustomerOrderDetailSheet(order: order, items: items),
+      result.fold(
+        (failure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(failure.message)),
+          );
+        },
+        (items) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => CustomerOrderDetailSheet(order: order, items: items),
+          );
+        },
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoadingDetails = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error inesperado: $e')),
+      );
     }
   }
 
