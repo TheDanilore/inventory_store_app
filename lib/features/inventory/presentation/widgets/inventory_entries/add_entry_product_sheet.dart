@@ -7,7 +7,12 @@ import 'package:inventory_store_app/features/inventory/data/models/warehouse_sto
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:inventory_store_app/features/inventory/presentation/bloc/add_entry_product/add_entry_product_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/add_entry_product/add_entry_product_state.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 
 class AddEntryProductSheet extends StatefulWidget {
   final String? warehouseId;
@@ -25,42 +30,25 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   final _costCtrl = TextEditingController();
   final _batchCtrl = TextEditingController();
   DateTime? _expiryDate;
-  List<WarehouseStockBatchModel> _existingBatches = [];
-  List<ProductVariantModel> _availableVariants = [];
   // Clave única para forzar la reconstrucción del widget Autocomplete de lotes
   // cuando cambia el producto/variante, reseteando su controller interno.
   Key _batchAutocompleteKey = UniqueKey();
 
-  Future<void> _fetchExistingBatches(String variantId) async {
-    if (widget.warehouseId == null) {
-      return;
-    }
-    try {
-      final response = await Supabase.instance.client
-          .from('warehouse_stock_batches')
-          .select('*')
-          .eq('variant_id', variantId)
-          .eq('warehouse_id', widget.warehouseId!)
-          .order('expiry_date', ascending: true, nullsFirst: false)
-          .order('created_at', ascending: true);
+  late final AddEntryProductCubit _cubit;
+  late final ProductsRepository _repository;
 
-      if (mounted) {
-        setState(() {
-          _existingBatches =
-              response
-                  .map((e) => WarehouseStockBatchModel.fromJson(e))
-                  .toList();
-        });
-      }
-    } catch (e) {
-      debugPrint('[Batches] Error al obtener lotes: $e');
-    }
+  @override
+  void initState() {
+    super.initState();
+    _repository = GetIt.I<ProductsRepository>();
+    _cubit = AddEntryProductCubit(_repository);
   }
 
   @override
   void dispose() {
     _costCtrl.dispose();
     _batchCtrl.dispose();
+    _cubit.close();
     super.dispose();
   }
 
@@ -79,9 +67,6 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       _quantity = 1;
       _batchCtrl.clear();
       _expiryDate = null;
-      _existingBatches = [];
-      _availableVariants = [];
-      // Resetear el Autocomplete de lotes al cambiar de producto
       _batchAutocompleteKey = UniqueKey();
       if (val != null) {
         _costCtrl.text = (val.defaultVariant?.unitCost ?? 0).toStringAsFixed(2);
@@ -91,61 +76,11 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
     });
 
     if (val != null) {
-      try {
-        final variantsData = await Supabase.instance.client
-            .from('product_variants')
-            .select(
-              '*, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name)))',
-            )
-            .eq('product_id', val.id)
-            .eq('is_active', true);
-
-        if (mounted) {
-          final List<ProductVariantModel> parsedVariants =
-              variantsData.map((v) {
-                if (v['variant_attribute_values'] is List) {
-                  final Map<String, dynamic> flatAttributes = {};
-                  for (final vav in v['variant_attribute_values'] as List) {
-                    if (vav is Map && vav['attribute_values'] is Map) {
-                      final av = vav['attribute_values'] as Map;
-                      if (av['attributes'] is Map) {
-                        final attr = av['attributes'] as Map;
-                        if (attr['name'] != null) {
-                          flatAttributes[attr['name'].toString()] =
-                              av['value']?.toString() ?? '';
-                        }
-                      }
-                    }
-                  }
-                  v['attributes'] = flatAttributes;
-                }
-                return ProductVariantModel.fromJson(v);
-              }).toList();
-
-          parsedVariants.sort((a, b) => a.label.compareTo(b.label));
-
-          setState(() {
-            _availableVariants = parsedVariants;
-            if (parsedVariants.length == 1) {
-              _selectedVariant = parsedVariants.first;
-              final cost = _effectiveCost(
-                variant: _selectedVariant,
-                product: val,
-              );
-              _costCtrl.text = cost.toStringAsFixed(2);
-            }
-          });
-
-          // FIX BUG #1: Si el producto NO tiene variantes extras (variante única/default),
-          // el DropdownButtonFormField no se muestra y _onVariantChanged nunca se llama.
-          // En ese caso, tomamos el id de la única variante disponible y cargamos los lotes.
-          if (_availableVariants.length == 1 && val.usesBatches) {
-            await _fetchExistingBatches(_availableVariants.first.id);
-          }
-        }
-      } catch (e) {
-        debugPrint('Error fetching variants: $e');
-      }
+      _cubit.loadVariantsAndBatches(
+        val.id,
+        val.usesBatches,
+        widget.warehouseId,
+      );
     }
   }
 
@@ -154,14 +89,14 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       _selectedVariant = val;
       final cost = _effectiveCost(variant: val, product: _selectedProduct);
       _costCtrl.text = cost.toStringAsFixed(2);
-      // Resetear lotes y campo al cambiar de variante
-      _existingBatches = [];
       _batchCtrl.clear();
       _batchAutocompleteKey = UniqueKey();
     });
 
-    if (val != null && _selectedProduct?.usesBatches == true) {
-      _fetchExistingBatches(val.id);
+    if (val != null &&
+        _selectedProduct?.usesBatches == true &&
+        widget.warehouseId != null) {
+      _cubit.loadBatches(val.id, widget.warehouseId!);
     }
   }
 
@@ -219,9 +154,9 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
     qtyCtrl.dispose();
   }
 
-  void _submit() {
+  void _submit(AddEntryProductState state) {
     final cost = double.tryParse(_costCtrl.text.trim()) ?? 0.0;
-    final availableVariants = _availableVariants;
+    final availableVariants = state.availableVariants;
 
     if (_selectedProduct == null) {
       AppSnackbar.show(
@@ -294,315 +229,211 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final availableVariants = _availableVariants;
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
-    final mediaQuery = MediaQuery.of(context);
+    return BlocProvider.value(
+      value: _cubit,
+      child: BlocBuilder<AddEntryProductCubit, AddEntryProductState>(
+        builder: (context, state) {
+          final availableVariants = state.availableVariants;
+          final theme = Theme.of(context);
+          final colorScheme = theme.colorScheme;
+          final textTheme = theme.textTheme;
+          final mediaQuery = MediaQuery.of(context);
 
-    // Calcular el ancho del Autocomplete para que coincida con el espacio disponible
-    double overlayWidth = mediaQuery.size.width - 48; // 24 padding por lado
-    if (overlayWidth > 492) {
-      overlayWidth = 492; // Max width de 540 - 48
-    }
+          // Calcular el ancho del Autocomplete para que coincida con el espacio disponible
+          double overlayWidth =
+              mediaQuery.size.width - 48; // 24 padding por lado
+          if (overlayWidth > 492) {
+            overlayWidth = 492; // Max width de 540 - 48
+          }
 
-    final bool usesBatches = _selectedProduct?.usesBatches == true;
-    final currentImageUrl = _resolveCurrentImageUrl();
+          final bool usesBatches = _selectedProduct?.usesBatches == true;
+          final currentImageUrl = _resolveCurrentImageUrl();
 
-    return SafeArea(
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 540),
-          child: Container(
-            padding: EdgeInsets.fromLTRB(
-              24,
-              0,
-              24,
-              mediaQuery.viewInsets.bottom + 24,
-            ),
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(32),
-              ),
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 14),
-                      width: 40,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(2.5),
-                      ),
+          return SafeArea(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 540),
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    0,
+                    24,
+                    mediaQuery.viewInsets.bottom + 24,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(32),
                     ),
                   ),
-                  Text(
-                    'Añadir Producto',
-                    style: textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.3,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // ── BUSCADOR DE PRODUCTO (AUTOCOMPLETE) ──
-                  const _FieldLabel('Producto'),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Autocomplete<ProductModel>(
-                      displayStringForOption: (p) => p.name,
-                      optionsBuilder: (textEditingValue) async {
-                        if (textEditingValue.text.isEmpty) {
-                          return const Iterable<ProductModel>.empty();
-                        }
-                        try {
-                          final res = await Supabase.instance.client
-                              .from('products')
-                              .select('*, product_images(*)')
-                              .ilike('name', '%${textEditingValue.text}%')
-                              .eq('is_active', true)
-                              .limit(20);
-                          return res.map((p) => ProductModel.fromJson(p));
-                        } catch (e) {
-                          debugPrint('Error en autocomplete: $e');
-                          return const Iterable<ProductModel>.empty();
-                        }
-                      },
-                      onSelected: _onProductChanged,
-                      fieldViewBuilder: (
-                        context,
-                        textEditingController,
-                        focusNode,
-                        onFieldSubmitted,
-                      ) {
-                        if (_selectedProduct != null &&
-                            textEditingController.text !=
-                                _selectedProduct!.name) {
-                          textEditingController.text = _selectedProduct!.name;
-                        }
-                        return TextField(
-                          controller: textEditingController,
-                          focusNode: focusNode,
-                          decoration: InputDecoration(
-                            hintText: 'Buscar producto...',
-                            hintStyle: textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textMuted,
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.search_rounded,
-                              color: AppColors.textMuted,
-                            ),
-                            suffixIcon:
-                                _selectedProduct != null
-                                    ? GestureDetector(
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        textEditingController.clear();
-                                        _onProductChanged(null);
-                                      },
-                                      behavior: HitTestBehavior.opaque,
-                                      child: const SizedBox(
-                                        width: 48,
-                                        height: 48,
-                                        child: Icon(
-                                          Icons.clear_rounded,
-                                          size: 20,
-                                          color: AppColors.textMuted,
-                                        ),
-                                      ),
-                                    )
-                                    : null,
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                          ),
-                        );
-                      },
-                      optionsViewBuilder: (context, onSelected, options) {
-                        return Align(
-                          alignment: Alignment.topLeft,
-                          child: Material(
-                            elevation: 8,
-                            shadowColor: Colors.black.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(16),
-                            color: colorScheme.surface,
-                            clipBehavior: Clip.antiAlias,
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxHeight: 250,
-                                maxWidth: overlayWidth,
-                              ),
-                              child: ListView.separated(
-                                padding: EdgeInsets.zero,
-                                shrinkWrap: true,
-                                itemCount: options.length,
-                                separatorBuilder:
-                                    (_, _) => const Divider(height: 1),
-                                itemBuilder: (context, index) {
-                                  final p = options.elementAt(index);
-                                  String? imgUrl;
-                                  if (p.images.isNotEmpty) {
-                                    imgUrl =
-                                        p.images
-                                            .firstWhere(
-                                              (img) => img.isMain,
-                                              orElse: () => p.images.first,
-                                            )
-                                            .imageUrl;
-                                  }
-                                  return ListTile(
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 4,
-                                    ),
-                                    leading: _ProductThumbnail(
-                                      imageUrl: imgUrl,
-                                      size: 40,
-                                    ),
-                                    title: Text(
-                                      p.name,
-                                      style: textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    onTap: () {
-                                      HapticFeedback.lightImpact();
-                                      onSelected(p);
-                                    },
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Selector de variante (solo si tiene 2 o más variantes)
-                  if (availableVariants.length > 1) ...[
-                    DropdownButtonFormField<ProductVariantModel>(
-                      initialValue: _selectedVariant,
-                      isExpanded: true,
-                      icon: const Icon(Icons.expand_more_rounded),
-                      decoration: _dropdownDecoration(
-                        'Selecciona la Variante (Obligatorio)',
-                      ),
-                      items:
-                          availableVariants
-                              .map(
-                                (v) => DropdownMenuItem(
-                                  value: v,
-                                  child: Text(
-                                    v.label,
-                                    style: textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                      onChanged: (val) {
-                        HapticFeedback.lightImpact();
-                        _onVariantChanged(val);
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  if (_selectedProduct != null) ...[
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _ProductThumbnail(imageUrl: currentImageUrl, size: 64),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Builder(
-                            builder: (context) {
-                              final cost =
-                                  double.tryParse(_costCtrl.text.trim()) ?? 0.0;
-                              final isZeroCost = cost == 0.0;
+                        Center(
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(vertical: 14),
+                            width: 40,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: AppColors.border,
+                              borderRadius: BorderRadius.circular(2.5),
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'Añadir Producto',
+                          style: textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.3,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // ── BUSCADOR DE PRODUCTO (AUTOCOMPLETE) ──
+                        const _FieldLabel('Producto'),
+                        const SizedBox(height: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Autocomplete<ProductModel>(
+                            displayStringForOption: (p) => p.name,
+                            optionsBuilder: (textEditingValue) async {
+                              if (textEditingValue.text.isEmpty) {
+                                return const Iterable<ProductModel>.empty();
+                              }
+                              try {
+                                final res = await _repository
+                                    .searchProductsForEntry(
+                                      textEditingValue.text,
+                                    );
+                                return res.fold(
+                                  (l) => const Iterable<ProductModel>.empty(),
+                                  (r) => r.map((p) => ProductModel.fromJson(p)),
+                                );
+                              } catch (e) {
+                                debugPrint('Error en autocomplete: $e');
+                                return const Iterable<ProductModel>.empty();
+                              }
+                            },
+                            onSelected: _onProductChanged,
+                            fieldViewBuilder: (
+                              context,
+                              textEditingController,
+                              focusNode,
+                              onFieldSubmitted,
+                            ) {
+                              if (_selectedProduct != null &&
+                                  textEditingController.text !=
+                                      _selectedProduct!.name) {
+                                textEditingController.text =
+                                    _selectedProduct!.name;
+                              }
                               return TextField(
-                                controller: _costCtrl,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+\.?\d{0,2}'),
-                                  ),
-                                ],
-                                onChanged: (_) => setState(() {}),
-                                style: textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                ),
+                                controller: textEditingController,
+                                focusNode: focusNode,
                                 decoration: InputDecoration(
-                                  labelText: 'Costo de Compra (S/)',
-                                  labelStyle: textTheme.bodyMedium?.copyWith(
-                                    color:
-                                        isZeroCost
-                                            ? AppColors.warning
-                                            : AppColors.textSecondary,
+                                  hintText: 'Buscar producto...',
+                                  hintStyle: textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textMuted,
                                   ),
-                                  helperText:
-                                      isZeroCost
-                                          ? '⚠ Verifica el costo — está en S/ 0.00'
+                                  prefixIcon: const Icon(
+                                    Icons.search_rounded,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  suffixIcon:
+                                      _selectedProduct != null
+                                          ? GestureDetector(
+                                            onTap: () {
+                                              HapticFeedback.lightImpact();
+                                              textEditingController.clear();
+                                              _onProductChanged(null);
+                                            },
+                                            behavior: HitTestBehavior.opaque,
+                                            child: const SizedBox(
+                                              width: 48,
+                                              height: 48,
+                                              child: Icon(
+                                                Icons.clear_rounded,
+                                                size: 20,
+                                                color: AppColors.textMuted,
+                                              ),
+                                            ),
+                                          )
                                           : null,
-                                  helperStyle: textTheme.bodySmall?.copyWith(
-                                    color: AppColors.warning,
-                                    fontWeight: FontWeight.w600,
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
                                   ),
-                                  filled: true,
-                                  fillColor: AppColors.background,
-                                  prefixText: 'S/ ',
-                                  prefixStyle: textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
+                                ),
+                              );
+                            },
+                            optionsViewBuilder: (context, onSelected, options) {
+                              return Align(
+                                alignment: Alignment.topLeft,
+                                child: Material(
+                                  elevation: 8,
+                                  shadowColor: Colors.black.withValues(
+                                    alpha: 0.1,
                                   ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide(
-                                      color:
-                                          isZeroCost
-                                              ? AppColors.warning
-                                              : AppColors.border,
+                                  borderRadius: BorderRadius.circular(16),
+                                  color: colorScheme.surface,
+                                  clipBehavior: Clip.antiAlias,
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxHeight: 250,
+                                      maxWidth: overlayWidth,
                                     ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide(
-                                      color:
-                                          isZeroCost
-                                              ? AppColors.warning
-                                              : AppColors.border,
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide(
-                                      color:
-                                          isZeroCost
-                                              ? AppColors.warning
-                                              : AppColors.primary,
-                                      width: 1.5,
+                                    child: ListView.separated(
+                                      padding: EdgeInsets.zero,
+                                      shrinkWrap: true,
+                                      itemCount: options.length,
+                                      separatorBuilder:
+                                          (_, _) => const Divider(height: 1),
+                                      itemBuilder: (context, index) {
+                                        final p = options.elementAt(index);
+                                        String? imgUrl;
+                                        if (p.images.isNotEmpty) {
+                                          imgUrl =
+                                              p.images
+                                                  .firstWhere(
+                                                    (img) => img.isMain,
+                                                    orElse:
+                                                        () => p.images.first,
+                                                  )
+                                                  .imageUrl;
+                                        }
+                                        return ListTile(
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 16,
+                                                vertical: 4,
+                                              ),
+                                          leading: _ProductThumbnail(
+                                            imageUrl: imgUrl,
+                                            size: 40,
+                                          ),
+                                          title: Text(
+                                            p.name,
+                                            style: textTheme.bodyMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                          onTap: () {
+                                            HapticFeedback.lightImpact();
+                                            onSelected(p);
+                                          },
+                                        );
+                                      },
                                     ),
                                   ),
                                 ),
@@ -610,244 +441,423 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                             },
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                    const _FieldLabel('Cantidad'),
-                    const SizedBox(height: 8),
-                    _HorizontalStepper(
-                      value: _quantity,
-                      onAdd: () {
-                        HapticFeedback.lightImpact();
-                        setState(() => _quantity++);
-                      },
-                      onRemove:
-                          _quantity > 1
-                              ? () {
-                                HapticFeedback.lightImpact();
-                                setState(() => _quantity--);
-                              }
-                              : null,
-                      onTapValue: _showQuantityDialog,
-                    ),
-                  ],
-
-                  const SizedBox(height: 24),
-
-                  // Lote (solo si el producto lo requiere)
-                  if (usesBatches) ...[
-                    Autocomplete<WarehouseStockBatchModel>(
-                      key: _batchAutocompleteKey,
-                      optionsBuilder: (TextEditingValue textEditingValue) {
-                        if (textEditingValue.text.isEmpty) {
-                          return _existingBatches;
-                        }
-                        return _existingBatches.where(
-                          (option) => option.batchNumber.toLowerCase().contains(
-                            textEditingValue.text.toLowerCase(),
+                        // Selector de variante (solo si tiene 2 o más variantes)
+                        if (state.isLoadingVariants) ...[
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24.0),
+                            child: Center(child: CircularProgressIndicator()),
                           ),
-                        );
-                      },
-                      displayStringForOption: (option) => option.batchNumber,
-                      fieldViewBuilder: (
-                        context,
-                        textEditingController,
-                        focusNode,
-                        onFieldSubmitted,
-                      ) {
-                        return TextField(
-                          controller: textEditingController,
-                          focusNode: focusNode,
-                          onChanged: (value) => _batchCtrl.text = value,
-                          decoration: InputDecoration(
-                            labelText: 'Nº de Lote (Obligatorio)',
-                            labelStyle: textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
+                        ] else if (availableVariants.length > 1) ...[
+                          DropdownButtonFormField<ProductVariantModel>(
+                            initialValue: _selectedVariant,
+                            isExpanded: true,
+                            icon: const Icon(Icons.expand_more_rounded),
+                            decoration: _dropdownDecoration(
+                              'Selecciona la Variante (Obligatorio)',
                             ),
-                            hintText:
-                                _existingBatches.isEmpty
-                                    ? 'Ej: LOTE-2024-001'
-                                    : 'Escribe o toca para ver lotes existentes...',
-                            filled: true,
-                            fillColor: AppColors.background,
-                            prefixIcon: const Icon(
-                              Icons.qr_code_scanner,
-                              color: AppColors.textMuted,
-                            ),
-                            suffixIcon:
-                                _existingBatches.isNotEmpty
-                                    ? Tooltip(
-                                      message:
-                                          '${_existingBatches.length} lote(s) existente(s) en este almacén',
-                                      child: Icon(
-                                        Icons.layers_rounded,
-                                        color: AppColors.primary.withValues(
-                                          alpha: 0.7,
+                            items:
+                                availableVariants
+                                    .map(
+                                      (v) => DropdownMenuItem(
+                                        value: v,
+                                        child: Text(
+                                          v.label,
+                                          style: textTheme.bodyMedium?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
-                                        size: 20,
                                       ),
                                     )
-                                    : null,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(
-                                color: AppColors.border,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(
-                                color: AppColors.border,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(
-                                color: AppColors.primary,
-                                width: 1.5,
-                              ),
-                            ),
+                                    .toList(),
+                            onChanged: (val) {
+                              HapticFeedback.lightImpact();
+                              _onVariantChanged(val);
+                            },
                           ),
-                        );
-                      },
-                      optionsViewBuilder: (context, onSelected, options) {
-                        return Align(
-                          alignment: Alignment.topLeft,
-                          child: Material(
-                            elevation: 8.0,
-                            shadowColor: Colors.black.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(16),
-                            color: colorScheme.surface,
-                            clipBehavior: Clip.antiAlias,
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxHeight: 260,
-                                maxWidth: overlayWidth,
+                          const SizedBox(height: 24),
+                        ],
+
+                        if (_selectedProduct != null) ...[
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              _ProductThumbnail(
+                                imageUrl: currentImageUrl,
+                                size: 64,
                               ),
-                              child: ListView.separated(
-                                padding: EdgeInsets.zero,
-                                shrinkWrap: true,
-                                itemCount: options.length,
-                                separatorBuilder:
-                                    (_, _) => const Divider(height: 1),
-                                itemBuilder: (BuildContext context, int index) {
-                                  final option = options.elementAt(index);
-                                  final dateStr =
-                                      option.expiryDate != null
-                                          ? '${option.expiryDate!.day.toString().padLeft(2, '0')}/${option.expiryDate!.month.toString().padLeft(2, '0')}/${option.expiryDate!.year}'
-                                          : 'Sin vencimiento';
-                                  return ListTile(
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                    leading: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(
-                                        Icons.tag,
-                                        color: AppColors.primary,
-                                        size: 20,
-                                      ),
-                                    ),
-                                    title: Text(
-                                      option.batchNumber,
-                                      style: textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      'Vence: $dateStr',
-                                      style: textTheme.bodySmall,
-                                    ),
-                                    trailing: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          'Stock',
-                                          style: textTheme.labelSmall?.copyWith(
-                                            color: AppColors.textMuted,
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Builder(
+                                  builder: (context) {
+                                    final cost =
+                                        double.tryParse(
+                                          _costCtrl.text.trim(),
+                                        ) ??
+                                        0.0;
+                                    final isZeroCost = cost == 0.0;
+                                    return TextField(
+                                      controller: _costCtrl,
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
                                           ),
-                                        ),
-                                        Text(
-                                          option.availableQuantity
-                                              .toStringAsFixed(0),
-                                          style: textTheme.titleSmall?.copyWith(
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(
+                                          RegExp(r'^\d+\.?\d{0,2}'),
                                         ),
                                       ],
-                                    ),
-                                    onTap: () {
+                                      onChanged: (_) => setState(() {}),
+                                      style: textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                      decoration: InputDecoration(
+                                        labelText: 'Costo de Compra (S/)',
+                                        labelStyle: textTheme.bodyMedium
+                                            ?.copyWith(
+                                              color:
+                                                  isZeroCost
+                                                      ? AppColors.warning
+                                                      : AppColors.textSecondary,
+                                            ),
+                                        helperText:
+                                            isZeroCost
+                                                ? '⚠ Verifica el costo — está en S/ 0.00'
+                                                : null,
+                                        helperStyle: textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: AppColors.warning,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                        filled: true,
+                                        fillColor: AppColors.background,
+                                        prefixText: 'S/ ',
+                                        prefixStyle: textTheme.titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          borderSide: BorderSide(
+                                            color:
+                                                isZeroCost
+                                                    ? AppColors.warning
+                                                    : AppColors.border,
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          borderSide: BorderSide(
+                                            color:
+                                                isZeroCost
+                                                    ? AppColors.warning
+                                                    : AppColors.border,
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          borderSide: BorderSide(
+                                            color:
+                                                isZeroCost
+                                                    ? AppColors.warning
+                                                    : AppColors.primary,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+
+                          const _FieldLabel('Cantidad'),
+                          const SizedBox(height: 8),
+                          _HorizontalStepper(
+                            value: _quantity,
+                            onAdd: () {
+                              HapticFeedback.lightImpact();
+                              setState(() => _quantity++);
+                            },
+                            onRemove:
+                                _quantity > 1
+                                    ? () {
                                       HapticFeedback.lightImpact();
-                                      onSelected(option);
+                                      setState(() => _quantity--);
+                                    }
+                                    : null,
+                            onTapValue: _showQuantityDialog,
+                          ),
+                        ],
+
+                        const SizedBox(height: 24),
+
+                        // Lote (solo si el producto lo requiere)
+                        if (usesBatches) ...[
+                          if (state.isLoadingBatches)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8.0),
+                              child: Center(child: CircularProgressIndicator()),
+                            )
+                          else
+                            Autocomplete<WarehouseStockBatchModel>(
+                              key: _batchAutocompleteKey,
+                              optionsBuilder: (
+                                TextEditingValue textEditingValue,
+                              ) {
+                                final batches =
+                                    state.availableBatches
+                                        .map(
+                                          (e) =>
+                                              WarehouseStockBatchModel.fromJson(
+                                                e,
+                                              ),
+                                        )
+                                        .toList();
+                                if (textEditingValue.text.isEmpty) {
+                                  return batches;
+                                }
+                                return batches.where(
+                                  (option) =>
+                                      option.batchNumber.toLowerCase().contains(
+                                        textEditingValue.text.toLowerCase(),
+                                      ),
+                                );
+                              },
+                              displayStringForOption:
+                                  (option) => option.batchNumber,
+                              fieldViewBuilder: (
+                                context,
+                                textEditingController,
+                                focusNode,
+                                onFieldSubmitted,
+                              ) {
+                                return TextField(
+                                  controller: textEditingController,
+                                  focusNode: focusNode,
+                                  onChanged: (value) => _batchCtrl.text = value,
+                                  decoration: InputDecoration(
+                                    labelText: 'Nº de Lote (Obligatorio)',
+                                    labelStyle: textTheme.bodyMedium?.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    hintText:
+                                        state.availableBatches.isEmpty
+                                            ? 'Ej: LOTE-2024-001'
+                                            : 'Escribe o toca para ver lotes existentes...',
+                                    filled: true,
+                                    fillColor: AppColors.background,
+                                    prefixIcon: const Icon(
+                                      Icons.qr_code_scanner,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    suffixIcon:
+                                        state.availableBatches.isNotEmpty
+                                            ? Tooltip(
+                                              message:
+                                                  '${state.availableBatches.length} lote(s) existente(s) en este almacén',
+                                              child: Icon(
+                                                Icons.layers_rounded,
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.7),
+                                                size: 20,
+                                              ),
+                                            )
+                                            : null,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(
+                                        color: AppColors.border,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(
+                                        color: AppColors.border,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(
+                                        color: AppColors.primary,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                              optionsViewBuilder: (
+                                context,
+                                onSelected,
+                                options,
+                              ) {
+                                return Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Material(
+                                    elevation: 8.0,
+                                    shadowColor: Colors.black.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    color: colorScheme.surface,
+                                    clipBehavior: Clip.antiAlias,
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        maxHeight: 260,
+                                        maxWidth: overlayWidth,
+                                      ),
+                                      child: ListView.separated(
+                                        padding: EdgeInsets.zero,
+                                        shrinkWrap: true,
+                                        itemCount: options.length,
+                                        separatorBuilder:
+                                            (_, _) => const Divider(height: 1),
+                                        itemBuilder: (
+                                          BuildContext context,
+                                          int index,
+                                        ) {
+                                          final option = options.elementAt(
+                                            index,
+                                          );
+                                          final dateStr =
+                                              option.expiryDate != null
+                                                  ? '${option.expiryDate!.day.toString().padLeft(2, '0')}/${option.expiryDate!.month.toString().padLeft(2, '0')}/${option.expiryDate!.year}'
+                                                  : 'Sin vencimiento';
+                                          return ListTile(
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 8,
+                                                ),
+                                            leading: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: const Icon(
+                                                Icons.tag,
+                                                color: AppColors.primary,
+                                                size: 20,
+                                              ),
+                                            ),
+                                            title: Text(
+                                              option.batchNumber,
+                                              style: textTheme.bodyMedium
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                            ),
+                                            subtitle: Text(
+                                              'Vence: $dateStr',
+                                              style: textTheme.bodySmall,
+                                            ),
+                                            trailing: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  'Stock',
+                                                  style: textTheme.labelSmall
+                                                      ?.copyWith(
+                                                        color:
+                                                            AppColors.textMuted,
+                                                      ),
+                                                ),
+                                                Text(
+                                                  option.availableQuantity
+                                                      .toStringAsFixed(0),
+                                                  style: textTheme.titleSmall
+                                                      ?.copyWith(
+                                                        color:
+                                                            AppColors.primary,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                ),
+                                              ],
+                                            ),
+                                            onTap: () {
+                                              HapticFeedback.lightImpact();
+                                              onSelected(option);
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                              onSelected: (WarehouseStockBatchModel selection) {
+                                setState(() {
+                                  _batchCtrl.text = selection.batchNumber;
+                                  _expiryDate = selection.expiryDate;
+                                });
+                              },
+                            ),
+                          const SizedBox(height: 16),
+                          _DatePickerField(
+                            label: 'Fecha de Vencimiento (Opcional)',
+                            value: _expiryDate,
+                            onPick: (d) => setState(() => _expiryDate = d),
+                            onClear: () {
+                              HapticFeedback.lightImpact();
+                              setState(() => _expiryDate = null);
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        SizedBox(
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed:
+                                state.isLoadingVariants ||
+                                        state.isLoadingBatches
+                                    ? null
+                                    : () {
+                                      HapticFeedback.mediumImpact();
+                                      _submit(state);
                                     },
-                                  );
-                                },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: colorScheme.onPrimary,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: Text(
+                              'Agregar a la lista',
+                              style: textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: colorScheme.onPrimary,
                               ),
                             ),
                           ),
-                        );
-                      },
-                      onSelected: (WarehouseStockBatchModel selection) {
-                        setState(() {
-                          _batchCtrl.text = selection.batchNumber;
-                          _expiryDate = selection.expiryDate;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _DatePickerField(
-                      label: 'Fecha de Vencimiento (Opcional)',
-                      value: _expiryDate,
-                      onPick: (d) => setState(() => _expiryDate = d),
-                      onClear: () {
-                        HapticFeedback.lightImpact();
-                        setState(() => _expiryDate = null);
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  SizedBox(
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        HapticFeedback.mediumImpact();
-                        _submit();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: colorScheme.onPrimary,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
                         ),
-                      ),
-                      child: Text(
-                        'Agregar a la lista',
-                        style: textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: colorScheme.onPrimary,
-                        ),
-                      ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

@@ -1150,4 +1150,35 @@ class ProductsRepositoryImpl implements ProductsRepository {
       return _handleError(e, st);
     }
   }
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchProductsForEntry(String term) async {
+    try {
+      final res = await _supabase
+          .from('products')
+          .select('id, name, uses_batches, product_images!left(image_url)')
+          .eq('is_active', true)
+          .ilike('name', '%$term%')
+          .eq('product_images.is_main', true)
+          .limit(20);
+      return right(List<Map<String, dynamic>>.from(res));
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getBatchesForVariant(String variantId, String warehouseId) async {
+    try {
+      final response = await _supabase
+          .from('warehouse_stock_batches')
+          .select('batch_number, expiry_date, available_quantity')
+          .eq('variant_id', variantId)
+          .eq('warehouse_id', warehouseId)
+          .order('expiry_date', ascending: true, nullsFirst: false)
+          .order('created_at', ascending: true);
+      return right(List<Map<String, dynamic>>.from(response));
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
 }

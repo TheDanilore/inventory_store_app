@@ -60,6 +60,11 @@ abstract class ProductsRepository {
   Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttributeValue(String attributeId, String value);
   Future<Either<Failure, List<AttributeEntity>>> getAttributes();
 
+  // Búsqueda Optimizada para Entradas
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchProductsForEntry(String term);
+  Future<Either<Failure, List<Map<String, dynamic>>>> getBatchesForVariant(String variantId, String warehouseId);
+
+
   // Imágenes
   Future<Either<Failure, List<ProductImageEntity>>> getProductImages(
     String productId,
