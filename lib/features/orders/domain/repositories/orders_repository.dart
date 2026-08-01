@@ -64,5 +64,15 @@ abstract class OrdersRepository {
   Future<Either<Failure, List<Map<String, dynamic>>>> getFinancialAccounts();
   Future<Either<Failure, Map<String, dynamic>?>> getProfileById(String profileId);
   Future<Either<Failure, List<Map<String, dynamic>>>> searchCustomers(String query);
-  Future<Either<Failure, bool>> checkActiveCashShift();
+  Future<Either<Failure, String?>> checkActiveCashShift();
+  
+  Future<Either<Failure, void>> registerCreditPayment({
+    required String? customerId,
+    required String? creditId,
+    required double amount,
+    required String accountId,
+    required String orderId,
+    required String notes,
+    required String? shiftId,
+  });
 }

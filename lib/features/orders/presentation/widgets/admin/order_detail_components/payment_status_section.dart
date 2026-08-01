@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_section_card.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PaymentStatusSection extends StatefulWidget {
   final String paymentStatus;
@@ -11,7 +12,6 @@ class PaymentStatusSection extends StatefulWidget {
   final String paymentMethod;
   final Map<String, dynamic>? creditInfo;
   final String orderId;
-  final SupabaseClient supabase;
   final List<Map<String, dynamic>> accounts; // cuentas financieras ordenadas
   final String? customerId;
   final int pointsEarned;
@@ -26,7 +26,6 @@ class PaymentStatusSection extends StatefulWidget {
     required this.paymentMethod,
     required this.creditInfo,
     required this.orderId,
-    required this.supabase,
     required this.accounts,
     required this.customerId,
     required this.pointsEarned,
@@ -49,15 +48,13 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
   // Turno activo (solo para CAJA)
   Map<String, dynamic>? _activeShift;
 
+  final _formKey = GlobalKey<FormState>();
+
   @override
   void initState() {
     super.initState();
-    // Preseleccionar la primera cuenta disponible
     if (widget.accounts.isNotEmpty) {
       _selectedAccount = widget.accounts.first;
-      if (_selectedAccount!['type'] == 'CAJA') {
-        _checkActiveShift(_selectedAccount!['id'] as String);
-      }
     }
   }
 
@@ -67,29 +64,10 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
     super.dispose();
   }
 
-  Future<void> _checkActiveShift(String accountId) async {
-    try {
-      final resp =
-          await widget.supabase
-              .from('cash_shifts')
-              .select('id, opened_at')
-              .eq('account_id', accountId)
-              .eq('status', 'OPEN')
-              .maybeSingle();
-      if (mounted) setState(() => _activeShift = resp);
-    } catch (_) {
-      if (mounted) setState(() => _activeShift = null);
-    }
-  }
-
   Future<void> _onAccountTap(Map<String, dynamic> account) async {
     setState(() {
       _selectedAccount = account;
-      _activeShift = null;
     });
-    if (account['type'] == 'CAJA') {
-      await _checkActiveShift(account['id'] as String);
-    }
   }
 
   IconData _iconForType(String type) {
@@ -122,28 +100,11 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
     if (!fromQuick && _selectedQuickAmount != null) {
       setState(() => _selectedQuickAmount = null);
     }
-    if (value.trim().isEmpty) {
-      setState(() => _errorMessage = null);
-      return;
-    }
-    final amount = double.tryParse(value.trim());
-    final pendingOrderAmount = widget.totalAmount - widget.amountPaid;
-    if (amount == null) {
-      setState(() => _errorMessage = 'Número inválido');
-    } else if (amount <= 0) {
-      setState(() => _errorMessage = 'Debe ser mayor a 0');
-    } else if (amount > pendingOrderAmount) {
-      setState(
-        () =>
-            _errorMessage = 'Máx: S/ ${pendingOrderAmount.toStringAsFixed(2)}',
-      );
-    } else {
-      setState(() => _errorMessage = null);
-    }
   }
 
   Future<void> _registrarAbono() async {
-    if (_errorMessage != null || _abonoCtrl.text.trim().isEmpty) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
     if (_selectedAccount == null) {
       AppSnackbar.show(
         context,
@@ -152,187 +113,61 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
       );
       return;
     }
-    final isCaja = _selectedAccount!['type'] == 'CAJA';
-    if (isCaja && _activeShift == null) {
-      AppSnackbar.show(
-        context,
-        message: 'La caja no tiene un turno abierto. Abre el turno primero.',
-        type: SnackbarType.error,
-      );
-      return;
-    }
 
     final amount = double.parse(_abonoCtrl.text.trim());
     setState(() => _isRegistering = true);
 
     try {
-      final isCaja = _selectedAccount!['type'] == 'CAJA';
-      final shiftId =
-          isCaja && _activeShift != null
-              ? _activeShift!['id'] as String?
-              : null;
-
-      // 1. Intentar ejecución atómica mediante RPC Postgres
-      try {
-        final rpcResp = await widget.supabase.rpc(
-          'register_credit_payment_rpc',
-          params: {
-            'p_customer_id': widget.customerId,
-            'p_credit_id': widget.creditInfo?['id'],
-            'p_amount': amount,
-            'p_account_id': _selectedAccount!['id'],
-            'p_order_id': widget.orderId,
-            'p_notes': 'Abono registrado desde detalle de pedido',
-            'p_shift_id': shiftId,
-          },
-        );
-
-        if (rpcResp != null && rpcResp['success'] == true) {
-          if (mounted) {
-            _abonoCtrl.clear();
-            setState(() {
-              _selectedQuickAmount = null;
-            });
-            AppSnackbar.show(
-              context,
-              message:
-                  'Abono de S/ ${amount.toStringAsFixed(2)} registrado con éxito.',
-              type: SnackbarType.success,
-            );
-            widget.onPaymentRegistered();
-          }
+      final cubit = context.read<OrderDetailCubit>();
+      
+      // Validar turno de caja si es necesario
+      String? shiftId;
+      if (_selectedAccount!['type'] == 'CAJA') {
+        shiftId = await cubit.getActiveCashShift();
+        if (shiftId == null && mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'La caja no tiene un turno abierto. Abre el turno primero.',
+            type: SnackbarType.error,
+          );
+          setState(() => _isRegistering = false);
           return;
         }
-      } catch (_) {
-        // Fallback imperativo si RPC no está desplegada en el entorno actual
       }
 
-      final authUserId = widget.supabase.auth.currentUser?.id;
-      String? adminProfileId;
-      if (authUserId != null) {
-        final p =
-            await widget.supabase
-                .from('profiles')
-                .select('id')
-                .eq('auth_user_id', authUserId)
-                .maybeSingle();
-        adminProfileId = p?['id'] as String?;
-      }
-
-      final creditId = widget.creditInfo!['id'] as String;
-      final currentDebt =
-          (widget.creditInfo!['current_debt'] as num).toDouble();
-      final newGeneralDebt = (currentDebt - amount).clamp(0.0, currentDebt);
-
-      // 1. Actualizar deuda en customer_credits
-      await widget.supabase
-          .from('customer_credits')
-          .update({
-            'current_debt': newGeneralDebt,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', creditId);
-
-      // 2. Registrar en customer_credit_movements con el nombre de la cuenta como payment_method
-      await widget.supabase.from('customer_credit_movements').insert({
-        'customer_credit_id': creditId,
-        'order_id': widget.orderId,
-        'movement_type': 'PAYMENT',
-        'amount': amount,
-        'payment_method': _selectedAccount!['name'] as String,
-        'notes': 'Abono registrado desde detalle de pedido',
-        if (adminProfileId != null) 'created_by': adminProfileId,
-      });
-
-      // 3. Actualizar orders.amount_paid y payment_status
-      final newOrderAmountPaid = widget.amountPaid + amount;
-      final newPaymentStatus =
-          newOrderAmountPaid >= widget.totalAmount ? 'PAID' : 'PARTIAL';
-      await widget.supabase
-          .from('orders')
-          .update({
-            'payment_status': newPaymentStatus,
-            'amount_paid': newOrderAmountPaid,
-          })
-          .eq('id', widget.orderId);
-
-      // 3.5 Otorgar monedas si el pedido a crédito fue pagado completamente
-      if (widget.isLoyaltyEnabled &&
-          newPaymentStatus == 'PAID' &&
-          widget.paymentMethod == 'CRÉDITO' &&
-          widget.customerId != null &&
-          widget.pointsEarned > 0) {
-        final earnedExists =
-            await widget.supabase
-                .from('wallet_movements')
-                .select('id')
-                .eq('order_id', widget.orderId)
-                .eq('movement_type', 'EARNED')
-                .maybeSingle();
-
-        if (earnedExists == null) {
-          final profileData =
-              await widget.supabase
-                  .from('profiles')
-                  .select('wallet_balance')
-                  .eq('id', widget.customerId!)
-                  .maybeSingle();
-
-          if (profileData != null) {
-            final curBal =
-                (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
-            await Future.wait([
-              widget.supabase
-                  .from('profiles')
-                  .update({'wallet_balance': curBal + widget.pointsEarned})
-                  .eq('id', widget.customerId!),
-              widget.supabase.from('wallet_movements').insert({
-                'profile_id': widget.customerId!,
-                'order_id': widget.orderId,
-                'points': widget.pointsEarned,
-                'movement_type': 'EARNED',
-                'description':
-                    'Monedas obtenidas al pagar crédito de pedido #${widget.orderId}',
-              }),
-            ]);
-          }
-        }
-      }
-
-      // 4. Registrar INGRESO en account_movements
-      await widget.supabase.from('account_movements').insert({
-        'account_id': _selectedAccount!['id'],
-        'movement_type': 'INCOME',
-        'amount': amount,
-        'description': 'Cobro de crédito — Pedido #${widget.orderId}',
-        'reference_type': 'orders',
-        'reference_id': widget.orderId,
-        if (shiftId != null) 'shift_id': shiftId,
-        if (adminProfileId != null) 'created_by': adminProfileId,
-      });
-
-      // 5. Actualizar saldo de la cuenta financiera
-      final currentBalance =
-          ((_selectedAccount!['balance'] as num?)?.toDouble() ?? 0.0);
-      await widget.supabase
-          .from('financial_accounts')
-          .update({'balance': currentBalance + amount})
-          .eq('id', _selectedAccount!['id'] as String);
+      final success = await cubit.registerPayment(
+        customerId: widget.customerId,
+        creditId: widget.creditInfo?['id'],
+        amount: amount,
+        accountId: _selectedAccount!['id'],
+        orderId: widget.orderId,
+        notes: 'Abono registrado desde detalle de pedido',
+        shiftId: shiftId,
+      );
 
       if (mounted) {
-        AppSnackbar.show(
-          context,
-          message:
-              'Abono de S/ ${amount.toStringAsFixed(2)} registrado en ${_selectedAccount!['name']}.',
-          type: SnackbarType.success,
-        );
-        widget.onPaymentRegistered();
+        if (success) {
+          _abonoCtrl.clear();
+          setState(() => _selectedQuickAmount = null);
+          AppSnackbar.show(
+            context,
+            message: 'Abono de S/ ${amount.toStringAsFixed(2)} registrado con éxito.',
+            type: SnackbarType.success,
+          );
+          widget.onPaymentRegistered();
+        } else {
+          AppSnackbar.show(
+            context,
+            message: cubit.state.errorMessage ?? 'Error al registrar abono.',
+            type: SnackbarType.error,
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: 'Error al registrar abono: $e',
+          message: 'Excepción al registrar abono: $e',
           type: SnackbarType.error,
         );
       }
@@ -502,36 +337,52 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
             const SizedBox(height: 10),
 
             // ── Campo de monto ─────────────────────────────────────────
-            TextField(
-              controller: _abonoCtrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-              ],
-              onChanged: _validarEntrada,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              decoration: InputDecoration(
-                hintText: 'Monto a abonar (S/)',
-                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                errorText: _errorMessage,
-                errorMaxLines: 2,
-                prefixIcon: Icon(
-                  Icons.attach_money_rounded,
-                  color:
-                      _errorMessage != null
-                          ? Colors.deepOrange
-                          : Colors.grey.shade500,
+            Form(
+              key: _formKey,
+              child: TextFormField(
+                controller: _abonoCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                ],
+                onChanged: (v) {
+                  _validarEntrada(v);
+                  if (_formKey.currentState != null) {
+                    _formKey.currentState!.validate();
+                  }
+                },
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Requerido';
+                  }
+                  final amount = double.tryParse(value.trim());
+                  final pendingOrderAmount = widget.totalAmount - widget.amountPaid;
+                  if (amount == null) return 'Número inválido';
+                  if (amount <= 0) return 'Debe ser mayor a 0';
+                  if (amount > pendingOrderAmount) {
+                    return 'Máx: S/ ${pendingOrderAmount.toStringAsFixed(2)}';
+                  }
+                  return null;
+                },
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                decoration: InputDecoration(
+                  hintText: 'Monto a abonar (S/)',
+                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                  prefixIcon: Icon(
+                    Icons.attach_money_rounded,
+                    color: Colors.grey.shade500,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  isDense: true,
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                isDense: true,
               ),
             ),
             const SizedBox(height: 14),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
@@ -269,8 +268,9 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
     final isCashAccount = selectedAccount['type'] == 'CAJA';
 
     if (isCashAccount) {
-      final hasShift = await cubit.hasActiveCashShift();
-      if (!hasShift && mounted) {
+      final shiftId = await cubit.getActiveCashShift();
+      if (!mounted) return;
+      if (shiftId == null) {
         AppSnackbar.show(
           context,
           message:
@@ -507,7 +507,6 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                   amountPaid: state.order!.amountPaid,
                                   paymentMethod: state.paymentMethod,
                                   creditInfo: state.creditInfo,
-                                  supabase: Supabase.instance.client,
                                   accounts: state.accounts,
                                   customerId: state.selectedCustomerId,
                                   pointsEarned: state.pointsEarned,

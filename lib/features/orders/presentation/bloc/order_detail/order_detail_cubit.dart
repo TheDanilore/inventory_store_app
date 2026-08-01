@@ -7,6 +7,7 @@ import 'package:inventory_store_app/features/orders/domain/usecases/get_financia
 import 'package:inventory_store_app/features/orders/domain/usecases/get_profile_by_id_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/search_customers_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/check_active_cash_shift_uc.dart';
+import 'package:inventory_store_app/features/orders/domain/usecases/register_credit_payment_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/get_order_details_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/save_order_changes_uc.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_state.dart';
@@ -21,6 +22,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
   final GetProfileByIdUc getProfileByIdUc;
   final SearchCustomersUc searchCustomersUc;
   final CheckActiveCashShiftUc checkActiveCashShiftUc;
+  final RegisterCreditPaymentUc registerCreditPaymentUc;
 
   OrderDetailCubit({
     required this.getOrderDetailsUc,
@@ -29,6 +31,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     required this.getProfileByIdUc,
     required this.searchCustomersUc,
     required this.checkActiveCashShiftUc,
+    required this.registerCreditPaymentUc,
   }) : super(const OrderDetailState());
 
   void setInitialOrder(OrderEntity order) {
@@ -119,12 +122,12 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     }
   }
 
-  Future<bool> hasActiveCashShift() async {
+  Future<String?> getActiveCashShift() async {
     final result = await checkActiveCashShiftUc();
     return result.fold(
       (l) {
         debugPrint('🔴 [OrderDetailCubit] Error comprobando turno activo: ${l.message}');
-        return false;
+        return null;
       },
       (r) => r,
     );
@@ -228,6 +231,40 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     );
     updatedOverrides[itemId] = result;
     emit(state.copyWith(batchOverrides: updatedOverrides));
+  }
+
+  Future<bool> registerPayment({
+    required String? customerId,
+    required String? creditId,
+    required double amount,
+    required String accountId,
+    required String orderId,
+    required String notes,
+    required String? shiftId,
+  }) async {
+    emit(state.copyWith(isSaving: true));
+    final result = await registerCreditPaymentUc(
+      RegisterCreditPaymentParams(
+        customerId: customerId,
+        creditId: creditId,
+        amount: amount,
+        accountId: accountId,
+        orderId: orderId,
+        notes: notes,
+        shiftId: shiftId,
+      ),
+    );
+
+    return result.fold(
+      (failure) {
+        emit(state.copyWith(isSaving: false, errorMessage: failure.message));
+        return false;
+      },
+      (_) {
+        emit(state.copyWith(isSaving: false, errorMessage: null));
+        return true;
+      },
+    );
   }
 
   Future<bool> saveChanges({

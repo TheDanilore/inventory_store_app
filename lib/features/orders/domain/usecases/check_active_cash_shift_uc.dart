@@ -9,7 +9,7 @@ class CheckActiveCashShiftUc {
 
   CheckActiveCashShiftUc(this.repository);
 
-  Future<Either<Failure, bool>> call() {
+  Future<Either<Failure, String?>> call() {
     return repository.checkActiveCashShift();
   }
 }

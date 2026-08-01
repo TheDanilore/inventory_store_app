@@ -337,6 +337,8 @@ import '../../features/orders/domain/usecases/get_profile_by_id_uc.dart'
     as _i990;
 import '../../features/orders/domain/usecases/process_checkout_uc.dart'
     as _i446;
+import '../../features/orders/domain/usecases/register_credit_payment_uc.dart'
+    as _i955;
 import '../../features/orders/domain/usecases/save_order_changes_uc.dart'
     as _i904;
 import '../../features/orders/domain/usecases/search_customers_uc.dart'
@@ -1287,6 +1289,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i990.GetProfileByIdUc>(
       () => _i990.GetProfileByIdUc(gh<_i992.OrdersRepository>()),
     );
+    gh.factory<_i955.RegisterCreditPaymentUc>(
+      () => _i955.RegisterCreditPaymentUc(gh<_i992.OrdersRepository>()),
+    );
     gh.factory<_i360.SearchCustomersUc>(
       () => _i360.SearchCustomersUc(gh<_i992.OrdersRepository>()),
     );
@@ -1384,16 +1389,6 @@ extension GetItInjectableX on _i174.GetIt {
         cancelOrderUc: gh<_i534.CancelOrderUc>(),
         getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
         repository: gh<_i992.OrdersRepository>(),
-      ),
-    );
-    gh.factory<_i808.OrderDetailCubit>(
-      () => _i808.OrderDetailCubit(
-        getOrderDetailsUc: gh<_i93.GetOrderDetailsUc>(),
-        saveOrderChangesUc: gh<_i904.SaveOrderChangesUc>(),
-        getFinancialAccountsUc: gh<_i748.GetFinancialAccountsUc>(),
-        getProfileByIdUc: gh<_i990.GetProfileByIdUc>(),
-        searchCustomersUc: gh<_i360.SearchCustomersUc>(),
-        checkActiveCashShiftUc: gh<_i864.CheckActiveCashShiftUc>(),
       ),
     );
     gh.factory<_i437.PosCubit>(
@@ -1519,6 +1514,17 @@ extension GetItInjectableX on _i174.GetIt {
         getProductsUC: gh<_i222.GetProductsUC>(),
         getProductStockUC: gh<_i958.GetProductStockUC>(),
         catalogRepository: gh<_i540.CatalogSearchRepository>(),
+      ),
+    );
+    gh.factory<_i808.OrderDetailCubit>(
+      () => _i808.OrderDetailCubit(
+        getOrderDetailsUc: gh<_i93.GetOrderDetailsUc>(),
+        saveOrderChangesUc: gh<_i904.SaveOrderChangesUc>(),
+        getFinancialAccountsUc: gh<_i748.GetFinancialAccountsUc>(),
+        getProfileByIdUc: gh<_i990.GetProfileByIdUc>(),
+        searchCustomersUc: gh<_i360.SearchCustomersUc>(),
+        checkActiveCashShiftUc: gh<_i864.CheckActiveCashShiftUc>(),
+        registerCreditPaymentUc: gh<_i955.RegisterCreditPaymentUc>(),
       ),
     );
     gh.factory<_i421.CustomerWishlistCubit>(

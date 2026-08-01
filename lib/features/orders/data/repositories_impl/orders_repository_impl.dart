@@ -904,10 +904,10 @@ class OrdersRepositoryImpl implements OrdersRepository {
   }
 
   @override
-  Future<Either<Failure, bool>> checkActiveCashShift() async {
+  Future<Either<Failure, String?>> checkActiveCashShift() async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null) return const Right(false);
+      if (user == null) return const Right(null);
       final userId = user.id;
 
       final profileRes = await _supabase
@@ -925,10 +925,46 @@ class OrdersRepositoryImpl implements OrdersRepository {
           .eq('status', 'OPEN')
           .maybeSingle();
 
-      return Right(activeShift != null);
+      final shiftId = activeShift?['id'] as String?;
+      return Right(shiftId);
     } catch (e, st) {
       debugPrint('🔴 [OrdersRepo] Error en checkActiveCashShift: $e\n$st');
       return Left(ServerFailure(message: 'Error checking active cash shift: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> registerCreditPayment({
+    required String? customerId,
+    required String? creditId,
+    required double amount,
+    required String accountId,
+    required String orderId,
+    required String notes,
+    required String? shiftId,
+  }) async {
+    try {
+      final rpcResp = await _supabase.rpc(
+        'register_credit_payment_rpc',
+        params: {
+          'p_customer_id': customerId,
+          'p_credit_id': creditId,
+          'p_amount': amount,
+          'p_account_id': accountId,
+          'p_order_id': orderId,
+          'p_notes': notes,
+          'p_shift_id': shiftId,
+        },
+      );
+
+      if (rpcResp != null && rpcResp['success'] == true) {
+        return const Right(null);
+      } else {
+        return Left(ServerFailure(message: 'El RPC falló o no devolvió éxito. Resp: $rpcResp'));
+      }
+    } catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] Error en registerCreditPayment: $e\n$st');
+      return Left(ServerFailure(message: 'Error al registrar pago en base de datos: $e'));
     }
   }
 }
