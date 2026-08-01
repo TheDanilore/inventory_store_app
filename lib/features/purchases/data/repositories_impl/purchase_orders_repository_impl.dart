@@ -795,4 +795,88 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       return 0.0;
     }
   }
+
+  @override
+  Future<Either<Failure, void>> registerOrderPayment({
+    required String orderId,
+    required String supplierId,
+    required double amount,
+    required String accountId,
+    required String? shiftId,
+    required String? profileId,
+  }) async {
+    try {
+      final response = await _supabase.rpc(
+        'register_supplier_credit_payment_rpc',
+        params: {
+          'p_supplier_id': supplierId,
+          'p_credit_id': null,
+          'p_amount': amount,
+          'p_account_id': accountId,
+          'p_order_id': orderId,
+          'p_notes': 'Pago de Orden de Compra #${orderId.substring(0, 8).toUpperCase()}',
+          'p_shift_id': shiftId,
+          'p_profile_id': profileId ?? _supabase.auth.currentUser?.id,
+        },
+      );
+
+      final result = response as Map<String, dynamic>?;
+      final didSucceed = result?['success'] == true;
+      if (!didSucceed) {
+        final errMsg =
+            result?['error'] as String? ??
+            result?['detail'] as String? ??
+            'Error desconocido en el servidor.';
+        return Left(ServerFailure(message: errMsg));
+      }
+      return const Right(null);
+    } on PostgrestException catch (e, st) {
+      debugPrint('[PurchaseOrdersRepositoryImpl] registerOrderPayment error: $e\n$st');
+      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+    } catch (e, st) {
+      debugPrint('[PurchaseOrdersRepositoryImpl] registerOrderPayment unexpected: $e\n$st');
+      return Left(ServerFailure(message: 'Error inesperado al registrar el pago: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateOrderPaymentMethod({
+    required String orderId,
+    required String supplierId,
+    required String newMethod,
+    required String oldMethod,
+    required double orderAmount,
+    required String? profileId,
+  }) async {
+    try {
+      final response = await _supabase.rpc(
+        'update_po_payment_method_rpc',
+        params: {
+          'p_order_id': orderId,
+          'p_supplier_id': supplierId,
+          'p_new_method': newMethod,
+          'p_old_method': oldMethod,
+          'p_order_amount': orderAmount,
+          'p_profile_id': profileId ?? _supabase.auth.currentUser?.id,
+        },
+      );
+
+      final result = response as Map<String, dynamic>?;
+      final didSucceed = result?['success'] == true;
+      if (!didSucceed) {
+        final errMsg =
+            result?['error'] as String? ??
+            result?['detail'] as String? ??
+            'Error desconocido en el servidor.';
+        return Left(ServerFailure(message: errMsg));
+      }
+      return const Right(null);
+    } on PostgrestException catch (e, st) {
+      debugPrint('[PurchaseOrdersRepositoryImpl] updateOrderPaymentMethod error: $e\n$st');
+      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+    } catch (e, st) {
+      debugPrint('[PurchaseOrdersRepositoryImpl] updateOrderPaymentMethod unexpected: $e\n$st');
+      return Left(ServerFailure(message: 'Error inesperado al cambiar método de pago: $e'));
+    }
+  }
 }

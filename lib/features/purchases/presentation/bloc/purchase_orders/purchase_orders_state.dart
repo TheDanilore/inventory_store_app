@@ -126,3 +126,36 @@ class PurchaseOrdersError extends PurchaseOrdersState {
     totalCount,
   ];
 }
+
+// ── Estados de operación puntual (pago / cambio de método) ──────────────────
+// No interrumpen la lista paginada, solo señalizan al Sheet.
+
+class PurchaseOrderActionLoading extends PurchaseOrdersState {}
+
+class PurchaseOrderActionSuccess extends PurchaseOrdersState {
+  final String message;
+  final String orderId;
+  /// Nuevo monto abonado (para mutación de caché de pago).
+  final double? newAmountPaid;
+  /// Nuevo método de pago (para mutación de caché de método).
+  final String? newPaymentMethod;
+
+  const PurchaseOrderActionSuccess({
+    required this.message,
+    required this.orderId,
+    this.newAmountPaid,
+    this.newPaymentMethod,
+  });
+
+  @override
+  List<Object?> get props => [message, orderId, newAmountPaid, newPaymentMethod];
+}
+
+class PurchaseOrderActionError extends PurchaseOrdersState {
+  final String message;
+
+  const PurchaseOrderActionError({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}

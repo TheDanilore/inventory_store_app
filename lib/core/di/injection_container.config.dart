@@ -148,7 +148,7 @@ import '../../features/customers/domain/repositories/wishlist_repository.dart'
 import '../../features/customers/domain/usecases/customer_credit_usecase.dart'
     as _i749;
 import '../../features/customers/domain/usecases/customer_location_usecase.dart'
-    as _i598;
+    as _i601;
 import '../../features/customers/domain/usecases/customer_usecase.dart'
     as _i1019;
 import '../../features/customers/domain/usecases/export_customers_pdf_usecase.dart'
@@ -430,6 +430,8 @@ import '../../features/purchases/domain/usecases/get_purchase_order_by_id_usecas
     as _i611;
 import '../../features/purchases/domain/usecases/receive_purchase_order_items_usecase.dart'
     as _i323;
+import '../../features/purchases/domain/usecases/register_order_payment_usecase.dart'
+    as _i598;
 import '../../features/purchases/domain/usecases/register_supplier_payment_usecase.dart'
     as _i955;
 import '../../features/purchases/domain/usecases/save_supplier_credit_usecase.dart'
@@ -442,6 +444,8 @@ import '../../features/purchases/domain/usecases/toggle_supplier_credit_usecase.
     as _i349;
 import '../../features/purchases/domain/usecases/toggle_supplier_status_usecase.dart'
     as _i175;
+import '../../features/purchases/domain/usecases/update_order_payment_method_usecase.dart'
+    as _i515;
 import '../../features/purchases/domain/usecases/update_purchase_order_status_usecase.dart'
     as _i549;
 import '../../features/purchases/presentation/bloc/purchase_order_form/purchase_order_form_cubit.dart'
@@ -909,6 +913,16 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i362.PurchaseOrdersRepository>(),
       ),
     );
+    gh.lazySingleton<_i598.RegisterOrderPaymentUseCase>(
+      () => _i598.RegisterOrderPaymentUseCase(
+        gh<_i362.PurchaseOrdersRepository>(),
+      ),
+    );
+    gh.lazySingleton<_i515.UpdateOrderPaymentMethodUseCase>(
+      () => _i515.UpdateOrderPaymentMethodUseCase(
+        gh<_i362.PurchaseOrdersRepository>(),
+      ),
+    );
     gh.lazySingleton<_i549.UpdatePurchaseOrderStatusUseCase>(
       () => _i549.UpdatePurchaseOrderStatusUseCase(
         gh<_i362.PurchaseOrdersRepository>(),
@@ -920,28 +934,28 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i190.AddExitProductCubit>(
       () => _i190.AddExitProductCubit(gh<_i570.ProductsRepository>()),
     );
-    gh.lazySingleton<_i598.GetCustomerLocationsUseCase>(
-      () => _i598.GetCustomerLocationsUseCase(
+    gh.lazySingleton<_i601.GetCustomerLocationsUseCase>(
+      () => _i601.GetCustomerLocationsUseCase(
         gh<_i557.CustomerLocationsRepository>(),
       ),
     );
-    gh.lazySingleton<_i598.AddCustomerLocationUseCase>(
-      () => _i598.AddCustomerLocationUseCase(
+    gh.lazySingleton<_i601.AddCustomerLocationUseCase>(
+      () => _i601.AddCustomerLocationUseCase(
         gh<_i557.CustomerLocationsRepository>(),
       ),
     );
-    gh.lazySingleton<_i598.UpdateCustomerLocationUseCase>(
-      () => _i598.UpdateCustomerLocationUseCase(
+    gh.lazySingleton<_i601.UpdateCustomerLocationUseCase>(
+      () => _i601.UpdateCustomerLocationUseCase(
         gh<_i557.CustomerLocationsRepository>(),
       ),
     );
-    gh.lazySingleton<_i598.DeleteCustomerLocationUseCase>(
-      () => _i598.DeleteCustomerLocationUseCase(
+    gh.lazySingleton<_i601.DeleteCustomerLocationUseCase>(
+      () => _i601.DeleteCustomerLocationUseCase(
         gh<_i557.CustomerLocationsRepository>(),
       ),
     );
-    gh.lazySingleton<_i598.SetDefaultCustomerLocationUseCase>(
-      () => _i598.SetDefaultCustomerLocationUseCase(
+    gh.lazySingleton<_i601.SetDefaultCustomerLocationUseCase>(
+      () => _i601.SetDefaultCustomerLocationUseCase(
         gh<_i557.CustomerLocationsRepository>(),
       ),
     );
@@ -1045,6 +1059,16 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i749.RegisterCreditPaymentUseCase>(),
       ),
     );
+    gh.factory<_i971.PurchaseOrdersCubit>(
+      () => _i971.PurchaseOrdersCubit(
+        fetchPurchaseOrdersUseCase: gh<_i831.FetchPurchaseOrdersUseCase>(),
+        updatePurchaseOrderStatusUseCase:
+            gh<_i549.UpdatePurchaseOrderStatusUseCase>(),
+        registerOrderPaymentUseCase: gh<_i598.RegisterOrderPaymentUseCase>(),
+        updateOrderPaymentMethodUseCase:
+            gh<_i515.UpdateOrderPaymentMethodUseCase>(),
+      ),
+    );
     gh.factory<_i581.GetBatchMetricsUseCase>(
       () => _i581.GetBatchMetricsUseCase(gh<_i422.InventoryRepository>()),
     );
@@ -1131,23 +1155,16 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i749.RegisterCreditPaymentUseCase>(),
       ),
     );
-    gh.factory<_i971.PurchaseOrdersCubit>(
-      () => _i971.PurchaseOrdersCubit(
-        fetchPurchaseOrdersUseCase: gh<_i831.FetchPurchaseOrdersUseCase>(),
-        updatePurchaseOrderStatusUseCase:
-            gh<_i549.UpdatePurchaseOrderStatusUseCase>(),
-      ),
-    );
     gh.factory<_i315.GetPendingCustomerOrdersUc>(
       () => _i315.GetPendingCustomerOrdersUc(gh<_i992.OrdersRepository>()),
     );
     gh.factory<_i135.CustomerLocationsCubit>(
       () => _i135.CustomerLocationsCubit(
-        gh<_i598.GetCustomerLocationsUseCase>(),
-        gh<_i598.AddCustomerLocationUseCase>(),
-        gh<_i598.UpdateCustomerLocationUseCase>(),
-        gh<_i598.DeleteCustomerLocationUseCase>(),
-        gh<_i598.SetDefaultCustomerLocationUseCase>(),
+        gh<_i601.GetCustomerLocationsUseCase>(),
+        gh<_i601.AddCustomerLocationUseCase>(),
+        gh<_i601.UpdateCustomerLocationUseCase>(),
+        gh<_i601.DeleteCustomerLocationUseCase>(),
+        gh<_i601.SetDefaultCustomerLocationUseCase>(),
       ),
     );
     gh.factory<_i218.AccountMovementsCubit>(

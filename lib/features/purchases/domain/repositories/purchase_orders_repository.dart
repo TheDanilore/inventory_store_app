@@ -44,4 +44,22 @@ abstract class PurchaseOrdersRepository {
     required List<Map<String, dynamic>> receivedItems,
     required String warehouseId,
   });
+
+  Future<Either<Failure, void>> registerOrderPayment({
+    required String orderId,
+    required String supplierId,
+    required double amount,
+    required String accountId,
+    required String? shiftId,
+    required String? profileId,
+  });
+
+  Future<Either<Failure, void>> updateOrderPaymentMethod({
+    required String orderId,
+    required String supplierId,
+    required String newMethod,
+    required String oldMethod,
+    required double orderAmount,
+    required String? profileId,
+  });
 }
