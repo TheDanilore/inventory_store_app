@@ -10,6 +10,7 @@ import 'package:inventory_store_app/features/orders/domain/usecases/check_active
 import 'package:inventory_store_app/features/orders/domain/usecases/register_credit_payment_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/get_order_details_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/save_order_changes_uc.dart';
+import 'package:inventory_store_app/features/orders/domain/usecases/process_return_uc.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_state.dart';
 
 import 'package:injectable/injectable.dart';
@@ -23,6 +24,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
   final SearchCustomersUc searchCustomersUc;
   final CheckActiveCashShiftUc checkActiveCashShiftUc;
   final RegisterCreditPaymentUc registerCreditPaymentUc;
+  final ProcessReturnUc processReturnUc;
 
   OrderDetailCubit({
     required this.getOrderDetailsUc,
@@ -32,6 +34,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     required this.searchCustomersUc,
     required this.checkActiveCashShiftUc,
     required this.registerCreditPaymentUc,
+    required this.processReturnUc,
   }) : super(const OrderDetailState());
 
   void setInitialOrder(OrderEntity order) {
@@ -332,8 +335,34 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     return [];
   }
 
-  Future<dynamic> processReturn(String? notes) async {
-    // Implement or leave mock for now to fix compile error
-    return null;
+  Future<bool> processReturn(String? notes) async {
+    if (state.order == null) return false;
+
+    emit(state.copyWith(isReturning: true, errorMessage: null));
+
+    final result = await processReturnUc(
+      ProcessReturnParams(
+        orderId: state.order!.id,
+        items: state.items,
+        currentProfileId: null,
+        notesOverride: notes,
+      ),
+    );
+
+    return result.fold(
+      (failure) {
+        debugPrint('🔴 [OrderDetailCubit] Error al procesar devolución: ${failure.message}');
+        emit(state.copyWith(isReturning: false, errorMessage: failure.message));
+        return false;
+      },
+      (_) {
+        emit(state.copyWith(
+          isReturning: false,
+          currentStatus: 'RETURNED',
+          wasModified: true,
+        ));
+        return true;
+      },
+    );
   }
 }

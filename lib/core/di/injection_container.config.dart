@@ -337,6 +337,7 @@ import '../../features/orders/domain/usecases/get_profile_by_id_uc.dart'
     as _i990;
 import '../../features/orders/domain/usecases/process_checkout_uc.dart'
     as _i446;
+import '../../features/orders/domain/usecases/process_return_uc.dart' as _i2;
 import '../../features/orders/domain/usecases/register_credit_payment_uc.dart'
     as _i955;
 import '../../features/orders/domain/usecases/save_order_changes_uc.dart'
@@ -1307,6 +1308,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i812.GetOrderItemsUc>(
       () => _i812.GetOrderItemsUc(gh<_i992.OrdersRepository>()),
     );
+    gh.lazySingleton<_i2.ProcessReturnUc>(
+      () => _i2.ProcessReturnUc(gh<_i992.OrdersRepository>()),
+    );
     gh.lazySingleton<_i904.SaveOrderChangesUc>(
       () => _i904.SaveOrderChangesUc(gh<_i992.OrdersRepository>()),
     );
@@ -1525,6 +1529,7 @@ extension GetItInjectableX on _i174.GetIt {
         searchCustomersUc: gh<_i360.SearchCustomersUc>(),
         checkActiveCashShiftUc: gh<_i864.CheckActiveCashShiftUc>(),
         registerCreditPaymentUc: gh<_i955.RegisterCreditPaymentUc>(),
+        processReturnUc: gh<_i2.ProcessReturnUc>(),
       ),
     );
     gh.factory<_i421.CustomerWishlistCubit>(

@@ -190,56 +190,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
 
     final newQtyStr = await showDialog<String>(
       context: context,
-      builder: (ctx) {
-        final dlgCtrl = TextEditingController(text: currentQty);
-        final formKey = GlobalKey<FormState>();
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            'Modificar Cantidad',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: dlgCtrl,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'Ingresa la cantidad',
-                labelText: 'Cantidad',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) return 'Requerido';
-                final val = int.tryParse(value.trim());
-                if (val == null || val <= 0) return 'Debe ser mayor a 0';
-                return null;
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, null),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.pop(ctx, dlgCtrl.text.trim());
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.teal,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Guardar'),
-            ),
-          ],
-        );
-      },
+      builder: (ctx) => _QuantityEditDialog(initialQty: currentQty),
     );
 
     if (!mounted || newQtyStr == null) return;
@@ -785,4 +736,80 @@ class _ItemsSectionData {
         usesBatchesMap,
         batchOverrides,
       );
+}
+
+class _QuantityEditDialog extends StatefulWidget {
+  final String initialQty;
+
+  const _QuantityEditDialog({required this.initialQty});
+
+  @override
+  State<_QuantityEditDialog> createState() => _QuantityEditDialogState();
+}
+
+class _QuantityEditDialogState extends State<_QuantityEditDialog> {
+  late final TextEditingController _dlgCtrl;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _dlgCtrl = TextEditingController(text: widget.initialQty);
+  }
+
+  @override
+  void dispose() {
+    _dlgCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      title: const Text(
+        'Modificar Cantidad',
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _dlgCtrl,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Ingresa la cantidad',
+            labelText: 'Cantidad',
+            border: OutlineInputBorder(),
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) return 'Requerido';
+            final val = int.tryParse(value.trim());
+            if (val == null || val <= 0) return 'Debe ser mayor a 0';
+            return null;
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() ?? false) {
+              Navigator.pop(context, _dlgCtrl.text.trim());
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.teal,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Guardar'),
+        ),
+      ],
+    );
+  }
 }
