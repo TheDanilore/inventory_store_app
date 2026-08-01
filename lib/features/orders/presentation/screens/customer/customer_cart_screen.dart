@@ -208,12 +208,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
             )
             : subtotal;
 
-    final sortedCartItems =
-        cartState.items.values.toList()..sort((a, b) {
-          final aInStock = a.availableStock > 0 ? 1 : 0;
-          final bInStock = b.availableStock > 0 ? 1 : 0;
-          return bInStock.compareTo(aInStock);
-        });
+    final sortedCartItems = cartState.sortedItems;
 
     return Container(
       color: const Color(0xFFF8FAFC),
@@ -408,12 +403,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
             )
             : subtotal;
 
-    final sortedCartItems =
-        cartState.items.values.toList()..sort((a, b) {
-          final aInStock = a.availableStock > 0 ? 1 : 0;
-          final bInStock = b.availableStock > 0 ? 1 : 0;
-          return bInStock.compareTo(aInStock);
-        });
+    final sortedCartItems = cartState.sortedItems;
 
     return Container(
       color: const Color(0xFFF8FAFC),

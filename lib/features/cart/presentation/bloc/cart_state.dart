@@ -32,6 +32,16 @@ class CartState extends Equatable {
 
   int get itemCount => items.length;
 
+  List<CartItemEntity> get sortedItems {
+    final list = items.values.toList();
+    list.sort((a, b) {
+      final aInStock = a.availableStock > 0 ? 1 : 0;
+      final bInStock = b.availableStock > 0 ? 1 : 0;
+      return bInStock.compareTo(aInStock);
+    });
+    return list;
+  }
+
   List<CartItemEntity> get selectedItems =>
       items.values.where((item) => item.isSelected).toList();
 

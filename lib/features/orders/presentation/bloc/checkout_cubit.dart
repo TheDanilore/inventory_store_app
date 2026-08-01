@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/get_default_address_uc.dart';
@@ -216,13 +217,17 @@ class CheckoutCubit extends Cubit<CheckoutState> {
         cartCubit.removeSelected();
 
         // 5. Enviar por WhatsApp (dentro del Cubit, no en la UI)
-        await sendWhatsAppOrderUc(
-          whatsappNumber: whatsappNumber,
-          items: itemsToBuy,
-          orderId: orderId.substring(0, 8).toUpperCase(),
-          totalAPagar: totalAPagar,
-          puntosUsados: usedPoints,
-        );
+        try {
+          await sendWhatsAppOrderUc(
+            whatsappNumber: whatsappNumber,
+            items: itemsToBuy,
+            orderId: orderId.substring(0, 8).toUpperCase(),
+            totalAPagar: totalAPagar,
+            puntosUsados: usedPoints,
+          );
+        } catch (e, st) {
+          developer.log('Error enviando WhatsApp (Orden creada exitosamente)', error: e, stackTrace: st);
+        }
 
         // 6. Emitir éxito con payload tipado
         emit(
