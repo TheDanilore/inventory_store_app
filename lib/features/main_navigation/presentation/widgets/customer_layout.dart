@@ -8,8 +8,8 @@ import 'package:inventory_store_app/core/network/network_cubit.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'dart:ui';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
@@ -27,6 +27,7 @@ class CustomerLayout extends StatelessWidget {
   final bool showWalletChip;
   final bool showAppBar;
   final bool hideAppBarOnScroll;
+  final bool useBusinessName;
 
   const CustomerLayout({
     super.key,
@@ -42,24 +43,30 @@ class CustomerLayout extends StatelessWidget {
     this.showWalletChip = true,
     this.showAppBar = true,
     this.hideAppBarOnScroll = false,
+    this.useBusinessName = false,
   });
 
   // WALLET CHIP
 
   Widget _buildWalletChip(BuildContext context) {
-    return BlocBuilder<AppConfigCubit, AppConfigState>(
-      builder: (context, config) {
-        return BlocBuilder<WalletCubit, WalletState>(
-          builder: (context, walletState) {
-            final globalEnabled =
-                config.businessInfo?.loyaltyGlobalEnabled ?? true;
-            final customerVisible =
-                config.businessInfo?.loyaltyCustomerVisible ?? true;
-            if (!globalEnabled || !customerVisible) {
-              return const SizedBox.shrink();
-            }
+    return BlocSelector<AppConfigCubit, AppConfigState, (bool, bool)>(
+      selector:
+          (s) => (
+            s.businessInfo?.loyaltyGlobalEnabled ?? true,
+            s.businessInfo?.loyaltyCustomerVisible ?? true,
+          ),
+      builder: (context, flags) {
+        final (globalEnabled, customerVisible) = flags;
+        if (!globalEnabled || !customerVisible) {
+          return const SizedBox.shrink();
+        }
 
-            if (!walletState.hasBalance && !walletState.isLoading) {
+        return BlocSelector<WalletCubit, WalletState, (bool, bool, int?)>(
+          selector: (s) => (s.hasBalance, s.isLoading, s.balance),
+          builder: (context, walletData) {
+            final (hasBalance, isLoading, balance) = walletData;
+            
+            if (!hasBalance && !isLoading) {
               return const SizedBox.shrink();
             }
 
@@ -106,7 +113,7 @@ class CustomerLayout extends StatelessWidget {
                           );
                         },
                         child:
-                            walletState.isLoading
+                            isLoading
                                 ? const AppShimmer(
                                   key: ValueKey('shimmer'),
                                   width: 30,
@@ -114,8 +121,8 @@ class CustomerLayout extends StatelessWidget {
                                   borderRadius: 6,
                                 )
                                 : Text(
-                                  '${walletState.balance}',
-                                  key: ValueKey(walletState.balance),
+                                  '$balance',
+                                  key: ValueKey(balance),
                                   style: const TextStyle(
                                     color: Color(0xFF8A6300),
                                     fontSize: 13,
@@ -164,7 +171,7 @@ class CustomerLayout extends StatelessWidget {
               if (Navigator.canPop(context)) {
                 Navigator.pop(context);
               } else {
-                final user = Supabase.instance.client.auth.currentUser;
+                final user = context.read<AuthCubit>().state.currentUser;
                 if (user == null) {
                   context.go('/login');
                 } else {
@@ -172,7 +179,7 @@ class CustomerLayout extends StatelessWidget {
                 }
               }
             } else {
-              final user = Supabase.instance.client.auth.currentUser;
+              final user = context.read<AuthCubit>().state.currentUser;
               if (user == null) {
                 context.go('/login');
               } else {
@@ -195,19 +202,13 @@ class CustomerLayout extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.only(left: noLeadingIcon ? 16.0 : 0.0),
-      child: BlocBuilder<AppConfigCubit, AppConfigState>(
-        builder: (context, config) {
-          final liveTitle = config.businessInfo?.businessName ?? '';
-          final bool isSpecificTitle =
-              title.isNotEmpty &&
-              title != 'Danilore Store' &&
-              title != 'Nuestra Tienda';
+      child: BlocSelector<AppConfigCubit, AppConfigState, String>(
+        selector: (s) => s.businessInfo?.businessName ?? '',
+        builder: (context, businessName) {
           final displayTitle =
-              isSpecificTitle
-                  ? title
-                  : (liveTitle.isNotEmpty && liveTitle != 'Cargando...'
-                      ? liveTitle
-                      : title);
+              (useBusinessName && businessName.isNotEmpty && businessName != 'Cargando...')
+                  ? businessName
+                  : title;
           return Text(
             displayTitle,
             style: const TextStyle(
@@ -253,16 +254,17 @@ class CustomerLayout extends StatelessWidget {
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      BlocBuilder<CartCubit, CartState>(
-                        builder: (context, cartState) {
-                          if (cartState.itemCount == 0) {
+                      BlocSelector<CartCubit, CartState, int>(
+                        selector: (s) => s.itemCount,
+                        builder: (context, itemCount) {
+                          if (itemCount == 0) {
                             return const SizedBox.shrink();
                           }
                           return Positioned(
                             right: 4,
                             top: 4,
                             child: _AnimatedCartBadge(
-                              itemCount: cartState.itemCount,
+                              itemCount: itemCount,
                             ),
                           );
                         },
@@ -309,7 +311,7 @@ class CustomerLayout extends StatelessWidget {
 
   void _onNavDestinationSelected(BuildContext context, int index) {
     if (index == 2) {
-      final user = Supabase.instance.client.auth.currentUser;
+      final user = context.read<AuthCubit>().state.currentUser;
       if (user == null) {
         context.go('/login');
         return;
@@ -520,9 +522,9 @@ class CustomerLayout extends StatelessWidget {
     // Banner de sin conexión + body
     Widget pageBody = Column(
       children: [
-        BlocBuilder<NetworkCubit, NetworkState>(
-          builder: (context, state) {
-            final isOnline = state is NetworkConnected;
+        BlocSelector<NetworkCubit, NetworkState, bool>(
+          selector: (state) => state is NetworkConnected,
+          builder: (context, isOnline) {
             return AnimatedSize(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
