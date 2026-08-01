@@ -265,6 +265,8 @@ DECLARE
     v_today_checkin record;
     v_new_streak integer;
     v_points integer;
+    v_base_reward integer;
+    v_streak_step integer;
 BEGIN
     -- 1. Validar si ya existe el check-in de hoy (Protección contra doble clic/ataque de red)
     SELECT id INTO v_today_checkin 
@@ -288,19 +290,23 @@ BEGIN
         v_new_streak := 1;
     END IF;
 
-    -- 3. Calcular Puntos de Recompensa
-    -- Regla de Negocio Base: 20 puntos base + 10 por cada día consecutivo
-    v_points := 20 + ((v_new_streak - 1) * 10);
+    -- 3. Extraer configuración de recompensas de la tabla app_settings
+    SELECT COALESCE((SELECT value::numeric::int FROM app_settings WHERE key = 'checkin_reward'), 20) INTO v_base_reward;
+    SELECT COALESCE((SELECT value::numeric::int FROM app_settings WHERE key = 'checkin_streak_step'), 10) INTO v_streak_step;
 
-    -- 4. Insertar Check-in
+    -- 4. Calcular Puntos de Recompensa
+    -- Regla de Negocio Dinámica: Recompensa Base + (Paso * (Racha - 1))
+    v_points := v_base_reward + ((v_new_streak - 1) * v_streak_step);
+
+    -- 5. Insertar Check-in
     INSERT INTO public.daily_checkins (profile_id, checkin_date, streak_day)
     VALUES (p_profile_id, v_today, v_new_streak);
 
-    -- 5. Insertar Movimiento en la Billetera (Auditoría)
+    -- 6. Insertar Movimiento en la Billetera (Auditoría)
     INSERT INTO public.wallet_movements (profile_id, movement_type, points, description)
     VALUES (p_profile_id, 'CHECKIN', v_points, 'Check-in diario del ' || v_today::text);
 
-    -- 6. Actualizar Saldo Final del Usuario Atómicamente
+    -- 7. Actualizar Saldo Final del Usuario Atómicamente
     UPDATE public.profiles
     SET wallet_balance = COALESCE(wallet_balance, 0) + v_points
     WHERE id = p_profile_id;
@@ -312,159 +318,258 @@ $$;
 ALTER FUNCTION "public"."claim_daily_checkin"("p_profile_id" "uuid", "p_action_by" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid" DEFAULT NULL::"uuid", "p_active_shift_id" "uuid" DEFAULT NULL::"uuid", "p_due_date" "date" DEFAULT NULL::"date", "p_document_date" "date" DEFAULT NULL::"date", "p_document_type" "text" DEFAULT 'NINGUNO'::"text", "p_document_number" "text" DEFAULT NULL::"text", "p_notes" "text" DEFAULT NULL::"text", "p_profile_id" "uuid" DEFAULT NULL::"uuid", "p_items" "jsonb" DEFAULT '[]'::"jsonb") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 DECLARE
     v_po_id UUID;
-    v_now TIMESTAMPTZ := NOW();
     v_item JSONB;
-    v_product_id UUID;
-    v_variant_id UUID;
-    v_quantity NUMERIC;
-    v_unit_cost NUMERIC;
-    v_batch_number TEXT;
-    v_expiry_date TIMESTAMPTZ;
-    v_credit_res RECORD;
-    v_acc_res RECORD;
-    v_shift_count INTEGER;
+    v_credit_id UUID;
+    v_credit_limit NUMERIC;
+    v_current_debt NUMERIC;
+    v_credit_active BOOLEAN;
+    v_acc_balance NUMERIC;
+    v_acc_type TEXT;
+    v_acc_name TEXT;
+    v_shift_status TEXT;
+    v_real_debt NUMERIC;
+    v_po_debt NUMERIC;
 BEGIN
-    -- Validar crédito disponible
-    IF (p_payment_method = 'CRÉDITO' OR p_payment_status = 'PENDING') AND p_payment_status <> 'PAID' THEN
-        SELECT id, current_debt, credit_limit, is_active INTO v_credit_res
-          FROM public.supplier_credits
-         WHERE supplier_id = p_supplier_id
-         LIMIT 1;
+    -- 0. Extraer Profile ID (Auditoría) si no se provee
+    IF p_profile_id IS NULL THEN
+        SELECT id INTO p_profile_id FROM public.profiles WHERE auth_user_id = auth.uid() LIMIT 1;
+    END IF;
 
-        IF p_payment_method = 'CRÉDITO' AND v_credit_res.id IS NULL THEN
-            RETURN jsonb_build_object('success', false, 'error', 'El proveedor no tiene una línea de crédito habilitada. Por favor regístrala en Créditos Proveedores.');
+    -- 1. Validar límite de crédito si la orden queda en Pago Pendiente o es CRÉDITO
+    IF p_payment_method = 'CRÉDITO' OR p_payment_status = 'PENDING' THEN
+        SELECT id, credit_limit, current_debt, is_active 
+        INTO v_credit_id, v_credit_limit, v_current_debt, v_credit_active
+        FROM public.supplier_credits
+        WHERE supplier_id = p_supplier_id
+        FOR UPDATE; -- Bloquear fila para evitar Race Conditions
+
+        IF NOT FOUND AND p_payment_method = 'CRÉDITO' THEN
+            RETURN jsonb_build_object('success', false, 'error', 'El proveedor no tiene una línea de crédito habilitada.');
         END IF;
 
-        IF v_credit_res.id IS NOT NULL THEN
-            IF NOT v_credit_res.is_active AND p_payment_method = 'CRÉDITO' THEN
-                RETURN jsonb_build_object('success', false, 'error', 'La línea de crédito del proveedor está inactiva.');
+        IF v_credit_id IS NOT NULL THEN
+            IF NOT v_credit_active AND p_payment_method = 'CRÉDITO' THEN
+                RETURN jsonb_build_object('success', false, 'error', 'La línea de crédito con este proveedor se encuentra inactiva.');
             END IF;
 
-            IF p_payment_method = 'CRÉDITO' AND v_credit_res.credit_limit <= 0 THEN
-                RETURN jsonb_build_object('success', false, 'error', 'El proveedor no tiene línea de crédito con límite asignado.');
+            IF p_payment_method = 'CRÉDITO' AND v_credit_limit <= 0 THEN
+                RETURN jsonb_build_object('success', false, 'error', 'El proveedor tiene un límite de crédito de S/ 0.00.');
             END IF;
 
-            IF p_payment_method = 'CRÉDITO' AND (COALESCE(v_credit_res.current_debt, 0) + p_total_amount) > v_credit_res.credit_limit THEN
-                RETURN jsonb_build_object('success', false, 'error', 'Esta compra excede el límite de crédito disponible del proveedor.');
+            -- Calcular deuda real (sumando OCs pendientes que no hayan reflejado su monto en current_debt aún)
+            SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid, 0)), 0) INTO v_po_debt
+            FROM public.purchase_orders
+            WHERE supplier_id = p_supplier_id 
+              AND payment_status IN ('PENDING', 'PARTIAL')
+              AND status != 'CANCELLED';
+
+            v_real_debt := GREATEST(v_current_debt, v_po_debt);
+
+            IF v_credit_limit > 0 AND (v_real_debt + p_total_amount) > v_credit_limit THEN
+                RETURN jsonb_build_object('success', false, 'error', 'Límite de crédito excedido. Disponible: S/ ' || ROUND((v_credit_limit - v_real_debt), 2) || ', Monto de la orden: S/ ' || ROUND(p_total_amount, 2));
             END IF;
         END IF;
     END IF;
 
-    -- Validar turno de caja abierto si aplica pago inmediato en efectivo
-    IF p_payment_status = 'PAID' AND p_account_id IS NOT NULL THEN
-        SELECT name, type INTO v_acc_res
-          FROM public.financial_accounts
-         WHERE id = p_account_id;
+    -- 2. Validar saldo suficiente y turno de caja abierto (PAID)
+    IF p_payment_status = 'PAID' THEN
+        IF p_account_id IS NULL THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Debe seleccionar una cuenta origen para registrar el pago.');
+        END IF;
 
-        IF v_acc_res.type = 'CAJA' THEN
-            SELECT COUNT(*) INTO v_shift_count
-              FROM public.cash_shifts
-             WHERE account_id = p_account_id AND status = 'OPEN';
+        SELECT name, type, balance INTO v_acc_name, v_acc_type, v_acc_balance
+        FROM public.financial_accounts
+        WHERE id = p_account_id
+        FOR UPDATE; -- Bloquear cuenta
 
-            IF COALESCE(v_shift_count, 0) = 0 THEN
-                RETURN jsonb_build_object('success', false, 'error', 'No hay un turno de caja abierto para la cuenta "' || v_acc_res.name || '".');
+        IF NOT FOUND THEN
+            RETURN jsonb_build_object('success', false, 'error', 'La cuenta financiera seleccionada no existe.');
+        END IF;
+
+        IF v_acc_balance < p_total_amount THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Saldo insuficiente en la cuenta "' || v_acc_name || '". Saldo disponible: S/ ' || ROUND(v_acc_balance, 2) || ', Monto a pagar: S/ ' || ROUND(p_total_amount, 2));
+        END IF;
+
+        IF v_acc_type = 'CAJA' THEN
+            -- Autodetectar turno de caja abierto si no viene provisto
+            IF p_active_shift_id IS NULL THEN
+                SELECT id INTO p_active_shift_id 
+                FROM public.cash_shifts 
+                WHERE account_id = p_account_id AND status = 'OPEN' 
+                LIMIT 1;
+            END IF;
+
+            IF p_active_shift_id IS NULL THEN
+                RETURN jsonb_build_object('success', false, 'error', 'No hay un turno de caja abierto para la cuenta "' || v_acc_name || '".');
+            END IF;
+
+            SELECT status INTO v_shift_status FROM public.cash_shifts WHERE id = p_active_shift_id;
+            IF v_shift_status != 'OPEN' THEN
+                RETURN jsonb_build_object('success', false, 'error', 'El turno de caja especificado ya no está abierto.');
             END IF;
         END IF;
     END IF;
 
-    -- Insertar Orden de Compra
-    -- 👇 Si ya viene pagada, nace en SENT (no tiene sentido dejarla "Pendiente")
+    -- 3. Inserción de la Orden de Compra
     INSERT INTO public.purchase_orders (
-        supplier_id, supplier_name, warehouse_id, status,
-        total_amount, payment_method, payment_status,
-        amount_paid, due_date, document_type,
-        document_number, document_date, notes, created_by, created_at
+        supplier_id, supplier_name, warehouse_id, total_amount, 
+        payment_method, payment_status, due_date, document_date, 
+        document_type, document_number, notes, created_by, status,
+        amount_paid -- Pre-llenar si es pagado al instante
     ) VALUES (
-        p_supplier_id, p_supplier_name, p_warehouse_id,
-        CASE WHEN p_payment_status = 'PAID' THEN 'SENT' ELSE 'PENDING' END,
-        p_total_amount, p_payment_method, p_payment_status,
-        CASE WHEN p_payment_status = 'PAID' THEN p_total_amount ELSE 0 END,
-        p_due_date, p_document_type,
-        p_document_number, p_document_date, p_notes, p_profile_id, v_now
+        p_supplier_id, p_supplier_name, p_warehouse_id, p_total_amount, 
+        p_payment_method, p_payment_status, p_due_date, p_document_date, 
+        p_document_type, p_document_number, p_notes, p_profile_id, 'PENDING',
+        CASE WHEN p_payment_status = 'PAID' THEN p_total_amount ELSE 0 END
     ) RETURNING id INTO v_po_id;
 
-    -- Insertar Ítems
+    -- 4. Inserción de los Ítems
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
     LOOP
-        v_product_id   := COALESCE((v_item->>'product_id'), (v_item->>'productId'))::UUID;
-        v_variant_id   := NULLIF(COALESCE((v_item->>'variant_id'), (v_item->>'variantId')), '')::UUID;
-        v_quantity     := (v_item->>'quantity')::NUMERIC;
-        v_unit_cost    := COALESCE((v_item->>'unit_cost'), (v_item->>'unitCost'))::NUMERIC;
-        v_batch_number := COALESCE(v_item->>'batch_number', v_item->>'batchNumber');
-        v_expiry_date  := NULLIF(COALESCE(v_item->>'expiry_date', v_item->>'expiryDate'), '')::TIMESTAMPTZ;
-
         INSERT INTO public.purchase_order_items (
-            purchase_order_id, product_id, variant_id,
-            quantity_ordered, quantity_received, unit_cost,
-            batch_number, expiry_date
+            purchase_order_id, product_id, variant_id, quantity_ordered, 
+            unit_cost, subtotal, batch_number, expiry_date
         ) VALUES (
-            v_po_id, v_product_id, v_variant_id,
-            v_quantity, 0, v_unit_cost,
-            v_batch_number, v_expiry_date
+            v_po_id, 
+            (v_item->>'product_id')::UUID, 
+            (v_item->>'variant_id')::UUID, 
+            (v_item->>'quantity')::NUMERIC, 
+            (v_item->>'unit_cost')::NUMERIC, 
+            ((v_item->>'quantity')::NUMERIC * (v_item->>'unit_cost')::NUMERIC),
+            v_item->>'batch_number', 
+            CASE WHEN (v_item->>'expiry_date') IS NOT NULL 
+                 THEN (v_item->>'expiry_date')::DATE 
+                 ELSE NULL END
         );
     END LOOP;
 
-    IF (p_payment_method = 'CRÉDITO' OR p_payment_status = 'PENDING') AND p_payment_status <> 'PAID' THEN
-        SELECT id, current_debt INTO v_credit_res
-          FROM public.supplier_credits
-         WHERE supplier_id = p_supplier_id
-         LIMIT 1;
+    -- 5. Operaciones Financieras / Movimientos
+    IF p_payment_status = 'PAID' THEN
+        -- Descontar saldo de la cuenta
+        UPDATE public.financial_accounts
+        SET balance = balance - p_total_amount,
+            updated_at = NOW()
+        WHERE id = p_account_id;
 
-        IF v_credit_res.id IS NOT NULL THEN
-            UPDATE public.supplier_credits
-               SET current_debt = COALESCE(current_debt, 0) + p_total_amount,
-                   updated_at   = v_now
-             WHERE id = v_credit_res.id;
-
-            BEGIN
-                INSERT INTO public.supplier_credit_movements (
-                    supplier_credit_id, purchase_order_id, movement_type, amount, notes, created_by, created_at
-                ) VALUES (
-                    v_credit_res.id, v_po_id, 'CHARGE', p_total_amount,
-                    'Nueva orden de compra generada (' || p_payment_method || ')',
-                    p_profile_id, v_now
-                );
-            EXCEPTION WHEN OTHERS THEN
-                NULL;
-            END;
-        END IF;
-
-    ELSIF p_payment_status = 'PAID' AND p_account_id IS NOT NULL THEN
-        INSERT INTO public.account_movements (
-            account_id, shift_id, movement_type, amount,
-            description, reference_type, reference_id,
-            created_by, created_at
+        -- Registrar movimiento (ajustar tabla si el esquema de movimientos se llama diferente)
+        -- EJ: financial_movements o cash_movements
+        INSERT INTO public.cash_movements (
+            account_id, shift_id, type, amount, description, reference_type, reference_id, created_by
         ) VALUES (
-            p_account_id, p_active_shift_id, 'EXPENSE', p_total_amount,
-            'Pago contado de Orden de Compra #' || UPPER(SUBSTRING(v_po_id::text, 1, 8)) ||
-                CASE WHEN p_document_number IS NOT NULL AND p_document_number <> ''
-                     THEN ' - ' || p_document_number
-                     ELSE ''
-                END,
-            'purchase_orders', v_po_id,
-            p_profile_id, v_now
+            p_account_id, p_active_shift_id, 'EXPENSE', p_total_amount, 
+            'Pago OC #' || left(v_po_id::text, 8), 
+            'PURCHASE_ORDER', v_po_id, p_profile_id
         );
 
-        UPDATE public.financial_accounts
-           SET balance    = balance - p_total_amount,
-               updated_at = v_now
-         WHERE id = p_account_id;
+    ELSIF p_payment_method = 'CRÉDITO' THEN
+        -- Aumentar deuda en la línea de crédito
+        UPDATE public.supplier_credits
+        SET current_debt = current_debt + p_total_amount,
+            updated_at = NOW()
+        WHERE id = v_credit_id;
+
+        -- Registrar cargo
+        INSERT INTO public.supplier_credit_movements (
+            supplier_credit_id, movement_type, amount, purchase_order_id, notes, created_by
+        ) VALUES (
+            v_credit_id, 'CHARGE', p_total_amount, v_po_id, 
+            'Orden de Compra #' || left(v_po_id::text, 8), p_profile_id
+        );
     END IF;
 
-    RETURN jsonb_build_object('success', true, 'id', v_po_id);
+    RETURN jsonb_build_object('success', true, 'purchase_order_id', v_po_id);
 
 EXCEPTION WHEN OTHERS THEN
+    -- Ante cualquier error de restricción, stock, nulos, etc, se lanza excepción y PostgreSQL hace ROLLBACK
     RETURN jsonb_build_object('success', false, 'error', SQLERRM, 'detail', SQLSTATE);
 END;
 $$;
 
 
 ALTER FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_loyalty_dashboard"("p_auth_user_id" "uuid") RETURNS json
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_result JSON;
+  v_profile_id UUID;
+  v_wallet_balance INT;
+  v_today_date DATE := DATE(NOW() AT TIME ZONE 'UTC');
+  v_has_today_checkin BOOLEAN := FALSE;
+  v_latest_checkin JSON;
+  v_today_games JSON;
+  v_recent_movements JSON;
+BEGIN
+  -- 1. Obtener perfil
+  SELECT id, COALESCE(wallet_balance, 0) INTO v_profile_id, v_wallet_balance
+  FROM profiles
+  WHERE auth_user_id = p_auth_user_id;
+
+  IF v_profile_id IS NULL THEN
+    RAISE EXCEPTION 'Perfil no encontrado para auth_user_id: %', p_auth_user_id;
+  END IF;
+
+  -- 2. Verificar Check-in de hoy
+  SELECT EXISTS (
+    SELECT 1 FROM daily_checkins
+    WHERE profile_id = v_profile_id
+      AND checkin_date = v_today_date
+  ) INTO v_has_today_checkin;
+
+  -- 3. Obtener último checkin (para racha)
+  SELECT row_to_json(c) INTO v_latest_checkin
+  FROM (
+    SELECT checkin_date, streak_day 
+    FROM daily_checkins
+    WHERE profile_id = v_profile_id
+    ORDER BY checkin_date DESC
+    LIMIT 1
+  ) c;
+
+  -- 4. Contar minijuegos de hoy agrupados por tipo
+  SELECT COALESCE(json_object_agg(game_type, game_count), '{}'::json) INTO v_today_games
+  FROM (
+    SELECT movement_type AS game_type, COUNT(*) AS game_count
+    FROM wallet_movements
+    WHERE profile_id = v_profile_id
+      AND movement_type LIKE 'MINI_GAME_%'
+      AND DATE(created_at AT TIME ZONE 'UTC') = v_today_date
+    GROUP BY movement_type
+  ) g;
+
+  -- 5. Obtener últimos 20 movimientos
+  SELECT COALESCE(json_agg(row_to_json(m)), '[]'::json) INTO v_recent_movements
+  FROM (
+    SELECT id, movement_type, points, description, created_at
+    FROM wallet_movements
+    WHERE profile_id = v_profile_id
+    ORDER BY created_at DESC
+    LIMIT 20
+  ) m;
+
+  -- Armar JSON final
+  v_result := json_build_object(
+    'profile_id', v_profile_id,
+    'wallet_balance', v_wallet_balance,
+    'has_today_checkin', v_has_today_checkin,
+    'latest_checkin', v_latest_checkin,
+    'today_games', v_today_games,
+    'recent_movements', v_recent_movements
+  );
+
+  RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_loyalty_dashboard"("p_auth_user_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_top_customers"("p_limit" integer DEFAULT 10) RETURNS TABLE("id" "uuid", "full_name" "text", "avatar_url" "text", "is_active" boolean, "wallet_balance" integer, "created_at" timestamp with time zone, "total_revenue" numeric)
@@ -4867,6 +4972,12 @@ GRANT ALL ON FUNCTION "public"."claim_daily_checkin"("p_profile_id" "uuid", "p_a
 GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_loyalty_dashboard"("p_auth_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_loyalty_dashboard"("p_auth_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_loyalty_dashboard"("p_auth_user_id" "uuid") TO "service_role";
 
 
 
