@@ -193,49 +193,24 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         );
       }
 
-      final shiftRes =
-          await _supabase
-              .from('cash_shifts')
-              .select('account_id, opening_amount')
-              .eq('id', shiftId)
-              .single();
-
-      final accountId = shiftRes['account_id'];
-      final openingAmount = (shiftRes['opening_amount'] as num).toDouble();
-
-      final movRes = await _supabase
-          .from('account_movements')
-          .select('movement_type, amount')
-          .eq('account_id', accountId)
-          .eq('shift_id', shiftId);
-
-      double income = 0;
-      double expense = 0;
-      for (final m in (movRes as List)) {
-        final amt = (m['amount'] as num).toDouble();
-        if (m['movement_type'] == 'INCOME') income += amt;
-        if (m['movement_type'] == 'EXPENSE') expense += amt;
-      }
-
-      final expectedAmount = openingAmount + income - expense;
-      final differenceAmount = closingBalance - expectedAmount;
-
-      await _supabase
-          .from('cash_shifts')
-          .update({
-            'status': 'CLOSED',
-            'closed_at': DateTime.now().toIso8601String(),
-            'closed_by': profileId,
-            'actual_amount': closingBalance,
-            'expected_amount': expectedAmount,
-            'difference_amount': differenceAmount,
-            if (notes != null && notes.isNotEmpty) 'notes': notes,
-          })
-          .eq('id', shiftId);
+      await _supabase.rpc('rpc_close_cash_shift', params: {
+        'p_shift_id': shiftId,
+        'p_actual_amount': closingBalance,
+        'p_closed_by': profileId,
+        'p_notes': notes,
+      });
 
       return right(unit);
-    } catch (e) {
-      return left(Failure.from(e));
+    } catch (e, st) {
+      developer.log('Error closing cash shift', error: e, stackTrace: st);
+      String errorMessage = 'Error inesperado al cerrar el turno.';
+      final eStr = e.toString();
+      if (eStr.contains('no existe')) {
+        errorMessage = 'El turno de caja especificado no existe.';
+      } else if (eStr.contains('ya se encuentra cerrado')) {
+        errorMessage = 'Este turno de caja ya se encuentra cerrado.';
+      }
+      return left(ServerFailure(message: errorMessage));
     }
   }
 

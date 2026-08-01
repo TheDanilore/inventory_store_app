@@ -5,7 +5,7 @@ import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/c
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_state.dart';
 
 class CloseShiftSheet extends StatefulWidget {
   final CashShiftEntity shift;
@@ -36,11 +36,9 @@ class CloseShiftSheet extends StatefulWidget {
 }
 
 class _CloseShiftSheetState extends State<CloseShiftSheet> {
-  final _supabase = Supabase.instance.client;
   final _actualCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _saving = false;
   double? _difference;
 
   void _onAmountChanged(String v) {
@@ -50,54 +48,16 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
     });
   }
 
-  Future<void> _save() async {
+  void _save() {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
-
-    try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) throw Exception('No hay sesión activa');
-
-      final profileRes =
-          await _supabase
-              .from('profiles')
-              .select('id')
-              .eq('auth_user_id', user.id)
-              .maybeSingle();
-      final profileId = profileRes?['id'] as String? ?? user.id;
-
-      final actual = double.parse(_actualCtrl.text.replaceAll(',', '.'));
-      final diff = actual - widget.expectedAmount;
-
-      await _supabase
-          .from('cash_shifts')
-          .update({
-            'status': 'CLOSED',
-            'closed_by': profileId,
-            'closed_at': DateTime.now().toUtc().toIso8601String(),
-            'expected_amount': widget.expectedAmount,
-            'actual_amount': actual,
-            'difference_amount': diff,
-            'notes':
-                _notesCtrl.text.trim().isNotEmpty
-                    ? _notesCtrl.text.trim()
-                    : null,
-          })
-          .eq('id', widget.shift.id);
-
-      if (!mounted) return;
-      context.read<CashShiftsCubit>().fetchShifts();
-      Navigator.pop(context, true);
-    } catch (e) {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Error al cerrar turno: $e',
-          type: SnackbarType.error,
-        );
-        setState(() => _saving = false);
-      }
-    }
+    
+    final actual = double.parse(_actualCtrl.text.replaceAll(',', '.'));
+    
+    context.read<CashShiftsCubit>().closeShift(
+      widget.shift.id,
+      actual,
+      notes: _notesCtrl.text.trim().isNotEmpty ? _notesCtrl.text.trim() : null,
+    );
   }
 
   @override
@@ -302,33 +262,49 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
 
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _saving ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.danger,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child:
-                    _saving
-                        ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                        : const Text(
-                          'Cerrar turno',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
-                        ),
+              child: BlocConsumer<CashShiftsCubit, CashShiftsState>(
+                listenWhen: (previous, current) => previous.isLoading && !current.isLoading,
+                listener: (context, state) {
+                  if (state.errorMessage.isNotEmpty) {
+                    AppSnackbar.show(
+                      context,
+                      message: state.errorMessage,
+                      type: SnackbarType.error,
+                    );
+                  } else {
+                    Navigator.pop(context, true);
+                  }
+                },
+                builder: (context, state) {
+                  return ElevatedButton(
+                    onPressed: state.isLoading ? null : _save,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.danger,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child:
+                        state.isLoading
+                            ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                            : const Text(
+                              'Cerrar turno',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                              ),
+                            ),
+                  );
+                },
               ),
             ),
           ],
