@@ -167,7 +167,7 @@ import '../../features/customers/presentation/bloc/customer_credit/customer_cred
 import '../../features/customers/presentation/bloc/customer_detail/customer_detail_cubit.dart'
     as _i367;
 import '../../features/customers/presentation/bloc/customer_form/customer_form_cubit.dart'
-    as _i1;
+    as _i2;
 import '../../features/customers/presentation/bloc/customer_locations/customer_locations_cubit.dart'
     as _i135;
 import '../../features/customers/presentation/bloc/customer_wishlist/customer_wishlist_cubit.dart'
@@ -291,7 +291,7 @@ import '../../features/inventory/presentation/bloc/warehouses/warehouses_cubit.d
 import '../../features/loyalty/data/repositories_impl/loyalty_repository_impl.dart'
     as _i643;
 import '../../features/loyalty/domain/repositories/loyalty_repository.dart'
-    as _i747;
+    as _i748;
 import '../../features/loyalty/domain/usecases/claim_daily_checkin_uc.dart'
     as _i380;
 import '../../features/loyalty/domain/usecases/get_latest_checkin_uc.dart'
@@ -315,10 +315,10 @@ import '../../features/loyalty/presentation/bloc/points/points_cubit.dart'
 import '../../features/loyalty/presentation/bloc/top_customers/loyalty_top_customers_cubit.dart'
     as _i739;
 import '../../features/loyalty/presentation/bloc/wallet_cubit.dart' as _i1028;
+import '../../features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart'
+    as _i41;
 import '../../features/orders/data/repositories_impl/checkout_repository_impl.dart'
     as _i161;
-import '../../features/orders/data/repositories_impl/orders_repository_impl.dart'
-    as _i647;
 import '../../features/orders/domain/repositories/checkout_repository.dart'
     as _i760;
 import '../../features/orders/domain/repositories/orders_repository.dart'
@@ -333,7 +333,7 @@ import '../../features/orders/domain/usecases/get_default_address_uc.dart'
 import '../../features/orders/domain/usecases/get_filtered_orders_uc.dart'
     as _i617;
 import '../../features/orders/domain/usecases/get_financial_accounts_uc.dart'
-    as _i748;
+    as _i747;
 import '../../features/orders/domain/usecases/get_order_by_id_usecase.dart'
     as _i711;
 import '../../features/orders/domain/usecases/get_order_details_uc.dart'
@@ -345,18 +345,20 @@ import '../../features/orders/domain/usecases/get_profile_by_id_uc.dart'
     as _i990;
 import '../../features/orders/domain/usecases/process_checkout_uc.dart'
     as _i446;
-import '../../features/orders/domain/usecases/process_return_uc.dart' as _i2;
+import '../../features/orders/domain/usecases/process_return_uc.dart' as _i1;
 import '../../features/orders/domain/usecases/register_credit_payment_uc.dart'
-    as _i956;
+    as _i955;
 import '../../features/orders/domain/usecases/save_order_changes_uc.dart'
     as _i904;
 import '../../features/orders/domain/usecases/search_customers_uc.dart'
-    as _i360;
+    as _i359;
 import '../../features/orders/domain/usecases/send_whatsapp_order_uc.dart'
     as _i895;
 import '../../features/orders/domain/usecases/update_order_status_uc.dart'
     as _i624;
 import '../../features/orders/domain/usecases/verify_stock_uc.dart' as _i713;
+import '../../features/orders/domain/usecases/watch_pending_orders_count_uc.dart'
+    as _i981;
 import '../../features/orders/presentation/bloc/checkout_cubit.dart' as _i602;
 import '../../features/orders/presentation/bloc/customer_orders/customer_orders_cubit.dart'
     as _i442;
@@ -409,7 +411,7 @@ import '../../features/purchases/domain/usecases/fetch_purchase_order_items_usec
 import '../../features/purchases/domain/usecases/fetch_purchase_orders_usecase.dart'
     as _i831;
 import '../../features/purchases/domain/usecases/fetch_supplier_credit_movements_usecase.dart'
-    as _i359;
+    as _i360;
 import '../../features/purchases/domain/usecases/fetch_supplier_credits_usecase.dart'
     as _i817;
 import '../../features/purchases/domain/usecases/fetch_suppliers_usecase.dart'
@@ -439,7 +441,7 @@ import '../../features/purchases/domain/usecases/receive_purchase_order_items_us
 import '../../features/purchases/domain/usecases/register_order_payment_usecase.dart'
     as _i598;
 import '../../features/purchases/domain/usecases/register_supplier_payment_usecase.dart'
-    as _i955;
+    as _i956;
 import '../../features/purchases/domain/usecases/save_supplier_credit_usecase.dart'
     as _i321;
 import '../../features/purchases/domain/usecases/save_supplier_usecase.dart'
@@ -543,6 +545,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i662.FinancialAccountsRepository>(),
       ),
     );
+    gh.factory<_i315.GetPendingCustomerOrdersUc>(
+      () => _i315.GetPendingCustomerOrdersUc(gh<_i992.OrdersRepository>()),
+    );
     gh.lazySingleton<_i476.UsersRepository>(
       () => _i960.UsersRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
@@ -568,13 +573,55 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1050.CashShiftRepository>(
       () => _i399.CashShiftRepositoryImpl(),
     );
-    gh.lazySingleton<_i992.OrdersRepository>(
-      () => _i647.OrdersRepositoryImpl(),
+    gh.factory<_i864.CheckActiveCashShiftUc>(
+      () => _i864.CheckActiveCashShiftUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.factory<_i857.GetCustomerOrdersUc>(
+      () => _i857.GetCustomerOrdersUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.factory<_i747.GetFinancialAccountsUc>(
+      () => _i747.GetFinancialAccountsUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.factory<_i93.GetOrderDetailsUc>(
+      () => _i93.GetOrderDetailsUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.factory<_i990.GetProfileByIdUc>(
+      () => _i990.GetProfileByIdUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.factory<_i955.RegisterCreditPaymentUc>(
+      () => _i955.RegisterCreditPaymentUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.factory<_i359.SearchCustomersUc>(
+      () => _i359.SearchCustomersUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.factory<_i981.WatchPendingOrdersCountUc>(
+      () => _i981.WatchPendingOrdersCountUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i534.CancelOrderUc>(
+      () => _i534.CancelOrderUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i617.GetFilteredOrdersUc>(
+      () => _i617.GetFilteredOrdersUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i711.GetOrderByIdUseCase>(
+      () => _i711.GetOrderByIdUseCase(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i812.GetOrderItemsUc>(
+      () => _i812.GetOrderItemsUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i1.ProcessReturnUc>(
+      () => _i1.ProcessReturnUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i904.SaveOrderChangesUc>(
+      () => _i904.SaveOrderChangesUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i624.UpdateOrderStatusUc>(
+      () => _i624.UpdateOrderStatusUc(gh<_i992.OrdersRepository>()),
     );
     gh.lazySingleton<_i123.SupplierCreditsRepository>(
       () => _i329.SupplierCreditsRepositoryImpl(),
     );
-    gh.lazySingleton<_i747.LoyaltyRepository>(
+    gh.lazySingleton<_i748.LoyaltyRepository>(
       () => _i643.LoyaltyRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
     gh.factory<_i160.GetActiveWarehousesExitsUseCase>(
@@ -680,6 +727,14 @@ extension GetItInjectableX on _i174.GetIt {
         toggleWarehouseStatusUseCase: gh<_i275.ToggleWarehouseStatusUseCase>(),
       ),
     );
+    gh.factory<_i1051.OrdersCubit>(
+      () => _i1051.OrdersCubit(
+        getFilteredOrdersUc: gh<_i617.GetFilteredOrdersUc>(),
+        updateOrderStatusUc: gh<_i624.UpdateOrderStatusUc>(),
+        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
+        repository: gh<_i992.OrdersRepository>(),
+      ),
+    );
     gh.factory<_i761.CustomerCreditMovementsCubit>(
       () => _i761.CustomerCreditMovementsCubit(
         gh<_i4.CustomerCreditsRepository>(),
@@ -752,8 +807,8 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i362.PurchaseOrdersRepository>(),
       ),
     );
-    gh.lazySingleton<_i359.FetchSupplierCreditMovementsUseCase>(
-      () => _i359.FetchSupplierCreditMovementsUseCase(
+    gh.lazySingleton<_i360.FetchSupplierCreditMovementsUseCase>(
+      () => _i360.FetchSupplierCreditMovementsUseCase(
         gh<_i115.SupplierCreditMovementsRepository>(),
       ),
     );
@@ -806,8 +861,8 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i123.SupplierCreditsRepository>(),
       ),
     );
-    gh.lazySingleton<_i955.RegisterSupplierPaymentUseCase>(
-      () => _i955.RegisterSupplierPaymentUseCase(
+    gh.lazySingleton<_i956.RegisterSupplierPaymentUseCase>(
+      () => _i956.RegisterSupplierPaymentUseCase(
         gh<_i123.SupplierCreditsRepository>(),
       ),
     );
@@ -945,6 +1000,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i190.AddExitProductCubit>(
       () => _i190.AddExitProductCubit(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i41.SidebarBadgeCubit>(
+      () => _i41.SidebarBadgeCubit(gh<_i981.WatchPendingOrdersCountUc>()),
     );
     gh.lazySingleton<_i601.GetCustomerLocationsUseCase>(
       () => _i601.GetCustomerLocationsUseCase(
@@ -1104,7 +1162,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factoryParam<_i1031.SupplierCreditMovementsCubit, String, String>(
       (creditId, supplierName) => _i1031.SupplierCreditMovementsCubit(
-        fetchMovementsUseCase: gh<_i359.FetchSupplierCreditMovementsUseCase>(),
+        fetchMovementsUseCase: gh<_i360.FetchSupplierCreditMovementsUseCase>(),
         generatePdfUseCase:
             gh<_i495.GenerateSupplierCreditMovementsPdfUseCase>(),
         creditId: creditId,
@@ -1112,31 +1170,31 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.lazySingleton<_i380.ClaimDailyCheckinUC>(
-      () => _i380.ClaimDailyCheckinUC(gh<_i747.LoyaltyRepository>()),
+      () => _i380.ClaimDailyCheckinUC(gh<_i748.LoyaltyRepository>()),
     );
     gh.lazySingleton<_i696.GetLatestCheckinUC>(
-      () => _i696.GetLatestCheckinUC(gh<_i747.LoyaltyRepository>()),
+      () => _i696.GetLatestCheckinUC(gh<_i748.LoyaltyRepository>()),
     );
     gh.lazySingleton<_i589.GetLoyaltyProfileUC>(
-      () => _i589.GetLoyaltyProfileUC(gh<_i747.LoyaltyRepository>()),
+      () => _i589.GetLoyaltyProfileUC(gh<_i748.LoyaltyRepository>()),
     );
     gh.lazySingleton<_i893.GetTodayCheckinUC>(
-      () => _i893.GetTodayCheckinUC(gh<_i747.LoyaltyRepository>()),
+      () => _i893.GetTodayCheckinUC(gh<_i748.LoyaltyRepository>()),
     );
     gh.lazySingleton<_i231.GetTodayMiniGamesUC>(
-      () => _i231.GetTodayMiniGamesUC(gh<_i747.LoyaltyRepository>()),
+      () => _i231.GetTodayMiniGamesUC(gh<_i748.LoyaltyRepository>()),
     );
     gh.lazySingleton<_i34.GetTopCustomersUC>(
-      () => _i34.GetTopCustomersUC(gh<_i747.LoyaltyRepository>()),
+      () => _i34.GetTopCustomersUC(gh<_i748.LoyaltyRepository>()),
     );
     gh.lazySingleton<_i631.GetWalletBalanceUC>(
-      () => _i631.GetWalletBalanceUC(gh<_i747.LoyaltyRepository>()),
+      () => _i631.GetWalletBalanceUC(gh<_i748.LoyaltyRepository>()),
     );
     gh.lazySingleton<_i829.GetWalletMovementsUC>(
-      () => _i829.GetWalletMovementsUC(gh<_i747.LoyaltyRepository>()),
+      () => _i829.GetWalletMovementsUC(gh<_i748.LoyaltyRepository>()),
     );
     gh.lazySingleton<_i626.RecordMiniGameUC>(
-      () => _i626.RecordMiniGameUC(gh<_i747.LoyaltyRepository>()),
+      () => _i626.RecordMiniGameUC(gh<_i748.LoyaltyRepository>()),
     );
     gh.factory<_i14.TopCustomersCubit>(
       () => _i14.TopCustomersCubit(gh<_i1019.GetTopCustomersUseCase>()),
@@ -1152,7 +1210,7 @@ extension GetItInjectableX on _i174.GetIt {
         fetchSupplierCreditsUseCase: gh<_i817.FetchSupplierCreditsUseCase>(),
         toggleSupplierCreditUseCase: gh<_i349.ToggleSupplierCreditUseCase>(),
         registerSupplierPaymentUseCase:
-            gh<_i955.RegisterSupplierPaymentUseCase>(),
+            gh<_i956.RegisterSupplierPaymentUseCase>(),
       ),
     );
     gh.factory<_i811.GetAccountMovementsUseCase>(
@@ -1173,8 +1231,11 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i749.RegisterCreditPaymentUseCase>(),
       ),
     );
-    gh.factory<_i315.GetPendingCustomerOrdersUc>(
-      () => _i315.GetPendingCustomerOrdersUc(gh<_i992.OrdersRepository>()),
+    gh.factory<_i442.CustomerOrdersCubit>(
+      () => _i442.CustomerOrdersCubit(
+        getCustomerOrdersUc: gh<_i857.GetCustomerOrdersUc>(),
+        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
+      ),
     );
     gh.factory<_i135.CustomerLocationsCubit>(
       () => _i135.CustomerLocationsCubit(
@@ -1322,10 +1383,22 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i713.VerifyStockUc>(
       () => _i713.VerifyStockUc(gh<_i760.CheckoutRepository>()),
     );
-    gh.factory<_i1.CustomerFormCubit>(
-      () => _i1.CustomerFormCubit(
+    gh.factory<_i2.CustomerFormCubit>(
+      () => _i2.CustomerFormCubit(
         gh<_i1019.SaveCustomerFullProfileUseCase>(),
         gh<_i749.GetCreditAccountByCustomerUseCase>(),
+      ),
+    );
+    gh.factory<_i808.OrderDetailCubit>(
+      () => _i808.OrderDetailCubit(
+        getOrderDetailsUc: gh<_i93.GetOrderDetailsUc>(),
+        saveOrderChangesUc: gh<_i904.SaveOrderChangesUc>(),
+        getFinancialAccountsUc: gh<_i747.GetFinancialAccountsUc>(),
+        getProfileByIdUc: gh<_i990.GetProfileByIdUc>(),
+        searchCustomersUc: gh<_i359.SearchCustomersUc>(),
+        checkActiveCashShiftUc: gh<_i864.CheckActiveCashShiftUc>(),
+        registerCreditPaymentUc: gh<_i955.RegisterCreditPaymentUc>(),
+        processReturnUc: gh<_i1.ProcessReturnUc>(),
       ),
     );
     gh.factory<_i431.SuppliersCubit>(
@@ -1353,48 +1426,6 @@ extension GetItInjectableX on _i174.GetIt {
             gh<_i36.RestoreDefaultConnectionUseCase>(),
         getConnectionUrlUseCase: gh<_i653.GetConnectionUrlUseCase>(),
       ),
-    );
-    gh.factory<_i864.CheckActiveCashShiftUc>(
-      () => _i864.CheckActiveCashShiftUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.factory<_i857.GetCustomerOrdersUc>(
-      () => _i857.GetCustomerOrdersUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.factory<_i748.GetFinancialAccountsUc>(
-      () => _i748.GetFinancialAccountsUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.factory<_i93.GetOrderDetailsUc>(
-      () => _i93.GetOrderDetailsUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.factory<_i990.GetProfileByIdUc>(
-      () => _i990.GetProfileByIdUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.factory<_i956.RegisterCreditPaymentUc>(
-      () => _i956.RegisterCreditPaymentUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.factory<_i360.SearchCustomersUc>(
-      () => _i360.SearchCustomersUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.lazySingleton<_i534.CancelOrderUc>(
-      () => _i534.CancelOrderUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.lazySingleton<_i617.GetFilteredOrdersUc>(
-      () => _i617.GetFilteredOrdersUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.lazySingleton<_i711.GetOrderByIdUseCase>(
-      () => _i711.GetOrderByIdUseCase(gh<_i992.OrdersRepository>()),
-    );
-    gh.lazySingleton<_i812.GetOrderItemsUc>(
-      () => _i812.GetOrderItemsUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.lazySingleton<_i2.ProcessReturnUc>(
-      () => _i2.ProcessReturnUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.lazySingleton<_i904.SaveOrderChangesUc>(
-      () => _i904.SaveOrderChangesUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.lazySingleton<_i624.UpdateOrderStatusUc>(
-      () => _i624.UpdateOrderStatusUc(gh<_i992.OrdersRepository>()),
     );
     gh.factory<_i70.CustomersCubit>(
       () => _i70.CustomersCubit(
@@ -1449,14 +1480,6 @@ extension GetItInjectableX on _i174.GetIt {
         clearCatalogCacheUC: gh<_i1067.ClearCatalogCacheUC>(),
         exportCatalogPdfUC: gh<_i961.ExportCatalogPdfUseCase>(),
         getProductStockUC: gh<_i958.GetProductStockUC>(),
-      ),
-    );
-    gh.factory<_i1051.OrdersCubit>(
-      () => _i1051.OrdersCubit(
-        getFilteredOrdersUc: gh<_i617.GetFilteredOrdersUc>(),
-        updateOrderStatusUc: gh<_i624.UpdateOrderStatusUc>(),
-        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
-        repository: gh<_i992.OrdersRepository>(),
       ),
     );
     gh.factory<_i52.AuthCubit>(
@@ -1584,30 +1607,12 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i927.GetCurrentProfileIdUseCase>(),
       ),
     );
-    gh.factory<_i442.CustomerOrdersCubit>(
-      () => _i442.CustomerOrdersCubit(
-        getCustomerOrdersUc: gh<_i857.GetCustomerOrdersUc>(),
-        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
-      ),
-    );
     gh.factory<_i991.CustomerCatalogCubit>(
       () => _i991.CustomerCatalogCubit(
         getCategoriesUC: gh<_i700.GetCategoriesUC>(),
         getProductsUC: gh<_i222.GetProductsUC>(),
         getProductStockUC: gh<_i958.GetProductStockUC>(),
         catalogRepository: gh<_i540.CatalogSearchRepository>(),
-      ),
-    );
-    gh.factory<_i808.OrderDetailCubit>(
-      () => _i808.OrderDetailCubit(
-        getOrderDetailsUc: gh<_i93.GetOrderDetailsUc>(),
-        saveOrderChangesUc: gh<_i904.SaveOrderChangesUc>(),
-        getFinancialAccountsUc: gh<_i748.GetFinancialAccountsUc>(),
-        getProfileByIdUc: gh<_i990.GetProfileByIdUc>(),
-        searchCustomersUc: gh<_i360.SearchCustomersUc>(),
-        checkActiveCashShiftUc: gh<_i864.CheckActiveCashShiftUc>(),
-        registerCreditPaymentUc: gh<_i956.RegisterCreditPaymentUc>(),
-        processReturnUc: gh<_i2.ProcessReturnUc>(),
       ),
     );
     gh.factory<_i421.CustomerWishlistCubit>(

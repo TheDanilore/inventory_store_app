@@ -4,7 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_state.dart';
 
 class AdminSidebarItem {
   final IconData icon;
@@ -38,41 +39,6 @@ class AdminSidebar extends StatefulWidget {
 
 class _AdminSidebarState extends State<AdminSidebar> {
   final Set<String> _expandedGroups = {};
-  // ValueNotifier: solo el badge de "Pedidos" se reconstruye cuando cambia el count.
-  // No se usa setState global para un dato que afecta un único widget del sidebar.
-  final ValueNotifier<int?> _pendingNotifier = ValueNotifier<int?>(null);
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchPendingOrdersCount();
-  }
-
-  @override
-  void dispose() {
-    _pendingNotifier.dispose();
-    super.dispose();
-  }
-
-  Future<void> _fetchPendingOrdersCount() async {
-    try {
-      // select('id') con .count() minimiza el egress: solo transfiere
-      // el header HTTP con el count exacto, sin descargar filas.
-      final response = await Supabase.instance.client
-          .from('orders')
-          .select('id')
-          .eq('status', 'PENDING')
-          .count(CountOption.exact);
-      if (mounted) {
-        _pendingNotifier.value = response.count;
-      }
-    } catch (e, st) {
-      debugPrint('🔴 [AdminSidebar] Error al obtener pedidos pendientes: $e\n$st');
-      // null = sin dato disponible. El badge no aparece en lugar de
-      // mostrar 0 falsamente cuando la query falló.
-      if (mounted) _pendingNotifier.value = null;
-    }
-  }
 
   void _toggleGroup(String title) {
     setState(() {
@@ -87,7 +53,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
   @override
   Widget build(BuildContext context) {
     final width = widget.isCollapsed ? 72.0 : 260.0;
-    final currentPath = GoRouterState.of(context).uri.path;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -118,7 +83,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     title: 'Catálogo',
                     routePath: '/admin',
                   ),
-                  currentPath,
                 ),
                 _buildSidebarTile(
                   context,
@@ -127,7 +91,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     title: 'Dashboard',
                     routePath: '/admin/dashboard',
                   ),
-                  currentPath,
                 ),
 
                 if (!widget.isCollapsed) ...[
@@ -141,24 +104,23 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   _buildSectionHeader('GESTIÓN COMERCIAL'),
                 ],
 
-                // ValueListenableBuilder: solo este tile se reconstruye
-                // cuando cambia _pendingNotifier. El resto del sidebar
-                // permanece intacto.
-                ValueListenableBuilder<int?>(
-                  valueListenable: _pendingNotifier,
-                  builder: (ctx, count, _) {
+                BlocBuilder<SidebarBadgeCubit, SidebarBadgeState>(
+                  builder: (ctx, state) {
+                    Widget? badge;
+                    if (state is SidebarBadgeLoaded && state.count > 0) {
+                      badge = _buildBadge(state.count);
+                    } else if (state is SidebarBadgeError) {
+                      badge = const Icon(Icons.warning_rounded, color: AppColors.error, size: 14);
+                    }
+
                     return _buildSidebarTile(
                       context,
                       AdminSidebarItem(
                         icon: Icons.receipt_long_rounded,
                         title: 'Pedidos',
                         routePath: '/admin/orders',
-                        trailing:
-                            count != null && count > 0
-                                ? _buildBadge(count)
-                                : null,
+                        trailing: badge,
                       ),
-                      currentPath,
                     );
                   },
                 ),
@@ -192,7 +154,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                       ),
                     ],
                   ),
-                  currentPath,
                 ),
 
                 _buildExpandableSidebarGroup(
@@ -224,7 +185,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                       ),
                     ],
                   ),
-                  currentPath,
                 ),
 
                 _buildExpandableSidebarGroup(
@@ -246,7 +206,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                       ),
                     ],
                   ),
-                  currentPath,
                 ),
 
                 if (!widget.isCollapsed) ...[
@@ -267,7 +226,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     title: 'Cuentas',
                     routePath: '/admin/financial-accounts',
                   ),
-                  currentPath,
                 ),
                 _buildSidebarTile(
                   context,
@@ -276,7 +234,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     title: 'Categorías',
                     routePath: '/admin/categories',
                   ),
-                  currentPath,
                 ),
                 _buildSidebarTile(
                   context,
@@ -285,7 +242,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     title: 'Almacenes',
                     routePath: '/admin/warehouses',
                   ),
-                  currentPath,
                 ),
                 _buildSidebarTile(
                   context,
@@ -294,7 +250,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     title: 'Atributos',
                     routePath: '/admin/attributes',
                   ),
-                  currentPath,
                 ),
                 _buildSidebarTile(
                   context,
@@ -303,7 +258,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     title: 'Ingredientes Activos',
                     routePath: '/admin/active-ingredients',
                   ),
-                  currentPath,
                 ),
                 _buildSidebarTile(
                   context,
@@ -312,7 +266,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     title: 'Usuarios',
                     routePath: '/admin/users',
                   ),
-                  currentPath,
                 ),
                 _buildSidebarTile(
                   context,
@@ -321,7 +274,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     title: 'Negocio',
                     routePath: '/admin/business-info',
                   ),
-                  currentPath,
                 ),
                 _buildSidebarTile(
                   context,
@@ -330,7 +282,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     title: 'Puntos y Monedas',
                     routePath: '/admin/points-settings',
                   ),
-                  currentPath,
                 ),
               ],
             ),
@@ -470,215 +421,223 @@ class _AdminSidebarState extends State<AdminSidebar> {
   Widget _buildSidebarTile(
     BuildContext context,
     AdminSidebarItem item,
-    String currentPath,
   ) {
-    final isActive = _isItemActive(item.routePath, currentPath);
+    return Builder(
+      builder: (context) {
+        final currentPath = GoRouterState.of(context).uri.path;
+        final isActive = _isItemActive(item.routePath, currentPath);
 
-    final tile = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: Material(
-        color:
-            isActive
-                ? AppColors.primary.withValues(alpha: 0.1)
-                : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () => context.go(item.routePath),
-          hoverColor: AppColors.primaryLight,
-          child: Container(
-            height: 42,
-            padding: EdgeInsets.symmetric(
-              horizontal: widget.isCollapsed ? 0 : 12,
-            ),
-            child: ClipRect(
-              child: Row(
-                mainAxisAlignment:
-                    widget.isCollapsed
-                        ? MainAxisAlignment.center
-                        : MainAxisAlignment.start,
-                children: [
-                  Icon(
-                    item.icon,
-                    size: 20,
-                    color:
-                        isActive ? AppColors.primary : AppColors.textSecondary,
-                  ),
-                  if (!widget.isCollapsed) ...[
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        item.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight:
-                              isActive ? FontWeight.w800 : FontWeight.w500,
-                          color:
-                              isActive
-                                  ? AppColors.primary
-                                  : AppColors.textPrimary,
-                        ),
+        final tile = Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          child: Material(
+            color:
+                isActive
+                    ? AppColors.primary.withValues(alpha: 0.1)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => context.go(item.routePath),
+              hoverColor: AppColors.primaryLight,
+              child: Container(
+                height: 42,
+                padding: EdgeInsets.symmetric(
+                  horizontal: widget.isCollapsed ? 0 : 12,
+                ),
+                child: ClipRect(
+                  child: Row(
+                    mainAxisAlignment:
+                        widget.isCollapsed
+                            ? MainAxisAlignment.center
+                            : MainAxisAlignment.start,
+                    children: [
+                      Icon(
+                        item.icon,
+                        size: 20,
+                        color:
+                            isActive ? AppColors.primary : AppColors.textSecondary,
                       ),
-                    ),
-                    if (item.trailing != null) item.trailing!,
-                  ],
-                ],
+                      if (!widget.isCollapsed) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight:
+                                  isActive ? FontWeight.w800 : FontWeight.w500,
+                              color:
+                                  isActive
+                                      ? AppColors.primary
+                                      : AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        if (item.trailing != null) item.trailing!,
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    );
+        );
 
-    if (widget.isCollapsed) {
-      return Tooltip(message: item.title, child: tile);
-    }
-    return tile;
+        if (widget.isCollapsed) {
+          return Tooltip(message: item.title, child: tile);
+        }
+        return tile;
+      }
+    );
   }
 
   Widget _buildExpandableSidebarGroup(
     BuildContext context,
     AdminSidebarItem item,
-    String currentPath,
   ) {
-    final hasActiveChild = item.children.any(
-      (sub) => _isItemActive(sub.routePath, currentPath),
-    );
-    final isOpen = _expandedGroups.contains(item.title) || hasActiveChild;
+    return Builder(
+      builder: (context) {
+        final currentPath = GoRouterState.of(context).uri.path;
+        final hasActiveChild = item.children.any(
+          (sub) => _isItemActive(sub.routePath, currentPath),
+        );
+        final isOpen = _expandedGroups.contains(item.title) || hasActiveChild;
 
-    if (widget.isCollapsed) {
-      return PopupMenuButton<String>(
-        tooltip: item.title,
-        offset: const Offset(60, 0),
-        onSelected: (route) => context.go(route),
-        itemBuilder:
-            (ctx) =>
-                item.children
-                    .map(
-                      (sub) => PopupMenuItem(
-                        value: sub.routePath,
-                        child: Row(
-                          children: [
-                            Icon(
-                              sub.icon,
-                              size: 18,
-                              color: AppColors.textSecondary,
+        if (widget.isCollapsed) {
+          return PopupMenuButton<String>(
+            tooltip: item.title,
+            offset: const Offset(60, 0),
+            onSelected: (route) => context.go(route),
+            itemBuilder:
+                (ctx) =>
+                    item.children
+                        .map(
+                          (sub) => PopupMenuItem(
+                            value: sub.routePath,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  sub.icon,
+                                  size: 18,
+                                  color: AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(sub.title),
+                              ],
                             ),
-                            const SizedBox(width: 10),
-                            Text(sub.title),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: Container(
-            height: 42,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color:
-                  hasActiveChild
-                      ? AppColors.primary.withValues(alpha: 0.1)
-                      : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              item.icon,
-              size: 20,
-              color:
-                  hasActiveChild ? AppColors.primary : AppColors.textSecondary,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: () => _toggleGroup(item.title),
-              hoverColor: AppColors.primaryLight,
+                          ),
+                        )
+                        .toList(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: Container(
                 height: 42,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    Icon(
-                      item.icon,
-                      size: 20,
-                      color:
-                          hasActiveChild
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        item.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight:
-                              hasActiveChild
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
-                          color:
-                              hasActiveChild
-                                  ? AppColors.primary
-                                  : AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    AnimatedRotation(
-                      turns: isOpen ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 18,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color:
+                      hasActiveChild
+                          ? AppColors.primary.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  item.icon,
+                  size: 20,
+                  color:
+                      hasActiveChild ? AppColors.primary : AppColors.textSecondary,
                 ),
               ),
             ),
-          ),
-        ),
-        AnimatedCrossFade(
-          duration: const Duration(milliseconds: 200),
-          crossFadeState:
-              isOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-          firstChild: const SizedBox.shrink(),
-          secondChild: Container(
-            margin: const EdgeInsets.only(left: 20, right: 8, bottom: 4),
-            padding: const EdgeInsets.only(left: 8),
-            decoration: const BoxDecoration(
-              border: Border(
-                left: BorderSide(color: AppColors.border, width: 2),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => _toggleGroup(item.title),
+                  hoverColor: AppColors.primaryLight,
+                  child: Container(
+                    height: 42,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          item.icon,
+                          size: 20,
+                          color:
+                              hasActiveChild
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight:
+                                  hasActiveChild
+                                      ? FontWeight.w800
+                                      : FontWeight.w500,
+                              color:
+                                  hasActiveChild
+                                      ? AppColors.primary
+                                      : AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        AnimatedRotation(
+                          turns: isOpen ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 18,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-            child: Column(
-              children:
-                  item.children
-                      .map(
-                        (sub) => _buildSidebarTile(context, sub, currentPath),
-                      )
-                      .toList(),
+            AnimatedCrossFade(
+              duration: const Duration(milliseconds: 200),
+              crossFadeState:
+                  isOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              firstChild: const SizedBox.shrink(),
+              secondChild: Container(
+                margin: const EdgeInsets.only(left: 20, right: 8, bottom: 4),
+                padding: const EdgeInsets.only(left: 8),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    left: BorderSide(color: AppColors.border, width: 2),
+                  ),
+                ),
+                child: Column(
+                  children:
+                      item.children
+                          .map(
+                            (sub) => _buildSidebarTile(context, sub),
+                          )
+                          .toList(),
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      }
     );
   }
 

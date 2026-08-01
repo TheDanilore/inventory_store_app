@@ -1,3 +1,5 @@
+import 'dart:async' show StreamController;
+
 import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1053,4 +1055,53 @@ class OrdersRepositoryImpl implements OrdersRepository {
       return Left(ServerFailure(message: 'Error al registrar pago en base de datos: $e'));
     }
   }
+
+   @override
+  Stream<Either<Failure, int>> watchPendingOrdersCount() {
+    final controller = StreamController<Either<Failure, int>>.broadcast();
+    RealtimeChannel? channel;
+
+    Future<void> fetchCount() async {
+      try {
+        final response = await _supabase
+            .from('orders')
+            .select('id')
+            .eq('status', 'PENDING')
+            .count(CountOption.exact);
+        
+        if (!controller.isClosed) {
+          controller.add(Right(response.count));
+        }
+      } catch (e) {
+        if (!controller.isClosed) {
+          controller.add(Left(ServerFailure(message: 'Error fetching count: $e')));
+        }
+      }
+    }
+
+    // Suscripción al crearse el stream
+    controller.onListen = () async {
+      await fetchCount();
+      channel = _supabase.channel('public:orders:pending_count')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'orders',
+          callback: (payload) {
+            // Cada vez que hay una inserción/actualización/borrado en 'orders', consultamos el count
+            fetchCount();
+          },
+        );
+      channel!.subscribe();
+    };
+
+    // Limpieza al cerrarse el stream
+    controller.onCancel = () async {
+      await channel?.unsubscribe();
+      await controller.close();
+    };
+
+    return controller.stream;
+  }
+
 }

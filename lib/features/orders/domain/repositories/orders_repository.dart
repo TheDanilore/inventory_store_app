@@ -13,6 +13,8 @@ abstract class OrdersRepository {
 
   Future<Either<Failure, List<OrderEntity>>> getPendingOrdersByCustomer(String customerId);
 
+  Stream<Either<Failure, int>> watchPendingOrdersCount();
+
   Future<Either<Failure, ({List<OrderEntity> orders, int total})>>
   getFilteredOrders({
     String? customerIdFilter,

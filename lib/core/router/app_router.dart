@@ -30,6 +30,7 @@ import 'package:inventory_store_app/features/users/presentation/routes/users_rou
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/admin_catalog_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/customer/customer_catalog_screen.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
@@ -138,6 +139,9 @@ class AppRouter {
                 providers: [
                   BlocProvider(
                     create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
+                  ),
+                  BlocProvider(
+                    create: (_) => sl<SidebarBadgeCubit>(),
                   ),
                   BlocProvider(
                     create: (_) => sl<CartCubit>()..initCart(cartType: 'pos'),
