@@ -38,7 +38,9 @@ class AdminSidebar extends StatefulWidget {
 
 class _AdminSidebarState extends State<AdminSidebar> {
   final Set<String> _expandedGroups = {};
-  int? _pendingCount;
+  // ValueNotifier: solo el badge de "Pedidos" se reconstruye cuando cambia el count.
+  // No se usa setState global para un dato que afecta un único widget del sidebar.
+  final ValueNotifier<int?> _pendingNotifier = ValueNotifier<int?>(null);
 
   @override
   void initState() {
@@ -46,19 +48,29 @@ class _AdminSidebarState extends State<AdminSidebar> {
     _fetchPendingOrdersCount();
   }
 
+  @override
+  void dispose() {
+    _pendingNotifier.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchPendingOrdersCount() async {
     try {
-      final count = await Supabase.instance.client
+      // select('id') con .count() minimiza el egress: solo transfiere
+      // el header HTTP con el count exacto, sin descargar filas.
+      final response = await Supabase.instance.client
           .from('orders')
-          .count(CountOption.exact)
-          .eq('status', 'PENDING');
+          .select('id')
+          .eq('status', 'PENDING')
+          .count(CountOption.exact);
       if (mounted) {
-        setState(() => _pendingCount = count);
+        _pendingNotifier.value = response.count;
       }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _pendingCount = 0);
-      }
+    } catch (e, st) {
+      debugPrint('🔴 [AdminSidebar] Error al obtener pedidos pendientes: $e\n$st');
+      // null = sin dato disponible. El badge no aparece en lugar de
+      // mostrar 0 falsamente cuando la query falló.
+      if (mounted) _pendingNotifier.value = null;
     }
   }
 
@@ -129,18 +141,26 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   _buildSectionHeader('GESTIÓN COMERCIAL'),
                 ],
 
-                _buildSidebarTile(
-                  context,
-                  AdminSidebarItem(
-                    icon: Icons.receipt_long_rounded,
-                    title: 'Pedidos',
-                    routePath: '/admin/orders',
-                    trailing:
-                        _pendingCount != null && _pendingCount! > 0
-                            ? _buildBadge(_pendingCount!)
-                            : null,
-                  ),
-                  currentPath,
+                // ValueListenableBuilder: solo este tile se reconstruye
+                // cuando cambia _pendingNotifier. El resto del sidebar
+                // permanece intacto.
+                ValueListenableBuilder<int?>(
+                  valueListenable: _pendingNotifier,
+                  builder: (ctx, count, _) {
+                    return _buildSidebarTile(
+                      context,
+                      AdminSidebarItem(
+                        icon: Icons.receipt_long_rounded,
+                        title: 'Pedidos',
+                        routePath: '/admin/orders',
+                        trailing:
+                            count != null && count > 0
+                                ? _buildBadge(count)
+                                : null,
+                      ),
+                      currentPath,
+                    );
+                  },
                 ),
 
                 _buildExpandableSidebarGroup(
@@ -382,35 +402,36 @@ class _AdminSidebarState extends State<AdminSidebar> {
             if (!widget.isCollapsed) ...[
               const SizedBox(width: 12),
               Expanded(
-                child: BlocBuilder<AppConfigCubit, AppConfigState>(
-                  builder: (context, state) {
-                    final name =
-                        state.businessInfo?.businessName ?? 'ERP Tienda';
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
+                child: BlocSelector<AppConfigCubit, AppConfigState, String>(
+                selector:
+                    (state) =>
+                        state.businessInfo?.businessName ?? 'ERP Tienda',
+                builder: (context, name) {
+                  return Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
                         ),
-                        const Text(
-                          'Panel de Control',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                          ),
+                      ),
+                      const Text(
+                        'Panel de Control',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
                         ),
-                      ],
-                    );
-                  },
-                ),
+                      ),
+                    ],
+                  );
+                },
+              ),
               ),
             ],
           ],
@@ -437,38 +458,9 @@ class _AdminSidebarState extends State<AdminSidebar> {
   bool _isItemActive(String routePath, String currentPath) {
     if (routePath.isEmpty) return false;
     if (currentPath == routePath) return true;
-    if (routePath == '/admin/purchase-orders' &&
-        currentPath == '/admin/purchase-orders/form') {
-      return true;
-    }
-    if (routePath == '/admin/inventory-entries' &&
-        currentPath == '/admin/inventory-entries/form') {
-      return true;
-    }
-    if (routePath == '/admin/inventory-exits' &&
-        currentPath == '/admin/inventory-exits/form') {
-      return true;
-    }
-    if (routePath == '/admin/products' &&
-        currentPath == '/admin/products/product-form') {
-      return true;
-    }
-    if (routePath == '/admin/users' && currentPath == '/admin/users/form') {
-      return true;
-    }
-    if (routePath == '/admin/supplier-credits' &&
-        currentPath.startsWith('/admin/supplier-credit-movements')) {
-      return true;
-    }
-    if (routePath == '/admin/customers' &&
-        currentPath.startsWith('/admin/customers/customer-detail')) {
-      return true;
-    }
-    if (routePath == '/admin/customer-credits' &&
-        currentPath.startsWith('/admin/customer-credit-movements')) {
-      return true;
-    }
-
+    // Regla genérica: captura /form, /:id y cualquier sub-ruta.
+    // Las 6 excepciones hardcodeadas anteriores eran redundantes:
+    // startsWith('$routePath/') las cubría en todos los casos.
     if (routePath != '/admin' && currentPath.startsWith('$routePath/')) {
       return true;
     }
