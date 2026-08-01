@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
@@ -18,12 +19,13 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
       final res =
           await _supabase
               .from('customer_locations')
-              .select('*')
+              .select('id, profile_id, address, reference, city, department, is_default, recipient_name, recipient_phone')
               .eq('profile_id', profileId)
               .eq('is_default', true)
               .maybeSingle();
       return Right(res);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('🔴 [CheckoutRepository] Error en fetchDefaultAddress: $e\n$st');
       return Left(ServerFailure(message: 'Error fetching address: $e'));
     }
   }
@@ -65,7 +67,8 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
       }
 
       return Right(stockMap);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('🔴 [CheckoutRepository] Error en fetchStockForVariants: $e\n$st');
       return Left(ServerFailure(message: 'Error fetching stock: $e'));
     }
   }
@@ -119,7 +122,8 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
       await _supabase.from('order_items').insert(itemsToInsert);
 
       return Right(orderId);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('🔴 [CheckoutRepository] Error en processOrder: $e\n$st');
       return Left(ServerFailure(message: 'Error processing order: $e'));
     }
   }
