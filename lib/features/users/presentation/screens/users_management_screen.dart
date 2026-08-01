@@ -1,10 +1,12 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/users/presentation/bloc/users/users_cubit.dart';
 import 'package:inventory_store_app/features/users/presentation/bloc/users/users_state.dart';
 import 'package:inventory_store_app/features/users/presentation/widgets/users/users_tab.dart';
@@ -22,6 +24,10 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
   final _searchCtrl = TextEditingController();
   late TabController _tabController;
   bool _onlyActive = false;
+  // _debouncedQuery es el valor enviado a los tabs (tarda 500ms en actualizarse)
+  String _debouncedQuery = '';
+  Timer? _debounce;
+  bool _isExporting = false;
 
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
@@ -45,6 +51,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _countsCubit.close();
     _isFabExtended.dispose();
     _scrollController.dispose();
@@ -53,12 +60,147 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
     super.dispose();
   }
 
-  void _exportToCsv(BuildContext context) {
-    AppSnackbar.show(
-      context,
-      message: 'Exportando base de datos a CSV/Excel (En desarrollo)...',
-      type: SnackbarType.info,
-    );
+  void _onSearchChanged(String value) {
+    // Actualiza el sufijo (icono X) de forma inmediata
+    setState(() {});
+    // Retrasa 500ms la propagación real de la query a los tabs
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      setState(() {
+        _debouncedQuery = value.trim();
+      });
+    });
+  }
+
+  void _clearSearch() {
+    _searchCtrl.clear();
+    _debounce?.cancel();
+    setState(() {
+      _debouncedQuery = '';
+    });
+  }
+
+  /// Exporta los usuarios del tab activo a un archivo CSV y lo descarga.
+  Future<void> _exportToCsv() async {
+    if (_isExporting) return;
+    setState(() => _isExporting = true);
+
+    // Muestra diálogo de progreso no cancelable
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (_) => const AlertDialog(
+              content: Row(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 16),
+                  Expanded(child: Text('Generando CSV...')),
+                ],
+              ),
+            ),
+      );
+    }
+
+    try {
+      // Lee el estado del cubit del tab activo (customer/admin/employee)
+      final state = _countsCubit.state;
+      final users = state.currentUsers;
+
+      if (users.isEmpty) {
+        if (mounted) Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No hay usuarios cargados en este tab para exportar.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      // Construye el CSV con encabezados y filas
+      final roleLabels = {
+        'customer': 'Cliente',
+        'admin': 'Administrador',
+        'employee': 'Empleado',
+      };
+
+      final buffer = StringBuffer();
+      // BOM UTF-8 para compatibilidad con Excel en Windows
+      buffer.write('\uFEFF');
+      buffer.writeln(
+        'ID,Nombre Completo,Correo,Rol,Teléfono,Tipo Doc.,N° Doc.,Saldo Puntos,Estado,Fecha Registro',
+      );
+
+      for (final user in users) {
+        final row = [
+          _escapeCsv(user.id),
+          _escapeCsv(user.fullName),
+          _escapeCsv(user.email ?? ''),
+          _escapeCsv(roleLabels[user.role] ?? user.role),
+          _escapeCsv(user.phone ?? ''),
+          _escapeCsv(user.documentType),
+          _escapeCsv(user.documentNumber ?? ''),
+          user.walletBalance.toString(),
+          user.isActive ? 'Activo' : 'Inactivo',
+          user.createdAt != null
+              ? '${user.createdAt!.day.toString().padLeft(2, '0')}/${user.createdAt!.month.toString().padLeft(2, '0')}/${user.createdAt!.year}'
+              : '',
+        ];
+        buffer.writeln(row.join(','));
+      }
+
+      final bytes = utf8.encode(buffer.toString());
+      final tabLabel = _tabController.index == 0
+          ? 'clientes'
+          : _tabController.index == 1
+          ? 'admins'
+          : 'empleados';
+      final fileName = 'usuarios_${tabLabel}_${DateTime.now().millisecondsSinceEpoch}';
+
+      await FileSaver.instance.saveFile(
+        name: '$fileName.csv',
+        bytes: bytes,
+        mimeType: MimeType.csv,
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ Exportado: $fileName.csv (${users.length} registros)',
+            ),
+            backgroundColor: Colors.green.shade600,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('🔴 [CSV Export] Error al exportar: $e');
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al exportar: ${e.toString()}'),
+            backgroundColor: Colors.red.shade600,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  /// Escapa un campo CSV (comillas dobles y comas)
+  String _escapeCsv(String value) {
+    if (value.contains(',') || value.contains('"') || value.contains('\n')) {
+      return '"${value.replaceAll('"', '""')}"';
+    }
+    return value;
   }
 
   @override
@@ -92,7 +234,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                       Expanded(
                         child: TextField(
                           controller: _searchCtrl,
-                          onChanged: (_) => setState(() {}),
+                          onChanged: _onSearchChanged,
                           textInputAction: TextInputAction.search,
                           decoration: InputDecoration(
                             hintText:
@@ -112,10 +254,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                                         Icons.clear_rounded,
                                         color: Colors.grey,
                                       ),
-                                      onPressed: () {
-                                        _searchCtrl.clear();
-                                        setState(() {});
-                                      },
+                                      onPressed: _clearSearch,
                                     )
                                     : null,
                             filled: true,
@@ -155,13 +294,28 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(color: Colors.green.shade200),
                         ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.file_download_outlined,
-                            color: Colors.green.shade700,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: _isExporting ? null : _exportToCsv,
+                          child: Tooltip(
+                            message: 'Exportar tab actual a CSV',
+                            child: _isExporting
+                                ? Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.green.shade700,
+                                    ),
+                                  ),
+                                )
+                                : Icon(
+                                    Icons.file_download_outlined,
+                                    color: Colors.green.shade700,
+                                  ),
                           ),
-                          tooltip: 'Exportar a Excel/CSV',
-                          onPressed: () => _exportToCsv(context),
                         ),
                       ),
                     ],
@@ -212,8 +366,11 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                 borderRadius: BorderRadius.circular(12),
                 child: Material(
                   color: Colors.transparent,
-                  child: BlocBuilder<UsersCubit, UsersState>(
-                    builder: (context, state) {
+                  child: BlocSelector<UsersCubit, UsersState, (int, int, int)>(
+                    selector:
+                        (s) => (s.customerTotal, s.adminTotal, s.employeeTotal),
+                    builder: (context, counts) {
+                      final (cTotal, aTotal, eTotal) = counts;
                       return TabBar(
                         controller: _tabController,
                         labelColor: Colors.white,
@@ -235,7 +392,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                               Icons.people_outline_rounded,
                               size: 20,
                             ),
-                            text: 'Clientes (${state.customerTotal})',
+                            text: 'Clientes ($cTotal)',
                           ),
                           Tab(
                             iconMargin: const EdgeInsets.only(bottom: 6),
@@ -243,12 +400,12 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                               Icons.admin_panel_settings_outlined,
                               size: 20,
                             ),
-                            text: 'Admins (${state.adminTotal})',
+                            text: 'Admins ($aTotal)',
                           ),
                           Tab(
                             iconMargin: const EdgeInsets.only(bottom: 6),
                             icon: const Icon(Icons.badge_outlined, size: 20),
-                            text: 'Empleados (${state.employeeTotal})',
+                            text: 'Empleados ($eTotal)',
                           ),
                         ],
                       );
@@ -268,7 +425,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                     create: (_) => sl<UsersCubit>()..init(AppRoles.customer),
                     child: UsersTab(
                       role: AppRoles.customer,
-                      searchQuery: _searchCtrl.text,
+                      searchQuery: _debouncedQuery,
                       onlyActive: _onlyActive,
                       scrollController: _scrollController,
                     ),
@@ -278,7 +435,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                     create: (_) => sl<UsersCubit>()..init(AppRoles.admin),
                     child: UsersTab(
                       role: AppRoles.admin,
-                      searchQuery: _searchCtrl.text,
+                      searchQuery: _debouncedQuery,
                       onlyActive: _onlyActive,
                       scrollController: _scrollController,
                     ),
@@ -288,7 +445,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                     create: (_) => sl<UsersCubit>()..init(AppRoles.employee),
                     child: UsersTab(
                       role: AppRoles.employee,
-                      searchQuery: _searchCtrl.text,
+                      searchQuery: _debouncedQuery,
                       onlyActive: _onlyActive,
                       scrollController: _scrollController,
                     ),

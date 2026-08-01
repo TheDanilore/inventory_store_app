@@ -22,7 +22,12 @@ class UsersRepositoryImpl implements UsersRepository {
     required int pageSize,
   }) async {
     try {
-      var query = _supabase.from('profiles_with_email').select('*');
+      var query = _supabase
+          .from('profiles_with_email')
+          .select(
+            'id, full_name, email, phone, role, is_active, '
+            'document_type, document_number, wallet_balance, created_at',
+          );
 
       query = query.eq('role', role);
 
@@ -50,18 +55,12 @@ class UsersRepositoryImpl implements UsersRepository {
               .toList();
 
       return Right(users);
-    } catch (e, stackTrace) {
-      // 🛑 IMPRIME EL ERROR REAL EN CONSOLA PARA VER QUÉ FALLA EXACTAMENTE
-      debugPrint('--- ERROR REAL DE SUPABASE EN USERS ---');
-      debugPrint(e.toString());
-      debugPrint(stackTrace.toString());
-      debugPrint('---------------------------------------');
-
+    } catch (e, st) {
+      debugPrint('🔴 [UsersRepo] Error en getUsers (role=$role): $e\n$st');
       if (e.toString().toLowerCase().contains('socketexception')) {
         return Left(ServerFailure(message: 'Sin conexión a internet.'));
       }
-      // Opcional: muestra temporalmente el error real en la UI para diagnosticar
-      return Left(ServerFailure(message: 'Error: ${e.toString()}'));
+      return Left(ServerFailure(message: 'Error al cargar usuarios: ${e.toString()}'));
     }
   }
 
@@ -70,14 +69,16 @@ class UsersRepositoryImpl implements UsersRepository {
     required String role,
   }) async {
     try {
+      // Seleccionamos solo 'id' para minimizar la carga de datos en la red
       final response = await _supabase
           .from('profiles_with_email')
-          .select('*')
+          .select('id')
           .eq('role', role)
           .count(CountOption.exact);
 
       return Right(response.count);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('🔴 [UsersRepo] Error en getGlobalUsersCount (role=$role): $e\n$st');
       return Left(
         ServerFailure(message: 'Error al cargar conteo de usuarios.'),
       );
@@ -90,12 +91,16 @@ class UsersRepositoryImpl implements UsersRepository {
       final response =
           await _supabase
               .from('profiles_with_email')
-              .select('*')
+              .select(
+                'id, full_name, email, phone, role, is_active, '
+                'document_type, document_number, wallet_balance, created_at',
+              )
               .eq('id', id)
               .single();
 
       return Right(UserModel.fromJson(response));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('🔴 [UsersRepo] Error en getUserById (id=$id): $e\n$st');
       return Left(
         ServerFailure(message: 'Error al cargar detalles del usuario.'),
       );
@@ -133,7 +138,8 @@ class UsersRepositoryImpl implements UsersRepository {
       }
 
       return const Right(null);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('🔴 [UsersRepo] Error en createUser: $e\n$st');
       if (e.toString().contains('already been registered')) {
         return Left(
           ServerFailure(
@@ -185,7 +191,8 @@ class UsersRepositoryImpl implements UsersRepository {
       }
 
       return const Right(null);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('🔴 [UsersRepo] Error en updateUser (id=$id): $e\n$st');
       return Left(ServerFailure(message: 'Error al actualizar usuario.'));
     }
   }
@@ -212,7 +219,8 @@ class UsersRepositoryImpl implements UsersRepository {
           .limit(5);
 
       return Right(List<Map<String, dynamic>>.from(res as List));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('🔴 [UsersRepo] Error en getRecentMovements (userId=$userId): $e\n$st');
       return Left(ServerFailure(message: 'Error al cargar historial.'));
     }
   }
@@ -224,25 +232,18 @@ class UsersRepositoryImpl implements UsersRepository {
     required int amount,
   }) async {
     try {
-      final int newBalance = (currentBalance + amount).clamp(0, 9999999);
+      // ✅ Operación 100% atómica: el RPC actualiza el saldo Y registra el
+      // movimiento en una sola transacción PostgreSQL. Si falla cualquier
+      // paso, Supabase ejecuta ROLLBACK automático — sin inconsistencias.
+      final result = await _supabase.rpc(
+        'rpc_adjust_wallet',
+        params: {'p_user_id': userId, 'p_amount': amount},
+      );
 
-      await _supabase
-          .from('profiles')
-          .update({'wallet_balance': newBalance})
-          .eq('id', userId);
-
-      await _supabase.from('wallet_movements').insert({
-        'profile_id': userId,
-        'points': amount,
-        'movement_type': 'MANUAL_BONUS',
-        'description':
-            amount > 0
-                ? 'Abono manual de administrador'
-                : 'Descuento manual de administrador',
-      });
-
+      final int newBalance = (result as num?)?.toInt() ?? currentBalance;
       return Right(newBalance);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('🔴 [UsersRepo] Error en adjustPoints (userId=$userId): $e\n$st');
       return Left(ServerFailure(message: 'Error al actualizar saldo.'));
     }
   }
