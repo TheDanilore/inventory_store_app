@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog/customer_catalog_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog/customer_catalog_cubit.dart';
@@ -12,7 +13,8 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/custom
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_product_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_shimmers.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:go_router/go_router.dart';
 
 class CustomerCatalogScreen extends StatefulWidget {
@@ -34,6 +36,8 @@ class CustomerCatalogScreen extends StatefulWidget {
 class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   final ScrollController _scrollController = ScrollController();
 
+  bool _isFetchingMore = false;
+
   @override
   void initState() {
     super.initState();
@@ -44,13 +48,18 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
           _scrollController.position.maxScrollExtent - 300) {
-        context.read<CustomerCatalogCubit>().loadMoreProducts();
+        if (!_isFetchingMore) {
+          _isFetchingMore = true;
+          context.read<CustomerCatalogCubit>().loadMoreProducts().then((_) {
+            _isFetchingMore = false;
+          });
+        }
       }
     });
   }
 
   Future<void> _checkLoginPrompt() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = context.read<AuthCubit>().state.currentUser;
     if (user != null) return;
 
     final prefs = await SharedPreferences.getInstance();
@@ -149,37 +158,38 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
     BuildContext context,
     List<ProductEntity> products,
   ) {
-    final user = Supabase.instance.client.auth.currentUser;
+    return BlocSelector<AuthCubit, AuthState, bool>(
+      selector: (state) => state.currentUser != null,
+      builder: (context, isAuthenticated) {
+        if (isAuthenticated) {
+          // Usuario Autenticado: Mostrar Carrusel de Recomendaciones Personalizadas
+          final recommended =
+              products
+                  .where((p) => !p.stockControl || p.totalStock > 0)
+                  .skip(2)
+                  .take(6)
+                  .toList();
 
-    if (user != null) {
-      // Usuario Autenticado: Mostrar Carrusel de Recomendaciones Personalizadas
-      final recommended =
-          products
-              .where((p) => !p.stockControl || p.totalStock > 0)
-              .skip(2)
-              .take(6)
-              .toList();
+          if (recommended.isEmpty) return const SizedBox.shrink();
 
-      if (recommended.isEmpty) return const SizedBox.shrink();
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle(
+                '✨ Recomendados para ti',
+                'Selección especial según tu perfil',
+              ),
+              const SizedBox(height: 10),
+              _HorizontalProductList(
+                products: recommended,
+                onAddToCart: widget.onAddToCart,
+              ),
+            ],
+          );
+        }
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle(
-            '✨ Recomendados para ti',
-            'Selección especial según tu perfil',
-          ),
-          const SizedBox(height: 10),
-          _HorizontalProductList(
-            products: recommended,
-            onAddToCart: widget.onAddToCart,
-          ),
-        ],
-      );
-    }
-
-    // Usuario Invitado: Mostrar Tarjeta de Fidelización para Iniciar Sesión
-    return Padding(
+        // Usuario Invitado: Mostrar Tarjeta de Fidelización para Iniciar Sesión
+        return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -250,12 +260,13 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
         ),
       ),
     );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<CustomerCatalogCubit>();
-    final state = context.watch<CustomerCatalogCubit>().state;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -286,8 +297,10 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
           return RefreshIndicator(
             onRefresh: cubit.refreshProducts,
             color: AppColors.primary,
-            child: CustomScrollView(
-              controller: _scrollController,
+            child: BlocBuilder<CustomerCatalogCubit, CustomerCatalogState>(
+              builder: (context, state) {
+                return CustomScrollView(
+                  controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 // ── Banners (solo en modo normal) ─────────────────────────────────
@@ -642,10 +655,12 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                   const SliverToBoxAdapter(child: SizedBox(height: 24)),
                 ],
               ],
-            ),
-          );
-        },
-      ),
+            );
+          },
+        ),
+      );
+    },
+  ),
     );
   }
 }

@@ -77,13 +77,17 @@ class ProductsRepositoryImpl implements ProductsRepository {
     String? categoryId,
     bool? isActive,
     bool searchByIngredient = false,
+    bool forCustomer = false,
     int limit = 20,
     int offset = 0,
     bool sortByPriceAsc = true,
   }) async {
     try {
+      String variantSelect = forCustomer
+          ? 'product_variants(id, product_id, sku, sale_price, is_active)'
+          : 'product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active)';
       String selectString =
-          'id, name, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), warehouse_stock_batches(id, product_id, available_quantity), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active)';
+          'id, name, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), warehouse_stock_batches(id, product_id, available_quantity), $variantSelect';
 
       if (searchByIngredient &&
           searchQuery != null &&

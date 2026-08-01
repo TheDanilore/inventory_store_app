@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
@@ -116,6 +115,7 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
       searchQuery: state.searchTerm,
       categoryId: state.selectedCategoryId,
       isActive: true,
+      forCustomer: true,
       limit: _pageSize,
       offset: offset,
       sortByPriceAsc: true,
@@ -132,23 +132,7 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
         );
       },
       (data) async {
-        // Enrich with stock
-        final ids = data.products.map((p) => p.id).toList();
-        Map<String, int> stock = {};
-        if (ids.isNotEmpty) {
-          final stockResult = await getProductStockUC(productIds: ids);
-          stockResult.fold(
-            (l) => debugPrint(
-              'CustomerCatalogCubit: error loading stock -> ${l.message}',
-            ),
-            (s) => stock = s,
-          );
-        }
-
-        final enriched =
-            data.products
-                .map((p) => p.copyWith(totalStock: stock[p.id] ?? p.totalStock))
-                .toList();
+        final enriched = List<ProductEntity>.from(data.products);
 
         // Ordenamiento prioritario estándar E-Commerce: con stock primero
         enriched.sort((a, b) {

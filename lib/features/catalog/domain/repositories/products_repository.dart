@@ -15,6 +15,7 @@ abstract class ProductsRepository {
     String? categoryId,
     bool? isActive,
     bool searchByIngredient = false,
+    bool forCustomer = false,
     int limit = 20,
     int offset = 0,
     bool sortByPriceAsc = true,
