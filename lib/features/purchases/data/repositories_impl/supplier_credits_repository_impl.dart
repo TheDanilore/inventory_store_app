@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:injectable/injectable.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -32,40 +33,18 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
       final from = page * pageSize;
       final to = from + pageSize - 1;
 
-      // 1. Cargar créditos y estadísticas consolidadas desde la tabla supplier_credits
-      var statsQuery = _supabase
-          .from('supplier_credits')
-          .select('*, suppliers!inner(name, tax_id, phone)');
-      if (searchQuery.isNotEmpty) {
-        statsQuery = statsQuery.or(
-          'suppliers.name.ilike.%$searchQuery%,suppliers.tax_id.ilike.%$searchQuery%,suppliers.phone.ilike.%$searchQuery%',
-        );
-      }
+      // 1. Obtener estadísticas globales mediante RPC (Cero Data Egress en listas gigantes)
+      final statsResult = await _supabase.rpc(
+        'get_supplier_credits_stats_rpc',
+        params: {'p_search_query': searchQuery},
+      );
 
-      final statsResponse = await statsQuery;
-      double totalDebt = 0;
-      int activeCount = 0;
-      int suspendedCount = 0;
-      int maxedOutCount = 0;
-      int debtCount = 0;
-
-      for (final item in statsResponse as List) {
-        final a = SupplierCreditModel.fromView(item);
-        final totalSupplierDebt = a.currentDebt;
-
-        totalDebt += totalSupplierDebt;
-        if (totalSupplierDebt > 0 && a.isActive) {
-          debtCount++;
-        }
-        if (a.isActive) {
-          activeCount++;
-          if (totalSupplierDebt >= a.creditLimit && a.creditLimit > 0) {
-            maxedOutCount++;
-          }
-        } else {
-          suspendedCount++;
-        }
-      }
+      final statsMap = statsResult as Map<String, dynamic>? ?? {};
+      final totalDebt = (statsMap['totalDebt'] as num?)?.toDouble() ?? 0.0;
+      final activeCount = statsMap['activeAccounts'] as int? ?? 0;
+      final suspendedCount = statsMap['suspendedAccounts'] as int? ?? 0;
+      final maxedOutCount = statsMap['maxedOutAccounts'] as int? ?? 0;
+      final debtCount = statsMap['debtCount'] as int? ?? 0;
 
       var query = _supabase
           .from('supplier_credits')
@@ -107,7 +86,13 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
           'debtCount': debtCount,
         },
       ));
-    } catch (e) {
+    } catch (e, st) {
+      developer.log(
+        '[SupplierCreditsRepositoryImpl] fetchAccounts error: $e',
+        error: e,
+        stackTrace: st,
+        name: 'SupplierCreditsRepositoryImpl',
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -126,7 +111,13 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
           })
           .eq('id', creditId);
       return const Right(null);
-    } catch (e) {
+    } catch (e, st) {
+       developer.log(
+        '[SupplierCreditsRepositoryImpl] toggleAccountStatus error: $e',
+        error: e,
+        stackTrace: st,
+        name: 'SupplierCreditsRepositoryImpl',
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -148,30 +139,28 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
             })
             .eq('id', creditId);
       } else {
-        final pendingPos = await _supabase
-            .from('purchase_orders')
-            .select('total_amount, amount_paid')
-            .eq('supplier_id', supplierId)
-            .inFilter('payment_status', ['PENDING', 'PARTIAL'])
-            .neq('status', 'CANCELLED');
+        // ── Creación Atómica ──────────────────────────────────────────────
+        final response = await _supabase.rpc(
+          'rpc_create_supplier_credit',
+          params: {
+            'p_supplier_id': supplierId,
+            'p_credit_limit': creditLimit,
+          },
+        );
 
-        double initialDebt = 0.0;
-        for (final po in pendingPos as List) {
-          final total = (po['total_amount'] as num?)?.toDouble() ?? 0.0;
-          final paid = (po['amount_paid'] as num?)?.toDouble() ?? 0.0;
-          final diff = total - paid;
-          if (diff > 0) initialDebt += diff;
+        final res = response as Map<String, dynamic>?;
+        if (res?['success'] != true) {
+          throw Exception(res?['error']?.toString() ?? 'Error al crear crédito');
         }
-
-        await _supabase.from('supplier_credits').insert({
-          'supplier_id': supplierId,
-          'credit_limit': creditLimit,
-          'current_debt': initialDebt,
-          'is_active': true,
-        });
       }
       return const Right(null);
-    } catch (e) {
+    } catch (e, st) {
+       developer.log(
+        '[SupplierCreditsRepositoryImpl] saveAccount error: $e',
+        error: e,
+        stackTrace: st,
+        name: 'SupplierCreditsRepositoryImpl',
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
