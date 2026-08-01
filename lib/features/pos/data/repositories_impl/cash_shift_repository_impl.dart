@@ -139,31 +139,16 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         );
       }
 
-      final existing =
-          await _supabase
-              .from('cash_shifts')
-              .select('id')
-              .eq('account_id', accountId)
-              .eq('status', 'OPEN')
-              .maybeSingle();
-
-      if (existing != null) {
-        return left(
-          const ValidationFailure(
-            message: 'Esta caja ya tiene un turno abierto.',
-          ),
-        );
-      }
+      final shiftId = await _supabase.rpc('rpc_open_cash_shift', params: {
+        'p_account_id': accountId,
+        'p_opening_amount': openingBalance,
+        'p_opened_by': profileId,
+        'p_notes': notes,
+      });
 
       final inserted =
           await _supabase
               .from('cash_shifts')
-              .insert({
-                'account_id': accountId,
-                'opening_amount': openingBalance,
-                'notes': notes,
-                'opened_by': profileId,
-              })
               .select('''
         id, status, opening_amount, expected_amount, actual_amount,
         difference_amount, notes, opened_at, closed_at, account_id,
@@ -171,6 +156,7 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         opened_by_profile:profiles!cash_shifts_opened_by_fkey(full_name),
         closed_by_profile:profiles!cash_shifts_closed_by_fkey(full_name)
       ''')
+              .eq('id', shiftId)
               .single();
 
       final shift =
@@ -178,8 +164,16 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
             Map<String, dynamic>.from(inserted),
           ).toEntity();
       return right(shift);
-    } catch (e) {
-      return left(Failure.from(e));
+    } catch (e, st) {
+      developer.log('Error opening cash shift', error: e, stackTrace: st);
+      String errorMessage = 'Error inesperado al abrir el turno.';
+      final eStr = e.toString();
+      if (eStr.contains('ya tiene un turno abierto')) {
+        errorMessage = 'Esta caja ya tiene un turno abierto.';
+      } else if (eStr.contains('Saldo insuficiente')) {
+        errorMessage = eStr.split('EXCEPTION: ').last.split('\n').first;
+      }
+      return left(ServerFailure(message: errorMessage));
     }
   }
 
