@@ -1087,7 +1087,8 @@ BEGIN
   -- Handle optional UUIDs
   IF payload->>'customerId' IS NOT NULL AND payload->>'customerId' != '' THEN v_customer_id := (payload->>'customerId')::uuid; END IF;
   IF payload->>'accountId' IS NOT NULL AND payload->>'accountId' != '' THEN v_account_id := (payload->>'accountId')::uuid; END IF;
-  IF payload->>'activeShiftId' IS NOT NULL AND payload->>'activeShiftId' != '' THEN v_shift_id := (payload->>'activeShiftId')::uuid; END IF;
+  
+  -- YA NO TOMAMOS EL activeShiftId DESDE EL PAYLOAD POR SEGURIDAD. EL BACKEND LO DETERMINARÁ.
 
   v_order_status := CASE WHEN v_is_draft THEN 'PENDING' ELSE 'COMPLETED' END;
 
@@ -1210,21 +1211,43 @@ BEGIN
   IF NOT v_is_draft THEN
     
     -- Control de Cajas y Cuentas Financieras
-    IF v_account_id IS NOT NULL AND v_shift_id IS NOT NULL THEN
-      SELECT balance INTO v_current_balance 
-      FROM financial_accounts 
-      WHERE id = v_account_id FOR UPDATE;
+    IF v_account_id IS NOT NULL THEN
+      DECLARE
+        v_account_type text;
+      BEGIN
+        SELECT type, balance INTO v_account_type, v_current_balance 
+        FROM financial_accounts 
+        WHERE id = v_account_id FOR UPDATE;
+        
+        IF NOT FOUND THEN
+          RAISE EXCEPTION 'Cuenta financiera no encontrada.';
+        END IF;
 
-      -- Validado con esquema de tabla account_movements (usando description en lugar de reason/notes)
-      INSERT INTO account_movements (
-        account_id, shift_id, movement_type, amount, description, reference_id, reference_type, created_by
-      ) VALUES (
-        v_account_id, v_shift_id, 'INCOME', v_amount_paid, 'Venta POS #' || substring(v_order_id::text, 1, 8), v_order_id, 'ORDER', v_created_by
-      );
-      
-      UPDATE financial_accounts
-      SET balance = balance + v_amount_paid
-      WHERE id = v_account_id;
+        -- Validación ATÓMICA del Turno de Caja (ignora lo que envía el cliente)
+        IF v_account_type = 'CAJA' THEN
+          SELECT id INTO v_shift_id
+          FROM cash_shifts
+          WHERE account_id = v_account_id AND status = 'OPEN'
+          FOR UPDATE;
+          
+          IF NOT FOUND THEN
+            RAISE EXCEPTION 'No hay un turno de caja abierto para procesar esta venta en efectivo.';
+          END IF;
+        ELSE
+          v_shift_id := NULL;
+        END IF;
+
+        -- Insertar el movimiento financiero
+        INSERT INTO account_movements (
+          account_id, shift_id, movement_type, amount, description, reference_id, reference_type, created_by
+        ) VALUES (
+          v_account_id, v_shift_id, 'INCOME', v_amount_paid, 'Venta POS #' || substring(v_order_id::text, 1, 8), v_order_id, 'ORDER', v_created_by
+        );
+        
+        UPDATE financial_accounts
+        SET balance = balance + v_amount_paid
+        WHERE id = v_account_id;
+      END;
     END IF;
 
     -- Actualización Segura de Wallet de Puntos del Cliente
@@ -1248,28 +1271,27 @@ BEGIN
       SELECT id, current_debt, credit_limit INTO v_credit_id, v_current_debt, v_credit_limit
       FROM customer_credits
       WHERE profile_id = v_customer_id
-      ORDER BY created_at DESC LIMIT 1
       FOR UPDATE;
       
-      IF v_credit_id IS NOT NULL THEN
-        IF (v_current_debt + v_total_amount) > v_credit_limit THEN
-          RAISE EXCEPTION 'Límite de crédito excedido. Disponible: %', (v_credit_limit - v_current_debt);
-        END IF;
-
-        UPDATE customer_credits
-        SET current_debt = current_debt + v_total_amount
-        WHERE id = v_credit_id;
-        
-        -- Validado con esquema de tabla customer_credit_movements (usando customer_credit_id, order_id, notes)
-        INSERT INTO customer_credit_movements (
-          customer_credit_id, order_id, amount, movement_type, notes, created_by
-        ) VALUES (
-          v_credit_id, v_order_id, v_total_amount, 'CHARGE', 'Crédito Venta POS #' || substring(v_order_id::text, 1, 8), v_created_by
-        );
-      ELSE
-        RAISE EXCEPTION 'El cliente no cuenta con una línea de crédito activa configurada.';
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'El cliente no tiene una cuenta de crédito asignada.';
       END IF;
+      
+      IF (v_current_debt + v_total_amount - v_amount_paid) > v_credit_limit THEN
+        RAISE EXCEPTION 'Esta venta supera el límite de crédito disponible del cliente.';
+      END IF;
+      
+      UPDATE customer_credits
+      SET current_debt = current_debt + (v_total_amount - v_amount_paid)
+      WHERE id = v_credit_id;
+      
+      INSERT INTO credit_movements (
+        credit_id, movement_type, amount, description, reference_id, reference_type, created_by
+      ) VALUES (
+        v_credit_id, 'DEBT', (v_total_amount - v_amount_paid), 'Venta al crédito - POS #' || substring(v_order_id::text, 1, 8), v_order_id, 'ORDER', v_created_by
+      );
     END IF;
+
   END IF;
 
   RETURN v_order_id;
@@ -1458,6 +1480,75 @@ $$;
 
 
 ALTER FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."register_financial_movement"("p_account_id" "uuid", "p_movement_type" "text", "p_amount" numeric, "p_description" "text", "p_reference_type" "text", "p_reference_id" "uuid", "p_created_by" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    v_account_type TEXT;
+    v_shift_id UUID;
+    v_current_balance NUMERIC;
+BEGIN
+    -- 1. Obtener el tipo de cuenta y bloquear la fila para evitar concurrencia
+    SELECT type, balance INTO v_account_type, v_current_balance
+    FROM financial_accounts
+    WHERE id = p_account_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Cuenta financiera no encontrada.';
+    END IF;
+
+    -- 2. Validar Turno de Caja si la cuenta es de tipo CAJA
+    IF v_account_type = 'CAJA' THEN
+        SELECT id INTO v_shift_id
+        FROM cash_shifts
+        WHERE account_id = p_account_id AND status = 'OPEN'
+        FOR UPDATE;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'No hay un turno de caja abierto para procesar este movimiento.';
+        END IF;
+    END IF;
+
+    -- 3. Insertar el movimiento
+    INSERT INTO account_movements (
+        account_id,
+        movement_type,
+        amount,
+        description,
+        reference_type,
+        reference_id,
+        shift_id,
+        created_by
+    ) VALUES (
+        p_account_id,
+        p_movement_type,
+        p_amount,
+        p_description,
+        p_reference_type,
+        p_reference_id,
+        v_shift_id, -- será NULL si no es CAJA
+        p_created_by
+    );
+
+    -- 4. Actualizar el saldo (Balance)
+    IF p_movement_type = 'INCOME' THEN
+        v_current_balance := v_current_balance + p_amount;
+    ELSIF p_movement_type = 'EXPENSE' THEN
+        v_current_balance := v_current_balance - p_amount;
+    END IF;
+
+    UPDATE financial_accounts
+    SET balance = v_current_balance
+    WHERE id = p_account_id;
+
+END;
+$$;
+
+
+ALTER FUNCTION "public"."register_financial_movement"("p_account_id" "uuid", "p_movement_type" "text", "p_amount" numeric, "p_description" "text", "p_reference_type" "text", "p_reference_id" "uuid", "p_created_by" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid" DEFAULT NULL::"uuid", "p_notes" "text" DEFAULT 'Pago a proveedor registrado'::"text", "p_shift_id" "uuid" DEFAULT NULL::"uuid", "p_profile_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
@@ -5014,6 +5105,12 @@ GRANT ALL ON FUNCTION "public"."process_pos_sale"("payload" "jsonb") TO "service
 GRANT ALL ON FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."register_financial_movement"("p_account_id" "uuid", "p_movement_type" "text", "p_amount" numeric, "p_description" "text", "p_reference_type" "text", "p_reference_id" "uuid", "p_created_by" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."register_financial_movement"("p_account_id" "uuid", "p_movement_type" "text", "p_amount" numeric, "p_description" "text", "p_reference_type" "text", "p_reference_id" "uuid", "p_created_by" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."register_financial_movement"("p_account_id" "uuid", "p_movement_type" "text", "p_amount" numeric, "p_description" "text", "p_reference_type" "text", "p_reference_id" "uuid", "p_created_by" "uuid") TO "service_role";
 
 
 
