@@ -19,7 +19,7 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
       final res =
           await _supabase
               .from('customer_locations')
-              .select('id, profile_id, address, reference, city, department, is_default, recipient_name, recipient_phone')
+              .select('id, profile_id, address_line, reference, is_default')
               .eq('profile_id', profileId)
               .eq('is_default', true)
               .maybeSingle();

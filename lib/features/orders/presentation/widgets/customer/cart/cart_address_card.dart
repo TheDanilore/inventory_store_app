@@ -39,7 +39,7 @@ class CartAddressCard extends StatelessWidget {
     final hasAddress = address != null;
     final title =
         hasAddress
-            ? (address!['address_line1'] ?? 'Dirección seleccionada')
+            ? (address!['address_line'] ?? address!['address_line1'] ?? 'Dirección seleccionada')
             : 'Sin dirección';
     final subtitle = hasAddress ? 'Toca para cambiar' : 'Toca para agregar';
 
