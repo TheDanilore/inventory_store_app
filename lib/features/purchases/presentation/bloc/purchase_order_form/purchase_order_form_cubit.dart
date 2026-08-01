@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,6 +21,7 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
   final GetSupplierCreditUseCase getSupplierCreditUseCase;
 
   static const _draftKey = 'po_form_draft_v1';
+  Timer? _draftTimer;
 
   PurchaseOrderFormCubit({
     required this.createPurchaseOrderUseCase,
@@ -209,6 +211,13 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
     }
   }
 
+  void _scheduleDraftSave() {
+    _draftTimer?.cancel();
+    _draftTimer = Timer(const Duration(milliseconds: 600), () {
+      _saveDraft();
+    });
+  }
+
   Future<void> _saveDraft() async {
     final currentState = state;
     if (currentState is! PurchaseOrderFormLoaded) return;
@@ -299,7 +308,7 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
     }
 
     if (supplierId != null || warehouseId != null) {
-      _saveDraft();
+      _scheduleDraftSave();
     }
   }
 
@@ -307,14 +316,14 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
     final currentState = state;
     if (currentState is! PurchaseOrderFormLoaded) return;
     emit(currentState.clearDueDate());
-    _saveDraft();
+    _scheduleDraftSave();
   }
 
   void clearDocumentDate() {
     final currentState = state;
     if (currentState is! PurchaseOrderFormLoaded) return;
     emit(currentState.clearDocumentDate());
-    _saveDraft();
+    _scheduleDraftSave();
   }
 
   void addItem(InventoryEntryItemEntity item) {
@@ -338,7 +347,7 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
     }
 
     emit(currentState.copyWith(items: newItems));
-    _saveDraft();
+    _scheduleDraftSave();
   }
 
   void removeItem(String productId, String variantId) {
@@ -353,7 +362,7 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
             .toList();
 
     emit(currentState.copyWith(items: newItems));
-    _saveDraft();
+    _scheduleDraftSave();
   }
 
   void updateItemQuantity(String productId, String variantId, double qty) {
@@ -369,7 +378,7 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
         }).toList();
 
     emit(currentState.copyWith(items: newItems));
-    _saveDraft();
+    _scheduleDraftSave();
   }
 
   void updateItemCost(String productId, String variantId, double cost) {
@@ -385,7 +394,7 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
         }).toList();
 
     emit(currentState.copyWith(items: newItems));
-    _saveDraft();
+    _scheduleDraftSave();
   }
 
   Future<void> submitOrder() async {
@@ -407,18 +416,6 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
           loadingState.selectedAccountId != null) {
         activeShiftId =
             loadingState.activeShiftsByAccount[loadingState.selectedAccountId];
-
-        if (activeShiftId == null) {
-          final shiftRes = await getActiveCashShiftUseCase(
-            loadingState.selectedAccountId!,
-          );
-          shiftRes.fold((failure) {
-            developer.log(
-              'Error buscando turno de caja: ${failure.message}',
-              name: 'PurchaseOrderFormCubit',
-            );
-          }, (data) => activeShiftId = data?['id'] as String?);
-        }
       }
 
       final result = await createPurchaseOrderUseCase(
@@ -477,5 +474,11 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
     if (currentState is PurchaseOrderFormLoaded) {
       emit(currentState.clearError());
     }
+  }
+
+  @override
+  Future<void> close() {
+    _draftTimer?.cancel();
+    return super.close();
   }
 }

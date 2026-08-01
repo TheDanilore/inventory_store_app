@@ -393,135 +393,10 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       final currentUser = _supabase.auth.currentUser;
       String? profileId;
       if (currentUser != null) {
-        final profile =
-            await _supabase
-                .from('profiles')
-                .select('id')
-                .eq('auth_user_id', currentUser.id)
-                .maybeSingle();
-        profileId = profile?['id'] as String?;
-      }
-
-      // 1. Validar límite de crédito si la orden queda en Pago Pendiente o si la forma de pago es CRÉDITO
-      if (paymentMode == 'CRÉDITO' || paymentStatus == 'PENDING') {
-        final creditRes =
-            await _supabase
-                .from('supplier_credits')
-                .select('id, current_debt, credit_limit, is_active')
-                .eq('supplier_id', supplierId)
-                .maybeSingle();
-
-        if (paymentMode == 'CRÉDITO' && creditRes == null) {
-          return Left(
-            ServerFailure(
-              message:
-                  'El proveedor no tiene una línea de crédito habilitada. Por favor regístrala en Créditos Proveedores.',
-            ),
-          );
-        }
-
-        if (creditRes != null) {
-          final existingCreditData = Map<String, dynamic>.from(creditRes);
-          final isActive = existingCreditData['is_active'] as bool? ?? true;
-          if (!isActive && paymentMode == 'CRÉDITO') {
-            return Left(
-              ServerFailure(
-                message:
-                    'La línea de crédito con este proveedor se encuentra inactiva.',
-              ),
-            );
-          }
-
-          final creditLimit =
-              (existingCreditData['credit_limit'] as num?)?.toDouble() ?? 0.0;
-          final currentDebt = await _getSupplierRealDebt(supplierId);
-
-          if (paymentMode == 'CRÉDITO' && creditLimit <= 0) {
-            return Left(
-              ServerFailure(
-                message:
-                    'El proveedor tiene un límite de crédito de S/ 0.00. Configura un límite en Créditos Proveedores para comprar a crédito.',
-              ),
-            );
-          }
-
-          if (creditLimit > 0 && (currentDebt + totalAmount) > creditLimit) {
-            final available = (creditLimit - currentDebt).clamp(
-              0.0,
-              double.infinity,
-            );
-            return Left(
-              ServerFailure(
-                message:
-                    'Límite de crédito excedido. Disponible: S/ ${available.toStringAsFixed(2)}, Monto de la orden: S/ ${totalAmount.toStringAsFixed(2)}.',
-              ),
-            );
-          }
-        }
-      }
-
-      // 2. Validar saldo suficiente y turno de caja abierto si el pago se realiza de inmediato (PAID)
-      if (paymentStatus == 'PAID') {
-        if (accountId == null || accountId.isEmpty) {
-          return Left(
-            ServerFailure(
-              message:
-                  'Debe seleccionar una cuenta origen para registrar el pago realizado.',
-            ),
-          );
-        }
-
-        final accRes =
-            await _supabase
-                .from('financial_accounts')
-                .select('id, name, type, balance')
-                .eq('id', accountId)
-                .maybeSingle();
-
-        if (accRes == null) {
-          return Left(
-            ServerFailure(
-              message: 'La cuenta financiera seleccionada no existe.',
-            ),
-          );
-        }
-
-        final accName = accRes['name'] as String;
-        final accType = accRes['type'] as String? ?? 'OTRO';
-        final accBalance = (accRes['balance'] as num?)?.toDouble() ?? 0.0;
-
-        if (accBalance < totalAmount) {
-          return Left(
-            ServerFailure(
-              message:
-                  'Saldo insuficiente en la cuenta "$accName". Saldo disponible: S/ ${accBalance.toStringAsFixed(2)}, Monto a pagar: S/ ${totalAmount.toStringAsFixed(2)}.',
-            ),
-          );
-        }
-
-        // Validar turno de caja si la cuenta es de tipo CAJA
-        if (accType == 'CAJA') {
-          String? shiftId = activeShiftId;
-          if (shiftId == null) {
-            final shiftRes =
-                await _supabase
-                    .from('cash_shifts')
-                    .select('id')
-                    .eq('account_id', accountId)
-                    .eq('status', 'OPEN')
-                    .maybeSingle();
-            shiftId = shiftRes?['id'] as String?;
-          }
-
-          if (shiftId == null) {
-            return Left(
-              ServerFailure(
-                message:
-                    'No hay un turno de caja abierto para la cuenta "$accName". Debes abrir un turno de caja antes de registrar un egreso en efectivo.',
-              ),
-            );
-          }
-        }
+        // La obtención del profileId se podría hacer con auth.uid() dentro del RPC,
+        // pero por mantener la firma de la llamada original si el RPC actual lo exige,
+        // lo mantenemos o lo pasamos como null si queremos que el RPC lo maneje internamente.
+        // Asumiremos que el RPC lo buscará si p_profile_id es nulo (como escribí en el script).
       }
 
       // 3. Ejecución atómica mediante RPC en Supabase
@@ -686,20 +561,6 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       return const Right(null);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
-    }
-  }
-
-  Future<double> _getSupplierRealDebt(String supplierId) async {
-    try {
-      final creditRes =
-          await _supabase
-              .from('supplier_credits')
-              .select('current_debt')
-              .eq('supplier_id', supplierId)
-              .maybeSingle();
-      return (creditRes?['current_debt'] as num?)?.toDouble() ?? 0.0;
-    } catch (_) {
-      return 0.0;
     }
   }
 
