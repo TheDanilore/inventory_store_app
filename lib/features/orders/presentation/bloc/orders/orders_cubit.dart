@@ -2,37 +2,31 @@ import 'dart:developer' as developer;
 import 'package:fpdart/fpdart.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
-import 'package:inventory_store_app/features/orders/domain/usecases/get_filtered_orders_uc.dart';
-import 'package:inventory_store_app/features/orders/domain/usecases/save_order_changes_uc.dart';
-import 'package:inventory_store_app/features/orders/domain/usecases/cancel_order_uc.dart';
-import 'package:inventory_store_app/features/orders/domain/usecases/get_order_items_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart';
-import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/features/orders/domain/usecases/get_filtered_orders_uc.dart';
+import 'package:inventory_store_app/features/orders/domain/usecases/get_order_items_uc.dart';
+import 'package:inventory_store_app/features/orders/domain/usecases/update_order_status_uc.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders/orders_state.dart';
 import 'package:injectable/injectable.dart';
 
 @injectable
 class OrdersCubit extends Cubit<OrdersState> {
   final GetFilteredOrdersUc _getFilteredOrdersUc;
-  final SaveOrderChangesUc _saveOrderChangesUc;
-  final CancelOrderUc _cancelOrderUc;
+  final UpdateOrderStatusUc _updateOrderStatusUc;
   final GetOrderItemsUc _getOrderItemsUc;
-  final OrdersRepository
-  _repository; // For fetchOrderItemsForPdf and general access
+  final OrdersRepository _repository; // For fetchOrderItemsForPdf and general access
 
   OrdersCubit({
     required GetFilteredOrdersUc getFilteredOrdersUc,
-    required SaveOrderChangesUc saveOrderChangesUc,
-    required CancelOrderUc cancelOrderUc,
+    required UpdateOrderStatusUc updateOrderStatusUc,
     required GetOrderItemsUc getOrderItemsUc,
     required OrdersRepository repository,
   }) : _getFilteredOrdersUc = getFilteredOrdersUc,
-       _saveOrderChangesUc = saveOrderChangesUc,
-       _cancelOrderUc = cancelOrderUc,
+       _updateOrderStatusUc = updateOrderStatusUc,
        _getOrderItemsUc = getOrderItemsUc,
        _repository = repository,
        super(const OrdersState());
@@ -42,6 +36,8 @@ class OrdersCubit extends Cubit<OrdersState> {
   }
 
   Future<void> loadOrders({bool reset = false, bool background = false}) async {
+    if (state.isLoading || state.isBackgroundLoading) return;
+
     if (reset) {
       emit(state.copyWith(currentPage: 0, orders: [], totalRecords: 0));
     }
@@ -140,75 +136,26 @@ class OrdersCubit extends Cubit<OrdersState> {
     emit(state.copyWith(processingOrders: processing));
 
     try {
-      if (newStatus == 'COMPLETED' && order.status == 'PENDING') {
-        // Fetch items first
-        final itemsResult = await _getOrderItemsUc(order.id);
+      final result = await _updateOrderStatusUc(
+        UpdateOrderStatusParams(
+          order: order,
+          newStatus: newStatus,
+          currentProfileId: null, // Delegado al Repository
+        ),
+      );
 
-        await itemsResult.fold(
-          (failure) async {
-            developer.log('Error al cargar items antes de completar', error: failure.message);
-            emit(state.copyWith(errorMessage: failure.message));
-          },
-          (items) async {
-            final currentProfileId =
-                Supabase.instance.client.auth.currentUser?.id;
-
-            final saveRes = await _saveOrderChangesUc(
-              SaveOrderChangesParams(
-                orderId: order.id,
-                originalStatus: order.status,
-                newStatus: newStatus,
-                paymentMethod: order.paymentMethod,
-                selectedCustomerId: order.customerId,
-                customerNameToSave: order.customerName,
-                items: items,
-                pointsUsed: order.pointsUsed,
-                pointsEarned: order.pointsEarned,
-                totalAmount: order.totalAmount,
-                totalProfit: order.totalProfit,
-                batchOverrides: {},
-                currentProfileId: currentProfileId,
-              ),
-            );
-
-            saveRes.fold(
-              (failure) {
-                developer.log('Error al guardar cambios de orden', error: failure.message);
-                emit(state.copyWith(errorMessage: failure.message));
-              },
-              (_) => null,
-            );
-          },
-        );
-      } else if (newStatus == 'CANCELLED' || newStatus == 'RETURNED') {
-        final currentProfileId = Supabase.instance.client.auth.currentUser?.id;
-
-        final cancelRes = await _cancelOrderUc(
-          CancelOrderParams(
-            orderId: order.id,
-            customerId: order.customerId,
-            currentProfileId: currentProfileId,
-          ),
-        );
-
-        cancelRes.fold(
-          (failure) {
-            developer.log('Error cancelando orden', error: failure.message);
-            emit(state.copyWith(errorMessage: failure.message));
-          },
-          (_) => null,
-        );
-      } else {
-        await Supabase.instance.client
-            .from('orders')
-            .update({'status': newStatus})
-            .eq('id', order.id);
-      }
-
-      await loadOrders(background: true);
+      result.fold(
+        (failure) {
+          developer.log('Error actualizando estado', error: failure.message);
+          emit(state.copyWith(errorMessage: failure.message));
+        },
+        (_) {
+          loadOrders(background: true);
+        },
+      );
     } catch (e, st) {
       developer.log('Error inesperado actualizando estado', error: e, stackTrace: st);
-      emit(state.copyWith(errorMessage: 'Error actualizando estado: $e'));
+      emit(state.copyWith(errorMessage: 'Ocurrió un error inesperado al actualizar la orden.'));
     } finally {
       final updatedProcessing = Set<String>.from(state.processingOrders)
         ..remove(order.id);
@@ -252,7 +199,7 @@ class OrdersCubit extends Cubit<OrdersState> {
       );
     } catch (e, st) {
       developer.log('Error generando PDF', error: e, stackTrace: st);
-      emit(state.copyWith(errorMessage: 'Error generando PDF: $e'));
+      emit(state.copyWith(errorMessage: 'Error al generar el ticket PDF.'));
     } finally {
       emit(state.copyWith(generatingPdfOrderId: null));
     }

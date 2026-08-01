@@ -354,6 +354,8 @@ import '../../features/orders/domain/usecases/search_customers_uc.dart'
     as _i360;
 import '../../features/orders/domain/usecases/send_whatsapp_order_uc.dart'
     as _i895;
+import '../../features/orders/domain/usecases/update_order_status_uc.dart'
+    as _i624;
 import '../../features/orders/domain/usecases/verify_stock_uc.dart' as _i713;
 import '../../features/orders/presentation/bloc/checkout_cubit.dart' as _i602;
 import '../../features/orders/presentation/bloc/customer_orders/customer_orders_cubit.dart'
@@ -1391,6 +1393,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i904.SaveOrderChangesUc>(
       () => _i904.SaveOrderChangesUc(gh<_i992.OrdersRepository>()),
     );
+    gh.lazySingleton<_i624.UpdateOrderStatusUc>(
+      () => _i624.UpdateOrderStatusUc(gh<_i992.OrdersRepository>()),
+    );
     gh.factory<_i70.CustomersCubit>(
       () => _i70.CustomersCubit(
         gh<_i1019.GetCustomersUseCase>(),
@@ -1446,6 +1451,14 @@ extension GetItInjectableX on _i174.GetIt {
         getProductStockUC: gh<_i958.GetProductStockUC>(),
       ),
     );
+    gh.factory<_i1051.OrdersCubit>(
+      () => _i1051.OrdersCubit(
+        getFilteredOrdersUc: gh<_i617.GetFilteredOrdersUc>(),
+        updateOrderStatusUc: gh<_i624.UpdateOrderStatusUc>(),
+        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
+        repository: gh<_i992.OrdersRepository>(),
+      ),
+    );
     gh.factory<_i52.AuthCubit>(
       () => _i52.AuthCubit(
         getCurrentUserUseCase: gh<_i813.GetCurrentUserUseCase>(),
@@ -1464,15 +1477,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i739.LoyaltyTopCustomersCubit>(
       () => _i739.LoyaltyTopCustomersCubit(
         getTopCustomersUC: gh<_i34.GetTopCustomersUC>(),
-      ),
-    );
-    gh.factory<_i1051.OrdersCubit>(
-      () => _i1051.OrdersCubit(
-        getFilteredOrdersUc: gh<_i617.GetFilteredOrdersUc>(),
-        saveOrderChangesUc: gh<_i904.SaveOrderChangesUc>(),
-        cancelOrderUc: gh<_i534.CancelOrderUc>(),
-        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
-        repository: gh<_i992.OrdersRepository>(),
       ),
     );
     gh.factory<_i437.PosCubit>(

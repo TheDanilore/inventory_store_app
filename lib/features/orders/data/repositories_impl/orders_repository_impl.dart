@@ -223,9 +223,60 @@ class OrdersRepositoryImpl implements OrdersRepository {
     }
   }
 
-  // ─── UTILIDADES ────────────────────────────────────────────────────────────
+  @override
+  Future<Either<Failure, void>> updateOrderStatus({
+    required OrderEntity order,
+    required String newStatus,
+    required String? currentProfileId,
+  }) async {
+    try {
+      if (newStatus == 'COMPLETED' && order.status == 'PENDING') {
+        // Obtenemos los items internamente, evitando Data Egress al BLoC
+        final itemsResult = await getOrderItems(order.id);
+        
+        return itemsResult.fold(
+          (failure) => Left(failure),
+          (items) async {
+            return await saveOrderChanges(
+              orderId: order.id,
+              originalStatus: order.status,
+              newStatus: newStatus,
+              paymentMethod: order.paymentMethod,
+              selectedCustomerId: order.customerId,
+              customerNameToSave: order.customerName,
+              items: items,
+              pointsUsed: order.pointsUsed,
+              pointsEarned: order.pointsEarned,
+              totalAmount: order.totalAmount,
+              totalProfit: order.totalProfit,
+              batchOverrides: {},
+              currentProfileId: currentProfileId,
+            );
+          },
+        );
+      } else if (newStatus == 'CANCELLED' || newStatus == 'RETURNED') {
+        return await cancelOrder(
+          orderId: order.id,
+          customerId: order.customerId,
+          currentProfileId: currentProfileId,
+        );
+      } else {
+        // Actualización simple de estado en BD
+        await _supabase
+            .from('orders')
+            .update({'status': newStatus})
+            .eq('id', order.id);
+        return const Right(null);
+      }
+    } on PostgrestException catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] PostgrestException en updateOrderStatus: $e\n$st');
+      return Left(ServerFailure(message: 'Error de base de datos al actualizar el estado.'));
+    } catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] Error inesperado en updateOrderStatus: $e\n$st');
+      return Left(ServerFailure(message: 'Error inesperado al actualizar el estado.'));
+    }
+  }
 
-  /// Resuelve el profileId del usuario autenticado actual.
 
   // ─── GUARDAR CAMBIOS ────────────────────────────────────────────────────────
 

@@ -28,6 +28,11 @@ abstract class OrdersRepository {
   Future<Either<Failure, OrderEntity>> getOrderById(String orderId);
   Future<Either<Failure, List<OrderItemEntity>>> getOrderItems(String orderId);
 
+  Future<Either<Failure, void>> updateOrderStatus({
+    required OrderEntity order,
+    required String newStatus,
+    required String? currentProfileId,
+  });
   Future<Either<Failure, void>> saveOrderChanges({
     required String orderId,
     required String originalStatus,
