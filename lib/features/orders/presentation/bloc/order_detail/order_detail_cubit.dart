@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
+import 'package:inventory_store_app/features/orders/domain/usecases/get_financial_accounts_uc.dart';
+import 'package:inventory_store_app/features/orders/domain/usecases/get_profile_by_id_uc.dart';
+import 'package:inventory_store_app/features/orders/domain/usecases/search_customers_uc.dart';
+import 'package:inventory_store_app/features/orders/domain/usecases/check_active_cash_shift_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/get_order_details_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/save_order_changes_uc.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_state.dart';
@@ -14,10 +17,18 @@ import 'package:injectable/injectable.dart';
 class OrderDetailCubit extends Cubit<OrderDetailState> {
   final GetOrderDetailsUc getOrderDetailsUc;
   final SaveOrderChangesUc saveOrderChangesUc;
+  final GetFinancialAccountsUc getFinancialAccountsUc;
+  final GetProfileByIdUc getProfileByIdUc;
+  final SearchCustomersUc searchCustomersUc;
+  final CheckActiveCashShiftUc checkActiveCashShiftUc;
 
   OrderDetailCubit({
     required this.getOrderDetailsUc,
     required this.saveOrderChangesUc,
+    required this.getFinancialAccountsUc,
+    required this.getProfileByIdUc,
+    required this.searchCustomersUc,
+    required this.checkActiveCashShiftUc,
   }) : super(const OrderDetailState());
 
   void setInitialOrder(OrderEntity order) {
@@ -46,51 +57,46 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
   Future<void> fetchData(String orderId) async {
     emit(state.copyWith(isLoading: true, hasError: false));
 
-    final supabase = Supabase.instance.client;
-
     try {
-      // FIX: Data Egress - Fetch solo el perfil del cliente actual (si existe) en lugar de TODOS los perfiles.
-      dynamic profileQuery;
       final currentCustomerId = state.order?.customerId ?? state.selectedCustomerId;
-      if (currentCustomerId != null && currentCustomerId.isNotEmpty) {
-        profileQuery = supabase
-            .from('profiles')
-            .select('id, full_name, phone, wallet_balance')
-            .eq('id', currentCustomerId)
-            .maybeSingle();
-      } else {
-        profileQuery = Future.value(null);
-      }
+      final profileFuture = (currentCustomerId != null && currentCustomerId.isNotEmpty)
+          ? getProfileByIdUc(currentCustomerId)
+          : Future.value(null);
 
       final results = await Future.wait<dynamic>([
         getOrderDetailsUc(orderId),
-        supabase
-            .from('financial_accounts')
-            .select('id, name, type, balance')
-            .eq('is_active', true)
-            .order('name'),
-        profileQuery,
+        getFinancialAccountsUc(),
+        profileFuture,
       ]);
 
-      final result = results[0] as dynamic; // Using dynamic for Either compatibility
-      final accountsData = List<Map<String, dynamic>>.from(results[1] as List);
-      final profileResult = results[2] as Map<String, dynamic>?;
-      final profilesData = profileResult != null ? [profileResult] : <Map<String, dynamic>>[];
+      final result = results[0] as dynamic; // Either<Failure, OrderDetailsEntity>
+      final accountsResult = results[1] as dynamic; // Either<Failure, List<Map<String, dynamic>>>
+      final profileResult = results[2] as dynamic; // Either<Failure, Map<String, dynamic>?>?
 
       result.fold(
         (failure) {
-          debugPrint(
-            '🔴 [OrderDetailCubit] Error al cargar orden ($orderId): ${failure.message}',
-          );
-          emit(
-            state.copyWith(
-              isLoading: false,
-              hasError: true,
-              errorMessage: failure.message,
-            ),
-          );
+          debugPrint('🔴 [OrderDetailCubit] Error al cargar orden ($orderId): ${failure.message}');
+          emit(state.copyWith(isLoading: false, hasError: true, errorMessage: failure.message));
         },
         (details) {
+          final accountsData = accountsResult.fold(
+            (l) {
+              debugPrint('🔴 [OrderDetailCubit] Error en accounts: ${l.message}');
+              return <Map<String, dynamic>>[];
+            },
+            (r) => r as List<Map<String, dynamic>>,
+          );
+
+          List<Map<String, dynamic>> profilesData = [];
+          if (profileResult != null) {
+            profileResult.fold(
+              (l) => debugPrint('🔴 [OrderDetailCubit] Error en profile: ${l.message}'),
+              (r) {
+                if (r != null) profilesData = [r as Map<String, dynamic>];
+              },
+            );
+          }
+
           emit(
             state.copyWith(
               isLoading: false,
@@ -108,60 +114,20 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
         },
       );
     } catch (e, st) {
-      debugPrint(
-        '🔴 [OrderDetailCubit] Error en fetchData parallel query: $e\n$st',
-      );
-      final result = await getOrderDetailsUc(orderId);
-      result.fold(
-        (failure) => emit(
-          state.copyWith(
-            isLoading: false,
-            hasError: true,
-            errorMessage: failure.message,
-          ),
-        ),
-        (details) => emit(
-          state.copyWith(
-            isLoading: false,
-            order: details.order,
-            items: details.items,
-            selectedCustomerId: details.order.customerId,
-            currentStatus: details.order.status,
-            pointsUsed: details.order.pointsUsed,
-            pointsEarned: details.order.pointsEarned,
-            paymentMethod: details.order.paymentMethod,
-          ),
-        ),
-      );
+      debugPrint('🔴 [OrderDetailCubit] Error fatal en fetchData: $e\n$st');
+      emit(state.copyWith(isLoading: false, hasError: true, errorMessage: 'Error inesperado al cargar la orden.'));
     }
   }
 
   Future<bool> hasActiveCashShift() async {
-    try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) return false;
-
-      final profileRes =
-          await Supabase.instance.client
-              .from('profiles')
-              .select('id')
-              .eq('auth_user_id', user.id)
-              .maybeSingle();
-      final profileId = profileRes?['id'] as String? ?? user.id;
-
-      final activeShift =
-          await Supabase.instance.client
-              .from('cash_shifts')
-              .select('id')
-              .eq('opened_by', profileId)
-              .eq('status', 'OPEN')
-              .maybeSingle();
-
-      return activeShift != null;
-    } catch (e) {
-      debugPrint('🔴 [OrderDetailCubit] Error comprobando turno activo: $e');
-      return false;
-    }
+    final result = await checkActiveCashShiftUc();
+    return result.fold(
+      (l) {
+        debugPrint('🔴 [OrderDetailCubit] Error comprobando turno activo: ${l.message}');
+        return false;
+      },
+      (r) => r,
+    );
   }
 
   void selectCustomer(String? customerId, double ratio, double earnRate) {
@@ -177,18 +143,14 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
 
   Future<List<Map<String, dynamic>>> searchCustomers(String query) async {
     if (query.trim().isEmpty) return [];
-    try {
-      final supabase = Supabase.instance.client;
-      final response = await supabase
-          .from('profiles')
-          .select('id, full_name, phone, document_number')
-          .or('full_name.ilike.%$query%,phone.ilike.%$query%,document_number.ilike.%$query%')
-          .limit(20);
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('🔴 [OrderDetailCubit] Error searching customers: $e');
-      return [];
-    }
+    final result = await searchCustomersUc(query);
+    return result.fold(
+      (l) {
+        debugPrint('🔴 [OrderDetailCubit] Error searching customers: ${l.message}');
+        return [];
+      },
+      (r) => r,
+    );
   }
 
   void updatePaymentMethod(String method, double ratio, double earnRate) {

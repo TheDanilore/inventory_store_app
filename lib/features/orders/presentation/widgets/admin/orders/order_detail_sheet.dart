@@ -197,6 +197,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
       context: context,
       builder: (ctx) {
         final dlgCtrl = TextEditingController(text: currentQty);
+        final formKey = GlobalKey<FormState>();
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -205,14 +206,23 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
             'Modificar Cantidad',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
-          content: TextField(
-            controller: dlgCtrl,
-            keyboardType: TextInputType.number,
-            autofocus: true,
-            decoration: const InputDecoration(
-              hintText: 'Ingresa la cantidad',
-              labelText: 'Cantidad',
-              border: OutlineInputBorder(),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: dlgCtrl,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'Ingresa la cantidad',
+                labelText: 'Cantidad',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) return 'Requerido';
+                final val = int.tryParse(value.trim());
+                if (val == null || val <= 0) return 'Debe ser mayor a 0';
+                return null;
+              },
             ),
           ),
           actions: [
@@ -221,7 +231,11 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, dlgCtrl.text),
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(ctx, dlgCtrl.text.trim());
+                }
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.teal,
                 foregroundColor: Colors.white,
@@ -292,7 +306,9 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
         final profile = profiles.firstWhere((p) => p['id'] == customerId);
         final name = (profile['full_name'] as String?)?.trim();
         if (name != null && name.isNotEmpty) return name;
-      } catch (_) {}
+      } catch (e, st) {
+        debugPrint('🔴 [OrderDetailSheet] Error parseando cliente: $e\n$st');
+      }
     }
     if (order != null &&
         order.displayCustomerName.isNotEmpty &&

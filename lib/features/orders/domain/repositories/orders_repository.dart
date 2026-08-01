@@ -60,4 +60,9 @@ abstract class OrdersRepository {
   Future<Either<Failure, List<Map<String, dynamic>>>> fetchOrderItemsForPdf(
     String orderId,
   );
+
+  Future<Either<Failure, List<Map<String, dynamic>>>> getFinancialAccounts();
+  Future<Either<Failure, Map<String, dynamic>?>> getProfileById(String profileId);
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchCustomers(String query);
+  Future<Either<Failure, bool>> checkActiveCashShift();
 }

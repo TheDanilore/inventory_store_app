@@ -857,4 +857,78 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
     return Right(List<Map<String, dynamic>>.from(resp));
   }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getFinancialAccounts() async {
+    try {
+      final response = await _supabase
+          .from('financial_accounts')
+          .select('id, name, type, balance')
+          .eq('is_active', true)
+          .order('name');
+      return Right(List<Map<String, dynamic>>.from(response));
+    } catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] Error en getFinancialAccounts: $e\n$st');
+      return Left(ServerFailure(message: 'Error fetching financial accounts: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>?>> getProfileById(String profileId) async {
+    try {
+      final response = await _supabase
+          .from('profiles')
+          .select('id, full_name, phone, wallet_balance')
+          .eq('id', profileId)
+          .maybeSingle();
+      return Right(response);
+    } catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] Error en getProfileById: $e\n$st');
+      return Left(ServerFailure(message: 'Error fetching profile: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchCustomers(String query) async {
+    try {
+      final response = await _supabase
+          .from('profiles')
+          .select('id, full_name, phone, document_number')
+          .or('full_name.ilike.%$query%,phone.ilike.%$query%,document_number.ilike.%$query%')
+          .limit(20);
+      return Right(List<Map<String, dynamic>>.from(response));
+    } catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] Error en searchCustomers: $e\n$st');
+      return Left(ServerFailure(message: 'Error searching customers: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> checkActiveCashShift() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return const Right(false);
+      final userId = user.id;
+
+      final profileRes = await _supabase
+          .from('profiles')
+          .select('id')
+          .eq('auth_user_id', userId)
+          .maybeSingle();
+      
+      final profileId = profileRes?['id'] as String? ?? userId;
+
+      final activeShift = await _supabase
+          .from('cash_shifts')
+          .select('id')
+          .eq('opened_by', profileId)
+          .eq('status', 'OPEN')
+          .maybeSingle();
+
+      return Right(activeShift != null);
+    } catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] Error en checkActiveCashShift: $e\n$st');
+      return Left(ServerFailure(message: 'Error checking active cash shift: $e'));
+    }
+  }
 }
