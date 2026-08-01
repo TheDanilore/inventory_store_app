@@ -2,7 +2,6 @@ import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/purchases/domain/repositories/purchase_orders_repository.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegisterOrderPaymentParams {
   final String orderId;
@@ -27,14 +26,12 @@ class RegisterOrderPaymentUseCase {
   RegisterOrderPaymentUseCase(this.repository);
 
   Future<Either<Failure, void>> call(RegisterOrderPaymentParams params) async {
-    final profileId = Supabase.instance.client.auth.currentUser?.id;
     return repository.registerOrderPayment(
       orderId: params.orderId,
       supplierId: params.supplierId,
       amount: params.amount,
       accountId: params.accountId,
       shiftId: params.shiftId,
-      profileId: profileId,
     );
   }
 }

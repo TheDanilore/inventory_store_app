@@ -225,12 +225,16 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
   // ── Registrar Pago de Orden (Zero Egress) ─────────────────────────────────
   Future<void> registerOrderPayment(RegisterOrderPaymentParams params) async {
     final previousState = state;
-    emit(PurchaseOrderActionLoading());
 
     final result = await registerOrderPaymentUseCase(params);
 
     result.fold(
-      (failure) => emit(PurchaseOrderActionError(message: failure.message)),
+      (failure) {
+        emit(PurchaseOrderActionError(message: failure.message));
+        if (previousState is PurchaseOrdersLoaded) {
+          emit(previousState);
+        }
+      },
       (_) {
         // Zero Egress: mutar amount_paid y payment_status en la lista RAM
         if (previousState is PurchaseOrdersLoaded) {
@@ -246,15 +250,16 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
             }
             return o;
           }).toList();
-          emit(previousState.copyWith(orders: updatedOrders));
-        }
-        emit(
-          PurchaseOrderActionSuccess(
+          
+          emit(PurchaseOrderActionSuccess(
             message: 'Pago de S/ ${params.amount.toStringAsFixed(2)} registrado correctamente.',
             orderId: params.orderId,
             newAmountPaid: params.amount,
-          ),
-        );
+          ));
+          
+          // Re-emitir el estado principal para restaurar la lista en pantalla
+          emit(previousState.copyWith(orders: updatedOrders));
+        }
       },
     );
   }

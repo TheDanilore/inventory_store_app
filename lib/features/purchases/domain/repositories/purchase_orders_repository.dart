@@ -51,7 +51,6 @@ abstract class PurchaseOrdersRepository {
     required double amount,
     required String accountId,
     required String? shiftId,
-    required String? profileId,
   });
 
   Future<Either<Failure, void>> updateOrderPaymentMethod({

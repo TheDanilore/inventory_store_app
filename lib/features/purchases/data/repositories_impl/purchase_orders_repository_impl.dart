@@ -571,7 +571,6 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
     required double amount,
     required String accountId,
     required String? shiftId,
-    required String? profileId,
   }) async {
     try {
       final response = await _supabase.rpc(
@@ -584,7 +583,7 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           'p_order_id': orderId,
           'p_notes': 'Pago de Orden de Compra #${orderId.substring(0, 8).toUpperCase()}',
           'p_shift_id': shiftId,
-          'p_profile_id': profileId ?? _supabase.auth.currentUser?.id,
+          'p_profile_id': _supabase.auth.currentUser?.id,
         },
       );
 
