@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:developer' as developer;
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/cart/domain/repositories/cart_repository.dart';
@@ -32,7 +32,8 @@ class CartRepositoryImpl implements CartRepository {
         return right(map);
       }
       return right({});
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error en loadLocalCart', error: e, stackTrace: st, name: 'CartRepo');
       return left(Failure.from(e));
     }
   }
@@ -77,7 +78,8 @@ class CartRepositoryImpl implements CartRepository {
       final encodedMap = json.encode(modelsMap);
       await prefs.setString(_getCartKey(cartType), encodedMap);
       return right(unit);
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error en saveLocalCart', error: e, stackTrace: st, name: 'CartRepo');
       return left(Failure.from(e));
     }
   }
@@ -88,7 +90,8 @@ class CartRepositoryImpl implements CartRepository {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_getCartKey(cartType));
       return right(unit);
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error en clearLocalCart', error: e, stackTrace: st, name: 'CartRepo');
       return left(Failure.from(e));
     }
   }
@@ -135,47 +138,24 @@ class CartRepositoryImpl implements CartRepository {
       if (cartType == 'pos') {
         return right(localItems);
       }
-      // profileId recibido es el auth_user_id (Supabase Auth). Traducir a profiles.id real.
-      final realProfileId = await _getProfileId(profileId);
-      if (realProfileId == null) {
-        debugPrint(
-          'CartRepositoryImpl: perfil no encontrado para authUserId=$profileId',
-        );
-        return left(
-          const ServerFailure(
-            message:
-                'Perfil no encontrado. Intenta cerrar sesión y volver a ingresar.',
-          ),
-        );
-      }
-      final cartId = await _getOrCreateCartId(realProfileId);
-      if (cartId == null) {
-        return left(
-          const ServerFailure(
-            message: 'No se pudo crear/obtener carrito en la nube.',
-          ),
-        );
-      }
+      
+      // 1. Sincronización atómica mediante RPC (Reemplaza 5 llamadas HTTP)
+      final itemsToInsert = localItems.values.map((item) {
+        final vid = item.variantId;
+        return {
+          'product_id': item.productId,
+          'variant_id': (vid == null || vid.isEmpty) ? null : vid,
+          'quantity': item.quantity.toString(),
+          'is_selected': item.isSelected.toString(),
+        };
+      }).toList();
 
-      // 1. Si hay items locales, sincronizamos hacia la nube (overwrite)
-      // En una implementación real, podría haber merge, pero siguiendo la lógica legacy:
-      await _supabase.from('cart_items').delete().eq('cart_id', cartId);
+      final responseRpc = await _supabase.rpc('sync_cloud_cart_rpc', params: {
+        'p_auth_user_id': profileId,
+        'p_items': itemsToInsert,
+      });
 
-      if (localItems.isNotEmpty) {
-        final itemsToInsert =
-            localItems.values.map((item) {
-              final vid = item.variantId;
-              return {
-                'cart_id': cartId,
-                'product_id': item.productId,
-                'variant_id': (vid == null || vid.isEmpty) ? null : vid,
-                'quantity': item.quantity,
-                'is_selected': item.isSelected,
-              };
-            }).toList();
-
-        await _supabase.from('cart_items').insert(itemsToInsert);
-      }
+      final String cartId = responseRpc.toString();
 
       // 2. Descargamos la nube para obtener los datos frescos de productos (precios, stock, etc.)
       final itemsResponse = await _supabase
@@ -240,8 +220,8 @@ class CartRepositoryImpl implements CartRepository {
             variantModel = ProductVariantModel.fromJson(
               Map<String, dynamic>.from(variantJson as Map),
             );
-          } catch (e) {
-            debugPrint('CartRepositoryImpl: error parseando variante: $e');
+          } catch (e, st) {
+            developer.log('Error parseando variante en syncCloudCart', error: e, stackTrace: st, name: 'CartRepo');
           }
         }
 
@@ -280,7 +260,8 @@ class CartRepositoryImpl implements CartRepository {
       }
 
       return right(cloudItems);
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error en syncCloudCart', error: e, stackTrace: st, name: 'CartRepo');
       return left(Failure.from(e));
     }
   }
@@ -309,7 +290,8 @@ class CartRepositoryImpl implements CartRepository {
       }
       await _supabase.from('cart_items').delete().eq('cart_id', cartId);
       return right(unit);
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error en clearCloudCart', error: e, stackTrace: st, name: 'CartRepo');
       return left(Failure.from(e));
     }
   }
