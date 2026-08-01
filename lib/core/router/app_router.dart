@@ -7,6 +7,7 @@ import 'package:inventory_store_app/core/router/go_router_refresh_stream.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
+import 'dart:developer' as developer;
 import 'package:inventory_store_app/features/app_config/presentation/routes/app_config_routes.dart';
 import 'package:inventory_store_app/features/auth/presentation/routes/auth_routes.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
@@ -45,9 +46,19 @@ class AppRouter {
       final path = uri.path;
       if (path.isNotEmpty && path != '/splash' && path != '/login') {
         _pendingDeepLink = path + (uri.query.isNotEmpty ? '?${uri.query}' : '');
-        debugPrint('AppRouter: deep link capturado -> $_pendingDeepLink');
+        developer.log(
+          'deep link capturado -> $_pendingDeepLink',
+          name: 'AppRouter',
+        );
       }
-    } catch (_) {}
+    } catch (e, st) {
+      developer.log(
+        'Error capturando initial route',
+        error: e,
+        stackTrace: st,
+        name: 'AppRouter',
+      );
+    }
   }
 
   static GoRouter createRouter(AuthCubit authCubit) {
@@ -138,9 +149,6 @@ class AppRouter {
               (context, state, child) => MultiBlocProvider(
                 providers: [
                   BlocProvider(
-                    create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
-                  ),
-                  BlocProvider(
                     create: (_) => sl<SidebarBadgeCubit>(),
                   ),
                   BlocProvider(
@@ -159,16 +167,19 @@ class AppRouter {
             GoRoute(
               path: '/admin',
               builder:
-                  (context, state) => AdminCatalogScreen(
-                    floatingActionButton: const PosCartFab(),
-                    onProfileAvatarTap: () {
-                      final auth = context.read<AuthCubit>();
-                      if (auth.state.currentUser == null) {
-                        context.go('/login');
-                      } else {
-                        context.push('/admin/profile');
-                      }
-                    },
+                  (context, state) => BlocProvider(
+                    create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
+                    child: AdminCatalogScreen(
+                      floatingActionButton: const PosCartFab(),
+                      onProfileAvatarTap: () {
+                        final auth = context.read<AuthCubit>();
+                        if (auth.state.currentUser == null) {
+                          context.go('/login');
+                        } else {
+                          context.push('/admin/profile');
+                        }
+                      },
+                    ),
                   ),
             ),
             ...AuthRoutes.adminRoutes,
