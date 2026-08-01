@@ -15,6 +15,22 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   @override
+  Future<Either<Failure, Map<String, dynamic>?>> getPurchaseOrderById(
+      String poId) async {
+    try {
+      final poResp = await _supabase
+          .from('purchase_orders')
+          .select('*, suppliers(name)')
+          .eq('id', poId)
+          .maybeSingle();
+      return Right(poResp);
+    } catch (e, st) {
+      debugPrint('[PurchaseOrdersRepositoryImpl] getPurchaseOrderById error: $e\n$st');
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, Map<String, dynamic>>> fetchOrders({
     required int page,
     required int pageSize,

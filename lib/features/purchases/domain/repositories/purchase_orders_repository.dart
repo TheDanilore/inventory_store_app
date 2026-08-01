@@ -16,6 +16,10 @@ abstract class PurchaseOrdersRepository {
     String poId,
   );
 
+  Future<Either<Failure, Map<String, dynamic>?>> getPurchaseOrderById(
+    String poId,
+  );
+
   Future<Either<Failure, void>> updateOrderStatus(String poId, String status);
 
   Future<Either<Failure, void>> createPurchaseOrder({

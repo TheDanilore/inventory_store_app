@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:collection/collection.dart';
+
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
@@ -11,10 +12,10 @@ import 'package:inventory_store_app/features/inventory/domain/usecases/get_activ
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_active_suppliers_uc.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/get_financial_accounts_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/create_inventory_entry_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_purchase_order_by_id_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entry_form/inventory_entry_form_state.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/fetch_purchase_order_items_usecase.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 @injectable
 class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
@@ -22,6 +23,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
   final GetActiveSuppliersUseCase getActiveSuppliers;
   final GetFinancialAccountsUseCase getActiveAccounts;
   final CreateInventoryEntryUseCase createInventoryEntry;
+  final GetPurchaseOrderByIdUseCase getPurchaseOrderById;
 
   static const _draftKey = 'inventory_entry_draft';
 
@@ -30,6 +32,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     required this.getActiveSuppliers,
     required this.getActiveAccounts,
     required this.createInventoryEntry,
+    required this.getPurchaseOrderById,
   }) : super(const InventoryEntryFormState());
 
   Future<void> init({
@@ -55,68 +58,36 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     );
 
     try {
-      final supabase = Supabase.instance.client;
+      final futures = await Future.wait([
+        getActiveWarehouses.call(),
+        getActiveSuppliers.call(),
+        getActiveAccounts.call(page: 1, pageSize: 100),
+      ]);
 
-      // ── cash shift ──────────────────────────────────────────────────────
-      String? activeShiftId;
-      try {
-        final shiftResp =
-            await supabase
-                .from('cash_shifts')
-                .select('id')
-                .eq('status', 'OPEN')
-                .maybeSingle();
-        if (shiftResp != null) activeShiftId = shiftResp['id'] as String?;
-      } catch (_) {}
-      emit(state.copyWith(activeShiftId: activeShiftId));
-
-      // ── warehouses ──────────────────────────────────────────────────────
       var warehouses = <WarehouseModel>[];
-      try {
-        final wRes = await supabase
-            .from('warehouses')
-            .select('id, name, is_active')
-            .eq('is_active', true)
-            .order('name');
-        warehouses =
-            (wRes as List)
-                .map((e) => WarehouseModel.fromJson(e as Map<String, dynamic>))
-                .toList();
-      } catch (e) {
-        debugPrint('[EntryFormCubit] warehouses error: $e');
-      }
-
-      // ── suppliers ───────────────────────────────────────────────────────
       var suppliers = <Map<String, dynamic>>[];
+      var accounts = <FinancialAccountModel>[];
+
+      // Warehouses
+      (futures[0] as Either<dynamic, dynamic>)
+          .fold(
+            (l) => debugPrint('[EntryFormCubit] warehouses error: ${l.message}'),
+            (r) { warehouses = r as List<WarehouseModel>; },
+          );
+
+      // Suppliers
       try {
-        final pRes = await supabase
-            .from('suppliers')
-            .select('id, name')
-            .eq('is_active', true)
-            .order('name');
-        suppliers = List<Map<String, dynamic>>.from(pRes as List);
-      } catch (e) {
-        debugPrint('[EntryFormCubit] suppliers error: $e');
+        suppliers = futures[1] as List<Map<String, dynamic>>;
+      } catch (e, st) {
+        debugPrint('[EntryFormCubit] suppliers error: $e\n$st');
       }
 
-      // ── financial accounts ───────────────────────────────────────────────
-      var accounts = <FinancialAccountModel>[];
-      try {
-        final aRes = await supabase
-            .from('financial_accounts')
-            .select('id, name, type, balance, is_active, created_at')
-            .eq('is_active', true)
-            .order('name');
-        accounts =
-            (aRes as List)
-                .map(
-                  (e) =>
-                      FinancialAccountModel.fromJson(e as Map<String, dynamic>),
-                )
-                .toList();
-      } catch (e) {
-        debugPrint('[EntryFormCubit] accounts error: $e');
-      }
+      // Accounts
+      (futures[2] as Either<dynamic, dynamic>)
+          .fold(
+            (l) => debugPrint('[EntryFormCubit] accounts error: ${l.message}'),
+            (r) { accounts = (r as List<FinancialAccountModel>).where((a) => a.isActive).toList(); },
+          );
 
       // ── auto-select warehouse if only one ────────────────────────────────
       String? initialWarehouseId = prefillWarehouseId;
@@ -253,33 +224,9 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
         );
         return false;
       }
-      if (state.paymentMode == 'CONTADO' && state.selectedAccountId != null) {
-        final accountData = state.accounts.firstWhereOrNull(
-          (a) => a.id == state.selectedAccountId,
-        );
-        if (accountData?.type.toUpperCase() == 'CAJA' &&
-            activeShiftId.isEmpty) {
-          emit(
-            state.copyWith(
-              errorMessage: 'La caja seleccionada no tiene un turno abierto.',
-            ),
-          );
-          return false;
-        }
-        final totalCost = state.items.fold(
-          0.0,
-          (sum, item) => sum + item.subtotal,
-        );
-        if (accountData != null && accountData.balance < totalCost) {
-          emit(
-            state.copyWith(
-              errorMessage:
-                  'Saldo insuficiente en la cuenta (S/ ${accountData.balance.toStringAsFixed(2)} disponible)',
-            ),
-          );
-          return false;
-        }
-      }
+      // Nota: Eliminamos la validación en cliente del estado del turno ('CAJA') y del saldo.
+      // Ahora se delega 100% al RPC/Trigger de Supabase para garantizar integridad atómica
+      // y prevenir condiciones de carrera según reglas de QA.
       if (state.paymentMode == 'CRÉDITO' && state.selectedSupplierId == null) {
         emit(
           state.copyWith(
@@ -325,7 +272,8 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       );
       await clearDraft();
       emit(state.copyWith(isSaving: false, isSuccess: true));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[EntryFormCubit] saveEntry error: $e\n$st');
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
@@ -339,7 +287,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       } else {
         emit(
           state.copyWith(
-            errorMessage: 'Error registrando entrada.',
+            errorMessage: e.toString().replaceAll('Exception: ', ''),
             isSaving: false,
           ),
         );
@@ -444,12 +392,11 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
   Future<void> _loadFromPurchaseOrder(String poId) async {
     try {
-      final poResp =
-          await Supabase.instance.client
-              .from('purchase_orders')
-              .select('*, suppliers(name)')
-              .eq('id', poId)
-              .maybeSingle();
+      final poRespEither = await getPurchaseOrderById.call(poId);
+      final poResp = poRespEither.fold(
+        (l) => null,
+        (r) => r,
+      );
 
       if (poResp == null) return;
 

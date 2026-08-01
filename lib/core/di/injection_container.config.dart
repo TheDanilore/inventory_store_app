@@ -268,6 +268,10 @@ import '../../features/inventory/domain/usecases/save_warehouse_usecase.dart'
     as _i656;
 import '../../features/inventory/domain/usecases/toggle_warehouse_status_usecase.dart'
     as _i275;
+import '../../features/inventory/presentation/bloc/add_entry_product/add_entry_product_cubit.dart'
+    as _i376;
+import '../../features/inventory/presentation/bloc/add_exit_product/add_exit_product_cubit.dart'
+    as _i190;
 import '../../features/inventory/presentation/bloc/inventory/inventory_cubit.dart'
     as _i148;
 import '../../features/inventory/presentation/bloc/inventory_entries/inventory_entries_cubit.dart'
@@ -418,6 +422,8 @@ import '../../features/purchases/domain/usecases/get_financial_accounts_usecase.
     as _i867;
 import '../../features/purchases/domain/usecases/get_pending_purchase_orders_usecase.dart'
     as _i261;
+import '../../features/purchases/domain/usecases/get_purchase_order_by_id_usecase.dart'
+    as _i611;
 import '../../features/purchases/domain/usecases/receive_purchase_order_items_usecase.dart'
     as _i323;
 import '../../features/purchases/domain/usecases/register_supplier_credit_payment_usecase.dart'
@@ -728,6 +734,11 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i74.InventoryEntriesRepository>(),
       ),
     );
+    gh.factory<_i611.GetPurchaseOrderByIdUseCase>(
+      () => _i611.GetPurchaseOrderByIdUseCase(
+        gh<_i362.PurchaseOrdersRepository>(),
+      ),
+    );
     gh.lazySingleton<_i359.FetchSupplierCreditMovementsUseCase>(
       () => _i359.FetchSupplierCreditMovementsUseCase(
         gh<_i115.SupplierCreditMovementsRepository>(),
@@ -896,6 +907,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i549.UpdatePurchaseOrderStatusUseCase(
         gh<_i362.PurchaseOrdersRepository>(),
       ),
+    );
+    gh.factory<_i376.AddEntryProductCubit>(
+      () => _i376.AddEntryProductCubit(gh<_i570.ProductsRepository>()),
+    );
+    gh.factory<_i190.AddExitProductCubit>(
+      () => _i190.AddExitProductCubit(gh<_i570.ProductsRepository>()),
     );
     gh.lazySingleton<_i598.GetCustomerLocationsUseCase>(
       () => _i598.GetCustomerLocationsUseCase(
@@ -1343,6 +1360,15 @@ extension GetItInjectableX on _i174.GetIt {
         saveAccount: gh<_i57.SaveFinancialAccountUseCase>(),
       ),
     );
+    gh.factory<_i977.InventoryEntryFormCubit>(
+      () => _i977.InventoryEntryFormCubit(
+        getActiveWarehouses: gh<_i945.GetActiveWarehousesUseCase>(),
+        getActiveSuppliers: gh<_i664.GetActiveSuppliersUseCase>(),
+        getActiveAccounts: gh<_i425.GetFinancialAccountsUseCase>(),
+        createInventoryEntry: gh<_i419.CreateInventoryEntryUseCase>(),
+        getPurchaseOrderById: gh<_i611.GetPurchaseOrderByIdUseCase>(),
+      ),
+    );
     gh.factory<_i613.AdminCatalogCubit>(
       () => _i613.AdminCatalogCubit(
         getCategoriesUC: gh<_i700.GetCategoriesUC>(),
@@ -1406,14 +1432,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i1028.WalletCubit(
         getWalletBalanceUC: gh<_i631.GetWalletBalanceUC>(),
         supabase: gh<_i454.SupabaseClient>(),
-      ),
-    );
-    gh.factory<_i977.InventoryEntryFormCubit>(
-      () => _i977.InventoryEntryFormCubit(
-        getActiveWarehouses: gh<_i945.GetActiveWarehousesUseCase>(),
-        getActiveSuppliers: gh<_i664.GetActiveSuppliersUseCase>(),
-        getActiveAccounts: gh<_i425.GetFinancialAccountsUseCase>(),
-        createInventoryEntry: gh<_i419.CreateInventoryEntryUseCase>(),
       ),
     );
     gh.factory<_i431.SuppliersCubit>(

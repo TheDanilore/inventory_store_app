@@ -3,7 +3,7 @@ import 'package:inventory_store_app/features/inventory/domain/entities/inventory
 import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_item_model.dart';
+
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_entries_repository.dart';
 
@@ -25,226 +25,37 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
     required DateTime? documentDate,
     required String notes,
   }) async {
-    // Calcular totales
-    final double totalCost = items.fold(0, (sum, item) => sum + item.subtotal);
+    final itemsJson = items.map((e) => {
+      'productId': e.productId,
+      'variantId': e.variantId,
+      'quantity': e.quantity,
+      'unitCost': e.unitCost,
+      'batchNumber': e.batchNumber,
+      'expiryDate': e.expiryDate?.toIso8601String(),
+    }).toList();
 
-    // Obtener usuario
-    String? createdByProfileId;
-    final currentUser = _supabase.auth.currentUser;
-    if (currentUser != null) {
-      final profile =
-          await _supabase
-              .from('profiles')
-              .select('id')
-              .eq('auth_user_id', currentUser.id)
-              .maybeSingle();
-      createdByProfileId = profile?['id'] as String?;
-    }
-
-    // 1. ── Cabecera del ingreso ─────────────────────────────────────────
-    final entryHeader =
-        await _supabase
-            .from('inventory_entries')
-            .insert({
-              'warehouse_id': warehouseId,
-              'supplier_id': supplierId,
-              'purchase_order_id': purchaseOrderId,
-              'notes': notes.isEmpty ? null : notes,
-              'created_by': createdByProfileId,
-              'total_amount': totalCost,
-              'document_type': documentType,
-              'document_number':
-                  documentNumber?.isEmpty ?? true ? null : documentNumber,
-              'document_date': documentDate?.toIso8601String().split('T').first,
-            })
-            .select('id')
-            .single();
-
-    final entryId = entryHeader['id'] as String;
-
-    for (final item in items) {
-      // 2. ── inventory_entry_items ─────────────────────────────────────
-      final entryItem = InventoryEntryItemModel(
-        id: '',
-        entryId: entryId,
-        productId: item.productId,
-        variantId: item.variantId,
-        quantity: item.quantity,
-        unitCost: item.unitCost,
-        batchNumber: item.batchNumber,
-        expiryDate: item.expiryDate,
-      );
-      await _supabase.from('inventory_entry_items').insert({
-        ...entryItem.toJson()..remove('id'),
+    try {
+      await _supabase.rpc('process_inventory_entry_rpc', params: {
+        'p_warehouse_id': warehouseId,
+        'p_supplier_id': supplierId,
+        'p_purchase_order_id': purchaseOrderId,
+        'p_payment_mode': paymentMode,
+        'p_account_id': accountId,
+        'p_active_shift_id': activeShiftId,
+        'p_document_type': documentType,
+        'p_document_number': documentNumber,
+        'p_document_date': documentDate?.toIso8601String().split('T').first,
+        'p_notes': notes,
+        'p_items': itemsJson,
       });
-
-      // 3. ── warehouse_stock_batches ────────────────────────────────────
-      final existingBatch =
-          await _supabase
-              .from('warehouse_stock_batches')
-              .select('id, available_quantity')
-              .eq('variant_id', item.variantId)
-              .eq('warehouse_id', warehouseId)
-              .eq('batch_number', item.batchNumber)
-              .maybeSingle();
-
-      double previousStock = 0;
-      double newStock = 0;
-      String? stockBatchId;
-
-      if (existingBatch != null) {
-        stockBatchId = existingBatch['id'] as String;
-        previousStock = (existingBatch['available_quantity'] as num).toDouble();
-        newStock = previousStock + item.quantity;
-        await _supabase
-            .from('warehouse_stock_batches')
-            .update({
-              'available_quantity': newStock,
-              'updated_at': DateTime.now().toIso8601String(),
-              'updated_by': createdByProfileId,
-            })
-            .eq('id', stockBatchId);
-      } else {
-        newStock = item.quantity;
-        final newBatch =
-            await _supabase
-                .from('warehouse_stock_batches')
-                .insert({
-                  'variant_id': item.variantId,
-                  'warehouse_id': warehouseId,
-                  'product_id': item.productId,
-                  'supplier_id': supplierId,
-                  'batch_number': item.batchNumber,
-                  'expiry_date':
-                      item.expiryDate?.toIso8601String().split('T').first,
-                  'available_quantity': newStock,
-                  'created_by': createdByProfileId,
-                  'updated_by': createdByProfileId,
-                })
-                .select('id')
-                .single();
-        stockBatchId = newBatch['id'] as String;
+    } catch (e) {
+      if (e.toString().contains('Saldo insuficiente')) {
+        throw Exception('Saldo insuficiente en la cuenta financiera.');
       }
-
-      // Actualizar unit_cost de la variante
-      await _supabase
-          .from('product_variants')
-          .update({
-            'unit_cost': item.unitCost,
-            'updated_by': createdByProfileId,
-          })
-          .eq('id', item.variantId);
-
-      // 4. ── inventory_movements (kardex) ──────────────────────────────
-      await _supabase.from('inventory_movements').insert({
-        'variant_id': item.variantId,
-        'warehouse_id': warehouseId,
-        'stock_batch_id': stockBatchId,
-        'inventory_entry_id': entryId,
-        'quantity': item.quantity,
-        'previous_stock': previousStock,
-        'new_stock': newStock,
-        'unit_cost': item.unitCost,
-        'total_cost': item.subtotal,
-        'reason': 'ENTRY',
-        'notes': notes.isEmpty ? null : notes,
-        'created_by': createdByProfileId,
-      });
-    }
-
-    // 5. ── Movimiento financiero o crédito (SOLO SI ES INGRESO MANUAL) ────
-    if (purchaseOrderId == null) {
-      if (paymentMode == 'CONTADO' && accountId != null) {
-        // Obtenemos los datos de la cuenta para validar saldo antes de debitar
-        final accountDataResp =
-            await _supabase
-                .from('financial_accounts')
-                .select('balance')
-                .eq('id', accountId)
-                .maybeSingle();
-
-        if (accountDataResp != null) {
-          final accountBalance = (accountDataResp['balance'] as num).toDouble();
-
-          String supplierName = '';
-          if (supplierId != null) {
-            final supResp =
-                await _supabase
-                    .from('suppliers')
-                    .select('name')
-                    .eq('id', supplierId)
-                    .maybeSingle();
-            if (supResp != null) supplierName = supResp['name'] as String;
-          }
-
-          await _supabase.from('account_movements').insert({
-            'account_id': accountId,
-            'movement_type': 'EXPENSE',
-            'amount': totalCost,
-            'description':
-                'Compra de inventario${supplierName.isNotEmpty ? ' · $supplierName' : ''}',
-            'reference_type': 'inventory_entry',
-            'reference_id': entryId,
-            'created_by': createdByProfileId,
-            'shift_id': activeShiftId,
-          });
-
-          await _supabase
-              .from('financial_accounts')
-              .update({'balance': accountBalance - totalCost})
-              .eq('id', accountId);
-        }
-      } else if (paymentMode == 'CRÉDITO' && supplierId != null) {
-        var creditResp =
-            await _supabase
-                .from('supplier_credits')
-                .select('id, current_debt')
-                .eq('supplier_id', supplierId)
-                .maybeSingle();
-
-        String supplierCreditId;
-        if (creditResp == null) {
-          final newCredit =
-              await _supabase
-                  .from('supplier_credits')
-                  .insert({
-                    'supplier_id': supplierId,
-                    'current_debt': totalCost,
-                    'created_by': createdByProfileId,
-                  })
-                  .select('id')
-                  .single();
-          supplierCreditId = newCredit['id'] as String;
-        } else {
-          supplierCreditId = creditResp['id'] as String;
-          final currentDebt = (creditResp['current_debt'] as num).toDouble();
-          await _supabase
-              .from('supplier_credits')
-              .update({
-                'current_debt': currentDebt + totalCost,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', supplierCreditId);
-        }
-
-        await _supabase.from('supplier_credit_movements').insert({
-          'supplier_credit_id': supplierCreditId,
-          'purchase_order_id': purchaseOrderId,
-          'movement_type': 'CHARGE',
-          'amount': totalCost,
-          'notes': 'Compra a crédito — Entrada #$entryId',
-          'created_by': createdByProfileId,
-        });
+      if (e.toString().contains('La caja seleccionada no tiene un turno abierto')) {
+        throw Exception('La caja seleccionada no tiene un turno abierto.');
       }
-    }
-
-    // 6. ── Actualizar purchase_order si viene de una ─────────────────
-    if (purchaseOrderId != null && purchaseOrderId.isNotEmpty) {
-      try {
-        await syncPurchaseOrderItemsAndStatus(_supabase, purchaseOrderId);
-      } catch (e) {
-        // Log de error de actualización de orden sin bloquear el ingreso de inventario
-      }
+      rethrow;
     }
   }
 
