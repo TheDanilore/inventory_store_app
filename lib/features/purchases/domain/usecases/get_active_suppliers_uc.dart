@@ -1,19 +1,17 @@
+import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
+import 'package:inventory_store_app/features/purchases/domain/repositories/suppliers_repository.dart';
 
 @injectable
 @lazySingleton
 class GetActiveSuppliersUseCase {
-  final SupabaseClient _supabase;
+  final SuppliersRepository repository;
 
-  GetActiveSuppliersUseCase(this._supabase);
+  GetActiveSuppliersUseCase(this.repository);
 
-  Future<List<Map<String, dynamic>>> call() async {
-    final response = await _supabase
-        .from('suppliers')
-        .select('id, name')
-        .eq('is_active', true)
-        .order('name');
-    return List<Map<String, dynamic>>.from(response);
+  Future<Either<Failure, List<SupplierEntity>>> call() async {
+    return await repository.getActiveSuppliers();
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
@@ -65,29 +66,35 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       ]);
 
       var warehouses = <WarehouseModel>[];
-      var suppliers = <Map<String, dynamic>>[];
+      var suppliers = <SupplierEntity>[];
       var accounts = <FinancialAccountModel>[];
 
       // Warehouses
-      (futures[0] as Either<dynamic, dynamic>)
-          .fold(
-            (l) => debugPrint('[EntryFormCubit] warehouses error: ${l.message}'),
-            (r) { warehouses = r as List<WarehouseModel>; },
-          );
+      (futures[0] as Either<dynamic, dynamic>).fold(
+        (l) => debugPrint('[EntryFormCubit] warehouses error: ${l.message}'),
+        (r) {
+          warehouses = r as List<WarehouseModel>;
+        },
+      );
 
       // Suppliers
-      try {
-        suppliers = futures[1] as List<Map<String, dynamic>>;
-      } catch (e, st) {
-        debugPrint('[EntryFormCubit] suppliers error: $e\n$st');
-      }
+      (futures[1] as Either<dynamic, dynamic>).fold(
+        (l) => debugPrint('[EntryFormCubit] suppliers error: ${l.message}'),
+        (r) {
+          suppliers = r as List<SupplierEntity>;
+        },
+      );
 
       // Accounts
-      (futures[2] as Either<dynamic, dynamic>)
-          .fold(
-            (l) => debugPrint('[EntryFormCubit] accounts error: ${l.message}'),
-            (r) { accounts = (r as List<FinancialAccountModel>).where((a) => a.isActive).toList(); },
-          );
+      (futures[2] as Either<dynamic, dynamic>).fold(
+        (l) => debugPrint('[EntryFormCubit] accounts error: ${l.message}'),
+        (r) {
+          accounts =
+              (r as List<FinancialAccountModel>)
+                  .where((a) => a.isActive)
+                  .toList();
+        },
+      );
 
       // ── auto-select warehouse if only one ────────────────────────────────
       String? initialWarehouseId = prefillWarehouseId;
@@ -393,10 +400,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
   Future<void> _loadFromPurchaseOrder(String poId) async {
     try {
       final poRespEither = await getPurchaseOrderById.call(poId);
-      final poResp = poRespEither.fold(
-        (l) => null,
-        (r) => r,
-      );
+      final poResp = poRespEither.fold((l) => null, (r) => r);
 
       if (poResp == null) return;
 

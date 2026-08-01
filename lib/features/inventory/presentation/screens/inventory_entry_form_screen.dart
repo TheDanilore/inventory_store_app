@@ -462,7 +462,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
 
     final selectedSupId = cubit.state.selectedSupplierId;
     final hasSupInList = cubit.state.suppliers.any(
-      (s) => s['id'] == selectedSupId,
+      (s) => s.id == selectedSupId,
     );
 
     final supplierItems = <DropdownMenuItem<String?>>[
@@ -480,9 +480,9 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         ),
       ...cubit.state.suppliers.map(
         (s) => DropdownMenuItem<String?>(
-          value: s['id'] as String,
+          value: s.id,
           child: Text(
-            s['name'] as String,
+            s.name,
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
         ),

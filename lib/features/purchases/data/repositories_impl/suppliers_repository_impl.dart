@@ -46,6 +46,24 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
       return Left(ServerFailure(message: e.toString()));
     }
   }
+  @override
+  Future<Either<Failure, List<SupplierEntity>>> getActiveSuppliers() async {
+    try {
+      final response = await _supabase
+          .from('suppliers')
+          .select('*')
+          .eq('is_active', true)
+          .order('name');
+      
+      final list = (response as List)
+          .map((e) => SupplierModel.fromJson(e))
+          .toList();
+          
+      return Right(list);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
 
   @override
   Future<Either<Failure, void>> toggleSupplierStatus(

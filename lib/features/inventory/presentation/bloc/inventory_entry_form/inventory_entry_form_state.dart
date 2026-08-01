@@ -2,10 +2,11 @@ import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 
 class InventoryEntryFormState extends Equatable {
   final List<WarehouseModel> warehouses;
-  final List<Map<String, dynamic>> suppliers;
+  final List<SupplierEntity> suppliers;
   final List<FinancialAccountModel> accounts;
 
   final String? selectedWarehouseId;
@@ -47,7 +48,7 @@ class InventoryEntryFormState extends Equatable {
 
   InventoryEntryFormState copyWith({
     List<WarehouseModel>? warehouses,
-    List<Map<String, dynamic>>? suppliers,
+    List<SupplierEntity>? suppliers,
     List<FinancialAccountModel>? accounts,
     String? selectedWarehouseId,
     String? selectedSupplierId,

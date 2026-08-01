@@ -569,9 +569,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i992.OrdersRepository>(
       () => _i647.OrdersRepositoryImpl(),
     );
-    gh.factory<_i664.GetActiveSuppliersUseCase>(
-      () => _i664.GetActiveSuppliersUseCase(gh<_i454.SupabaseClient>()),
-    );
     gh.lazySingleton<_i123.SupplierCreditsRepository>(
       () => _i329.SupplierCreditsRepositoryImpl(),
     );
@@ -1001,6 +998,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i36.RestoreDefaultConnectionUseCase>(
       () =>
           _i36.RestoreDefaultConnectionUseCase(gh<_i257.AppConfigRepository>()),
+    );
+    gh.factory<_i664.GetActiveSuppliersUseCase>(
+      () => _i664.GetActiveSuppliersUseCase(gh<_i943.SuppliersRepository>()),
     );
     gh.lazySingleton<_i612.FetchSuppliersUseCase>(
       () => _i612.FetchSuppliersUseCase(gh<_i943.SuppliersRepository>()),

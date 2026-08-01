@@ -10,6 +10,8 @@ abstract class SuppliersRepository {
     String searchQuery = '',
   });
 
+  Future<Either<Failure, List<SupplierEntity>>> getActiveSuppliers();
+
   Future<Either<Failure, void>> toggleSupplierStatus(
     String supplierId,
     bool currentStatus,
