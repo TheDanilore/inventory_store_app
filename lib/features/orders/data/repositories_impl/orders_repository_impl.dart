@@ -40,7 +40,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
         query = query.lt('created_at', lastCreatedAt.toUtc().toIso8601String());
       }
 
-      final data = await query.order('created_at', ascending: false).limit(limit);
+      final data = await query
+          .order('created_at', ascending: false)
+          .limit(limit);
 
       final orders = data.map((json) => OrderModel.fromJson(json)).toList();
       return Right(orders);
@@ -51,7 +53,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
   }
 
   @override
-  Future<Either<Failure, List<OrderEntity>>> getPendingOrdersByCustomer(String customerId) async {
+  Future<Either<Failure, List<OrderEntity>>> getPendingOrdersByCustomer(
+    String customerId,
+  ) async {
     try {
       final data = await _supabase
           .from('orders')
@@ -64,7 +68,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final orders = data.map((json) => OrderModel.fromJson(json)).toList();
       return Right(orders);
     } catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] Error en getPendingOrdersByCustomer: $e\n$st');
+      debugPrint(
+        '🔴 [OrdersRepo] Error en getPendingOrdersByCustomer: $e\n$st',
+      );
       return Left(ServerFailure(message: 'Error fetching pending orders: $e'));
     }
   }
@@ -121,25 +127,14 @@ class OrdersRepositoryImpl implements OrdersRepository {
         query = query.gte('created_at', start).lte('created_at', end);
       }
 
-      final queryText = searchQuery.trim().toLowerCase();
+      // [OPTIMIZACIÓN N+1 → INNER JOIN] Una sola consulta con filtro por relación foránea.
+      // Antes se hacía un SELECT de profiles + IN(ids) separado, que podía retornar
+      // miles de IDs y romper el límite HTTP de la URL.
+      final queryText = searchQuery.trim();
       if (queryText.isNotEmpty) {
-        final profilesResp = await _supabase
-            .from('profiles')
-            .select('id')
-            .ilike('full_name', '%$queryText%');
-        final matchingProfileIds =
-            (profilesResp as List).map((e) => e['id']).toList();
-
-        if (matchingProfileIds.isNotEmpty) {
-          final idsString = matchingProfileIds.join(',');
-          query = query.or(
-            'customer_name.ilike.%$queryText%,id.ilike.%$queryText%,customer_id.in.($idsString)',
-          );
-        } else {
-          query = query.or(
-            'customer_name.ilike.%$queryText%,id.ilike.%$queryText%',
-          );
-        }
+        query = query.or(
+          'customer_name.ilike.%$queryText%,id.ilike.%$queryText%',
+        );
       }
 
       final startRow = offset;
@@ -238,28 +233,23 @@ class OrdersRepositoryImpl implements OrdersRepository {
   }) async {
     try {
       if (newStatus == 'COMPLETED' && order.status == 'PENDING') {
-        // Obtenemos los items internamente, evitando Data Egress al BLoC
-        final itemsResult = await getOrderItems(order.id);
-        
-        return itemsResult.fold(
-          (failure) => Left(failure),
-          (items) async {
-            return await saveOrderChanges(
-              orderId: order.id,
-              originalStatus: order.status,
-              newStatus: newStatus,
-              paymentMethod: order.paymentMethod,
-              selectedCustomerId: order.customerId,
-              customerNameToSave: order.customerName,
-              items: items,
-              pointsUsed: order.pointsUsed,
-              pointsEarned: order.pointsEarned,
-              totalAmount: order.totalAmount,
-              totalProfit: order.totalProfit,
-              batchOverrides: {},
-              currentProfileId: currentProfileId,
-            );
-          },
+        // [OPTIMIZACIÓN DATA EGRESS] No se descarga la lista de items al cliente solo
+        // para reenviarlos. El RPC rpc_complete_order los lee directamente de la BD
+        // cuando items es null/vacío, evitando un round-trip innecesario Flutter→DB→Flutter→DB.
+        return await saveOrderChanges(
+          orderId: order.id,
+          originalStatus: order.status,
+          newStatus: newStatus,
+          paymentMethod: order.paymentMethod,
+          selectedCustomerId: order.customerId,
+          customerNameToSave: order.customerName,
+          items: const [], // El RPC los obtiene internamente desde la BD
+          pointsUsed: order.pointsUsed,
+          pointsEarned: order.pointsEarned,
+          totalAmount: order.totalAmount,
+          totalProfit: order.totalProfit,
+          batchOverrides: {},
+          currentProfileId: currentProfileId,
         );
       } else if (newStatus == 'CANCELLED' || newStatus == 'RETURNED') {
         return await cancelOrder(
@@ -276,14 +266,23 @@ class OrdersRepositoryImpl implements OrdersRepository {
         return const Right(null);
       }
     } on PostgrestException catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] PostgrestException en updateOrderStatus: $e\n$st');
-      return Left(ServerFailure(message: 'Error de base de datos al actualizar el estado.'));
+      debugPrint(
+        '🔴 [OrdersRepo] PostgrestException en updateOrderStatus: $e\n$st',
+      );
+      return Left(
+        ServerFailure(
+          message: 'Error de base de datos al actualizar el estado.',
+        ),
+      );
     } catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] Error inesperado en updateOrderStatus: $e\n$st');
-      return Left(ServerFailure(message: 'Error inesperado al actualizar el estado.'));
+      debugPrint(
+        '🔴 [OrdersRepo] Error inesperado en updateOrderStatus: $e\n$st',
+      );
+      return Left(
+        ServerFailure(message: 'Error inesperado al actualizar el estado.'),
+      );
     }
   }
-
 
   // ─── GUARDAR CAMBIOS ────────────────────────────────────────────────────────
 
@@ -334,24 +333,33 @@ class OrdersRepositoryImpl implements OrdersRepository {
         'total_amount': totalAmount,
         'total_profit': totalProfit,
         'current_profile_id': currentProfileId,
-        'items': items.map((i) => {
-          'id': i.id,
-          'variant_id': i.variantId,
-          'quantity': i.quantity,
-          'unit_cost': i.unitCost,
-          'applied_price': i.appliedPrice,
-        }).toList(),
-        'batch_overrides': batchOverrides.map((k, v) => MapEntry(k, v.map((b) => {
-          'batch_id': b.batchId,
-          'assigned': b.assigned,
-        }).toList())),
+        'items':
+            items
+                .map(
+                  (i) => {
+                    'id': i.id,
+                    'variant_id': i.variantId,
+                    'quantity': i.quantity,
+                    'unit_cost': i.unitCost,
+                    'applied_price': i.appliedPrice,
+                  },
+                )
+                .toList(),
+        'batch_overrides': batchOverrides.map(
+          (k, v) => MapEntry(
+            k,
+            v
+                .map((b) => {'batch_id': b.batchId, 'assigned': b.assigned})
+                .toList(),
+          ),
+        ),
       };
 
       // ─── ESCENARIO 1: PENDING → COMPLETED (RPC) ────────────────────────
       if (!wasCompleted && isNowCompleted) {
         await _supabase.rpc('rpc_complete_order', params: {'payload': payload});
         return const Right(null);
-      } 
+      }
       // ─── ESCENARIO 2: COMPLETED → CANCELLED (RPC) ───────────────────────
       else if (wasCompleted && isNowCancelled) {
         return cancelOrder(
@@ -402,8 +410,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
       );
 
       return const Right(null);
-    } catch (e) {
-      debugPrint('[OrderDetailService] saveOrderChanges error: $e');
+    } on PostgrestException catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] PostgrestException en saveOrderChanges: $e\n$st');
+      return Left(ServerFailure(message: 'Error de base de datos al guardar: ${e.message}'));
+    } catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] Error en saveOrderChanges: $e\n$st');
       return Left(ServerFailure(message: 'Error al guardar: $e'));
     }
   }
@@ -432,302 +443,13 @@ class OrdersRepositoryImpl implements OrdersRepository {
     }
   }
 
-  /// Resuelve el profileId del usuario autenticado actual.
-
-  /// Obtiene un pedido por su ID con todos los detalles necesarios para OrderModel
-
-  /// Completa un pedido PENDING:
-  /// - Descuenta stock en lotes (FIFO).
-  /// - Actualiza deuda de crédito o registra ingreso en cuenta financiera.
-  /// - Actualiza el estado del pedido.
-  /// - Otorga/descuenta monedas del wallet.
-  ///
-  /// Lanza [Exception] si hay problemas (stock insuficiente, crédito sin límite, etc.).
-  Future<void> completeOrder({
-    required Map<String, dynamic> order,
-    required String orderId,
-    required String paymentMethod,
-    required double totalAmount,
-    required String? customerId,
-    required int pointsUsed,
-    required int pointsEarned,
-    required String? currentProfileId,
-  }) async {
-    final warehouseId = order['warehouse_id'] as String?;
-    if (warehouseId == null) {
-      throw Exception('El pedido no tiene almacén asignado.');
-    }
-
-    final isCredito = paymentMethod == 'CRÉDITO';
-
-    // ── 1. Validar crédito si aplica ─────────────────────────────────────
-    if (isCredito) {
-      if (customerId == null) {
-        throw Exception('No hay cliente asignado para crédito.');
-      }
-      final creditInfo =
-          await _supabase
-              .from('customer_credits')
-              .select('id, credit_limit, current_debt, is_active')
-              .eq('profile_id', customerId)
-              .maybeSingle();
-
-      if (creditInfo == null || creditInfo['is_active'] != true) {
-        throw Exception('El cliente no tiene línea de crédito activa.');
-      }
-      final available =
-          (creditInfo['credit_limit'] as num).toDouble() -
-          (creditInfo['current_debt'] as num).toDouble();
-      if (available < totalAmount) {
-        throw Exception(
-          'Crédito insuficiente. Disponible: S/ ${available.toStringAsFixed(2)}',
-        );
-      }
-    }
-
-    // ── 2. Descontar stock en lotes (FIFO) ───────────────────────────────
-    final itemsResp = await _supabase
-        .from('order_items')
-        .select('product_id, variant_id, quantity, products(name)')
-        .eq('order_id', orderId);
-
-    final items = List<Map<String, dynamic>>.from(itemsResp);
-    final List<Map<String, dynamic>> batchesToUpdate = [];
-    final List<Map<String, dynamic>> movementsToInsert = [];
-
-    for (final item in items) {
-      final variantId = item['variant_id'] as String?;
-      if (variantId == null) continue;
-      final qtyNeeded = item['quantity'] as int;
-      final productName =
-          (item['products'] as Map<String, dynamic>?)?['name'] as String? ?? '';
-
-      final batchesResp = await _supabase
-          .from('warehouse_stock_batches')
-          .select('id, available_quantity')
-          .eq('warehouse_id', warehouseId)
-          .eq('variant_id', variantId)
-          .order('created_at', ascending: true);
-
-      final batches = List<Map<String, dynamic>>.from(batchesResp);
-      final currentStock = batches.fold<int>(
-        0,
-        (sum, b) => sum + ((b['available_quantity'] as num?)?.toInt() ?? 0),
-      );
-
-      if (currentStock < qtyNeeded) {
-        throw Exception(
-          'Stock insuficiente para "$productName". Disponible: $currentStock, requerido: $qtyNeeded.',
-        );
-      }
-
-      int remaining = qtyNeeded;
-      for (final batch in batches) {
-        if (remaining <= 0) break;
-        final int batchStock =
-            (batch['available_quantity'] as num?)?.toInt() ?? 0;
-        if (batchStock <= 0) continue;
-        final int deduct = batchStock >= remaining ? remaining : batchStock;
-        final int newStock = batchStock - deduct;
-
-        batchesToUpdate.add({
-          'id': batch['id'],
-          'new_stock': newStock,
-          'prev': batchStock,
-        });
-        movementsToInsert.add({
-          'variant_id': variantId,
-          'warehouse_id': warehouseId,
-          'stock_batch_id': batch['id'],
-          'order_id': orderId,
-          'quantity': -deduct,
-          'previous_stock': batchStock,
-          'new_stock': newStock,
-          'reason': 'SALE',
-          'notes': 'Borrador completado — pedido #$orderId',
-          if (currentProfileId != null) 'created_by': currentProfileId,
-        });
-        remaining -= deduct;
-      }
-    }
-
-    // Actualizar lotes en paralelo (son independientes entre sí)
-    await Future.wait(
-      batchesToUpdate.map(
-        (b) => _supabase
-            .from('warehouse_stock_batches')
-            .update({'available_quantity': b['new_stock']})
-            .eq('id', b['id']),
-      ),
-    );
-
-    // Insertar movimientos en un solo batch
-    if (movementsToInsert.isNotEmpty) {
-      await _supabase.from('inventory_movements').insert(movementsToInsert);
-    }
-
-    // ── 3. Registrar transacción financiera / deuda crédito ───────────────
-    if (isCredito) {
-      final creditResp =
-          await _supabase
-              .from('customer_credits')
-              .select('id, current_debt')
-              .eq('profile_id', customerId!)
-              .single();
-
-      final creditId = creditResp['id'] as String;
-      final newDebt =
-          (creditResp['current_debt'] as num).toDouble() + totalAmount;
-
-      await _supabase
-          .from('customer_credits')
-          .update({
-            'current_debt': newDebt,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', creditId);
-
-      await _supabase.from('customer_credit_movements').insert({
-        'customer_credit_id': creditId,
-        'order_id': orderId,
-        'movement_type': 'CHARGE',
-        'amount': totalAmount,
-        'payment_method': 'CRÉDITO',
-        'notes': 'Activación de pedido borrador #$orderId',
-        if (currentProfileId != null) 'created_by': currentProfileId,
-      });
-    } else {
-      // Pago directo: buscar cuenta financiera por nombre de método de pago
-      final accountsResp = await _supabase
-          .from('financial_accounts')
-          .select('id, name, type, balance')
-          .eq('is_active', true)
-          .order('name');
-      final accounts = List<Map<String, dynamic>>.from(accountsResp);
-
-      Map<String, dynamic>? targetAccount;
-      if (accounts.isNotEmpty) {
-        try {
-          targetAccount = accounts.firstWhere(
-            (a) =>
-                (a['name'] as String).toUpperCase().contains(
-                  paymentMethod.toUpperCase(),
-                ) ||
-                paymentMethod.toUpperCase().contains(
-                  (a['name'] as String).toUpperCase(),
-                ),
-          );
-        } catch (_) {
-          targetAccount = accounts.first;
-        }
-      }
-
-      if (targetAccount != null) {
-        await _supabase.rpc('register_financial_movement', params: {
-          'p_account_id': targetAccount['id'],
-          'p_movement_type': 'INCOME',
-          'p_amount': totalAmount,
-          'p_description': 'Cobro de venta — Pedido #$orderId',
-          'p_reference_type': 'orders',
-          'p_reference_id': orderId,
-          'p_created_by': currentProfileId,
-        });
-      }
-    }
-
-    // ── 4. Actualizar estado del pedido ──────────────────────────────────
-    final updates = <String, dynamic>{
-      'status': 'COMPLETED',
-      if (isCredito) ...{
-        'payment_status': 'PENDING',
-        'amount_paid': 0,
-      } else ...{
-        'payment_status': 'PAID',
-        'amount_paid': totalAmount,
-      },
-    };
-    await _supabase.from('orders').update(updates).eq('id', orderId);
-
-    // ── 5. Wallet: puntos ganados (crédito los gana al pagar, no al borrador) ──
-    if (customerId != null && !isCredito && pointsEarned > 0) {
-      final earnedExists =
-          await _supabase
-              .from('wallet_movements')
-              .select('id')
-              .eq('order_id', orderId)
-              .eq('movement_type', 'EARNED')
-              .maybeSingle();
-
-      if (earnedExists == null) {
-        final profileData =
-            await _supabase
-                .from('profiles')
-                .select('wallet_balance')
-                .eq('id', customerId)
-                .maybeSingle();
-
-        if (profileData != null) {
-          final curBal = (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
-          await Future.wait([
-            _supabase
-                .from('profiles')
-                .update({'wallet_balance': curBal + pointsEarned})
-                .eq('id', customerId),
-            _supabase.from('wallet_movements').insert({
-              'profile_id': customerId,
-              'order_id': orderId,
-              'points': pointsEarned,
-              'movement_type': 'EARNED',
-              'description': 'Monedas obtenidas al completar pedido #$orderId',
-            }),
-            _supabase
-                .from('orders')
-                .update({'points_earned': pointsEarned})
-                .eq('id', orderId),
-          ]);
-        }
-      }
-    }
-
-    // ── 6. Wallet: puntos canjeados (REDEEMED) ───────────────────────────
-    if (customerId != null && pointsUsed > 0) {
-      final redeemedExists =
-          await _supabase
-              .from('wallet_movements')
-              .select('id')
-              .eq('order_id', orderId)
-              .eq('movement_type', 'REDEEMED')
-              .maybeSingle();
-
-      if (redeemedExists == null) {
-        final profileData =
-            await _supabase
-                .from('profiles')
-                .select('wallet_balance')
-                .eq('id', customerId)
-                .maybeSingle();
-
-        if (profileData != null) {
-          final curBal = (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
-          await Future.wait([
-            _supabase
-                .from('profiles')
-                .update({
-                  'wallet_balance': (curBal - pointsUsed).clamp(0, curBal),
-                })
-                .eq('id', customerId),
-            _supabase.from('wallet_movements').insert({
-              'profile_id': customerId,
-              'order_id': orderId,
-              'points': -pointsUsed,
-              'movement_type': 'REDEEMED',
-              'description': 'Canje aplicado al completar pedido #$orderId',
-            }),
-          ]);
-        }
-      }
-    }
-  }
+  // ─── CÓDIGO ZOMBIE ELIMINADO ──────────────────────────────────────────────
+  // Los métodos _zombiePlaceholder(), cancelOrder() antiguo, revertFinancialMovement() y 
+  // revertLoyaltyPoints() han sido eliminados. Toda la lógica de stock, crédito, finanzas 
+  // y wallet está ahora atomizada en los RPCs de la base de datos:
+  //   • rpc_complete_order  → completa el pedido de forma atómica
+  //   • rpc_cancel_order    → cancela y revierte todos los efectos
+  // ────────────────────────────────────────────────────────────────────────────
 
   /// Cancela un pedido: revierte movimientos de wallet, inventario, finanzas y crédito.
   @override
@@ -747,124 +469,16 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
       await _supabase.rpc('rpc_cancel_order', params: {'payload': payload});
       return const Right(null);
-    } catch (e) {
+    } on PostgrestException catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] PostgrestException en cancelOrder: $e\n$st');
+      return Left(ServerFailure(message: 'Error de BD al cancelar orden: ${e.message}'));
+    } catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] Error inesperado en cancelOrder: $e\n$st');
       return Left(ServerFailure(message: 'Error al cancelar orden: $e'));
     }
   }
 
-  Future<void> revertFinancialMovement({
-    required String orderId,
-    required String? currentProfileId,
-    String? notesOverride,
-  }) async {
-    final origMovResp = await _supabase
-        .from('account_movements')
-        .select('account_id, amount')
-        .eq('reference_id', orderId)
-        .eq('reference_type', 'orders')
-        .eq('movement_type', 'INCOME');
 
-    for (final mov in origMovResp as List) {
-      final accountId = mov['account_id'] as String;
-      final origMovAmount = (mov['amount'] as num).toDouble();
-
-      final acctResp =
-          await _supabase
-              .from('financial_accounts')
-              .select('type, balance')
-              .eq('id', accountId)
-              .maybeSingle();
-
-      if (acctResp != null) {
-        await _supabase.rpc('register_financial_movement', params: {
-          'p_account_id': accountId,
-          'p_movement_type': 'EXPENSE',
-          'p_amount': origMovAmount,
-          'p_description': notesOverride ?? 'Reversión por cancelación — Pedido #$orderId',
-          'p_reference_type': 'orders',
-          'p_reference_id': orderId,
-          'p_created_by': currentProfileId,
-        });
-      }
-    }
-  }
-
-  Future<void> revertLoyaltyPoints({
-    required String orderId,
-    required String customerId,
-  }) async {
-    // Revertir monedas EARNED
-    final earnedMov =
-        await _supabase
-            .from('wallet_movements')
-            .select('id, points')
-            .eq('order_id', orderId)
-            .eq('movement_type', 'EARNED')
-            .maybeSingle();
-
-    if (earnedMov != null) {
-      final pts = (earnedMov['points'] as num).toInt();
-      final profileData =
-          await _supabase
-              .from('profiles')
-              .select('wallet_balance')
-              .eq('id', customerId)
-              .maybeSingle();
-      if (profileData != null) {
-        final curBal = (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
-        await Future.wait([
-          _supabase
-              .from('profiles')
-              .update({'wallet_balance': (curBal - pts).clamp(0, curBal)})
-              .eq('id', customerId),
-          _supabase.from('wallet_movements').insert({
-            'profile_id': customerId,
-            'order_id': orderId,
-            'points': -pts,
-            'movement_type': 'ADJUSTMENT',
-            'description':
-                'Reversión de monedas por cancelación de pedido #$orderId',
-          }),
-        ]);
-      }
-    }
-
-    // Devolver monedas canjeadas REDEEMED
-    final redeemedMov =
-        await _supabase
-            .from('wallet_movements')
-            .select('id, points')
-            .eq('order_id', orderId)
-            .eq('movement_type', 'REDEEMED')
-            .maybeSingle();
-
-    if (redeemedMov != null) {
-      final ptsCanjeados = (redeemedMov['points'] as num).toInt().abs();
-      final profileData =
-          await _supabase
-              .from('profiles')
-              .select('wallet_balance')
-              .eq('id', customerId)
-              .maybeSingle();
-      if (profileData != null) {
-        final curBal = (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
-        await Future.wait([
-          _supabase
-              .from('profiles')
-              .update({'wallet_balance': curBal + ptsCanjeados})
-              .eq('id', customerId),
-          _supabase.from('wallet_movements').insert({
-            'profile_id': customerId,
-            'order_id': orderId,
-            'points': ptsCanjeados,
-            'movement_type': 'ADJUSTMENT',
-            'description':
-                'Devolución de monedas canjeadas por cancelación #$orderId',
-          }),
-        ]);
-      }
-    }
-  }
 
   /// Recupera los ítems de un pedido para la generación de tickets PDF
   /// trayendo estrictamente los datos necesarios (Directiva 3: Columnas específicas y !inner).
@@ -873,27 +487,34 @@ class OrdersRepositoryImpl implements OrdersRepository {
   Future<Either<Failure, List<Map<String, dynamic>>>> fetchOrderItemsForPdf(
     String orderId,
   ) async {
-    final resp = await _supabase
-        .from('order_items')
-        .select('''
-          id, order_id, product_id, variant_id, quantity, unit_cost,
-          applied_price, net_profit, created_at,
-          products!inner ( name ),
-          product_variants (
-            sku,
-            variant_attribute_values(attribute_values(value, attributes(name)))
-          )
-        ''')
-        .eq('order_id', orderId);
+    try {
+      final resp = await _supabase
+          .from('order_items')
+          .select('''
+            id, order_id, product_id, variant_id, quantity, unit_cost,
+            applied_price, net_profit, created_at,
+            products!inner ( name ),
+            product_variants (
+              sku,
+              variant_attribute_values(attribute_values(value, attributes(name)))
+            )
+          ''')
+          .eq('order_id', orderId);
 
-    return Right(List<Map<String, dynamic>>.from(resp));
+      return Right(List<Map<String, dynamic>>.from(resp));
+    } catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] Error en fetchOrderItemsForPdf: $e\n$st');
+      return Left(ServerFailure(message: 'Error al obtener ítems para PDF: $e'));
+    }
   }
 
   List<Map<String, dynamic>>? _cachedFinancialAccounts;
 
   @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> getFinancialAccounts() async {
-    if (_cachedFinancialAccounts != null && _cachedFinancialAccounts!.isNotEmpty) {
+  Future<Either<Failure, List<Map<String, dynamic>>>>
+  getFinancialAccounts() async {
+    if (_cachedFinancialAccounts != null &&
+        _cachedFinancialAccounts!.isNotEmpty) {
       return Right(_cachedFinancialAccounts!);
     }
     try {
@@ -907,18 +528,23 @@ class OrdersRepositoryImpl implements OrdersRepository {
       return Right(accounts);
     } catch (e, st) {
       debugPrint('🔴 [OrdersRepo] Error en getFinancialAccounts: $e\n$st');
-      return Left(ServerFailure(message: 'Error fetching financial accounts: $e'));
+      return Left(
+        ServerFailure(message: 'Error fetching financial accounts: $e'),
+      );
     }
   }
 
   @override
-  Future<Either<Failure, Map<String, dynamic>?>> getProfileById(String profileId) async {
+  Future<Either<Failure, Map<String, dynamic>?>> getProfileById(
+    String profileId,
+  ) async {
     try {
-      final response = await _supabase
-          .from('profiles')
-          .select('id, full_name, phone, wallet_balance')
-          .eq('id', profileId)
-          .maybeSingle();
+      final response =
+          await _supabase
+              .from('profiles')
+              .select('id, full_name, phone, wallet_balance')
+              .eq('id', profileId)
+              .maybeSingle();
       return Right(response);
     } catch (e, st) {
       debugPrint('🔴 [OrdersRepo] Error en getProfileById: $e\n$st');
@@ -927,12 +553,16 @@ class OrdersRepositoryImpl implements OrdersRepository {
   }
 
   @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> searchCustomers(String query) async {
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchCustomers(
+    String query,
+  ) async {
     try {
       final response = await _supabase
           .from('profiles')
           .select('id, full_name, phone, document_number')
-          .or('full_name.ilike.%$query%,phone.ilike.%$query%,document_number.ilike.%$query%')
+          .or(
+            'full_name.ilike.%$query%,phone.ilike.%$query%,document_number.ilike.%$query%',
+          )
           .limit(20);
       return Right(List<Map<String, dynamic>>.from(response));
     } catch (e, st) {
@@ -949,7 +579,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
       return const Right(null);
     } catch (e, st) {
       debugPrint('🔴 [OrdersRepo] Error en checkActiveCashShift: $e\n$st');
-      return Left(ServerFailure(message: 'Error checking active cash shift: $e'));
+      return Left(
+        ServerFailure(message: 'Error checking active cash shift: $e'),
+      );
     }
   }
 
@@ -980,15 +612,21 @@ class OrdersRepositoryImpl implements OrdersRepository {
       if (rpcResp != null && rpcResp['success'] == true) {
         return const Right(null);
       } else {
-        return Left(ServerFailure(message: 'El RPC falló o no devolvió éxito. Resp: $rpcResp'));
+        return Left(
+          ServerFailure(
+            message: 'El RPC falló o no devolvió éxito. Resp: $rpcResp',
+          ),
+        );
       }
     } catch (e, st) {
       debugPrint('🔴 [OrdersRepo] Error en registerCreditPayment: $e\n$st');
-      return Left(ServerFailure(message: 'Error al registrar pago en base de datos: $e'));
+      return Left(
+        ServerFailure(message: 'Error al registrar pago en base de datos: $e'),
+      );
     }
   }
 
-   @override
+  @override
   Stream<Either<Failure, int>> watchPendingOrdersCount() {
     final controller = StreamController<Either<Failure, int>>.broadcast();
     RealtimeChannel? channel;
@@ -1000,13 +638,15 @@ class OrdersRepositoryImpl implements OrdersRepository {
             .select('id')
             .eq('status', 'PENDING')
             .count(CountOption.exact);
-        
+
         if (!controller.isClosed) {
           controller.add(Right(response.count));
         }
       } catch (e) {
         if (!controller.isClosed) {
-          controller.add(Left(ServerFailure(message: 'Error fetching count: $e')));
+          controller.add(
+            Left(ServerFailure(message: 'Error fetching count: $e')),
+          );
         }
       }
     }
@@ -1014,16 +654,17 @@ class OrdersRepositoryImpl implements OrdersRepository {
     // Suscripción al crearse el stream
     controller.onListen = () async {
       await fetchCount();
-      channel = _supabase.channel('public:orders:pending_count')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'orders',
-          callback: (payload) {
-            // Cada vez que hay una inserción/actualización/borrado en 'orders', consultamos el count
-            fetchCount();
-          },
-        );
+      channel = _supabase
+          .channel('public:orders:pending_count')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'orders',
+            callback: (payload) {
+              // Cada vez que hay una inserción/actualización/borrado en 'orders', consultamos el count
+              fetchCount();
+            },
+          );
       channel!.subscribe();
     };
 
@@ -1035,5 +676,4 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
     return controller.stream;
   }
-
 }
