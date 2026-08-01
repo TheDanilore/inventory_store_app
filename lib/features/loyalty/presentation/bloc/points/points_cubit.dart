@@ -7,20 +7,14 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/points/points_state.dart';
-import 'package:inventory_store_app/features/loyalty/domain/usecases/get_loyalty_profile_uc.dart';
-import 'package:inventory_store_app/features/loyalty/domain/usecases/get_today_checkin_uc.dart';
-import 'package:inventory_store_app/features/loyalty/domain/usecases/get_latest_checkin_uc.dart';
-import 'package:inventory_store_app/features/loyalty/domain/usecases/get_today_mini_games_uc.dart';
+import 'package:inventory_store_app/features/loyalty/domain/usecases/get_loyalty_dashboard_uc.dart';
 import 'package:inventory_store_app/features/loyalty/domain/usecases/get_wallet_movements_uc.dart';
 import 'package:inventory_store_app/features/loyalty/domain/usecases/claim_daily_checkin_uc.dart';
 import 'package:inventory_store_app/features/loyalty/domain/usecases/record_mini_game_uc.dart';
 
 @injectable
 class PointsCubit extends Cubit<PointsState> {
-  final GetLoyaltyProfileUC getLoyaltyProfileUC;
-  final GetTodayCheckinUC getTodayCheckinUC;
-  final GetLatestCheckinUC getLatestCheckinUC;
-  final GetTodayMiniGamesUC getTodayMiniGamesUC;
+  final GetLoyaltyDashboardUC getLoyaltyDashboardUC;
   final GetWalletMovementsUC getWalletMovementsUC;
   final ClaimDailyCheckinUC claimDailyCheckinUC;
   final RecordMiniGameUC recordMiniGameUC;
@@ -31,10 +25,7 @@ class PointsCubit extends Cubit<PointsState> {
   final int _movementsLimit = 20;
 
   PointsCubit({
-    required this.getLoyaltyProfileUC,
-    required this.getTodayCheckinUC,
-    required this.getLatestCheckinUC,
-    required this.getTodayMiniGamesUC,
+    required this.getLoyaltyDashboardUC,
     required this.getWalletMovementsUC,
     required this.claimDailyCheckinUC,
     required this.recordMiniGameUC,
@@ -84,78 +75,46 @@ class PointsCubit extends Cubit<PointsState> {
         ),
       );
 
-      // 1. Perfil
-      final profileResult = await getLoyaltyProfileUC(user.id);
-      final profile = profileResult.fold(
+      // Obtener datos del dashboard
+      final dashboardResult = await getLoyaltyDashboardUC(user.id);
+      final dashboard = dashboardResult.fold(
         (l) => throw Exception(l.message),
         (r) => r,
       );
-      final profileId = profile.id;
-      final currentBalance = profile.walletBalance;
+
+      final profileId = dashboard['profile_id'] as String;
+      final currentBalance = dashboard['wallet_balance'] as int;
+      final hasTodayCheckin = dashboard['has_today_checkin'] as bool;
 
       final now = DateTime.now();
-      final todayDate = DateFormat('yyyy-MM-dd').format(now);
       final currentDay = DateTime(now.year, now.month, now.day);
-      final currentDayUtc = DateTime.utc(now.year, now.month, now.day);
       final yesterday = currentDay.subtract(const Duration(days: 1));
 
-      // Ejecutar consultas concurrentes
-      final results = await Future.wait([
-        getTodayCheckinUC(profileId, todayDate),
-        getLatestCheckinUC(profileId),
-        getTodayMiniGamesUC(profileId, currentDayUtc.toIso8601String()),
-        getWalletMovementsUC(profileId: profileId, limit: _movementsLimit, offset: 0),
-      ]);
+      // Checkin y Racha
+      final latestCheckin = dashboard['latest_checkin'] as Map<String, dynamic>?;
+      final latestCheckinDateStr = latestCheckin?['checkin_date'] as String?;
+      final latestCheckinDate = latestCheckinDateStr != null ? DateTime.tryParse(latestCheckinDateStr) : null;
 
-      final todayCheckinResult = results[0];
-      final latestCheckinResult = results[1];
-      final miniGamesResult = results[2];
-      final movsResult = results[3];
-
-      // 2. Checkin Hoy
-      final hasTodayCheckin = todayCheckinResult.fold(
-        (l) => false,
-        (r) => r != null,
-      );
-
-      // 3. Último checkin (Racha)
-      final latestCheckin = latestCheckinResult.fold((l) => null, (r) => r);
-
-      final latestCheckinDate =
-          latestCheckin != null
-              ? DateTime.tryParse((latestCheckin as dynamic).checkinDate)
-              : null;
       final isStreakActive =
           latestCheckinDate != null &&
           (_isSameDay(latestCheckinDate, currentDay) ||
               _isSameDay(latestCheckinDate, yesterday));
 
-      final streakDay = (latestCheckin as dynamic)?.streakDay ?? 0;
+      final streakDay = (latestCheckin?['streak_day'] as num?)?.toInt() ?? 0;
       final currentStreak = isStreakActive ? streakDay : 0;
       final nextStreakDay = currentStreak > 0 ? currentStreak + 1 : 1;
       final nextCheckinReward = _rewardForStreakDay(nextStreakDay);
 
-      // 4. Mini juegos
-      final todayGames = miniGamesResult.fold((l) => [], (r) => r as List<dynamic>);
+      // Minijuegos
+      final todayGames = dashboard['today_games'] as Map<String, dynamic>? ?? {};
 
-      final boxGame =
-          todayGames
-              .where((g) => g.movementType == 'MINI_GAME_BOXES')
-              .firstOrNull;
+      // Movimientos
+      final movements = List<Map<String, dynamic>>.from(dashboard['recent_movements'] ?? []);
 
-      // 5. Movimientos
-      final movements =
-          movsResult
-              .fold((l) => [], (r) => r as List<dynamic>)
-              .map(
-                (e) => {
-                  'points': e.points,
-                  'description': e.description,
-                  'movement_type': e.movementType,
-                  'created_at': e.createdAt.toIso8601String(),
-                },
-              )
-              .toList();
+      final boxGame = movements.firstWhere(
+        (m) => m['movement_type'] == 'MINI_GAME_BOXES' && (m['created_at'] as String).startsWith(now.toUtc().toIso8601String().substring(0, 10)),
+        orElse: () => <String, dynamic>{},
+      );
 
       emit(
         state.copyWith(
@@ -165,39 +124,15 @@ class PointsCubit extends Cubit<PointsState> {
           currentStreak: currentStreak,
           lastCheckinDate: latestCheckinDate,
           nextCheckinReward: nextCheckinReward,
-          boxesPlaysToday:
-              todayGames
-                  .where((g) => g.movementType == 'MINI_GAME_BOXES')
-                  .length,
-          memoramaPlaysToday:
-              todayGames
-                  .where((g) => g.movementType == 'MINI_GAME_MEMORY')
-                  .length,
-          catcherPlaysToday:
-              todayGames
-                  .where((g) => g.movementType == 'MINI_GAME_CATCHER')
-                  .length,
-          pinataPlaysToday:
-              todayGames
-                  .where((g) => g.movementType == 'MINI_GAME_PINATA')
-                  .length,
-          superSaltoPlaysToday:
-              todayGames
-                  .where((g) => g.movementType == 'MINI_GAME_JUMP')
-                  .length,
-          clawPlaysToday:
-              todayGames
-                  .where((g) => g.movementType == 'MINI_GAME_CLAW')
-                  .length,
-          stackPlaysToday:
-              todayGames
-                  .where((g) => g.movementType == 'MINI_GAME_STACK')
-                  .length,
-          dodgePlaysToday:
-              todayGames
-                  .where((g) => g.movementType == 'MINI_GAME_DODGE')
-                  .length,
-          lastBoxesReward: boxGame?.points,
+          lastBoxesReward: boxGame['points'] as int?,
+          boxesPlaysToday: (todayGames['MINI_GAME_BOXES'] as num?)?.toInt() ?? 0,
+          memoramaPlaysToday: (todayGames['MINI_GAME_MEMORY'] as num?)?.toInt() ?? 0,
+          catcherPlaysToday: (todayGames['MINI_GAME_CATCHER'] as num?)?.toInt() ?? 0,
+          pinataPlaysToday: (todayGames['MINI_GAME_PINATA'] as num?)?.toInt() ?? 0,
+          superSaltoPlaysToday: (todayGames['MINI_GAME_JUMP'] as num?)?.toInt() ?? 0,
+          clawPlaysToday: (todayGames['MINI_GAME_CLAW'] as num?)?.toInt() ?? 0,
+          stackPlaysToday: (todayGames['MINI_GAME_STACK'] as num?)?.toInt() ?? 0,
+          dodgePlaysToday: (todayGames['MINI_GAME_DODGE'] as num?)?.toInt() ?? 0,
           miniGameBoxes: _buildMiniGameBoxes(config),
           miniGamePreviewBoxes: const [],
           boxesRoundReady: false,
@@ -209,32 +144,8 @@ class PointsCubit extends Cubit<PointsState> {
         ),
       );
 
-      // Suscribirse a cambios en wallet_balance
-      _walletChannel?.unsubscribe();
-      _walletChannel =
-          _supabase
-              .channel('public:profiles_points_${user.id}')
-              .onPostgresChanges(
-                event: PostgresChangeEvent.update,
-                schema: 'public',
-                table: 'profiles',
-                filter: PostgresChangeFilter(
-                  type: PostgresChangeFilterType.eq,
-                  column: 'auth_user_id',
-                  value: user.id,
-                ),
-                callback: (payload) {
-                  final newRow = payload.newRecord;
-                  if (newRow.isNotEmpty && !isClosed) {
-                    final newBalance =
-                        (newRow['wallet_balance'] as num?)?.toInt() ?? 0;
-                    if (state.currentBalance != newBalance) {
-                      emit(state.copyWith(currentBalance: newBalance));
-                    }
-                  }
-                },
-              )
-              .subscribe();
+      // Suscribirse a cambios en wallet_balance (solo una vez)
+      _initWalletChannel(user.id);
     } catch (e, st) {
       developer.log('Error en fetchPointsData', error: e, stackTrace: st);
       if (!isClosed) {
@@ -415,7 +326,11 @@ class PointsCubit extends Cubit<PointsState> {
           description: 'Juego de cajas del $todayDate',
         );
 
-        result.fold((l) => null, (_) {
+        result.fold((l) {
+          if (!isClosed) {
+            emit(state.copyWith(errorMessage: l.message));
+          }
+        }, (_) {
           if (!isClosed) {
             final newMovement = {
               'points': reward,
@@ -494,6 +409,33 @@ class PointsCubit extends Cubit<PointsState> {
         emit(state.copyWith(errorMessage: 'Ocurrió un error inesperado al guardar el premio.'));
       }
     }
+  }
+
+  void _initWalletChannel(String authUserId) {
+    if (_walletChannel != null) return; // Ya está suscrito
+
+    _walletChannel = _supabase
+        .channel('public:profiles_points_$authUserId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'profiles',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'auth_user_id',
+            value: authUserId,
+          ),
+          callback: (payload) {
+            final newRow = payload.newRecord;
+            if (newRow.isNotEmpty && !isClosed) {
+              final newBalance = (newRow['wallet_balance'] as num?)?.toInt() ?? 0;
+              if (state.currentBalance != newBalance) {
+                emit(state.copyWith(currentBalance: newBalance));
+              }
+            }
+          },
+        )
+        .subscribe();
   }
 
   @override

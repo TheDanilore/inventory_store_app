@@ -21,6 +21,9 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
   Either<Failure, T> _handleError<T>(Object e, StackTrace st) {
     developer.log('LoyaltyRepositoryError', error: e, stackTrace: st);
     if (e is PostgrestException) {
+      if (e.code == 'P0002' || e.code == 'P0001') {
+        return left(Failure.from(e.message));
+      }
       return left(Failure.from('Error de base de datos: ${e.message}'));
     }
     return left(Failure.from('Error inesperado: $e'));
@@ -62,6 +65,19 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
       }
       final balance = (response['wallet_balance'] as num?)?.toInt() ?? 0;
       return right(balance);
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> getLoyaltyDashboardData(String profileId) async {
+    try {
+      final response = await _supabase.rpc(
+        'get_loyalty_dashboard',
+        params: {'p_profile_id': profileId},
+      );
+      return right(response as Map<String, dynamic>);
     } catch (e, st) {
       return _handleError(e, st);
     }
