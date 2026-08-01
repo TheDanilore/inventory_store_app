@@ -5,7 +5,6 @@ import 'package:inventory_store_app/core/network/network_state.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/offline_games_suggestion.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/app_drawer.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_sidebar.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:inventory_store_app/core/network/network_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -14,7 +13,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
 
 class AdminLayout extends StatefulWidget {
   final String title;
@@ -85,7 +83,9 @@ class _AdminLayoutState extends State<AdminLayout> {
   }
 
   void _openProfile(BuildContext context) {
-    final user = Supabase.instance.client.auth.currentUser;
+    // Usa AuthCubit (fuente de verdad) en lugar del SDK de Supabase
+    // para evitar navegar con tokens expirados pero cacheados.
+    final user = context.read<AuthCubit>().state.currentUser;
     if (user == null) {
       context.go('/login');
     } else {
@@ -290,73 +290,52 @@ class _AdminLayoutState extends State<AdminLayout> {
         return 'Panel de Administración ERP';
       }
 
-      final crumbs = <String>[];
+      // Mapa declarativo con rutas ordenadas de más a menos específica.
+      // Usar startsWith garantiza que "/admin/users/form" coincida antes
+      // de "/admin/users", eliminando el riesgo de captura accidental
+      // por substrings parciales.
+      const breadcrumbMap = <String, String>{
+        '/admin/purchase-orders/form':
+            'Inicio  ›  Órdenes de Compra  ›  Nueva Orden',
+        '/admin/purchase-orders': 'Inicio  ›  Órdenes de Compra',
+        '/admin/inventory-entries/form':
+            'Inicio  ›  Entradas de Inventario  ›  Nueva Entrada',
+        '/admin/inventory-entries': 'Inicio  ›  Entradas de Inventario',
+        '/admin/inventory-exits/form':
+            'Inicio  ›  Salidas de Inventario  ›  Nueva Salida',
+        '/admin/inventory-exits': 'Inicio  ›  Salidas de Inventario',
+        '/admin/products/form': 'Inicio  ›  Productos  ›  Formulario',
+        '/admin/products': 'Inicio  ›  Productos',
+        '/admin/catalog/form': 'Inicio  ›  Catálogo  ›  Formulario',
+        '/admin/catalog': 'Inicio  ›  Catálogo',
+        '/admin/users/form': 'Inicio  ›  Usuarios  ›  Formulario Usuario',
+        '/admin/users': 'Inicio  ›  Usuarios',
+        '/admin/customer-credit-movements':
+            'Inicio  ›  Créditos Clientes  ›  Movimientos',
+        '/admin/customer-credits': 'Inicio  ›  Créditos Clientes',
+        '/admin/customers/customer-detail': 'Inicio  ›  Clientes  ›  Detalle',
+        '/admin/customers': 'Inicio  ›  Clientes',
+        '/admin/supplier-credits': 'Inicio  ›  Créditos Proveedores',
+        '/admin/suppliers': 'Inicio  ›  Proveedores',
+        '/admin/orders': 'Inicio  ›  Pedidos',
+        '/admin/kardex': 'Inicio  ›  Kardex',
+        '/admin/financial-accounts': 'Inicio  ›  Cuentas Financieras',
+        '/admin/categories': 'Inicio  ›  Categorías',
+        '/admin/warehouses': 'Inicio  ›  Almacenes',
+        '/admin/attributes': 'Inicio  ›  Atributos',
+        '/admin/active-ingredients': 'Inicio  ›  Ingredientes Activos',
+        '/admin/business-info': 'Inicio  ›  Información de la Empresa',
+        '/admin/points-settings': 'Inicio  ›  Ajustes de Puntos',
+        '/admin/inventory': 'Inicio  ›  Inventario',
+        '/admin/dashboard': 'Inicio  ›  Dashboard',
+      };
 
-      // Armar migas basándonos en la ruta completa
-      if (path.startsWith('/admin')) {
-        crumbs.add('Inicio');
+      for (final entry in breadcrumbMap.entries) {
+        if (path.startsWith(entry.key)) return entry.value;
       }
-
-      if (path.contains('purchase-orders')) {
-        crumbs.add('Órdenes de Compra');
-        if (path.endsWith('/form')) crumbs.add('Nueva Orden');
-      } else if (path.contains('inventory-entries')) {
-        crumbs.add('Entradas de Inventario');
-        if (path.endsWith('/form')) crumbs.add('Nueva Entrada');
-      } else if (path.contains('inventory-exits')) {
-        crumbs.add('Salidas de Inventario');
-        if (path.endsWith('/form')) crumbs.add('Nueva Salida');
-      } else if (path.contains('products')) {
-        crumbs.add('Productos');
-        if (path.contains('form')) crumbs.add('Formulario Producto');
-      } else if (path.contains('products') || path.contains('catalog')) {
-        crumbs.add('Catálogo');
-        if (path.contains('form')) crumbs.add('Formulario Producto');
-      } else if (path.contains('users')) {
-        crumbs.add('Usuarios');
-        if (path.endsWith('/form')) crumbs.add('Formulario Usuario');
-      } else if (path.contains('suppliers')) {
-        crumbs.add('Proveedores');
-      } else if (path.contains('supplier-credits')) {
-        crumbs.add('Créditos Proveedores');
-      } else if (path.contains('customer-credits') ||
-          path.contains('customer-credit-movements')) {
-        crumbs.add('Créditos clientes');
-        if (path.contains('customer-credit-movements')) {
-          crumbs.add('Movimientos de Crédito');
-        }
-      } else if (path.contains('customer-detail')) {
-        crumbs.add('Clientes');
-        crumbs.add('Detalle de Cliente');
-      } else if (path.contains('customers') || path.contains('customer')) {
-        crumbs.add('Clientes');
-      } else if (path.contains('orders')) {
-        crumbs.add('Pedidos');
-      } else if (path.contains('kardex')) {
-        crumbs.add('Kardex');
-      } else if (path.contains('inventory')) {
-        crumbs.add('Inventario');
-      } else if (path.contains('dashboard')) {
-        crumbs.add('Dashboard');
-      } else if (path.contains('financial-accounts')) {
-        crumbs.add('Cuentas Financieras');
-      } else if (path.contains('categories')) {
-        crumbs.add('Categorías');
-      } else if (path.contains('warehouses')) {
-        crumbs.add('Almacenes');
-      } else if (path.contains('attributes')) {
-        crumbs.add('Atributos');
-      } else if (path.contains('active-ingredients')) {
-        crumbs.add('Ingredientes Activos');
-      } else if (path.contains('business-info')) {
-        crumbs.add('Información de la Empresa');
-      } else if (path.contains('points-settings')) {
-        crumbs.add('Ajustes de Puntos');
-      }
-
-      if (crumbs.isEmpty) return 'Panel de Administración ERP';
-      return crumbs.join('  ›  ');
-    } catch (_) {
+      return 'Panel de Administración ERP';
+    } catch (e, st) {
+      debugPrint('🔴 [AdminLayout] Error al construir breadcrumb: $e\n$st');
       return 'Panel de Administración ERP';
     }
   }
@@ -387,7 +366,7 @@ class _AdminLayoutState extends State<AdminLayout> {
               tooltip: 'Volver atrás',
               onTap:
                   () =>
-                      _handleBackButton(context), // <--- USO DEL NUEVO HANDLER
+                      _handleBackButton(context), 
             ),
           ],
           const SizedBox(width: 16),
@@ -429,11 +408,27 @@ class _AdminLayoutState extends State<AdminLayout> {
             icon: Icons.notifications_none_rounded,
             tooltip: 'Notificaciones',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Sin notificaciones pendientes'),
-                  duration: Duration(seconds: 2),
-                ),
+              showDialog(
+                context: context,
+                builder:
+                    (ctx) => AlertDialog(
+                      title: const Row(
+                        children: [
+                          Icon(Icons.notifications_outlined, size: 20),
+                          SizedBox(width: 8),
+                          Text('Notificaciones'),
+                        ],
+                      ),
+                      content: const Text(
+                        'No tienes notificaciones pendientes.\n\nEste módulo estará disponible próximamente.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Entendido'),
+                        ),
+                      ],
+                    ),
               );
             },
           ),
@@ -634,12 +629,21 @@ class AdminProfileAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final avatarBody = ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: BlocBuilder<AuthCubit, AuthState>(
-        builder: (context, state) {
-          final currentUser = state.currentUser;
-          if (state.viewState == ViewState.loading &&
-              currentUser?.avatarUrl == null &&
-              (currentUser?.fullName ?? '').isEmpty) {
+      child: BlocSelector<
+        AuthCubit,
+        AuthState,
+        ({ViewState viewState, String? avatarUrl, String? fullName})
+      >(
+        selector:
+            (state) => (
+              viewState: state.viewState,
+              avatarUrl: state.currentUser?.avatarUrl,
+              fullName: state.currentUser?.fullName,
+            ),
+        builder: (context, data) {
+          if (data.viewState == ViewState.loading &&
+              data.avatarUrl == null &&
+              (data.fullName ?? '').isEmpty) {
             return const Center(
               child: SizedBox(
                 width: 14,
@@ -652,19 +656,17 @@ class AdminProfileAvatar extends StatelessWidget {
             );
           }
 
-          if (currentUser?.avatarUrl != null &&
-              currentUser!.avatarUrl!.isNotEmpty) {
+          if (data.avatarUrl != null && data.avatarUrl!.isNotEmpty) {
             return CachedNetworkImage(
-              imageUrl: currentUser.avatarUrl!,
+              imageUrl: data.avatarUrl!,
               fit: BoxFit.cover,
               width: 38,
               height: 38,
-              placeholder: (context, url) => _initialsWidget(currentUser),
-              errorWidget:
-                  (context, url, error) => _initialsWidget(currentUser),
+              placeholder: (ctx, url) => _initialsWidget(data.fullName),
+              errorWidget: (ctx, url, error) => _initialsWidget(data.fullName),
             );
           }
-          return _initialsWidget(currentUser);
+          return _initialsWidget(data.fullName);
         },
       ),
     );
@@ -698,9 +700,9 @@ class AdminProfileAvatar extends StatelessWidget {
     );
   }
 
-  Widget _initialsWidget(UserEntity? user) {
+  Widget _initialsWidget(String? fullName) {
     String initials = '?';
-    final name = (user?.fullName ?? '').trim();
+    final name = (fullName ?? '').trim();
     if (name.isNotEmpty) {
       final parts = name.split(' ').where((p) => p.isNotEmpty).toList();
       initials =
