@@ -694,52 +694,64 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         PosSectionLabel('Cliente'),
-        Builder(
-          builder: (context) {
-            final posCubit = context.watch<PosCubit>();
-            final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
+        BlocBuilder<PosCubit, PosState>(
+          buildWhen: (prev, curr) =>
+              prev.paymentMethod != curr.paymentMethod ||
+              prev.isLoading != curr.isLoading ||
+              prev.clientMatches != curr.clientMatches ||
+              prev.selectedClientId != curr.selectedClientId ||
+              prev.saldoActualCliente != curr.saldoActualCliente ||
+              prev.creditInfo != curr.creditInfo,
+          builder: (context, posState) {
+            final isCredito = posState.paymentMethod == 'CRÉDITO';
             return AdminSaleClientSection(
               controller: _clienteCtrl,
               onSearchChanged: _onClientSearchChanged,
-              searching: posCubit.state.isLoading,
-              matches: posCubit.state.clientMatches,
-              selectedClientId: posCubit.state.selectedClientId,
+              searching: posState.isLoading,
+              matches: posState.clientMatches,
+              selectedClientId: posState.selectedClientId,
               onClientTap: _selectClient,
               onClearClient: () {
+                final posCubit = context.read<PosCubit>();
                 posCubit.removeClient();
                 posCubit.setPuntosAUsar(0);
                 _clienteCtrl.clear();
               },
-              saldoActualCliente: posCubit.state.saldoActualCliente,
-              creditInfo: posCubit.state.creditInfo,
+              saldoActualCliente: posState.saldoActualCliente,
+              creditInfo: posState.creditInfo,
               isCredito: isCredito,
               isLoyaltyEnabled: isLoyaltyEnabled,
             );
           },
         ),
-        Builder(
-          builder: (context) {
-            final posCubit = context.watch<PosCubit>();
+        BlocBuilder<PosCubit, PosState>(
+          buildWhen: (prev, curr) =>
+              prev.paymentMethod != curr.paymentMethod ||
+              prev.selectedClientId != curr.selectedClientId ||
+              prev.saldoActualCliente != curr.saldoActualCliente ||
+              prev.puntosAUsar != curr.puntosAUsar,
+          builder: (context, posState) {
             final cartCubit = context.watch<CartCubit>();
-            final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
+            final isCredito = posState.paymentMethod == 'CRÉDITO';
             return AdminSalePointsSection(
               show:
                   isLoyaltyEnabled &&
-                  posCubit.state.selectedClientId != null &&
-                  posCubit.state.saldoActualCliente > 0 &&
+                  posState.selectedClientId != null &&
+                  posState.saldoActualCliente > 0 &&
                   !isCredito,
-              saldoActualCliente: posCubit.state.saldoActualCliente,
+              saldoActualCliente: posState.saldoActualCliente,
               maxPuntosAplicables: PosCalculatorUtils.maxPuntosAplicables(
-                posCubit.state,
+                posState,
                 cartCubit.state,
                 ratio,
               ),
               pointsToSolesRatio: ratio,
               pointsController: _puntosCtrl,
               onPointsChanged: (p) {
+                final posCubit = context.read<PosCubit>();
                 final next = PosCalculatorUtils.clampPointsValue(
                   p,
-                  posCubit.state,
+                  posState,
                   cartCubit.state,
                   ratio,
                 );

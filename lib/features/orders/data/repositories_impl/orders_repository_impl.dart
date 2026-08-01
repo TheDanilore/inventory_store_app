@@ -623,35 +623,15 @@ class OrdersRepositoryImpl implements OrdersRepository {
       }
 
       if (targetAccount != null) {
-        String? shiftId;
-        if (targetAccount['type'] == 'CAJA') {
-          final shiftResp =
-              await _supabase
-                  .from('cash_shifts')
-                  .select('id')
-                  .eq('account_id', targetAccount['id'] as String)
-                  .eq('status', 'OPEN')
-                  .maybeSingle();
-          shiftId = shiftResp?['id'] as String?;
-        }
-
-        await _supabase.from('account_movements').insert({
-          'account_id': targetAccount['id'],
-          'movement_type': 'INCOME',
-          'amount': totalAmount,
-          'description': 'Cobro de venta — Pedido #$orderId',
-          'reference_type': 'orders',
-          'reference_id': orderId,
-          if (shiftId != null) 'shift_id': shiftId,
-          if (currentProfileId != null) 'created_by': currentProfileId,
+        await _supabase.rpc('register_financial_movement', params: {
+          'p_account_id': targetAccount['id'],
+          'p_movement_type': 'INCOME',
+          'p_amount': totalAmount,
+          'p_description': 'Cobro de venta — Pedido #$orderId',
+          'p_reference_type': 'orders',
+          'p_reference_id': orderId,
+          'p_created_by': currentProfileId,
         });
-
-        final currentBalance =
-            (targetAccount['balance'] as num?)?.toDouble() ?? 0.0;
-        await _supabase
-            .from('financial_accounts')
-            .update({'balance': currentBalance + totalAmount})
-            .eq('id', targetAccount['id'] as String);
       }
     }
 
@@ -795,46 +775,16 @@ class OrdersRepositoryImpl implements OrdersRepository {
               .eq('id', accountId)
               .maybeSingle();
 
-      String? shiftId;
-      if (acctResp != null && acctResp['type'] == 'CAJA') {
-        final shiftResp =
-            await _supabase
-                .from('cash_shifts')
-                .select('id')
-                .eq('account_id', accountId)
-                .eq('status', 'OPEN')
-                .maybeSingle();
-        shiftId = shiftResp?['id'] as String?;
-      }
-
-      final insertFuture = _supabase.from('account_movements').insert({
-        'account_id': accountId,
-        'movement_type': 'EXPENSE',
-        'amount': origMovAmount,
-        'description':
-            notesOverride ?? 'Reversión por cancelación — Pedido #$orderId',
-        'reference_type': 'orders',
-        'reference_id': orderId,
-        if (shiftId != null) 'shift_id': shiftId,
-        if (currentProfileId != null) 'created_by': currentProfileId,
-      });
-
       if (acctResp != null) {
-        final currentBalance = (acctResp['balance'] as num?)?.toDouble() ?? 0.0;
-        await Future.wait([
-          insertFuture,
-          _supabase
-              .from('financial_accounts')
-              .update({
-                'balance': (currentBalance - origMovAmount).clamp(
-                  0.0,
-                  double.infinity,
-                ),
-              })
-              .eq('id', accountId),
-        ]);
-      } else {
-        await insertFuture;
+        await _supabase.rpc('register_financial_movement', params: {
+          'p_account_id': accountId,
+          'p_movement_type': 'EXPENSE',
+          'p_amount': origMovAmount,
+          'p_description': notesOverride ?? 'Reversión por cancelación — Pedido #$orderId',
+          'p_reference_type': 'orders',
+          'p_reference_id': orderId,
+          'p_created_by': currentProfileId,
+        });
       }
     }
   }
@@ -1006,15 +956,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
       
       final profileId = profileRes?['id'] as String? ?? userId;
 
-      final activeShift = await _supabase
-          .from('cash_shifts')
-          .select('id')
-          .eq('opened_by', profileId)
-          .eq('status', 'OPEN')
-          .maybeSingle();
-
-      final shiftId = activeShift?['id'] as String?;
-      return Right(shiftId);
+      // The active shift is no longer checked in the client side.
+      // We return null since the RPC register_financial_movement will handle it.
+      return const Right(null);
     } catch (e, st) {
       debugPrint('🔴 [OrdersRepo] Error en checkActiveCashShift: $e\n$st');
       return Left(ServerFailure(message: 'Error checking active cash shift: $e'));

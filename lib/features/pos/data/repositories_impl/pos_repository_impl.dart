@@ -158,7 +158,7 @@ class PosRepositoryImpl implements PosRepository {
         'pointsUsed': sale.pointsUsed,
         'pointsEarned': sale.pointsEarned,
         'accountId': sale.accountId,
-        'activeShiftId': sale.activeShift?.id,
+        'activeShiftId': null, // The backend RPC must validate and fetch the active shift
         'createdBy': null,
         'items':
             sale.items
