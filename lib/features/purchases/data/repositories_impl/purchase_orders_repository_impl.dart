@@ -104,208 +104,52 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           _supabase,
           poId,
         );
-      } catch (_) {}
+      } catch (e, st) {
+        developer.log(
+          '[PurchaseOrdersRepositoryImpl] Error in syncPurchaseOrderItemsAndStatus',
+          error: e,
+          stackTrace: st,
+          name: 'PurchaseOrdersRepositoryImpl',
+        );
+      }
 
-      // ── 1. Fetch raw items (no joins) ──────────────────────────────────
-      final rawItems = await _supabase
-          .from('purchase_order_items')
-          .select(
-            'product_id, variant_id, quantity_ordered, quantity_received, '
-            'unit_cost, batch_number, expiry_date',
-          )
-          .eq('purchase_order_id', poId);
+      // ── 1. Fetch data through single RPC (Zero N+1 Data Egress) ────────
+      final response = await _supabase.rpc(
+        'get_purchase_order_items_details',
+        params: {'p_order_id': poId},
+      );
 
-      final rows = rawItems as List;
+      final rows = response as List;
       if (rows.isEmpty) return const Right([]);
 
-      // ── 2. Collect unique IDs ──────────────────────────────────────────
-      final productIds =
-          rows
-              .map((r) => r['product_id'] as String?)
-              .whereType<String>()
-              .toSet()
-              .toList();
+      // ── 2. Build result ────────────────────────────────────────────────
+      final list = rows.map((r) {
+        return PurchaseOrderItemModel(
+          productId: r['product_id'] as String? ?? '',
+          variantId: r['variant_id'] as String? ?? '',
+          productName: r['product_name'] as String? ?? 'Producto',
+          variantAttrs: r['variant_attrs'] as String? ?? 'Única',
+          sku: r['sku'] as String?,
+          quantityOrdered: (r['quantity_ordered'] as num?)?.toDouble() ?? 0.0,
+          quantityReceived: (r['quantity_received'] as num?)?.toDouble() ?? 0.0,
+          unitCost: (r['unit_cost'] as num?)?.toDouble() ?? 0.0,
+          batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
+          expiryDate: r['expiry_date'] != null
+              ? DateTime.tryParse(r['expiry_date'] as String)
+              : null,
+          usesBatches: r['uses_batches'] as bool? ?? false,
+          imageUrl: r['image_url'] as String?,
+        );
+      }).toList();
 
-      final variantIds =
-          rows
-              .map((r) => r['variant_id'] as String?)
-              .whereType<String>()
-              .toSet()
-              .toList();
-
-      // ── 3. Fetch products ──────────────────────────────────────────────
-      final Map<String, Map<String, dynamic>> productMap = {};
-      if (productIds.isNotEmpty) {
-        try {
-          final pResp = await _supabase
-              .from('products')
-              .select('id, name, uses_batches')
-              .inFilter('id', productIds);
-          for (final p in pResp as List) {
-            final id = p['id'] as String?;
-            if (id != null) productMap[id] = Map<String, dynamic>.from(p);
-          }
-        } catch (e) {
-          debugPrint('[fetchOrderItems] products fetch error: $e');
-        }
-      }
-
-      // ── 4. Fetch variants ──────────────────────────────────────────────
-      final Map<String, Map<String, dynamic>> variantMap = {};
-      if (variantIds.isNotEmpty) {
-        try {
-          final vResp = await _supabase
-              .from('product_variants')
-              .select('id, sku')
-              .inFilter('id', variantIds);
-          for (final v in vResp as List) {
-            final id = v['id'] as String?;
-            if (id != null) variantMap[id] = Map<String, dynamic>.from(v);
-          }
-        } catch (e) {
-          debugPrint('[fetchOrderItems] variants fetch error: $e');
-        }
-      }
-
-      // ── 5. Fetch attributes ────────────────────────────────────────────
-      // variant_attribute_values → attribute_values → attributes (3-level)
-      final Map<String, String> variantAttrsText = {};
-      if (variantIds.isNotEmpty) {
-        try {
-          final vavResp = await _supabase
-              .from('variant_attribute_values')
-              .select('variant_id, attribute_value_id')
-              .inFilter('variant_id', variantIds);
-
-          final avIds =
-              (vavResp as List)
-                  .map((v) => v['attribute_value_id'] as String?)
-                  .whereType<String>()
-                  .toSet()
-                  .toList();
-
-          if (avIds.isNotEmpty) {
-            final avResp = await _supabase
-                .from('attribute_values')
-                .select('id, value, attribute_id')
-                .inFilter('id', avIds);
-
-            final attrIds =
-                (avResp as List)
-                    .map((a) => a['attribute_id'] as String?)
-                    .whereType<String>()
-                    .toSet()
-                    .toList();
-
-            final Map<String, String> attrNames = {};
-            if (attrIds.isNotEmpty) {
-              final attrResp = await _supabase
-                  .from('attributes')
-                  .select('id, name')
-                  .inFilter('id', attrIds);
-              for (final a in attrResp as List) {
-                attrNames[a['id'] as String] = a['name'] as String? ?? '';
-              }
-            }
-
-            // Build avId -> "attrName: value"
-            final Map<String, String> avLabels = {};
-            for (final av in avResp) {
-              final avId = av['id'] as String?;
-              final attrId = av['attribute_id'] as String?;
-              final val = av['value'] as String? ?? '';
-              final attrName = attrId != null ? (attrNames[attrId] ?? '') : '';
-              if (avId != null) {
-                avLabels[avId] = attrName.isNotEmpty ? '$attrName: $val' : val;
-              }
-            }
-
-            // variantId -> "Color: Rojo · Talla: M"
-            for (final vav in vavResp) {
-              final vId = vav['variant_id'] as String?;
-              final avId = vav['attribute_value_id'] as String?;
-              if (vId != null && avId != null && avLabels.containsKey(avId)) {
-                final existing = variantAttrsText[vId];
-                variantAttrsText[vId] =
-                    existing == null
-                        ? avLabels[avId]!
-                        : '$existing · ${avLabels[avId]}';
-              }
-            }
-          }
-        } catch (e) {
-          debugPrint('[fetchOrderItems] attributes fetch error: $e');
-        }
-      }
-
-      // ── 6. Fetch images ────────────────────────────────────────────────
-      final Map<String, String> imageMap = {};
-      if (productIds.isNotEmpty) {
-        try {
-          final imgResp = await _supabase
-              .from('product_images')
-              .select('product_id, variant_id, image_url, is_main')
-              .inFilter('product_id', productIds);
-          for (final img in imgResp as List) {
-            final pId = img['product_id'] as String?;
-            final vId = img['variant_id'] as String?;
-            final url = img['image_url'] as String?;
-            final isMain = img['is_main'] as bool? ?? false;
-            if (pId != null && url != null) {
-              if (vId != null && vId.isNotEmpty) {
-                if (!imageMap.containsKey('$pId:$vId') || isMain) {
-                  imageMap['$pId:$vId'] = url;
-                }
-              }
-              if (!imageMap.containsKey(pId) || isMain) {
-                imageMap[pId] = url;
-              }
-            }
-          }
-        } catch (e) {
-          debugPrint('[fetchOrderItems] images fetch error: $e');
-        }
-      }
-
-      // ── 7. Build result ────────────────────────────────────────────────
-      final list =
-          rows.map((r) {
-            final productId = r['product_id'] as String? ?? '';
-            final variantId = r['variant_id'] as String? ?? '';
-            final prod = productMap[productId];
-            final variant = variantMap[variantId];
-
-            final attrsText =
-                variantAttrsText[variantId]?.isNotEmpty == true
-                    ? variantAttrsText[variantId]!
-                    : 'Única';
-
-            final imageUrl =
-                imageMap['$productId:$variantId'] ?? imageMap[productId];
-
-            return PurchaseOrderItemModel(
-              productId: productId,
-              variantId: variantId,
-              productName: prod?['name'] as String? ?? 'Producto',
-              variantAttrs: attrsText,
-              sku: variant?['sku'] as String?,
-              quantityOrdered:
-                  (r['quantity_ordered'] as num?)?.toDouble() ?? 0.0,
-              quantityReceived:
-                  (r['quantity_received'] as num?)?.toDouble() ?? 0.0,
-              unitCost: (r['unit_cost'] as num?)?.toDouble() ?? 0.0,
-              batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
-              expiryDate:
-                  r['expiry_date'] != null
-                      ? DateTime.tryParse(r['expiry_date'] as String)
-                      : null,
-              usesBatches: prod?['uses_batches'] as bool? ?? false,
-              imageUrl: imageUrl,
-            );
-          }).toList();
       return Right(list);
     } catch (e, st) {
-      debugPrint('[fetchOrderItems] fatal error: $e\n$st');
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] fetchOrderItems fatal error: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -329,34 +173,21 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           profileId = profile?['id'] as String?;
         }
 
-        try {
-          final res = await _supabase.rpc(
-            'cancel_purchase_order_rpc',
-            params: {'p_purchase_order_id': poId, 'p_profile_id': profileId},
-          );
+        final res = await _supabase.rpc(
+          'cancel_purchase_order_rpc',
+          params: {'p_purchase_order_id': poId, 'p_profile_id': profileId},
+        );
 
-          if (res is Map && res['success'] == false) {
-            return Left(
-              ServerFailure(
-                message:
-                    res['error']?.toString() ??
-                    'Error al anular la orden de compra.',
-              ),
-            );
-          }
-          return const Right(null);
-        } catch (rpcError) {
-          debugPrint('cancel_purchase_order_rpc error/missing: $rpcError');
-          // Fallback directo si la RPC aún no se ejecutó en el SQL Editor de Supabase
-          await _supabase
-              .from('purchase_orders')
-              .update({
-                'status': 'CANCELLED',
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', poId);
-          return const Right(null);
+        if (res is Map && res['success'] == false) {
+          return Left(
+            ServerFailure(
+              message:
+                  res['error']?.toString() ??
+                  'Error al anular la orden de compra.',
+            ),
+          );
         }
+        return const Right(null);
       }
 
       await _supabase
@@ -367,7 +198,13 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           })
           .eq('id', poId);
       return const Right(null);
-    } catch (e) {
+    } catch (e, st) {
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] updateOrderStatus error: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -468,98 +305,39 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
     required String warehouseId,
   }) async {
     try {
-      bool allFullyReceived = true;
-      for (final pItem in receivedItems) {
-        final toReceive = (pItem['receiveQty'] as num).toDouble();
-        if (toReceive <= 0) {
-          if (!pItem['fullyReceived']) allFullyReceived = false;
-          continue;
-        }
+      final itemsPayload = receivedItems.map((pItem) {
+        return {
+          'receiveQty': (pItem['receiveQty'] as num).toDouble(),
+          'fullyReceived': pItem['fullyReceived'] as bool? ?? false,
+          'product_id': pItem['product_id'],
+          'variant_id': pItem['variant_id'],
+          'uses_batches': pItem['uses_batches'] as bool? ?? false,
+          'batch_number': pItem['batch_number'],
+          'expiry_date': pItem['expiry_date'],
+        };
+      }).toList();
 
-        final prevReceived = (pItem['quantity_received'] as num).toDouble();
-        final ordered = (pItem['quantity_ordered'] as num).toDouble();
-        final newReceived = prevReceived + toReceive;
+      final response = await _supabase.rpc(
+        'rpc_receive_purchase_order_items',
+        params: {
+          'p_order_id': poId,
+          'p_warehouse_id': warehouseId,
+          'p_items': itemsPayload,
+        },
+      );
 
-        if (newReceived < ordered) {
-          allFullyReceived = false;
-        }
-
-        await _supabase
-            .from('purchase_order_items')
-            .update({'quantity_received': newReceived})
-            .eq('purchase_order_id', poId)
-            .eq('product_id', pItem['product_id'])
-            .eq('variant_id', pItem['variant_id']);
-
-        if (pItem['uses_batches'] == true) {
-          final existingBatch =
-              await _supabase
-                  .from('inventory_batches')
-                  .select('id, quantity')
-                  .eq('product_id', pItem['product_id'])
-                  .eq('variant_id', pItem['variant_id'])
-                  .eq('warehouse_id', warehouseId)
-                  .eq('batch_number', pItem['batch_number'])
-                  .maybeSingle();
-
-          if (existingBatch != null) {
-            await _supabase
-                .from('inventory_batches')
-                .update({
-                  'quantity':
-                      (existingBatch['quantity'] as num).toDouble() + toReceive,
-                })
-                .eq('id', existingBatch['id']);
-          } else {
-            await _supabase.from('inventory_batches').insert({
-              'product_id': pItem['product_id'],
-              'variant_id': pItem['variant_id'],
-              'warehouse_id': warehouseId,
-              'batch_number': pItem['batch_number'],
-              'quantity': toReceive,
-              if (pItem['expiry_date'] != null)
-                'expiry_date': pItem['expiry_date'],
-            });
-          }
-        }
-
-        final invStock =
-            await _supabase
-                .from('inventory_stock')
-                .select('id, quantity')
-                .eq('product_id', pItem['product_id'])
-                .eq('variant_id', pItem['variant_id'])
-                .eq('warehouse_id', warehouseId)
-                .maybeSingle();
-
-        if (invStock != null) {
-          await _supabase
-              .from('inventory_stock')
-              .update({
-                'quantity':
-                    (invStock['quantity'] as num).toDouble() + toReceive,
-              })
-              .eq('id', invStock['id']);
-        } else {
-          await _supabase.from('inventory_stock').insert({
-            'product_id': pItem['product_id'],
-            'variant_id': pItem['variant_id'],
-            'warehouse_id': warehouseId,
-            'quantity': toReceive,
-          });
-        }
+      if (response is Map && response['success'] == false) {
+        return Left(ServerFailure(message: response['error']?.toString() ?? 'Error al procesar inventario.'));
       }
 
-      await _supabase
-          .from('purchase_orders')
-          .update({
-            'status': allFullyReceived ? 'RECEIVED' : 'PARTIAL',
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', poId);
-
       return const Right(null);
-    } catch (e) {
+    } catch (e, st) {
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] receiveOrderItems error: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
