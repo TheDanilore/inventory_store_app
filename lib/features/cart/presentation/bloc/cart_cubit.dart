@@ -89,10 +89,13 @@ class CartCubit extends Cubit<CartState> {
     await _saveCart(SaveCartParams(cartType: _cartType, items: state.items));
   }
 
+  void clearError() {
+    emit(state.copyWith(clearErrorMessage: true));
+  }
+
   void addItem(CartItemEntity item) {
     if (item.availableStock <= 0) {
       emit(state.copyWith(errorMessage: 'Producto agotado.'));
-      emit(state.copyWith(errorMessage: null)); // Clear error immediately after
       return;
     }
 
@@ -100,23 +103,17 @@ class CartCubit extends Cubit<CartState> {
 
     if (newItems.containsKey(item.cartKey)) {
       final existing = newItems[item.cartKey]!;
-      newItems[item.cartKey] = CartItemEntity(
-        productId: existing.productId,
-        productName: existing.productName,
-        cartKey: existing.cartKey,
-        quantity: existing.quantity + item.quantity,
-        unitPrice: existing.unitPrice,
-        unitCost: existing.unitCost,
-        availableStock: existing.availableStock,
-        usesBatches: existing.usesBatches,
-        variantId: existing.variantId,
-        variantLabel: existing.variantLabel,
-        wholesalePrice: existing.wholesalePrice,
-        imageUrl: existing.imageUrl,
-        sku: existing.sku,
-        isSelected: existing.isSelected,
-      );
+      final newQty = existing.quantity + item.quantity;
+      if (newQty > existing.availableStock) {
+        emit(state.copyWith(errorMessage: 'Stock insuficiente para esta cantidad.'));
+        return;
+      }
+      newItems[item.cartKey] = existing.copyWith(quantity: newQty);
     } else {
+      if (item.quantity > item.availableStock) {
+        emit(state.copyWith(errorMessage: 'Stock insuficiente para esta cantidad.'));
+        return;
+      }
       newItems[item.cartKey] = item;
     }
 
@@ -131,22 +128,11 @@ class CartCubit extends Cubit<CartState> {
         newItems.remove(cartKey);
       } else {
         final existing = newItems[cartKey]!;
-        newItems[cartKey] = CartItemEntity(
-          productId: existing.productId,
-          productName: existing.productName,
-          cartKey: existing.cartKey,
-          quantity: qty,
-          unitPrice: existing.unitPrice,
-          unitCost: existing.unitCost,
-          availableStock: existing.availableStock,
-          usesBatches: existing.usesBatches,
-          variantId: existing.variantId,
-          variantLabel: existing.variantLabel,
-          wholesalePrice: existing.wholesalePrice,
-          imageUrl: existing.imageUrl,
-          sku: existing.sku,
-          isSelected: existing.isSelected,
-        );
+        if (qty > existing.availableStock) {
+          emit(state.copyWith(errorMessage: 'Stock insuficiente para esta cantidad.'));
+          return;
+        }
+        newItems[cartKey] = existing.copyWith(quantity: qty);
       }
       emit(state.copyWith(items: newItems));
       _saveLocal();
@@ -166,22 +152,7 @@ class CartCubit extends Cubit<CartState> {
     final newItems = Map<String, CartItemEntity>.from(state.items);
     if (newItems.containsKey(cartKey)) {
       final existing = newItems[cartKey]!;
-      newItems[cartKey] = CartItemEntity(
-        productId: existing.productId,
-        productName: existing.productName,
-        cartKey: existing.cartKey,
-        quantity: existing.quantity,
-        unitPrice: existing.unitPrice,
-        unitCost: existing.unitCost,
-        availableStock: existing.availableStock,
-        usesBatches: existing.usesBatches,
-        variantId: existing.variantId,
-        variantLabel: existing.variantLabel,
-        wholesalePrice: existing.wholesalePrice,
-        imageUrl: existing.imageUrl,
-        sku: existing.sku,
-        isSelected: value,
-      );
+      newItems[cartKey] = existing.copyWith(isSelected: value);
       emit(state.copyWith(items: newItems));
       _saveLocal();
     }
@@ -191,22 +162,7 @@ class CartCubit extends Cubit<CartState> {
     final newItems = Map<String, CartItemEntity>.from(state.items);
     for (final key in newItems.keys) {
       final existing = newItems[key]!;
-      newItems[key] = CartItemEntity(
-        productId: existing.productId,
-        productName: existing.productName,
-        cartKey: existing.cartKey,
-        quantity: existing.quantity,
-        unitPrice: existing.unitPrice,
-        unitCost: existing.unitCost,
-        availableStock: existing.availableStock,
-        usesBatches: existing.usesBatches,
-        variantId: existing.variantId,
-        variantLabel: existing.variantLabel,
-        wholesalePrice: existing.wholesalePrice,
-        imageUrl: existing.imageUrl,
-        sku: existing.sku,
-        isSelected: value,
-      );
+      newItems[key] = existing.copyWith(isSelected: value);
     }
     emit(state.copyWith(items: newItems));
     _saveLocal();
@@ -221,8 +177,7 @@ class CartCubit extends Cubit<CartState> {
 
   Future<void> clearCart() async {
     final user = Supabase.instance.client.auth.currentUser;
-    final profileId =
-        user?.id; // Note: passed as authUserId to usecase/repository
+    final profileId = user?.id; // Note: passed as authUserId to usecase/repository
 
     await _clearCart(
       ClearCartParams(cartType: _cartType, profileId: profileId),
@@ -234,22 +189,7 @@ class CartCubit extends Cubit<CartState> {
     final newItems = Map<String, CartItemEntity>.from(state.items);
     if (newItems.containsKey(cartKey)) {
       final existing = newItems[cartKey]!;
-      newItems[cartKey] = CartItemEntity(
-        productId: existing.productId,
-        productName: existing.productName,
-        cartKey: existing.cartKey,
-        quantity: existing.quantity,
-        unitPrice: existing.unitPrice,
-        unitCost: existing.unitCost,
-        availableStock: newStock,
-        usesBatches: existing.usesBatches,
-        variantId: existing.variantId,
-        variantLabel: existing.variantLabel,
-        wholesalePrice: existing.wholesalePrice,
-        imageUrl: existing.imageUrl,
-        sku: existing.sku,
-        isSelected: existing.isSelected,
-      );
+      newItems[cartKey] = existing.copyWith(availableStock: newStock);
       emit(state.copyWith(items: newItems));
       _saveLocal();
     }
