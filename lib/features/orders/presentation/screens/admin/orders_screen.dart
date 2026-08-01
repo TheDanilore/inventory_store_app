@@ -65,7 +65,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Future<void> _printOrderTicket(OrderEntity order) async {
     try {
-      await context.read<OrdersCubit>().generatePdfTicket(order);
+      final config = context.read<AppConfigCubit>();
+      await context.read<OrdersCubit>().generatePdfTicket(
+        order,
+        businessName: config.businessName,
+        taxId: config.businessTaxId,
+        address: config.businessAddress,
+        phone: config.businessPhone,
+      );
     } catch (e) {
       if (mounted) {
         AppSnackbar.show(

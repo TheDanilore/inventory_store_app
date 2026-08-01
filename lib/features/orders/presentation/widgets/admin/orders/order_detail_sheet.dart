@@ -45,9 +45,11 @@ class OrderDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<OrderDetailCubit>(
-      create: (_) => sl<OrderDetailCubit>()
-        ..setInitialOrder(order)
-        ..fetchData(order.id),
+      create:
+          (_) =>
+              sl<OrderDetailCubit>()
+                ..setInitialOrder(order)
+                ..fetchData(order.id),
       child: _OrderDetailSheetContent(
         order: order,
         isEmbedded: isEmbedded,
@@ -273,15 +275,25 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
     final earningRate = config.getDouble('points_earning_rate', 0.03);
 
     return BlocBuilder<OrderDetailCubit, OrderDetailState>(
-      buildWhen: (p, c) => p.isLoading != c.isLoading || p.hasError != c.hasError || p.order != c.order,
+      buildWhen:
+          (p, c) =>
+              p.isLoading != c.isLoading ||
+              p.hasError != c.hasError ||
+              p.order != c.order,
       builder: (context, rootState) {
         if (rootState.order == null) return const SizedBox.shrink();
 
         Widget child = Container(
-          height: widget.isEmbedded ? null : MediaQuery.of(context).size.height * 0.9,
+          height:
+              widget.isEmbedded
+                  ? null
+                  : MediaQuery.of(context).size.height * 0.9,
           decoration: BoxDecoration(
             color: widget.isEmbedded ? Colors.transparent : Colors.grey.shade50,
-            borderRadius: widget.isEmbedded ? BorderRadius.zero : const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius:
+                widget.isEmbedded
+                    ? BorderRadius.zero
+                    : const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: SafeArea(
             child: Column(
@@ -299,285 +311,456 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                     ),
                   ),
                 Expanded(
-                  child: rootState.isLoading
-                      ? const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: OrderDetailSkeleton(),
-                        )
-                      : rootState.hasError
+                  child:
+                      rootState.isLoading
+                          ? const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: OrderDetailSkeleton(),
+                          )
+                          : rootState.hasError
                           ? AppEmptyState(
-                              icon: Icons.error_outline_rounded,
-                              color: Colors.red,
-                              title: 'Ocurrió un error al cargar el pedido',
-                              message: 'Verifica tu conexión a internet o intenta nuevamente.',
-                              action: ElevatedButton.icon(
-                                onPressed: () => context.read<OrderDetailCubit>().fetchData(widget.order.id),
-                                icon: const Icon(Icons.refresh_rounded),
-                                label: const Text('Reintentar'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.teal,
-                                  foregroundColor: Colors.white,
-                                ),
+                            icon: Icons.error_outline_rounded,
+                            color: Colors.red,
+                            title: 'Ocurrió un error al cargar el pedido',
+                            message:
+                                'Verifica tu conexión a internet o intenta nuevamente.',
+                            action: ElevatedButton.icon(
+                              onPressed:
+                                  () => context
+                                      .read<OrderDetailCubit>()
+                                      .fetchData(widget.order.id),
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Reintentar'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.teal,
+                                foregroundColor: Colors.white,
                               ),
-                            )
-                          : ListView(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                              children: [
-                                // HEADER
-                                BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                  buildWhen: (p, c) => p.canToggleEdit != c.canToggleEdit || p.isCompleted != c.isCompleted || p.pointsUsed != c.pointsUsed,
-                                  builder: (context, state) {
-                                    return OrderDetailHeaderRow(
-                                      orderId: state.order!.id,
-                                      isCompleted: state.isCompleted,
-                                      isEditing: _isEditing,
-                                      canToggleEdit: state.canToggleEdit,
-                                      onToggleEditing: () {
-                                        if (_isEditing) {
-                                          context.read<OrderDetailCubit>().resetEditState();
-                                          _pointsUsedCtrl.text = state.pointsUsed.toString();
-                                          _manualNameCtrl.text = state.order!.customerName.trim();
-                                        }
-                                        setState(() {
-                                          _isEditing = !_isEditing;
-                                        });
-                                      },
-                                      onShare: () => OrderPdfGenerator.shareTicket(state.order!, items: state.items),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                
-                                // STATUS
-                                BlocSelector<OrderDetailCubit, OrderDetailState, String>(
-                                  selector: (state) => state.currentStatus,
-                                  builder: (context, currentStatus) {
-                                    return OrderDetailStatusSection(
-                                      originalStatus: rootState.order!.status,
-                                      currentStatus: currentStatus,
-                                      isEditing: _isEditing,
-                                      onChanged: (val) {
-                                        if (val != null) {
-                                          context.read<OrderDetailCubit>().updateStatus(val);
-                                        }
-                                      },
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                
-                                // CUSTOMER
-                                BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                  buildWhen: (p, c) => p.selectedCustomerId != c.selectedCustomerId || p.profiles != c.profiles || p.isCompleted != c.isCompleted,
-                                  builder: (context, state) {
-                                    return OrderDetailCustomerSection(
-                                      isEditing: _isEditing,
-                                      isCompleted: state.isCompleted,
-                                      hasManualName: _manualNameCtrl.text.isNotEmpty,
-                                      manualNameController: _manualNameCtrl,
-                                      profiles: state.profiles,
-                                      selectedCustomerLabel: _getCustomerLabel(
-                                        state.selectedCustomerId,
-                                        state.profiles,
-                                        state.order,
-                                      ),
-                                      selectedCustomerId: state.selectedCustomerId,
-                                      onSelectCustomer: (id) {
-                                        context.read<OrderDetailCubit>().selectCustomer(id, pointsToSolesRatio, earningRate);
-                                      },
-                                      onClearCustomer: () {
-                                        context.read<OrderDetailCubit>().selectCustomer(null, pointsToSolesRatio, earningRate);
-                                        _manualNameCtrl.text = '';
-                                      },
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-
-                                // PAYMENT METHOD
-                                BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                  buildWhen: (p, c) => p.paymentMethod != c.paymentMethod || p.accounts != c.accounts || p.isCompleted != c.isCompleted,
-                                  builder: (context, state) {
-                                    return OrderDetailPaymentSection(
-                                      isEditing: _isEditing,
-                                      isCompleted: state.isCompleted,
-                                      accounts: state.accounts,
-                                      currentPaymentMethod: state.paymentMethod,
-                                      onChanged: (val) {
-                                        if (val != null) {
-                                          _validateAndSetPaymentMethod(val, pointsToSolesRatio, earningRate);
-                                        }
-                                      },
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-
-                                // PAYMENT STATUS
-                                if (rootState.order!.paymentStatus != 'PAID')
-                                  BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                    buildWhen: (p, c) => 
-                                        p.paymentMethod != c.paymentMethod || 
-                                        p.accounts != c.accounts || 
-                                        p.selectedCustomerId != c.selectedCustomerId || 
-                                        p.pointsEarned != c.pointsEarned || 
-                                        p.creditInfo != c.creditInfo,
-                                    builder: (context, state) {
-                                      return PaymentStatusSection(
-                                        orderId: rootState.order!.id,
-                                        paymentStatus: rootState.order!.paymentStatus,
-                                        totalAmount: rootState.order!.totalAmount,
-                                        amountPaid: rootState.order!.amountPaid,
-                                        paymentMethod: state.paymentMethod,
-                                        creditInfo: state.creditInfo,
-                                        accounts: state.accounts,
-                                        customerId: state.selectedCustomerId,
-                                        pointsEarned: state.pointsEarned,
-                                        onPaymentRegistered: () {
-                                          context.read<OrderDetailCubit>().setWasModified();
-                                          context.read<OrderDetailCubit>().fetchData(widget.order.id);
-                                        },
-                                        isLoyaltyEnabled: config.loyaltyGlobalEnabled,
-                                      );
-                                    },
-                                  ),
-                                const SizedBox(height: 16),
-
-                                // CREDIT SECTION
-                                BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                  buildWhen: (p, c) => p.selectedCustomerId != c.selectedCustomerId || p.creditInfo != c.creditInfo,
-                                  builder: (context, state) {
-                                    if (state.selectedCustomerId != null && state.selectedCustomerId!.isNotEmpty && state.creditInfo != null) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(bottom: 16),
-                                        child: OrderDetailCreditSection(
-                                          creditInfo: state.creditInfo!,
-                                          customerId: state.selectedCustomerId!,
-                                        ),
-                                      );
-                                    }
-                                    return const SizedBox.shrink();
-                                  },
-                                ),
-
-                                // ITEMS SECTION
-                                BlocSelector<OrderDetailCubit, OrderDetailState, _ItemsSectionData>(
-                                  selector: (state) => _ItemsSectionData(
-                                    items: state.items,
-                                    isLoading: state.isLoading,
-                                    currentStatus: state.currentStatus,
-                                    batchesByVariant: state.batchesByVariant,
-                                    usesBatchesMap: state.usesBatchesMap,
-                                    batchOverrides: state.batchOverrides,
-                                  ),
-                                  builder: (context, data) {
-                                    return OrderDetailItemsSection(
-                                      items: data.items,
-                                      isLoading: data.isLoading,
-                                      isEditing: _isEditing,
-                                      isLocked: data.currentStatus.toUpperCase() != 'PENDING',
-                                      batchesByVariant: data.batchesByVariant,
-                                      usesBatchesMap: data.usesBatchesMap,
-                                      batchOverrides: data.batchOverrides,
-                                      onDecrease: (idx) {
-                                        if (data.items[idx].quantity > 1) {
-                                          context.read<OrderDetailCubit>().updateItemQuantity(idx, data.items[idx].quantity - 1, pointsToSolesRatio, earningRate);
-                                        }
-                                      },
-                                      onIncrease: (idx) {
-                                        context.read<OrderDetailCubit>().updateItemQuantity(idx, data.items[idx].quantity + 1, pointsToSolesRatio, earningRate);
-                                      },
-                                      onQuantityChanged: (idx, val) {
-                                        final qty = int.tryParse(val) ?? 1;
-                                        if (qty > 0) {
-                                          context.read<OrderDetailCubit>().updateItemQuantity(idx, qty, pointsToSolesRatio, earningRate);
-                                        }
-                                      },
-                                      onEditBatches: (item) => OrderDetailBatchSheet.show(context, item),
-                                      onQuantityTap: (idx) => _showQuantityDialog(context, idx, pointsToSolesRatio, earningRate),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-
-                                // POINTS SECTION
-                                BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                  buildWhen: (p, c) => p.selectedCustomerId != c.selectedCustomerId || p.paymentMethod != c.paymentMethod || p.pointsUsed != c.pointsUsed || p.profiles != c.profiles,
-                                  builder: (context, state) {
-                                    final isCreditMethod = state.accounts.any((a) => a['name'] == state.paymentMethod && a['type'] == 'CREDITO');
-                                    final maxPtsUser = state.selectedCustomerId != null
-                                        ? state.profiles.firstWhere((p) => p['id'] == state.selectedCustomerId, orElse: () => {'wallet_balance': 0})['wallet_balance'] as int? ?? 0
-                                        : 0;
-
-                                    if (config.loyaltyGlobalEnabled && state.selectedCustomerId != null && state.selectedCustomerId!.isNotEmpty && !isCreditMethod) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(bottom: 16),
-                                        child: OrderDetailPointsSection(
-                                          isEditing: _isEditing,
-                                          pointsUsed: state.pointsUsed,
-                                          pointsUsedCtrl: _pointsUsedCtrl,
-                                          maxPointsAvailable: maxPtsUser,
-                                          pointsToSolesRatio: pointsToSolesRatio,
-                                          onPointsChanged: (val) {
-                                            final pts = int.tryParse(val) ?? 0;
-                                            context.read<OrderDetailCubit>().updatePointsUsed(pts, pointsToSolesRatio, earningRate);
-                                          },
-                                        ),
-                                      );
-                                    }
-                                    return const SizedBox.shrink();
-                                  },
-                                ),
-
-                                // AUDIT SECTION
-                                BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                  buildWhen: (p, c) => p.updaterName != c.updaterName,
-                                  builder: (context, state) {
-                                    return OrderDetailAuditSection(
-                                      order: rootState.order!,
-                                      updaterName: state.updaterName,
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-
-                                // TOTAL SUMMARY SECTION
-                                BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                  buildWhen: (p, c) => p.items != c.items || p.pointsUsed != c.pointsUsed || p.pointsEarned != c.pointsEarned || p.isCompleted != c.isCompleted,
-                                  builder: (context, state) {
-                                    final subtotal = state.items.fold(0.0, (sum, i) => sum + i.subtotal);
-                                    return OrderDetailTotalSummarySection(
-                                      subtotal: subtotal,
-                                      pointsUsed: state.pointsUsed,
-                                      pointsEarned: state.pointsEarned,
-                                      pointsToSolesRatio: pointsToSolesRatio,
-                                      discountAmount: rootState.order!.discountAmount,
-                                      isCompleted: state.isCompleted && rootState.order!.paymentStatus == 'PAID',
-                                      isLoyaltyEnabled: config.loyaltyGlobalEnabled,
-                                    );
-                                  },
-                                ),
-                              ],
                             ),
+                          )
+                          : ListView(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                            children: [
+                              // HEADER
+                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                buildWhen:
+                                    (p, c) =>
+                                        p.canToggleEdit != c.canToggleEdit ||
+                                        p.isCompleted != c.isCompleted ||
+                                        p.pointsUsed != c.pointsUsed,
+                                builder: (context, state) {
+                                  return OrderDetailHeaderRow(
+                                    orderId: state.order!.id,
+                                    isCompleted: state.isCompleted,
+                                    isEditing: _isEditing,
+                                    canToggleEdit: state.canToggleEdit,
+                                    onToggleEditing: () {
+                                      if (_isEditing) {
+                                        context
+                                            .read<OrderDetailCubit>()
+                                            .resetEditState();
+                                        _pointsUsedCtrl.text =
+                                            state.pointsUsed.toString();
+                                        _manualNameCtrl.text =
+                                            state.order!.customerName.trim();
+                                      }
+                                      setState(() {
+                                        _isEditing = !_isEditing;
+                                      });
+                                    },
+                                    onShare:
+                                        () => OrderPdfGenerator.shareTicket(
+                                          state.order!,
+                                          items: state.items,
+                                          businessName: config.businessName,
+                                          taxId: config.businessTaxId,
+                                          address: config.businessAddress,
+                                          phone: config.businessPhone,
+                                        ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              // STATUS
+                              BlocSelector<
+                                OrderDetailCubit,
+                                OrderDetailState,
+                                String
+                              >(
+                                selector: (state) => state.currentStatus,
+                                builder: (context, currentStatus) {
+                                  return OrderDetailStatusSection(
+                                    originalStatus: rootState.order!.status,
+                                    currentStatus: currentStatus,
+                                    isEditing: _isEditing,
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        context
+                                            .read<OrderDetailCubit>()
+                                            .updateStatus(val);
+                                      }
+                                    },
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              // CUSTOMER
+                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                buildWhen:
+                                    (p, c) =>
+                                        p.selectedCustomerId !=
+                                            c.selectedCustomerId ||
+                                        p.profiles != c.profiles ||
+                                        p.isCompleted != c.isCompleted,
+                                builder: (context, state) {
+                                  return OrderDetailCustomerSection(
+                                    isEditing: _isEditing,
+                                    isCompleted: state.isCompleted,
+                                    hasManualName:
+                                        _manualNameCtrl.text.isNotEmpty,
+                                    manualNameController: _manualNameCtrl,
+                                    profiles: state.profiles,
+                                    selectedCustomerLabel: _getCustomerLabel(
+                                      state.selectedCustomerId,
+                                      state.profiles,
+                                      state.order,
+                                    ),
+                                    selectedCustomerId:
+                                        state.selectedCustomerId,
+                                    onSelectCustomer: (id) {
+                                      context
+                                          .read<OrderDetailCubit>()
+                                          .selectCustomer(
+                                            id,
+                                            pointsToSolesRatio,
+                                            earningRate,
+                                          );
+                                    },
+                                    onClearCustomer: () {
+                                      context
+                                          .read<OrderDetailCubit>()
+                                          .selectCustomer(
+                                            null,
+                                            pointsToSolesRatio,
+                                            earningRate,
+                                          );
+                                      _manualNameCtrl.text = '';
+                                    },
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              // PAYMENT METHOD
+                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                buildWhen:
+                                    (p, c) =>
+                                        p.paymentMethod != c.paymentMethod ||
+                                        p.accounts != c.accounts ||
+                                        p.isCompleted != c.isCompleted,
+                                builder: (context, state) {
+                                  return OrderDetailPaymentSection(
+                                    isEditing: _isEditing,
+                                    isCompleted: state.isCompleted,
+                                    accounts: state.accounts,
+                                    currentPaymentMethod: state.paymentMethod,
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        _validateAndSetPaymentMethod(
+                                          val,
+                                          pointsToSolesRatio,
+                                          earningRate,
+                                        );
+                                      }
+                                    },
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              // PAYMENT STATUS
+                              if (rootState.order!.paymentStatus != 'PAID')
+                                BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                  buildWhen:
+                                      (p, c) =>
+                                          p.paymentMethod != c.paymentMethod ||
+                                          p.accounts != c.accounts ||
+                                          p.selectedCustomerId !=
+                                              c.selectedCustomerId ||
+                                          p.pointsEarned != c.pointsEarned ||
+                                          p.creditInfo != c.creditInfo,
+                                  builder: (context, state) {
+                                    return PaymentStatusSection(
+                                      orderId: rootState.order!.id,
+                                      paymentStatus:
+                                          rootState.order!.paymentStatus,
+                                      totalAmount: rootState.order!.totalAmount,
+                                      amountPaid: rootState.order!.amountPaid,
+                                      paymentMethod: state.paymentMethod,
+                                      creditInfo: state.creditInfo,
+                                      accounts: state.accounts,
+                                      customerId: state.selectedCustomerId,
+                                      pointsEarned: state.pointsEarned,
+                                      onPaymentRegistered: () {
+                                        context
+                                            .read<OrderDetailCubit>()
+                                            .setWasModified();
+                                        context
+                                            .read<OrderDetailCubit>()
+                                            .fetchData(widget.order.id);
+                                      },
+                                      isLoyaltyEnabled:
+                                          config.loyaltyGlobalEnabled,
+                                    );
+                                  },
+                                ),
+                              const SizedBox(height: 16),
+
+                              // CREDIT SECTION
+                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                buildWhen:
+                                    (p, c) =>
+                                        p.selectedCustomerId !=
+                                            c.selectedCustomerId ||
+                                        p.creditInfo != c.creditInfo,
+                                builder: (context, state) {
+                                  if (state.selectedCustomerId != null &&
+                                      state.selectedCustomerId!.isNotEmpty &&
+                                      state.creditInfo != null) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 16,
+                                      ),
+                                      child: OrderDetailCreditSection(
+                                        creditInfo: state.creditInfo!,
+                                        customerId: state.selectedCustomerId!,
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                },
+                              ),
+
+                              // ITEMS SECTION
+                              BlocSelector<
+                                OrderDetailCubit,
+                                OrderDetailState,
+                                _ItemsSectionData
+                              >(
+                                selector:
+                                    (state) => _ItemsSectionData(
+                                      items: state.items,
+                                      isLoading: state.isLoading,
+                                      currentStatus: state.currentStatus,
+                                      batchesByVariant: state.batchesByVariant,
+                                      usesBatchesMap: state.usesBatchesMap,
+                                      batchOverrides: state.batchOverrides,
+                                    ),
+                                builder: (context, data) {
+                                  return OrderDetailItemsSection(
+                                    items: data.items,
+                                    isLoading: data.isLoading,
+                                    isEditing: _isEditing,
+                                    isLocked:
+                                        data.currentStatus.toUpperCase() !=
+                                        'PENDING',
+                                    batchesByVariant: data.batchesByVariant,
+                                    usesBatchesMap: data.usesBatchesMap,
+                                    batchOverrides: data.batchOverrides,
+                                    onDecrease: (idx) {
+                                      if (data.items[idx].quantity > 1) {
+                                        context
+                                            .read<OrderDetailCubit>()
+                                            .updateItemQuantity(
+                                              idx,
+                                              data.items[idx].quantity - 1,
+                                              pointsToSolesRatio,
+                                              earningRate,
+                                            );
+                                      }
+                                    },
+                                    onIncrease: (idx) {
+                                      context
+                                          .read<OrderDetailCubit>()
+                                          .updateItemQuantity(
+                                            idx,
+                                            data.items[idx].quantity + 1,
+                                            pointsToSolesRatio,
+                                            earningRate,
+                                          );
+                                    },
+                                    onQuantityChanged: (idx, val) {
+                                      final qty = int.tryParse(val) ?? 1;
+                                      if (qty > 0) {
+                                        context
+                                            .read<OrderDetailCubit>()
+                                            .updateItemQuantity(
+                                              idx,
+                                              qty,
+                                              pointsToSolesRatio,
+                                              earningRate,
+                                            );
+                                      }
+                                    },
+                                    onEditBatches:
+                                        (item) => OrderDetailBatchSheet.show(
+                                          context,
+                                          item,
+                                        ),
+                                    onQuantityTap:
+                                        (idx) => _showQuantityDialog(
+                                          context,
+                                          idx,
+                                          pointsToSolesRatio,
+                                          earningRate,
+                                        ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              // POINTS SECTION
+                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                buildWhen:
+                                    (p, c) =>
+                                        p.selectedCustomerId !=
+                                            c.selectedCustomerId ||
+                                        p.paymentMethod != c.paymentMethod ||
+                                        p.pointsUsed != c.pointsUsed ||
+                                        p.profiles != c.profiles,
+                                builder: (context, state) {
+                                  final isCreditMethod = state.accounts.any(
+                                    (a) =>
+                                        a['name'] == state.paymentMethod &&
+                                        a['type'] == 'CREDITO',
+                                  );
+                                  final maxPtsUser =
+                                      state.selectedCustomerId != null
+                                          ? state.profiles.firstWhere(
+                                                    (p) =>
+                                                        p['id'] ==
+                                                        state
+                                                            .selectedCustomerId,
+                                                    orElse:
+                                                        () => {
+                                                          'wallet_balance': 0,
+                                                        },
+                                                  )['wallet_balance']
+                                                  as int? ??
+                                              0
+                                          : 0;
+
+                                  if (config.loyaltyGlobalEnabled &&
+                                      state.selectedCustomerId != null &&
+                                      state.selectedCustomerId!.isNotEmpty &&
+                                      !isCreditMethod) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 16,
+                                      ),
+                                      child: OrderDetailPointsSection(
+                                        isEditing: _isEditing,
+                                        pointsUsed: state.pointsUsed,
+                                        pointsUsedCtrl: _pointsUsedCtrl,
+                                        maxPointsAvailable: maxPtsUser,
+                                        pointsToSolesRatio: pointsToSolesRatio,
+                                        onPointsChanged: (val) {
+                                          final pts = int.tryParse(val) ?? 0;
+                                          context
+                                              .read<OrderDetailCubit>()
+                                              .updatePointsUsed(
+                                                pts,
+                                                pointsToSolesRatio,
+                                                earningRate,
+                                              );
+                                        },
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                },
+                              ),
+
+                              // AUDIT SECTION
+                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                buildWhen:
+                                    (p, c) => p.updaterName != c.updaterName,
+                                builder: (context, state) {
+                                  return OrderDetailAuditSection(
+                                    order: rootState.order!,
+                                    updaterName: state.updaterName,
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              // TOTAL SUMMARY SECTION
+                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                buildWhen:
+                                    (p, c) =>
+                                        p.items != c.items ||
+                                        p.pointsUsed != c.pointsUsed ||
+                                        p.pointsEarned != c.pointsEarned ||
+                                        p.isCompleted != c.isCompleted,
+                                builder: (context, state) {
+                                  final subtotal = state.items.fold(
+                                    0.0,
+                                    (sum, i) => sum + i.subtotal,
+                                  );
+                                  return OrderDetailTotalSummarySection(
+                                    subtotal: subtotal,
+                                    pointsUsed: state.pointsUsed,
+                                    pointsEarned: state.pointsEarned,
+                                    pointsToSolesRatio: pointsToSolesRatio,
+                                    discountAmount:
+                                        rootState.order!.discountAmount,
+                                    isCompleted:
+                                        state.isCompleted &&
+                                        rootState.order!.paymentStatus ==
+                                            'PAID',
+                                    isLoyaltyEnabled:
+                                        config.loyaltyGlobalEnabled,
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
                 ),
-                
+
                 // BOTTOM BAR (TOTAL & BUTTONS)
                 if (!rootState.isLoading && !rootState.hasError)
                   BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                    buildWhen: (p, c) => p.items != c.items || p.pointsUsed != c.pointsUsed || p.isSaving != c.isSaving || p.isReturning != c.isReturning || p.isCompleted != c.isCompleted || p.wasModified != c.wasModified,
+                    buildWhen:
+                        (p, c) =>
+                            p.items != c.items ||
+                            p.pointsUsed != c.pointsUsed ||
+                            p.isSaving != c.isSaving ||
+                            p.isReturning != c.isReturning ||
+                            p.isCompleted != c.isCompleted ||
+                            p.wasModified != c.wasModified,
                     builder: (context, state) {
-                      final subtotal = state.items.fold(0.0, (sum, i) => sum + i.subtotal);
+                      final subtotal = state.items.fold(
+                        0.0,
+                        (sum, i) => sum + i.subtotal,
+                      );
                       final rawDiscount = state.pointsUsed * pointsToSolesRatio;
                       final maxDiscount = subtotal * 0.5;
-                      final appliedDiscount = rawDiscount > maxDiscount ? maxDiscount : rawDiscount;
-                      final totalFinal = subtotal - appliedDiscount - rootState.order!.discountAmount;
+                      final appliedDiscount =
+                          rawDiscount > maxDiscount ? maxDiscount : rawDiscount;
+                      final totalFinal =
+                          subtotal -
+                          appliedDiscount -
+                          rootState.order!.discountAmount;
                       final actualTotal = totalFinal < 0 ? 0.0 : totalFinal;
 
                       return Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                          border: Border(
+                            top: BorderSide(color: Colors.grey.shade200),
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.05),
@@ -618,56 +801,97 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                               Expanded(
                                 flex: 5,
                                 child: ElevatedButton(
-                                  onPressed: state.isSaving ? null : () => _saveChanges(pointsToSolesRatio),
+                                  onPressed:
+                                      state.isSaving
+                                          ? null
+                                          : () =>
+                                              _saveChanges(pointsToSolesRatio),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primary,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
-                                  child: state.isSaving
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                        )
-                                      : const Text(
-                                          'Guardar',
-                                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                        ),
+                                  child:
+                                      state.isSaving
+                                          ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                          : const Text(
+                                            'Guardar',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
                                 ),
                               )
                             else if (state.isCompleted)
                               Expanded(
                                 flex: 5,
                                 child: ElevatedButton.icon(
-                                  onPressed: state.isReturning ? null : _confirmReturn,
+                                  onPressed:
+                                      state.isReturning ? null : _confirmReturn,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.red.shade50,
                                     foregroundColor: Colors.red.shade700,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
                                     elevation: 0,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
-                                      side: BorderSide(color: Colors.red.shade200),
+                                      side: BorderSide(
+                                        color: Colors.red.shade200,
+                                      ),
                                     ),
                                   ),
-                                  icon: state.isReturning
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red),
-                                        )
-                                      : const Icon(Icons.assignment_return_rounded),
-                                  label: const Text('Devolución', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  icon:
+                                      state.isReturning
+                                          ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.red,
+                                            ),
+                                          )
+                                          : const Icon(
+                                            Icons.assignment_return_rounded,
+                                          ),
+                                  label: const Text(
+                                    'Devolución',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               )
                             else
                               Expanded(
                                 flex: 5,
                                 child: TextButton(
-                                  onPressed: () => _handlePop(state.wasModified),
-                                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-                                  child: const Text('Cerrar', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  onPressed:
+                                      () => _handlePop(state.wasModified),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Cerrar',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
                           ],
@@ -729,13 +953,13 @@ class _ItemsSectionData {
 
   @override
   int get hashCode => Object.hash(
-        items,
-        isLoading,
-        currentStatus,
-        batchesByVariant,
-        usesBatchesMap,
-        batchOverrides,
-      );
+    items,
+    isLoading,
+    currentStatus,
+    batchesByVariant,
+    usesBatchesMap,
+    batchOverrides,
+  );
 }
 
 class _QuantityEditDialog extends StatefulWidget {
@@ -766,9 +990,7 @@ class _QuantityEditDialogState extends State<_QuantityEditDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: const Text(
         'Modificar Cantidad',
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),

@@ -506,6 +506,10 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                         await OrderPdfGenerator.shareTicket(
                           result.order,
                           items: result.items,
+                          businessName: config.businessName,
+                          taxId: config.businessTaxId,
+                          address: config.businessAddress,
+                          phone: config.businessPhone,
                         );
                       },
                     );

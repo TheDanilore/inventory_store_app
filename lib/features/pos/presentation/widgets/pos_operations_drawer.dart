@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -58,6 +59,7 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
   }
 
   Future<void> _reimprimirTicket(String orderId) async {
+    final config = context.read<AppConfigCubit>();
     try {
       final orderRes =
           await Supabase.instance.client
@@ -72,8 +74,14 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
               ?.map((item) => OrderItemModel.fromJson(item))
               .toList() ??
           [];
-
-      await OrderPdfGenerator.printTicket(orderModel, items: itemsList);
+      await OrderPdfGenerator.printTicket(
+        orderModel, 
+        items: itemsList,
+        businessName: config.businessName,
+        taxId: config.businessTaxId,
+        address: config.businessAddress,
+        phone: config.businessPhone,
+      );
     } catch (e) {
       if (mounted) {
         AppSnackbar.show(

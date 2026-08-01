@@ -216,7 +216,13 @@ class OrdersCubit extends Cubit<OrdersState> {
     }
   }
 
-  Future<void> generatePdfTicket(OrderEntity order) async {
+  Future<void> generatePdfTicket(
+    OrderEntity order, {
+    required String businessName,
+    required String taxId,
+    required String address,
+    required String phone,
+  }) async {
     if (state.generatingPdfOrderId != null) return;
     emit(state.copyWith(generatingPdfOrderId: order.id));
 
@@ -237,6 +243,10 @@ class OrdersCubit extends Cubit<OrdersState> {
           await OrderPdfGenerator.shareTicket(
             order,
             items: items.map((e) => e).toList(),
+            businessName: businessName,
+            taxId: taxId,
+            address: address,
+            phone: phone,
           );
         },
       );

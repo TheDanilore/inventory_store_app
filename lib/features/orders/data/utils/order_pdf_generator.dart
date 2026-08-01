@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
@@ -45,38 +44,12 @@ class OrderPdfGenerator {
   static Future<Uint8List> buildPdfBytes(
     OrderEntity order, {
     required List<OrderItemEntity> items,
-    String? bName,
-    String? bTaxId,
-    String? bAddress,
-    String? bPhone,
+    required String businessName,
+    required String taxId,
+    required String address,
+    required String phone,
   }) async {
     final pdf = pw.Document();
-
-    String businessName = bName ?? 'MI NEGOCIO';
-    String taxId = bTaxId ?? 'RUC: 00000000000';
-    String address = bAddress ?? 'Dirección no registrada';
-    String phone = bPhone ?? '';
-
-    if (bName == null) {
-      try {
-        final supabase = Supabase.instance.client;
-        final info =
-            await supabase
-                .from('business_info')
-                .select()
-                .limit(1)
-                .maybeSingle();
-
-        if (info != null) {
-          businessName = info['business_name'] ?? businessName;
-          taxId = info['tax_id'] != null ? 'RUC: ${info['tax_id']}' : taxId;
-          address = info['address'] ?? address;
-          phone = info['phone'] != null ? 'Tel: ${info['phone']}' : phone;
-        }
-      } catch (_) {
-        // Ignorar, usará valores por defecto
-      }
-    }
 
     final peruTime = _toPeruTime(order.createdAt ?? DateTime.now());
     final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(peruTime);
@@ -276,8 +249,19 @@ class OrderPdfGenerator {
   static Future<void> printTicket(
     OrderEntity order, {
     required List<OrderItemEntity> items,
+    required String businessName,
+    required String taxId,
+    required String address,
+    required String phone,
   }) async {
-    final bytes = await buildPdfBytes(order, items: items);
+    final bytes = await buildPdfBytes(
+      order, 
+      items: items,
+      businessName: businessName,
+      taxId: taxId,
+      address: address,
+      phone: phone,
+    );
 
     await Printing.layoutPdf(
       onLayout: (_) async => bytes,
@@ -288,8 +272,19 @@ class OrderPdfGenerator {
   static Future<void> shareTicket(
     OrderEntity order, {
     required List<OrderItemEntity> items,
+    required String businessName,
+    required String taxId,
+    required String address,
+    required String phone,
   }) async {
-    final bytes = await buildPdfBytes(order, items: items);
+    final bytes = await buildPdfBytes(
+      order, 
+      items: items,
+      businessName: businessName,
+      taxId: taxId,
+      address: address,
+      phone: phone,
+    );
 
     await Printing.sharePdf(
       bytes: bytes,
@@ -300,8 +295,19 @@ class OrderPdfGenerator {
   static Future<void> saveTicket(
     OrderEntity order, {
     required List<OrderItemEntity> items,
+    required String businessName,
+    required String taxId,
+    required String address,
+    required String phone,
   }) async {
-    final bytes = await buildPdfBytes(order, items: items);
+    final bytes = await buildPdfBytes(
+      order, 
+      items: items,
+      businessName: businessName,
+      taxId: taxId,
+      address: address,
+      phone: phone,
+    );
 
     await FileSaver.instance.saveFile(
       name: 'Pedido_${order.id.substring(0, 8)}',
@@ -314,8 +320,19 @@ class OrderPdfGenerator {
   static Future<void> saveTicketAs(
     OrderEntity order, {
     required List<OrderItemEntity> items,
+    required String businessName,
+    required String taxId,
+    required String address,
+    required String phone,
   }) async {
-    final bytes = await buildPdfBytes(order, items: items);
+    final bytes = await buildPdfBytes(
+      order, 
+      items: items,
+      businessName: businessName,
+      taxId: taxId,
+      address: address,
+      phone: phone,
+    );
 
     await FileSaver.instance.saveAs(
       name: 'Pedido_${order.id.substring(0, 8)}',
@@ -328,20 +345,10 @@ class OrderPdfGenerator {
   static List<pw.Widget> _buildItemList(List<OrderItemEntity> items) {
     List<pw.Widget> widgets = [];
     for (final item in items) {
-      // 1. Construir el nombre del producto limpio
       String displayName = item.productName ?? 'Producto';
       final String vLabel = item.variantLabel.trim();
-      final String vLabelLower = vLabel.toLowerCase();
 
-      // 2. Filtro robusto: ignorar si contiene "unica", "única", "default" o está vacío
-      bool hasRealVariant =
-          vLabel.isNotEmpty &&
-          !vLabelLower.contains('default') &&
-          !vLabelLower.contains('única') &&
-          !vLabelLower.contains('unica') &&
-          !vLabelLower.contains('estándar') &&
-          !vLabelLower.contains('estandar') &&
-          vLabel != '()';
+      bool hasRealVariant = vLabel.isNotEmpty && vLabel != '()';
 
       if (hasRealVariant) {
         displayName = '$displayName - $vLabel';

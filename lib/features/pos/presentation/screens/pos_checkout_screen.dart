@@ -25,7 +25,6 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 
@@ -406,38 +405,16 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                           );
                         },
                         (details) async {
-                          String? bName, bTaxId, bAddress, bPhone;
-                          try {
-                            final info =
-                                await Supabase.instance.client
-                                    .from('business_info')
-                                    .select()
-                                    .limit(1)
-                                    .maybeSingle();
-                            if (info != null) {
-                              bName = info['business_name'];
-                              bTaxId =
-                                  info['tax_id'] != null
-                                      ? 'RUC: ${info['tax_id']}'
-                                      : null;
-                              bAddress = info['address'];
-                              bPhone =
-                                  info['phone'] != null
-                                      ? 'Tel: ${info['phone']}'
-                                      : null;
-                            }
-                          } catch (_) {}
-
                           final order = details.order;
                           final items = details.items;
                           final bytes = await IsolateUtils.run(() {
                             return OrderPdfGenerator.buildPdfBytes(
                               order,
                               items: items,
-                              bName: bName,
-                              bTaxId: bTaxId,
-                              bAddress: bAddress,
-                              bPhone: bPhone,
+                              businessName: config.businessName,
+                              taxId: config.businessTaxId,
+                              address: config.businessAddress,
+                              phone: config.businessPhone,
                             );
                           });
 
