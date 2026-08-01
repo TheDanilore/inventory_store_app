@@ -1359,14 +1359,16 @@ BEGIN
       SET wallet_balance = wallet_balance + v_points_earned - v_points_used
       WHERE id = v_customer_id;
       
-      -- Validado con esquema de tabla wallet_movements (usando points, order_id, sin created_by)
-      INSERT INTO wallet_movements (
-        profile_id, order_id, points, movement_type, description
-      ) VALUES (
-        v_customer_id, v_order_id, v_points_earned - v_points_used, 
-        CASE WHEN (v_points_earned - v_points_used) >= 0 THEN 'EARNED' ELSE 'REDEEMED' END,
-        'Puntos por Venta #' || substring(v_order_id::text, 1, 8)
-      );
+      -- Registrar EARNED y REDEEMED por separado para correcta auditoría y reversión
+      IF v_points_earned > 0 THEN
+        INSERT INTO wallet_movements (profile_id, order_id, points, movement_type, description)
+        VALUES (v_customer_id, v_order_id, v_points_earned, 'EARNED', 'Puntos ganados por Venta #' || substring(v_order_id::text, 1, 8));
+      END IF;
+
+      IF v_points_used > 0 THEN
+        INSERT INTO wallet_movements (profile_id, order_id, points, movement_type, description)
+        VALUES (v_customer_id, v_order_id, v_points_used, 'REDEEMED', 'Puntos canjeados en Venta #' || substring(v_order_id::text, 1, 8));
+      END IF;
     END IF;
 
     -- Flujo de Crédito a Clientes
@@ -2263,6 +2265,53 @@ $$;
 
 
 ALTER FUNCTION "public"."rpc_complete_order"("payload" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_open_cash_shift"("p_account_id" "uuid", "p_opening_amount" numeric, "p_opened_by" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_shift_id uuid;
+BEGIN
+  -- 1. Verificar si ya existe un turno abierto para esta caja
+  IF EXISTS (
+    SELECT 1 FROM cash_shifts 
+    WHERE account_id = p_account_id AND status = 'OPEN'
+  ) THEN
+    RAISE EXCEPTION 'Esta caja ya tiene un turno abierto.'
+      USING ERRCODE = 'P0001';
+  END IF;
+
+  -- 2. Validar monto de apertura
+  IF p_opening_amount < 0 THEN
+    RAISE EXCEPTION 'El saldo de apertura no puede ser negativo.';
+  END IF;
+
+  -- 3. Crear el turno
+  INSERT INTO cash_shifts (
+    account_id,
+    opening_amount,
+    expected_amount,
+    opened_by,
+    status,
+    opened_at,
+    notes
+  ) VALUES (
+    p_account_id,
+    p_opening_amount,
+    p_opening_amount,
+    p_opened_by,
+    'OPEN',
+    NOW(),
+    p_notes
+  ) RETURNING id INTO v_shift_id;
+
+  RETURN v_shift_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_open_cash_shift"("p_account_id" "uuid", "p_opening_amount" numeric, "p_opened_by" "uuid", "p_notes" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."save_product_complete"("payload" "jsonb") RETURNS "void"
@@ -5275,6 +5324,12 @@ GRANT ALL ON FUNCTION "public"."rpc_close_cash_shift"("p_shift_id" "uuid", "p_ac
 GRANT ALL ON FUNCTION "public"."rpc_complete_order"("payload" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_complete_order"("payload" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_complete_order"("payload" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."rpc_open_cash_shift"("p_account_id" "uuid", "p_opening_amount" numeric, "p_opened_by" "uuid", "p_notes" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_open_cash_shift"("p_account_id" "uuid", "p_opening_amount" numeric, "p_opened_by" "uuid", "p_notes" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_open_cash_shift"("p_account_id" "uuid", "p_opening_amount" numeric, "p_opened_by" "uuid", "p_notes" "text") TO "service_role";
 
 
 
