@@ -357,6 +357,36 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     }
   }
 
+  Future<void> _onClearCart() async {
+    final cartCubit = context.read<CartCubit>();
+    if (cartCubit.state.items.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Vaciar Caja', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('¿Estás seguro de que deseas eliminar todos los productos de la caja actual?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.delete_outline, size: 18),
+            label: const Text('Vaciar Todo'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      cartCubit.clearCart();
+    }
+  }
+
   // BUILD
 
   @override
@@ -486,7 +516,27 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                       16,
                                       8,
                                     ),
-                                    child: PosSectionLabel('Productos en caja'),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        PosSectionLabel('Productos en caja'),
+                                        BlocBuilder<CartCubit, CartState>(
+                                          builder: (context, cartState) {
+                                            if (cartState.items.isEmpty) return const SizedBox.shrink();
+                                            return TextButton.icon(
+                                              onPressed: _onClearCart,
+                                              icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
+                                              label: const Text('Vaciar Todo', style: TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.bold)),
+                                              style: TextButton.styleFrom(
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                minimumSize: Size.zero,
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                   Expanded(
                                     child: SingleChildScrollView(
@@ -531,7 +581,27 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                PosSectionLabel('Productos en caja'),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    PosSectionLabel('Productos en caja'),
+                                    BlocBuilder<CartCubit, CartState>(
+                                      builder: (context, cartState) {
+                                        if (cartState.items.isEmpty) return const SizedBox.shrink();
+                                        return TextButton.icon(
+                                          onPressed: _onClearCart,
+                                          icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
+                                          label: const Text('Vaciar Todo', style: TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.bold)),
+                                          style: TextButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                            minimumSize: Size.zero,
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
                                 PosCartItemsSection(
                                   onShowBatchEditSheet: _showBatchEditSheet,
                                 ),
