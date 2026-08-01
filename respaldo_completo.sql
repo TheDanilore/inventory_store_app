@@ -1515,29 +1515,43 @@ DECLARE
     v_new_paid         NUMERIC;
     v_new_status       TEXT;
     v_points_earned    INT;
-    v_account_name     TEXT;
+    v_account          RECORD;
+    v_shift_status     TEXT;
     v_current_debt     NUMERIC;
     v_new_debt         NUMERIC;
     v_current_wallet   INT;
     v_now              TIMESTAMPTZ;
 BEGIN
-    -- ── Hora estándar Perú ──────────────────────────────────────
     v_now := NOW() AT TIME ZONE 'America/Lima';
 
-    -- Validación inicial
     IF p_amount <= 0 THEN
         RAISE EXCEPTION 'El monto debe ser mayor a 0.';
     END IF;
 
-    -- Obtener nombre de la cuenta financiera
-    SELECT name INTO v_account_name
+    -- 1. BLINDAJE DE CAJA Y TURNOS
+    SELECT type, name INTO v_account
       FROM public.financial_accounts
      WHERE id = p_account_id;
-    IF v_account_name IS NULL THEN
-        v_account_name := 'EFECTIVO';
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Cuenta financiera no encontrada.';
     END IF;
 
-    -- Iterar órdenes pendientes (FIFO o la específica)
+    IF v_account.type = 'CAJA' THEN
+        IF p_shift_id IS NULL THEN
+            RAISE EXCEPTION 'El pago es por Caja pero no se proporcionó un turno de caja (shift_id).';
+        END IF;
+
+        SELECT status INTO v_shift_status
+        FROM public.cash_shifts
+        WHERE id = p_shift_id;
+
+        IF NOT FOUND OR v_shift_status != 'OPEN' THEN
+            RAISE EXCEPTION 'El turno de caja está cerrado o no existe. No se puede recibir el pago.';
+        END IF;
+    END IF;
+
+    -- 2. BLINDAJE CON FOR UPDATE Y ASIGNACIÓN A ÓRDENES
     FOR v_order IN
         SELECT id, total_amount, amount_paid, payment_status
           FROM public.orders
@@ -1546,6 +1560,7 @@ BEGIN
            AND payment_status IN ('PENDING', 'PARTIAL')
            AND status = 'COMPLETED'
          ORDER BY created_at ASC
+         FOR UPDATE -- <== BLOQUEO TRANSACCIONAL PARA CONCURRENCIA
     LOOP
         EXIT WHEN v_remaining <= 0;
 
@@ -1562,7 +1577,7 @@ BEGIN
             v_points_earned := 0;
         END IF;
 
-        -- 1. Actualizar orden
+        -- Actualizar orden
         UPDATE public.orders
            SET amount_paid   = v_new_paid,
                payment_status = v_new_status,
@@ -1570,7 +1585,7 @@ BEGIN
                updated_at    = v_now
          WHERE id = v_order.id;
 
-        -- 2. Movimiento de crédito del cliente
+        -- Movimiento de crédito
         IF v_to_apply > 0 AND p_credit_id IS NOT NULL THEN
             INSERT INTO public.customer_credit_movements (
                 customer_credit_id,
@@ -1585,13 +1600,13 @@ BEGIN
                 v_order.id,
                 'PAYMENT',
                 v_to_apply,
-                v_account_name,
+                v_account.name,
                 p_notes,
                 v_now
             );
         END IF;
 
-        -- 3. Movimiento de caja/banco
+        -- Movimiento de caja/banco
         IF v_to_apply > 0 THEN
             INSERT INTO public.account_movements (
                 account_id,
@@ -1601,7 +1616,7 @@ BEGIN
                 reference_type,
                 reference_id,
                 shift_id,
-                created_by,     -- ← usuario autenticado
+                created_by,
                 created_at
             ) VALUES (
                 p_account_id,
@@ -1611,7 +1626,7 @@ BEGIN
                 'orders',
                 v_order.id,
                 p_shift_id,
-                auth.uid(),     -- ← usuario que ejecuta la acción
+                auth.uid(),
                 v_now
             );
 
@@ -1620,13 +1635,14 @@ BEGIN
              WHERE id = p_account_id;
         END IF;
 
-        -- 4. Monedas de lealtad
+        -- Monedas de lealtad
         IF v_points_earned > 0 THEN
             SELECT COALESCE(wallet_balance, 0)
               INTO v_current_wallet
               FROM public.profiles
-             WHERE id = p_customer_id;
-
+             WHERE id = p_customer_id
+             FOR UPDATE; -- <== BLOQUEO DE BILLETERA
+             
             UPDATE public.profiles
                SET wallet_balance = v_current_wallet + v_points_earned
              WHERE id = p_customer_id;
@@ -1649,15 +1665,20 @@ BEGIN
         END IF;
     END LOOP;
 
-    -- 5. Actualizar deuda total del cliente
+    -- 3. BLINDAJE DE DEUDA TOTAL (CUSTOMER CREDITS)
     IF p_credit_id IS NOT NULL THEN
         SELECT current_debt
           INTO v_current_debt
           FROM public.customer_credits
-         WHERE id = p_credit_id;
+         WHERE id = p_credit_id
+         FOR UPDATE; -- <== BLOQUEO TRANSACCIONAL PARA CONCURRENCIA DE DEUDA
 
         IF v_current_debt IS NOT NULL THEN
+            IF p_amount > v_current_debt THEN
+               RAISE EXCEPTION 'El monto (S/%) sobrepasa la deuda pendiente (S/%)', p_amount, v_current_debt;
+            END IF;
             v_new_debt := GREATEST(0, v_current_debt - p_amount);
+            
             UPDATE public.customer_credits
                SET current_debt = v_new_debt,
                    updated_at   = v_now
