@@ -614,7 +614,6 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
     required String newMethod,
     required String oldMethod,
     required double orderAmount,
-    required String? profileId,
   }) async {
     try {
       final response = await _supabase.rpc(
@@ -625,7 +624,7 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           'p_new_method': newMethod,
           'p_old_method': oldMethod,
           'p_order_amount': orderAmount,
-          'p_profile_id': profileId ?? _supabase.auth.currentUser?.id,
+          'p_profile_id': _supabase.auth.currentUser?.id,
         },
       );
 

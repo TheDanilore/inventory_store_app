@@ -60,7 +60,6 @@ abstract class PurchaseOrdersRepository {
     required String newMethod,
     required String oldMethod,
     required double orderAmount,
-    required String? profileId,
   });
 
   Future<Either<Failure, Map<String, dynamic>>> getFormCatalogs();
