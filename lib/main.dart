@@ -14,6 +14,8 @@ import 'package:inventory_store_app/core/router/app_router.dart';
 import 'package:inventory_store_app/core/theme/app_theme.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:inventory_store_app/core/widgets/fatal_error_app.dart';
+import 'dart:developer' as developer;
 
 Future<void> main() async {
   // Asegura que los canales nativos estén listos
@@ -25,40 +27,44 @@ Future<void> main() async {
   // Inicialización de formatos locales obligatorios
   await initializeDateFormatting('es', null);
 
-  // Carga de persistencia local inicial
-  final prefs = await SharedPreferences.getInstance();
-
-  // Carga resiliente de credenciales (fromEnvironment -> rootBundle env.json -> SharedPreferences)
-  await EnvConfig.load(prefs);
-
   try {
+    // Carga de persistencia local inicial
+    final prefs = await SharedPreferences.getInstance();
+
+    // Carga resiliente de credenciales (fromEnvironment -> rootBundle env.json -> SharedPreferences)
+    await EnvConfig.load(prefs);
+
     // Inicialización idempotente y segura de Supabase
     await Supabase.initialize(
       url: EnvConfig.supabaseUrl,
       publishableKey: EnvConfig.supabaseKey,
     );
-  } catch (error, stackTrace) {
-    // Logs con StackTrace
-    debugPrint('FALLO CRÍTICO SUPABASE: $error\n$stackTrace');
-  }
 
-  try {
     // Inicialización del contenedor de dependencias (GetIt)
-    // Se sugiere pasar 'prefs' internamente para evitar lecturas duplicadas
     initDI();
+
+    // Captura de rutas profundas (Deep Linking) de forma segura
+    AppRouter.captureInitialRoute();
+
+    // Inyección limpia: Resolvemos el Cubit central y disparamos la sesión
+    final authCubit = sl<AuthCubit>()..checkSession();
+    final router = AppRouter.createRouter(authCubit);
+
+    runApp(MyApp(authCubit: authCubit, router: router));
   } catch (error, stackTrace) {
-    debugPrint('FALLO CRÍTICO DI: $error\n$stackTrace');
-    // Aquí se podría lanzar una pantalla de error nativa si es fatal
+    developer.log(
+      'FALLO CRÍTICO EN INICIALIZACIÓN: $error',
+      error: error,
+      stackTrace: stackTrace,
+      name: 'MainEntrypoint',
+    );
+    
+    // Fallback: Mostrar pantalla de error segura en vez de crashear el framework
+    runApp(FatalErrorApp(
+      error: error.toString(),
+      stackTrace: stackTrace.toString(),
+    ));
   }
-
-  // Captura de rutas profundas (Deep Linking) de forma segura
-  AppRouter.captureInitialRoute();
-
-  // Inyección limpia: Resolvemos el Cubit central y disparamos la sesión
-  final authCubit = sl<AuthCubit>()..checkSession();
-  final router = AppRouter.createRouter(authCubit);
-
-  runApp(MyApp(authCubit: authCubit, router: router));
 }
 
 class MyApp extends StatelessWidget {
