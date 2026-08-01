@@ -55,13 +55,13 @@ abstract class SupplierCreditsRepository {
   Future<Either<Failure, String?>> getAdminProfileId();
 
   Future<Either<Failure, void>> registerPayment({
-    required SupplierCreditEntity account,
+    required String supplierId,
+    required String creditId,
     required double amount,
-    required SupplierFinancialAccountOption selectedAccount,
-    required String? selectedOrderId,
+    required String? accountId,
+    required String? orderId,
     required String notes,
-    required List<Map<String, dynamic>> pendingOrders,
-    required String? adminProfileId,
     required String? shiftId,
+    required String? adminProfileId,
   });
 }

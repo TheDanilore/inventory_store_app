@@ -27,6 +27,28 @@ class SupplierCreditEntity extends Equatable {
     required this.isActive,
   });
 
+  SupplierCreditEntity copyWith({
+    String? creditId,
+    String? supplierId,
+    String? supplierName,
+    String? supplierTaxId,
+    String? supplierPhone,
+    double? creditLimit,
+    double? currentDebt,
+    bool? isActive,
+  }) {
+    return SupplierCreditEntity(
+      creditId: creditId ?? this.creditId,
+      supplierId: supplierId ?? this.supplierId,
+      supplierName: supplierName ?? this.supplierName,
+      supplierTaxId: supplierTaxId ?? this.supplierTaxId,
+      supplierPhone: supplierPhone ?? this.supplierPhone,
+      creditLimit: creditLimit ?? this.creditLimit,
+      currentDebt: currentDebt ?? this.currentDebt,
+      isActive: isActive ?? this.isActive,
+    );
+  }
+
   @override
   List<Object?> get props => [
     creditId,

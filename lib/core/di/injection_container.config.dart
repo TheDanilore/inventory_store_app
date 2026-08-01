@@ -347,7 +347,7 @@ import '../../features/orders/domain/usecases/process_checkout_uc.dart'
     as _i446;
 import '../../features/orders/domain/usecases/process_return_uc.dart' as _i2;
 import '../../features/orders/domain/usecases/register_credit_payment_uc.dart'
-    as _i955;
+    as _i956;
 import '../../features/orders/domain/usecases/save_order_changes_uc.dart'
     as _i904;
 import '../../features/orders/domain/usecases/search_customers_uc.dart'
@@ -430,10 +430,12 @@ import '../../features/purchases/domain/usecases/get_purchase_order_by_id_usecas
     as _i611;
 import '../../features/purchases/domain/usecases/receive_purchase_order_items_usecase.dart'
     as _i323;
-import '../../features/purchases/domain/usecases/register_supplier_credit_payment_usecase.dart'
-    as _i525;
+import '../../features/purchases/domain/usecases/register_supplier_payment_usecase.dart'
+    as _i955;
 import '../../features/purchases/domain/usecases/save_supplier_credit_usecase.dart'
     as _i321;
+import '../../features/purchases/domain/usecases/save_supplier_usecase.dart'
+    as _i842;
 import '../../features/purchases/domain/usecases/search_suppliers_usecase.dart'
     as _i142;
 import '../../features/purchases/domain/usecases/toggle_supplier_credit_usecase.dart'
@@ -797,8 +799,8 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i123.SupplierCreditsRepository>(),
       ),
     );
-    gh.lazySingleton<_i525.RegisterSupplierCreditPaymentUseCase>(
-      () => _i525.RegisterSupplierCreditPaymentUseCase(
+    gh.lazySingleton<_i955.RegisterSupplierPaymentUseCase>(
+      () => _i955.RegisterSupplierPaymentUseCase(
         gh<_i123.SupplierCreditsRepository>(),
       ),
     );
@@ -976,6 +978,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i612.FetchSuppliersUseCase>(
       () => _i612.FetchSuppliersUseCase(gh<_i943.SuppliersRepository>()),
     );
+    gh.lazySingleton<_i842.SaveSupplierUseCase>(
+      () => _i842.SaveSupplierUseCase(gh<_i943.SuppliersRepository>()),
+    );
     gh.lazySingleton<_i175.ToggleSupplierStatusUseCase>(
       () => _i175.ToggleSupplierStatusUseCase(gh<_i943.SuppliersRepository>()),
     );
@@ -1098,6 +1103,14 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i587.UserDetailCubit(
         gh<_i342.GetUserByIdUseCase>(),
         gh<_i476.UsersRepository>(),
+      ),
+    );
+    gh.factory<_i54.SupplierCreditsCubit>(
+      () => _i54.SupplierCreditsCubit(
+        fetchSupplierCreditsUseCase: gh<_i817.FetchSupplierCreditsUseCase>(),
+        toggleSupplierCreditUseCase: gh<_i349.ToggleSupplierCreditUseCase>(),
+        registerSupplierPaymentUseCase:
+            gh<_i955.RegisterSupplierPaymentUseCase>(),
       ),
     );
     gh.factory<_i811.GetAccountMovementsUseCase>(
@@ -1280,6 +1293,13 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i749.GetCreditAccountByCustomerUseCase>(),
       ),
     );
+    gh.factory<_i431.SuppliersCubit>(
+      () => _i431.SuppliersCubit(
+        fetchSuppliersUseCase: gh<_i612.FetchSuppliersUseCase>(),
+        toggleSupplierStatusUseCase: gh<_i175.ToggleSupplierStatusUseCase>(),
+        saveSupplierUseCase: gh<_i842.SaveSupplierUseCase>(),
+      ),
+    );
     gh.factory<_i335.RegisterPaymentCubit>(
       () => _i335.RegisterPaymentCubit(
         gh<_i425.GetFinancialAccountsUseCase>(),
@@ -1314,8 +1334,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i990.GetProfileByIdUc>(
       () => _i990.GetProfileByIdUc(gh<_i992.OrdersRepository>()),
     );
-    gh.factory<_i955.RegisterCreditPaymentUc>(
-      () => _i955.RegisterCreditPaymentUc(gh<_i992.OrdersRepository>()),
+    gh.factory<_i956.RegisterCreditPaymentUc>(
+      () => _i956.RegisterCreditPaymentUc(gh<_i992.OrdersRepository>()),
     );
     gh.factory<_i360.SearchCustomersUc>(
       () => _i360.SearchCustomersUc(gh<_i992.OrdersRepository>()),
@@ -1408,12 +1428,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i927.GetCurrentProfileIdUseCase>(
       () => _i927.GetCurrentProfileIdUseCase(gh<_i813.GetCurrentUserUseCase>()),
     );
-    gh.factory<_i54.SupplierCreditsCubit>(
-      () => _i54.SupplierCreditsCubit(
-        fetchSupplierCreditsUseCase: gh<_i817.FetchSupplierCreditsUseCase>(),
-        toggleSupplierCreditUseCase: gh<_i349.ToggleSupplierCreditUseCase>(),
-      ),
-    );
     gh.factory<_i739.LoyaltyTopCustomersCubit>(
       () => _i739.LoyaltyTopCustomersCubit(
         getTopCustomersUC: gh<_i34.GetTopCustomersUC>(),
@@ -1446,12 +1460,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i1028.WalletCubit(
         getWalletBalanceUC: gh<_i631.GetWalletBalanceUC>(),
         supabase: gh<_i454.SupabaseClient>(),
-      ),
-    );
-    gh.factory<_i431.SuppliersCubit>(
-      () => _i431.SuppliersCubit(
-        fetchSuppliersUseCase: gh<_i612.FetchSuppliersUseCase>(),
-        toggleSupplierStatusUseCase: gh<_i175.ToggleSupplierStatusUseCase>(),
       ),
     );
     gh.factory<_i602.CheckoutCubit>(
@@ -1561,7 +1569,7 @@ extension GetItInjectableX on _i174.GetIt {
         getProfileByIdUc: gh<_i990.GetProfileByIdUc>(),
         searchCustomersUc: gh<_i360.SearchCustomersUc>(),
         checkActiveCashShiftUc: gh<_i864.CheckActiveCashShiftUc>(),
-        registerCreditPaymentUc: gh<_i955.RegisterCreditPaymentUc>(),
+        registerCreditPaymentUc: gh<_i956.RegisterCreditPaymentUc>(),
         processReturnUc: gh<_i2.ProcessReturnUc>(),
       ),
     );

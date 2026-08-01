@@ -116,3 +116,93 @@ class SupplierCreditsError extends SupplierCreditsState {
     stats,
   ];
 }
+
+class SupplierCreditSaving extends SupplierCreditsState {
+  final List<SupplierCreditEntity> currentAccounts;
+  final String searchQuery;
+  final bool withDebtOnly;
+  final int currentPage;
+  final int totalCount;
+  final Map<String, dynamic> stats;
+
+  const SupplierCreditSaving({
+    required this.currentAccounts,
+    required this.searchQuery,
+    required this.withDebtOnly,
+    required this.currentPage,
+    required this.totalCount,
+    required this.stats,
+  });
+
+  @override
+  List<Object?> get props => [
+    currentAccounts,
+    searchQuery,
+    withDebtOnly,
+    currentPage,
+    totalCount,
+    stats,
+  ];
+}
+
+class SupplierCreditSaveSuccess extends SupplierCreditsState {
+  final List<SupplierCreditEntity> currentAccounts;
+  final String searchQuery;
+  final bool withDebtOnly;
+  final int currentPage;
+  final int totalCount;
+  final Map<String, dynamic> stats;
+  final String message;
+
+  const SupplierCreditSaveSuccess({
+    required this.currentAccounts,
+    required this.searchQuery,
+    required this.withDebtOnly,
+    required this.currentPage,
+    required this.totalCount,
+    required this.stats,
+    required this.message,
+  });
+
+  @override
+  List<Object?> get props => [
+    currentAccounts,
+    searchQuery,
+    withDebtOnly,
+    currentPage,
+    totalCount,
+    stats,
+    message,
+  ];
+}
+
+class SupplierCreditSaveError extends SupplierCreditsState {
+  final List<SupplierCreditEntity> currentAccounts;
+  final String searchQuery;
+  final bool withDebtOnly;
+  final int currentPage;
+  final int totalCount;
+  final Map<String, dynamic> stats;
+  final String message;
+
+  const SupplierCreditSaveError({
+    required this.currentAccounts,
+    required this.searchQuery,
+    required this.withDebtOnly,
+    required this.currentPage,
+    required this.totalCount,
+    required this.stats,
+    required this.message,
+  });
+
+  @override
+  List<Object?> get props => [
+    currentAccounts,
+    searchQuery,
+    withDebtOnly,
+    currentPage,
+    totalCount,
+    stats,
+    message,
+  ];
+}

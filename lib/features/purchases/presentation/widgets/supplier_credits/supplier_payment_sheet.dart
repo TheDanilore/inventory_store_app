@@ -1,4 +1,4 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -6,6 +6,9 @@ import 'package:inventory_store_app/features/purchases/domain/usecases/get_activ
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_financial_accounts_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_pending_purchase_orders_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/register_supplier_payment_usecase.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/supplier_credits/supplier_credits_cubit.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/supplier_credits/supplier_credits_state.dart';
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -60,7 +63,6 @@ class SupplierPaymentSheet extends StatefulWidget {
 class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
   final _amountCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
-  bool _isSaving = false;
 
   List<Map<String, dynamic>> _pendingOrders = [];
   bool _loadingOrders = true;
@@ -186,43 +188,8 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
     setState(() => _errorMessage = null);
   }
 
-  Future<void> _executePaymentInSupabase({
-    required double amount,
-    required String notes,
-  }) async {
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
-    final response = await Supabase.instance.client.rpc(
-      'register_supplier_credit_payment_rpc',
-      params: {
-        'p_supplier_id': widget.account.supplierId,
-        'p_credit_id':
-            widget.account.creditId.isNotEmpty ? widget.account.creditId : null,
-        'p_amount': amount,
-        'p_account_id': _selectedAccount?.id,
-        'p_order_id': _selectedOrderId,
-        'p_notes': notes,
-        'p_shift_id':
-            _selectedAccount?.type == 'CAJA' && _activeShift != null
-                ? _activeShift!['id'] as String?
-                : null,
-        'p_profile_id': currentUserId, // ← UUID del usuario logueado
-      },
-    );
-
-    // Verificar si el RPC retornó éxito o un error silencioso
-    final result = response as Map<String, dynamic>?;
-    final didSucceed = result?['success'] == true;
-    if (!didSucceed) {
-      final errMsg =
-          result?['error'] as String? ??
-          result?['detail'] as String? ??
-          'Error desconocido en el servidor.';
-      throw Exception(errMsg);
-    }
-  }
-
-  Future<void> _savePayment() async {
+  void _savePayment() {
     if (_errorMessage != null || _amountCtrl.text.isEmpty) return;
 
     if (_selectedAccount == null) {
@@ -255,37 +222,24 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
       return;
     }
 
-    setState(() => _isSaving = true);
+    final notesText =
+        _notesCtrl.text.trim().isEmpty
+            ? 'Pago registrado desde Admin Cuentas por Pagar'
+            : _notesCtrl.text.trim();
 
-    try {
-      final notesText =
-          _notesCtrl.text.trim().isEmpty
-              ? 'Pago registrado desde Admin Cuentas por Pagar'
-              : _notesCtrl.text.trim();
+    final params = RegisterSupplierPaymentParams(
+      supplierId: widget.account.supplierId,
+      creditId: widget.account.creditId,
+      amount: amount,
+      accountId: _selectedAccount?.id,
+      orderId: _selectedOrderId,
+      notes: notesText,
+      shiftId: _selectedAccount?.type == 'CAJA' && _activeShift != null
+                ? _activeShift!['id'] as String?
+                : null,
+    );
 
-      await _executePaymentInSupabase(amount: amount, notes: notesText);
-
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message:
-              'Pago de S/ ${amount.toStringAsFixed(2)} registrado exitosamente.',
-          type: SnackbarType.success,
-        );
-        widget.onPaymentSaved();
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Error: $e',
-          type: SnackbarType.error,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
+    context.read<SupplierCreditsCubit>().registerPayment(params);
   }
 
   @override
@@ -298,7 +252,6 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
     final bool cajaSinTurno =
         _selectedAccount?.type == 'CAJA' && _activeShift == null;
     final bool isButtonEnabled =
-        !_isSaving &&
         !isLoading &&
         !cajaSinTurno &&
         _selectedAccount != null &&
@@ -334,7 +287,6 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
                       'Pagar al proveedor',
                       style: TextStyle(
                         fontSize: 17,
-                        fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
                     ),
@@ -756,36 +708,52 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: isButtonEnabled ? _savePayment : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-              disabledBackgroundColor: Colors.grey.shade300,
-              disabledForegroundColor: Colors.grey.shade500,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child:
-                _isSaving
-                    ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                    : const Text(
-                      'Confirmar abono',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+            BlocConsumer<SupplierCreditsCubit, SupplierCreditsState>(
+              listenWhen: (previous, current) => current is SupplierCreditSaveSuccess || current is SupplierCreditSaveError,
+              listener: (context, state) {
+                if (state is SupplierCreditSaveError) {
+                  AppSnackbar.show(context, message: state.message, type: SnackbarType.error);
+                } else if (state is SupplierCreditSaveSuccess) {
+                  AppSnackbar.show(context, message: state.message, type: SnackbarType.success);
+                  widget.onPaymentSaved();
+                  Navigator.pop(context);
+                }
+              },
+              builder: (context, state) {
+                final isSaving = state is SupplierCreditSaving;
+                return ElevatedButton(
+                  onPressed: (isButtonEnabled && !isSaving) ? _savePayment : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.teal,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey.shade300,
+                    disabledForegroundColor: Colors.grey.shade500,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-          ),
+                  ),
+                  child:
+                      isSaving
+                          ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                          : const Text(
+                            'Confirmar abono',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                );
+              },
+            ),
         ],
       ),
     );

@@ -310,89 +310,45 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
 
   @override
   Future<Either<Failure, void>> registerPayment({
-    required SupplierCreditEntity account,
+    required String supplierId,
+    required String creditId,
     required double amount,
-    required SupplierFinancialAccountOption selectedAccount,
-    required String? selectedOrderId,
+    required String? accountId,
+    required String? orderId,
     required String notes,
-    required List<Map<String, dynamic>> pendingOrders,
-    required String? adminProfileId,
     required String? shiftId,
+    required String? adminProfileId,
   }) async {
     try {
-      await _supabase.from('supplier_credit_movements').insert({
-        'supplier_credit_id': account.creditId,
-        if (selectedOrderId != null) 'purchase_order_id': selectedOrderId,
-        'movement_type': 'PAYMENT',
-        'amount': amount,
-        'payment_method': selectedAccount.paymentMethodLabel,
-        'notes': notes,
-        if (adminProfileId != null) 'created_by': adminProfileId,
-      });
+      final response = await _supabase.rpc(
+        'register_supplier_credit_payment_rpc',
+        params: {
+          'p_supplier_id': supplierId,
+          'p_credit_id': creditId.isNotEmpty ? creditId : null,
+          'p_amount': amount,
+          'p_account_id': accountId,
+          'p_order_id': orderId,
+          'p_notes': notes,
+          'p_shift_id': shiftId,
+          'p_profile_id': adminProfileId ?? _supabase.auth.currentUser?.id,
+        },
+      );
 
-      final ordersToApply =
-          selectedOrderId != null
-              ? pendingOrders.where((o) => o['id'] == selectedOrderId).toList()
-              : List<Map<String, dynamic>>.from(pendingOrders);
-
-      double remaining = amount;
-      for (final order in ordersToApply) {
-        if (remaining <= 0) break;
-        final orderId = order['id'] as String;
-        final total = (order['total_amount'] as num).toDouble();
-        final alreadyPaid = (order['amount_paid'] as num).toDouble();
-        final pendingOfOrder = (total - alreadyPaid).clamp(
-          0.0,
-          double.infinity,
-        );
-        final toApply =
-            remaining >= pendingOfOrder ? pendingOfOrder : remaining;
-        final newAmountPaid = alreadyPaid + toApply;
-        remaining -= toApply;
-
-        final newPaymentStatus = newAmountPaid >= total ? 'PAID' : 'PARTIAL';
-
-        await _supabase
-            .from('purchase_orders')
-            .update({
-              'amount_paid': newAmountPaid,
-              'payment_status': newPaymentStatus,
-            })
-            .eq('id', orderId);
+      final result = response as Map<String, dynamic>?;
+      final didSucceed = result?['success'] == true;
+      if (!didSucceed) {
+        final errMsg =
+            result?['error'] as String? ??
+            result?['detail'] as String? ??
+            'Error desconocido en el servidor.';
+        return Left(ServerFailure(message: errMsg));
       }
 
-      final newDebt = (account.currentDebt - amount).clamp(
-        0.0,
-        double.infinity,
-      );
-      await _supabase
-          .from('supplier_credits')
-          .update({
-            'current_debt': newDebt,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', account.creditId);
-
-      await _supabase.from('account_movements').insert({
-        'account_id': selectedAccount.id,
-        'movement_type': 'EXPENSE',
-        'amount': amount,
-        'description': 'Pago a crédito proveedor — ${account.supplierName}',
-        'reference_type': 'supplier_credits',
-        'reference_id': account.creditId,
-        if (shiftId != null) 'shift_id': shiftId,
-        if (adminProfileId != null) 'created_by': adminProfileId,
-      });
-
-      final newBalance = selectedAccount.balance - amount;
-      await _supabase
-          .from('financial_accounts')
-          .update({'balance': newBalance})
-          .eq('id', selectedAccount.id);
-
       return const Right(null);
+    } on PostgrestException catch (e) {
+      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
     } catch (e) {
-      return Left(ServerFailure(message: e.toString()));
+      return Left(ServerFailure(message: 'Error inesperado al registrar el pago: $e'));
     }
   }
 }

@@ -27,6 +27,7 @@ class SupplierCreditModel extends SupplierCreditEntity {
     );
   }
 
+  @override
   SupplierCreditModel copyWith({
     String? creditId,
     String? supplierId,

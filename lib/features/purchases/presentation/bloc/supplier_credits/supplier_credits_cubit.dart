@@ -3,18 +3,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/fetch_supplier_credits_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/toggle_supplier_credit_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/register_supplier_payment_usecase.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/supplier_credits/supplier_credits_state.dart';
 
 @injectable
 class SupplierCreditsCubit extends Cubit<SupplierCreditsState> {
   final FetchSupplierCreditsUseCase fetchSupplierCreditsUseCase;
   final ToggleSupplierCreditUseCase toggleSupplierCreditUseCase;
+  final RegisterSupplierPaymentUseCase registerSupplierPaymentUseCase;
 
   static const int pageSize = 8;
 
   SupplierCreditsCubit({
     required this.fetchSupplierCreditsUseCase,
     required this.toggleSupplierCreditUseCase,
+    required this.registerSupplierPaymentUseCase,
   }) : super(SupplierCreditsInitial()) {
     loadAccounts();
   }
@@ -158,6 +161,95 @@ class SupplierCreditsCubit extends Cubit<SupplierCreditsState> {
       },
       (_) {
         loadAccounts();
+      },
+    );
+  }
+
+  Future<void> registerPayment(RegisterSupplierPaymentParams params) async {
+    final currentState = state;
+    List<SupplierCreditEntity> currentList = [];
+    String query = '';
+    bool withDebt = false;
+    int page = 0;
+    int count = 0;
+    Map<String, dynamic> stats = {};
+
+    if (currentState is SupplierCreditsLoaded) {
+      currentList = currentState.accounts;
+      query = currentState.searchQuery;
+      withDebt = currentState.withDebtOnly;
+      page = currentState.currentPage;
+      count = currentState.totalCount;
+      stats = currentState.stats;
+    } else if (currentState is SupplierCreditsError) {
+      currentList = currentState.currentAccounts;
+      query = currentState.searchQuery;
+      withDebt = currentState.withDebtOnly;
+      page = currentState.currentPage;
+      count = currentState.totalCount;
+      stats = currentState.stats;
+    } else if (currentState is SupplierCreditSaveError) {
+      currentList = currentState.currentAccounts;
+      query = currentState.searchQuery;
+      withDebt = currentState.withDebtOnly;
+      page = currentState.currentPage;
+      count = currentState.totalCount;
+      stats = currentState.stats;
+    } else {
+      return;
+    }
+
+    emit(SupplierCreditSaving(
+      currentAccounts: currentList,
+      searchQuery: query,
+      withDebtOnly: withDebt,
+      currentPage: page,
+      totalCount: count,
+      stats: stats,
+    ));
+
+    final result = await registerSupplierPaymentUseCase(params);
+
+    result.fold(
+      (failure) {
+        emit(SupplierCreditSaveError(
+          currentAccounts: currentList,
+          searchQuery: query,
+          withDebtOnly: withDebt,
+          currentPage: page,
+          totalCount: count,
+          stats: stats,
+          message: failure.message,
+        ));
+      },
+      (_) {
+        List<SupplierCreditEntity> updatedList = List.from(currentList);
+        final index = updatedList.indexWhere((s) => s.creditId == params.creditId);
+        
+        if (index >= 0) {
+          final old = updatedList[index];
+          final newDebt = (old.currentDebt - params.amount).clamp(0.0, double.infinity);
+          updatedList[index] = old.copyWith(currentDebt: newDebt);
+        }
+
+        emit(SupplierCreditSaveSuccess(
+          currentAccounts: updatedList,
+          searchQuery: query,
+          withDebtOnly: withDebt,
+          currentPage: page,
+          totalCount: count,
+          stats: stats,
+          message: 'Pago de S/ ${params.amount.toStringAsFixed(2)} registrado exitosamente.',
+        ));
+
+        emit(SupplierCreditsLoaded(
+          accounts: updatedList,
+          searchQuery: query,
+          withDebtOnly: withDebt,
+          currentPage: page,
+          totalCount: count,
+          stats: stats,
+        ));
       },
     );
   }
