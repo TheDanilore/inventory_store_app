@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
@@ -54,6 +55,13 @@ class PlaceResult {
 class GeocodingService {
   static const String _baseUrl = 'https://photon.komoot.io';
 
+  // Cabeceras obligatorias para evitar bloqueo (HTTP 403 / 429) en servidores OSM/Photon al ejecutarse como APK en Android
+  static const Map<String, String> _headers = {
+    'User-Agent': 'InventoryStoreApp/1.0 (com.inventorystore.app; contact@inventorystore.app)',
+    'Accept': 'application/json',
+    'Accept-Language': 'es,es-ES;q=0.9,en;q=0.8',
+  };
+
   /// Busca lugares usando Photon (OSM)
   Future<List<PlaceResult>> searchPlaces(
     String query, {
@@ -68,7 +76,7 @@ class GeocodingService {
       }
 
       final response = await http
-          .get(Uri.parse(url))
+          .get(Uri.parse(url), headers: _headers)
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
@@ -77,9 +85,20 @@ class GeocodingService {
         return features
             .map((f) => PlaceResult.fromJson(f as Map<String, dynamic>))
             .toList();
+      } else {
+        developer.log(
+          '[GeocodingService] searchPlaces devolvió código HTTP ${response.statusCode}: ${response.body}',
+          name: 'GeocodingService',
+        );
       }
       return [];
-    } catch (e) {
+    } catch (e, st) {
+      developer.log(
+        '[GeocodingService] Error al buscar lugares: $e',
+        error: e,
+        stackTrace: st,
+        name: 'GeocodingService',
+      );
       return [];
     }
   }
@@ -89,7 +108,7 @@ class GeocodingService {
     try {
       final url = '$_baseUrl/reverse?lon=$lng&lat=$lat';
       final response = await http
-          .get(Uri.parse(url))
+          .get(Uri.parse(url), headers: _headers)
           .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
@@ -101,9 +120,20 @@ class GeocodingService {
           );
           return place.fullAddress;
         }
+      } else {
+        developer.log(
+          '[GeocodingService] reverseGeocode devolvió código HTTP ${response.statusCode}: ${response.body}',
+          name: 'GeocodingService',
+        );
       }
       return null;
-    } catch (e) {
+    } catch (e, st) {
+      developer.log(
+        '[GeocodingService] Error en reverseGeocode: $e',
+        error: e,
+        stackTrace: st,
+        name: 'GeocodingService',
+      );
       return null;
     }
   }
