@@ -64,7 +64,9 @@ class AppDrawer extends StatefulWidget {
 class _AppDrawerState extends State<AppDrawer> {
   // Rastreo de qué grupos expandibles están abiertos (por título)
   final Set<String> _expanded = {};
-  int? _pendingCount;
+  // ValueNotifier: solo el badge de "Pedidos" se reconstruye cuando cambia el count.
+  // No se usa setState global para un dato que afecta un único widget del drawer.
+  final ValueNotifier<int?> _pendingNotifier = ValueNotifier<int?>(null);
 
   @override
   void initState() {
@@ -74,19 +76,29 @@ class _AppDrawerState extends State<AppDrawer> {
     }
   }
 
+  @override
+  void dispose() {
+    _pendingNotifier.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchPendingCount() async {
     try {
-      final count = await Supabase.instance.client
+      // select('id') con .count() minimiza el egress: solo transfiere
+      // el header HTTP con el count exacto, sin descargar filas.
+      final response = await Supabase.instance.client
           .from('orders')
-          .count(CountOption.exact)
-          .eq('status', 'PENDING');
+          .select('id')
+          .eq('status', 'PENDING')
+          .count(CountOption.exact);
       if (mounted) {
-        setState(() => _pendingCount = count);
+        _pendingNotifier.value = response.count;
       }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _pendingCount = 0);
-      }
+    } catch (e, st) {
+      debugPrint('🔴 [AppDrawer] Error al obtener pedidos pendientes: $e\n$st');
+      // null = sin dato disponible. El badge no aparece en lugar de
+      // mostrar 0 falsamente cuando la query falló.
+      if (mounted) _pendingNotifier.value = null;
     }
   }
 
@@ -171,30 +183,28 @@ class _AppDrawerState extends State<AppDrawer> {
                   _buildSectionTitle('GESTIÓN COMERCIAL'),
 
                   // Pedidos (con badge dinámico)
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.receipt_long_rounded,
-                      title: 'Pedidos',
-                      routePath: '/admin/orders',
-                      trailing:
-                          _pendingCount == null
-                              ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.error,
-                                ),
-                              )
-                              : (_pendingCount! > 0
-                                  ? _buildBadge(_pendingCount!)
-                                  : null),
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/admin/orders');
-                      },
-                    ),
+                  // ValueListenableBuilder: solo este tile se reconstruye
+                  // cuando cambia _pendingNotifier. El resto del drawer permanece intacto.
+                  ValueListenableBuilder<int?>(
+                    valueListenable: _pendingNotifier,
+                    builder: (ctx, count, _) {
+                      return _buildItem(
+                        context,
+                        _DrawerItem(
+                          icon: Icons.receipt_long_rounded,
+                          title: 'Pedidos',
+                          routePath: '/admin/orders',
+                          trailing:
+                              count != null && count > 0
+                                  ? _buildBadge(count)
+                                  : null,
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/admin/orders');
+                          },
+                        ),
+                      );
+                    },
                   ),
 
                   // ── Compras (con sub-ítems) ─────────────────────────
@@ -748,16 +758,23 @@ class _DrawerHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          BlocBuilder<AppConfigCubit, AppConfigState>(
-            builder: (context, state) {
-              final config = context.read<AppConfigCubit>();
-              final businessName = config.businessName;
-              final businessAddress = config.businessAddress;
+          BlocSelector<AppConfigCubit, AppConfigState, ({
+            String businessName,
+            String businessAddress,
+          })>(
+            selector:
+                (state) => (
+                  businessName:
+                      state.businessInfo?.businessName ?? 'Mi Tienda',
+                  businessAddress:
+                      state.businessInfo?.address ?? '',
+                ),
+            builder: (context, data) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    businessName,
+                    data.businessName,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 22,
@@ -765,10 +782,10 @@ class _DrawerHeader extends StatelessWidget {
                       letterSpacing: -0.5,
                     ),
                   ),
-                  if (businessAddress.isNotEmpty) ...[
+                  if (data.businessAddress.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(
-                      businessAddress,
+                      data.businessAddress,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 12,
@@ -851,9 +868,14 @@ class _DrawerFooter extends StatelessWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: BlocBuilder<AuthCubit, auth_state.AuthState>(
-            builder: (context, state) {
-              final currentUser = state.currentUser;
+          child: BlocSelector<AuthCubit, auth_state.AuthState,
+              ({String? avatarUrl, String fullName})>(
+            selector:
+                (state) => (
+                  avatarUrl: state.currentUser?.avatarUrl,
+                  fullName: state.currentUser?.fullName ?? '',
+                ),
+            builder: (context, data) {
               return Column(
                 children: [
                   Material(
@@ -881,14 +903,14 @@ class _DrawerFooter extends StatelessWidget {
                                 alpha: 0.1,
                               ),
                               backgroundImage:
-                                  currentUser?.avatarUrl != null &&
-                                          currentUser!.avatarUrl!.isNotEmpty
+                                  data.avatarUrl != null &&
+                                          data.avatarUrl!.isNotEmpty
                                       ? CachedNetworkImageProvider(
-                                        currentUser.avatarUrl!,
+                                        data.avatarUrl!,
                                       )
                                       : null,
                               child:
-                                  currentUser?.avatarUrl == null
+                                  data.avatarUrl == null
                                       ? const Icon(
                                         Icons.person_rounded,
                                         color: AppColors.primary,
@@ -902,9 +924,9 @@ class _DrawerFooter extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    (currentUser?.fullName ?? '').isEmpty
+                                    data.fullName.isEmpty
                                         ? 'Mi Perfil'
-                                        : currentUser!.fullName,
+                                        : data.fullName,
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -935,10 +957,17 @@ class _DrawerFooter extends StatelessWidget {
                                 final authCubit = context.read<AuthCubit>();
                                 try {
                                   await authCubit.logout();
-                                } catch (e) {
+                                } catch (e, st) {
+                                  debugPrint(
+                                    '🔴 [AppDrawer] Error al cerrar sesión: $e\n$st',
+                                  );
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Error: $e')),
+                                      const SnackBar(
+                                        content: Text(
+                                          'No se pudo cerrar sesión. Inténtalo de nuevo.',
+                                        ),
+                                      ),
                                     );
                                   }
                                 }
