@@ -1,4 +1,4 @@
-﻿import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_usecase.dart';
@@ -91,16 +91,19 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
 
   Future<void> registerPayment({
     required double amount,
-    String? paymentMethod,
+    String? accountId,
+    String? orderId,
     String? notes,
   }) async {
     final currentState = state;
     if (currentState is CustomerCreditsLoaded) {
       try {
         await _registerCreditPaymentUseCase(
+          customerId: currentState.creditAccount.profileId,
           creditId: currentState.creditAccount.id,
           amount: amount,
-          paymentMethod: paymentMethod,
+          accountId: accountId,
+          orderId: orderId,
           notes: notes,
         );
         // Reload all data to refresh debt and movements

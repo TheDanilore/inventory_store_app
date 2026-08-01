@@ -7,7 +7,7 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 class RegisterPaymentModal extends StatefulWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity account;
-  final Future<void> Function(double amount, String method, String? notes)
+  final Future<void> Function(double amount, String? accountId, String? orderId, String? notes)
   onSavePayment;
 
   const RegisterPaymentModal({
@@ -21,7 +21,7 @@ class RegisterPaymentModal extends StatefulWidget {
     BuildContext context, {
     required CustomerCreditEntity account,
     required VoidCallback onSaved,
-    required Future<void> Function(double amount, String method, String? notes)
+    required Future<void> Function(double amount, String? accountId, String? orderId, String? notes)
     onSavePayment,
   }) {
     final isMobile = MediaQuery.of(context).size.width < 600;
@@ -72,6 +72,7 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
   Map<String, dynamic>? _activeShift;
 
   String? _errorMessage;
+  String? _loadingError;
   String? _selectedQuickChip;
 
   @override
@@ -106,8 +107,13 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
           _loadingOrders = false;
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _loadingOrders = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingOrders = false;
+          _loadingError = 'Error al cargar pedidos: $e';
+        });
+      }
     }
   }
 
@@ -133,8 +139,13 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
           await _checkActiveShift(_selectedAccount!['id'] as String);
         }
       }
-    } catch (_) {
-      if (mounted) setState(() => _loadingAccounts = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingAccounts = false;
+          _loadingError = 'Error al cargar cuentas: $e';
+        });
+      }
     }
   }
 
@@ -231,149 +242,7 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
     _validateAmount(_amountCtrl.text, fromQuick: true);
   }
 
-  Future<void> _executePaymentInSupabase({
-    required double amount,
-    required String notes,
-  }) async {
-    // 1. Intentar llamar a la función RPC atómica de Supabase (1 sola llamada HTTP)
-    try {
-      await _supabase.rpc(
-        'register_credit_payment_rpc',
-        params: {
-          'p_customer_id': widget.account.profileId,
-          'p_credit_id':
-              widget.account.id.isNotEmpty ? widget.account.id : null,
-          'p_amount': amount,
-          'p_account_id':
-              _selectedAccount != null ? _selectedAccount!['id'] : null,
-          'p_order_id': _selectedOrderId,
-          'p_notes': notes,
-          'p_shift_id': _activeShift != null ? _activeShift!['id'] : null,
-        },
-      );
-      return;
-    } catch (_) {
-      // Fallback imperativo en caso la función RPC no exista aún en el entorno
-    }
 
-    // 2. Determinar órdenes a las que se aplicará el pago (Fallback)
-    final ordersToApply =
-        _selectedOrderId != null
-            ? _pendingOrders.where((o) => o['id'] == _selectedOrderId).toList()
-            : List<Map<String, dynamic>>.from(_pendingOrders);
-
-    double remaining = amount;
-    for (final order in ordersToApply) {
-      if (remaining <= 0) break;
-      final orderId = order['id'] as String;
-      final total = (order['total_amount'] as num).toDouble();
-      final alreadyPaid = (order['amount_paid'] as num).toDouble();
-      final pendingOfOrder = (total - alreadyPaid).clamp(0.0, double.infinity);
-      final toApply = remaining >= pendingOfOrder ? pendingOfOrder : remaining;
-      final newAmountPaid = alreadyPaid + toApply;
-      remaining -= toApply;
-
-      final newPaymentStatus = newAmountPaid >= total ? 'PAID' : 'PARTIAL';
-
-      int pointsEarned = 0;
-      if (newPaymentStatus == 'PAID') {
-        pointsEarned = (total * 0.03 / 0.01).floor();
-      }
-
-      await _supabase
-          .from('orders')
-          .update({
-            'amount_paid': newAmountPaid,
-            'payment_status': newPaymentStatus,
-            if (pointsEarned > 0) 'points_earned': pointsEarned,
-          })
-          .eq('id', orderId);
-
-      // Insertar movimiento en customer_credit_movements
-      if (toApply > 0) {
-        final creditId = widget.account.id;
-        final methodLabel =
-            _selectedAccount != null
-                ? _selectedAccount!['name'] as String
-                : 'EFECTIVO';
-
-        if (creditId.isNotEmpty) {
-          try {
-            await _supabase.from('customer_credit_movements').insert({
-              'customer_credit_id': creditId,
-              'order_id': orderId,
-              'movement_type': 'PAYMENT',
-              'amount': toApply,
-              'payment_method': methodLabel,
-              'notes': notes,
-            });
-          } catch (_) {}
-        }
-
-        // Insertar movimiento financiero
-        if (_selectedAccount != null) {
-          try {
-            await _supabase.from('account_movements').insert({
-              'account_id': _selectedAccount!['id'],
-              'movement_type': 'INCOME',
-              'amount': toApply,
-              'description':
-                  'Cobro de crédito — Pedido #${orderId.length >= 8 ? orderId.substring(0, 8).toUpperCase() : orderId}',
-              'reference_type': 'orders',
-              'reference_id': orderId,
-              if (_activeShift != null) 'shift_id': _activeShift!['id'],
-            });
-          } catch (_) {}
-        }
-      }
-
-      // Sumar puntos al cliente si el pedido quedó pagado
-      if (pointsEarned > 0) {
-        try {
-          final profileResp =
-              await _supabase
-                  .from('profiles')
-                  .select('wallet_balance')
-                  .eq('id', widget.account.profileId)
-                  .maybeSingle();
-          final currentWallet =
-              (profileResp?['wallet_balance'] as num?)?.toInt() ?? 0;
-
-          await _supabase
-              .from('profiles')
-              .update({'wallet_balance': currentWallet + pointsEarned})
-              .eq('id', widget.account.profileId);
-
-          await _supabase.from('wallet_movements').insert({
-            'profile_id': widget.account.profileId,
-            'order_id': orderId,
-            'points': pointsEarned,
-            'movement_type': 'EARNED',
-            'description': 'Monedas ganadas al saldar pedido a crédito',
-          });
-        } catch (_) {}
-      }
-    }
-
-    // 2. Actualizar la deuda total en customer_credits
-    try {
-      final creditResp =
-          await _supabase
-              .from('customer_credits')
-              .select('current_debt, id')
-              .eq('profile_id', widget.account.profileId)
-              .maybeSingle();
-
-      if (creditResp != null) {
-        final currentDebt = (creditResp['current_debt'] as num).toDouble();
-        final newDebt = (currentDebt - amount).clamp(0.0, double.infinity);
-        await _supabase
-            .from('customer_credits')
-            .update({'current_debt': newDebt})
-            .eq('id', creditResp['id']);
-      }
-    } catch (_) {}
-  }
 
   Future<void> _save() async {
     final debt = widget.account.currentDebt;
@@ -410,16 +279,12 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
               ? 'Abono registrado a crédito'
               : _notesCtrl.text.trim();
 
-      await _executePaymentInSupabase(amount: amount, notes: notesText);
-
-      final methodLabel =
-          _selectedAccount != null
-              ? _selectedAccount!['name'] as String
-              : 'EFECTIVO';
-
-      try {
-        await widget.onSavePayment(amount, methodLabel, notesText);
-      } catch (_) {}
+      await widget.onSavePayment(
+        amount, 
+        _selectedAccount?['id'], 
+        _selectedOrderId, 
+        notesText,
+      );
 
       if (mounted) {
         widget.onSaved();
@@ -597,6 +462,30 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
               ],
             ),
           ),
+
+          if (_loadingError != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.dangerLight,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _loadingError!,
+                      style: const TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
 
           if (hasDebt) ...[
             const SizedBox(height: 16),

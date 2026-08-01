@@ -103,16 +103,20 @@ class RegisterCreditPaymentUseCase {
 
   RegisterCreditPaymentUseCase(this.repository);
 
-  Future<CreditMovementEntity> call({
+  Future<void> call({
+    required String customerId,
     required String creditId,
     required double amount,
-    String? paymentMethod,
+    String? accountId,
+    String? orderId,
     String? notes,
   }) {
     return repository.registerPayment(
+      customerId: customerId,
       creditId: creditId,
       amount: amount,
-      paymentMethod: paymentMethod,
+      accountId: accountId,
+      orderId: orderId,
       notes: notes,
     );
   }

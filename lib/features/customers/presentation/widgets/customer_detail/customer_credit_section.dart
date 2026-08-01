@@ -40,10 +40,11 @@ class CustomerCreditSection extends StatelessWidget {
         creditLimit: limit,
         isActive: isActive,
       ),
-      onSavePayment: (amount, method, notes) async {
+      onSavePayment: (amount, accountId, orderId, notes) async {
         await context.read<CustomerCreditsCubit>().registerPayment(
           amount: amount,
-          paymentMethod: method,
+          accountId: accountId,
+          orderId: orderId,
           notes: notes,
         );
       },

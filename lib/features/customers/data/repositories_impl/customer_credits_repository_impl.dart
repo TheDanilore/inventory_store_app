@@ -284,54 +284,24 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
   }
 
   @override
-  Future<CreditMovementEntity> registerPayment({
+  Future<void> registerPayment({
+    required String customerId,
     required String creditId,
     required double amount,
-    String? paymentMethod,
+    String? accountId,
+    String? orderId,
     String? notes,
   }) async {
-    // Este mtodo simple abstrae el registro de pago.
-    // Dado que el sistema original tiene 'registerPayment' que actualiza mltiples tablas de Orders y Finanzas,
-    // lo simplificaremos o usaremos el servicio existente que el CU puede orquestar.
-
-    // Por ahora, registramos solo el movimiento y deducimos la deuda
-    final credit =
-        await _supabase
-            .from('customer_credits')
-            .select('current_debt')
-            .eq('id', creditId)
-            .single();
-
-    final newDebt = ((credit['current_debt'] as num).toDouble() - amount).clamp(
-      0.0,
-      double.infinity,
-    );
-
-    await _supabase
-        .from('customer_credits')
-        .update({'current_debt': newDebt})
-        .eq('id', creditId);
-
-    final res =
-        await _supabase
-            .from('customer_credit_movements')
-            .insert({
-              'customer_credit_id': creditId,
-              'movement_type': 'PAYMENT',
-              'amount': amount,
-              'payment_method': paymentMethod,
-              'notes': notes,
-            })
-            .select()
-            .single();
-
-    return CreditMovementEntity(
-      id: res['id'],
-      customerCreditId: res['customer_credit_id'],
-      movementType: res['movement_type'],
-      amount: (res['amount'] as num).toDouble(),
-      paymentMethod: res['payment_method'],
-      notes: res['notes'],
+    await _supabase.rpc(
+      'register_credit_payment_rpc',
+      params: {
+        'p_customer_id': customerId,
+        'p_credit_id': creditId,
+        'p_amount': amount,
+        'p_account_id': accountId,
+        'p_order_id': orderId,
+        'p_notes': notes,
+      },
     );
   }
 }

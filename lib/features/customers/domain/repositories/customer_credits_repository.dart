@@ -37,10 +37,12 @@ abstract class CustomerCreditsRepository {
     String? dateFilter,
   });
 
-  Future<CreditMovementEntity> registerPayment({
+  Future<void> registerPayment({
+    required String customerId,
     required String creditId,
     required double amount,
-    String? paymentMethod,
+    String? accountId,
+    String? orderId,
     String? notes,
   });
 }
