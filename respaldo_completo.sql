@@ -665,6 +665,103 @@ $$;
 ALTER FUNCTION "public"."get_loyalty_dashboard"("p_auth_user_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_result jsonb;
+BEGIN
+  SELECT COALESCE(jsonb_agg(
+    jsonb_build_object(
+      'product_id', poi.product_id,
+      'variant_id', poi.variant_id,
+      'product_name', p.name,
+      'sku', pv.sku,
+      'quantity_ordered', poi.quantity_ordered,
+      'quantity_received', poi.quantity_received,
+      'unit_cost', poi.unit_cost,
+      'batch_number', COALESCE(poi.batch_number, 'DEFAULT'),
+      'expiry_date', poi.expiry_date,
+      'uses_batches', COALESCE(p.uses_batches, false),
+      'variant_attrs', COALESCE(
+        (
+          SELECT STRING_AGG(attr.name || ': ' || val.value, ' · ')
+          FROM variant_attribute_values vav
+          JOIN attribute_values val ON val.id = vav.attribute_value_id
+          JOIN attributes attr ON attr.id = val.attribute_id
+          WHERE vav.variant_id = poi.variant_id
+        ), 'Única'
+      ),
+      'image_url', (
+        SELECT pi.image_url 
+        FROM product_images pi 
+        WHERE pi.product_id = poi.product_id 
+          AND (pi.variant_id = poi.variant_id OR pi.variant_id IS NULL)
+        ORDER BY CASE WHEN pi.variant_id = poi.variant_id THEN 0 ELSE 1 END, pi.is_main DESC 
+        LIMIT 1
+      )
+    )
+  ), '[]'::jsonb)
+  INTO v_result
+  FROM purchase_order_items poi
+  LEFT JOIN products p ON p.id = poi.product_id
+  LEFT JOIN product_variants pv ON pv.id = poi.variant_id
+  WHERE poi.purchase_order_id = p_order_id;
+
+  RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text" DEFAULT ''::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_total_debt numeric := 0;
+  v_active_count int := 0;
+  v_suspended_count int := 0;
+  v_maxed_out_count int := 0;
+  v_debt_count int := 0;
+  v_result jsonb;
+BEGIN
+  SELECT 
+    COALESCE(SUM(sc.current_debt), 0),
+    COUNT(*) FILTER (WHERE sc.is_active = true),
+    COUNT(*) FILTER (WHERE sc.is_active = false),
+    COUNT(*) FILTER (WHERE sc.is_active = true AND sc.current_debt >= sc.credit_limit AND sc.credit_limit > 0),
+    COUNT(*) FILTER (WHERE sc.is_active = true AND sc.current_debt > 0)
+  INTO 
+    v_total_debt, 
+    v_active_count, 
+    v_suspended_count, 
+    v_maxed_out_count, 
+    v_debt_count
+  FROM supplier_credits sc
+  JOIN suppliers s ON s.id = sc.supplier_id
+  WHERE p_search_query = '' 
+     OR s.name ILIKE '%' || p_search_query || '%'
+     OR s.tax_id ILIKE '%' || p_search_query || '%'
+     OR s.phone ILIKE '%' || p_search_query || '%';
+
+  v_result := jsonb_build_object(
+    'totalDebt', v_total_debt,
+    'activeAccounts', v_active_count,
+    'suspendedAccounts', v_suspended_count,
+    'maxedOutAccounts', v_maxed_out_count,
+    'debtCount', v_debt_count
+  );
+
+  RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_top_customers"("p_limit" integer DEFAULT 10) RETURNS TABLE("id" "uuid", "full_name" "text", "avatar_url" "text", "is_active" boolean, "wallet_balance" integer, "created_at" timestamp with time zone, "total_revenue" numeric)
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -2267,6 +2364,36 @@ $$;
 ALTER FUNCTION "public"."rpc_complete_order"("payload" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."rpc_create_supplier_credit"("p_supplier_id" "uuid", "p_credit_limit" numeric) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_initial_debt numeric := 0;
+  v_new_credit_id uuid;
+BEGIN
+  -- 1. Calcular deuda inicial bloqueando de forma segura
+  SELECT COALESCE(SUM(total_amount - amount_paid), 0)
+  INTO v_initial_debt
+  FROM purchase_orders
+  WHERE supplier_id = p_supplier_id
+    AND payment_status IN ('PENDING', 'PARTIAL')
+    AND status != 'CANCELLED';
+
+  -- 2. Insertar el nuevo crédito
+  INSERT INTO supplier_credits (supplier_id, credit_limit, current_debt, is_active)
+  VALUES (p_supplier_id, p_credit_limit, v_initial_debt, true)
+  RETURNING id INTO v_new_credit_id;
+
+  RETURN jsonb_build_object('success', true, 'credit_id', v_new_credit_id);
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_create_supplier_credit"("p_supplier_id" "uuid", "p_credit_limit" numeric) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."rpc_open_cash_shift"("p_account_id" "uuid", "p_opening_amount" numeric, "p_opened_by" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -2312,6 +2439,123 @@ $$;
 
 
 ALTER FUNCTION "public"."rpc_open_cash_shift"("p_account_id" "uuid", "p_opening_amount" numeric, "p_opened_by" "uuid", "p_notes" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_receive_purchase_order_items"("p_order_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_item jsonb;
+  v_receive_qty numeric;
+  v_fully_received boolean;
+  v_product_id uuid;
+  v_variant_id uuid;
+  v_uses_batches boolean;
+  v_batch_number text;
+  v_expiry_date date;
+  v_quantity_ordered numeric;
+  
+  v_old_received numeric;
+  v_new_received numeric;
+  v_batch_id uuid;
+  v_stock_id uuid;
+  
+  v_all_fully_received boolean := true;
+BEGIN
+  -- 1. Iterar sobre los items recibidos de forma atómica
+  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    v_receive_qty := (v_item->>'receiveQty')::numeric;
+    v_fully_received := (v_item->>'fullyReceived')::boolean;
+    v_product_id := (v_item->>'product_id')::uuid;
+    v_variant_id := (v_item->>'variant_id')::uuid;
+    v_uses_batches := (v_item->>'uses_batches')::boolean;
+    v_batch_number := v_item->>'batch_number';
+    
+    IF v_item->>'expiry_date' IS NOT NULL THEN
+      v_expiry_date := (v_item->>'expiry_date')::date;
+    ELSE
+      v_expiry_date := NULL;
+    END IF;
+
+    -- Solo procesar si hay cantidad a recibir o si fue marcado como completamente recibido
+    IF v_receive_qty <= 0 THEN
+      IF NOT v_fully_received THEN
+        v_all_fully_received := false;
+      END IF;
+      CONTINUE;
+    END IF;
+
+    -- A. Actualizar quantity_received en purchase_order_items con bloqueo (FOR UPDATE)
+    SELECT quantity_received, quantity_ordered 
+    INTO v_old_received, v_quantity_ordered
+    FROM purchase_order_items
+    WHERE purchase_order_id = p_order_id AND product_id = v_product_id AND variant_id = v_variant_id
+    FOR UPDATE;
+
+    v_new_received := v_old_received + v_receive_qty;
+    
+    UPDATE purchase_order_items
+    SET quantity_received = v_new_received
+    WHERE purchase_order_id = p_order_id AND product_id = v_product_id AND variant_id = v_variant_id;
+
+    -- Determinar si la orden completa está totalmente recibida
+    IF v_new_received < v_quantity_ordered AND NOT v_fully_received THEN
+      v_all_fully_received := false;
+    END IF;
+
+    -- B. Gestionar Lotes (inventory_batches) si usa lotes
+    IF v_uses_batches = true THEN
+      SELECT id INTO v_batch_id
+      FROM inventory_batches
+      WHERE product_id = v_product_id 
+        AND variant_id = v_variant_id 
+        AND warehouse_id = p_warehouse_id 
+        AND batch_number = v_batch_number
+      FOR UPDATE;
+
+      IF v_batch_id IS NOT NULL THEN
+        UPDATE inventory_batches
+        SET quantity = quantity + v_receive_qty
+        WHERE id = v_batch_id;
+      ELSE
+        INSERT INTO inventory_batches (product_id, variant_id, warehouse_id, batch_number, quantity, expiry_date)
+        VALUES (v_product_id, v_variant_id, p_warehouse_id, v_batch_number, v_receive_qty, v_expiry_date);
+      END IF;
+    END IF;
+
+    -- C. Gestionar Stock General (inventory_stock)
+    SELECT id INTO v_stock_id
+    FROM inventory_stock
+    WHERE product_id = v_product_id 
+      AND variant_id = v_variant_id 
+      AND warehouse_id = p_warehouse_id
+    FOR UPDATE;
+
+    IF v_stock_id IS NOT NULL THEN
+      UPDATE inventory_stock
+      SET quantity = quantity + v_receive_qty
+      WHERE id = v_stock_id;
+    ELSE
+      INSERT INTO inventory_stock (product_id, variant_id, warehouse_id, quantity)
+      VALUES (v_product_id, v_variant_id, p_warehouse_id, v_receive_qty);
+    END IF;
+
+  END LOOP;
+
+  -- 2. Actualizar el estado de la orden (purchase_orders)
+  UPDATE purchase_orders
+  SET 
+    status = CASE WHEN v_all_fully_received THEN 'RECEIVED' ELSE 'PARTIAL' END,
+    updated_at = NOW()
+  WHERE id = p_order_id;
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_receive_purchase_order_items"("p_order_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."save_product_complete"("payload" "jsonb") RETURNS "void"
@@ -5255,6 +5499,18 @@ GRANT ALL ON FUNCTION "public"."get_loyalty_dashboard"("p_auth_user_id" "uuid") 
 
 
 
+GRANT ALL ON FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "service_role";
@@ -5327,9 +5583,21 @@ GRANT ALL ON FUNCTION "public"."rpc_complete_order"("payload" "jsonb") TO "servi
 
 
 
+GRANT ALL ON FUNCTION "public"."rpc_create_supplier_credit"("p_supplier_id" "uuid", "p_credit_limit" numeric) TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_create_supplier_credit"("p_supplier_id" "uuid", "p_credit_limit" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_create_supplier_credit"("p_supplier_id" "uuid", "p_credit_limit" numeric) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."rpc_open_cash_shift"("p_account_id" "uuid", "p_opening_amount" numeric, "p_opened_by" "uuid", "p_notes" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_open_cash_shift"("p_account_id" "uuid", "p_opening_amount" numeric, "p_opened_by" "uuid", "p_notes" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_open_cash_shift"("p_account_id" "uuid", "p_opening_amount" numeric, "p_opened_by" "uuid", "p_notes" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."rpc_receive_purchase_order_items"("p_order_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_receive_purchase_order_items"("p_order_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_receive_purchase_order_items"("p_order_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb") TO "service_role";
 
 
 
@@ -5709,182 +5977,3 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
--- ============================================================
--- SCRIPT: get_purchase_order_items_details
--- Obtiene todos los items de una orden de compra con todos 
--- sus detalles (producto, atributos, imágenes) en una sola query.
--- ============================================================
-CREATE OR REPLACE FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") 
-RETURNS "jsonb"
-LANGUAGE "plpgsql" SECURITY DEFINER
-AS $$
-DECLARE
-  v_result jsonb;
-BEGIN
-  SELECT COALESCE(jsonb_agg(
-    jsonb_build_object(
-      'product_id', poi.product_id,
-      'variant_id', poi.variant_id,
-      'product_name', p.name,
-      'sku', pv.sku,
-      'quantity_ordered', poi.quantity_ordered,
-      'quantity_received', poi.quantity_received,
-      'unit_cost', poi.unit_cost,
-      'batch_number', COALESCE(poi.batch_number, 'DEFAULT'),
-      'expiry_date', poi.expiry_date,
-      'uses_batches', COALESCE(p.uses_batches, false),
-      'variant_attrs', COALESCE(
-        (
-          SELECT STRING_AGG(attr.name || ': ' || val.value, ' · ')
-          FROM variant_attribute_values vav
-          JOIN attribute_values val ON val.id = vav.attribute_value_id
-          JOIN attributes attr ON attr.id = val.attribute_id
-          WHERE vav.variant_id = poi.variant_id
-        ), 'Única'
-      ),
-      'image_url', (
-        SELECT pi.image_url 
-        FROM product_images pi 
-        WHERE pi.product_id = poi.product_id 
-          AND (pi.variant_id = poi.variant_id OR pi.variant_id IS NULL)
-        ORDER BY CASE WHEN pi.variant_id = poi.variant_id THEN 0 ELSE 1 END, pi.is_main DESC 
-        LIMIT 1
-      )
-    )
-  ), '[]'::jsonb)
-  INTO v_result
-  FROM purchase_order_items poi
-  LEFT JOIN products p ON p.id = poi.product_id
-  LEFT JOIN product_variants pv ON pv.id = poi.variant_id
-  WHERE poi.purchase_order_id = p_order_id;
-
-  RETURN v_result;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION "public"."get_purchase_order_items_details"(uuid) TO "authenticated";
-GRANT EXECUTE ON FUNCTION "public"."get_purchase_order_items_details"(uuid) TO "service_role";
-
--- ============================================================
--- SCRIPT: rpc_receive_purchase_order_items
--- Recibe mercadería atómicamente y actualiza el inventario
--- ============================================================
-CREATE OR REPLACE FUNCTION "public"."rpc_receive_purchase_order_items"(
-  "p_order_id" "uuid",
-  "p_warehouse_id" "uuid",
-  "p_items" "jsonb"
-) RETURNS "jsonb"
-LANGUAGE "plpgsql" SECURITY DEFINER
-AS $$
-DECLARE
-  v_item jsonb;
-  v_receive_qty numeric;
-  v_fully_received boolean;
-  v_product_id uuid;
-  v_variant_id uuid;
-  v_uses_batches boolean;
-  v_batch_number text;
-  v_expiry_date date;
-  v_quantity_ordered numeric;
-  
-  v_old_received numeric;
-  v_new_received numeric;
-  v_batch_id uuid;
-  v_stock_id uuid;
-  
-  v_all_fully_received boolean := true;
-BEGIN
-  -- 1. Iterar sobre los items recibidos de forma atómica
-  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
-  LOOP
-    v_receive_qty := (v_item->>'receiveQty')::numeric;
-    v_fully_received := (v_item->>'fullyReceived')::boolean;
-    v_product_id := (v_item->>'product_id')::uuid;
-    v_variant_id := (v_item->>'variant_id')::uuid;
-    v_uses_batches := (v_item->>'uses_batches')::boolean;
-    v_batch_number := v_item->>'batch_number';
-    
-    IF v_item->>'expiry_date' IS NOT NULL THEN
-      v_expiry_date := (v_item->>'expiry_date')::date;
-    ELSE
-      v_expiry_date := NULL;
-    END IF;
-
-    -- Solo procesar si hay cantidad a recibir o si fue marcado como completamente recibido
-    IF v_receive_qty <= 0 THEN
-      IF NOT v_fully_received THEN
-        v_all_fully_received := false;
-      END IF;
-      CONTINUE;
-    END IF;
-
-    -- A. Actualizar quantity_received en purchase_order_items con bloqueo (FOR UPDATE)
-    SELECT quantity_received, quantity_ordered 
-    INTO v_old_received, v_quantity_ordered
-    FROM purchase_order_items
-    WHERE purchase_order_id = p_order_id AND product_id = v_product_id AND variant_id = v_variant_id
-    FOR UPDATE;
-
-    v_new_received := v_old_received + v_receive_qty;
-    
-    UPDATE purchase_order_items
-    SET quantity_received = v_new_received
-    WHERE purchase_order_id = p_order_id AND product_id = v_product_id AND variant_id = v_variant_id;
-
-    -- Determinar si la orden completa está totalmente recibida
-    IF v_new_received < v_quantity_ordered AND NOT v_fully_received THEN
-      v_all_fully_received := false;
-    END IF;
-
-    -- B. Gestionar Lotes (inventory_batches) si usa lotes
-    IF v_uses_batches = true THEN
-      SELECT id INTO v_batch_id
-      FROM inventory_batches
-      WHERE product_id = v_product_id 
-        AND variant_id = v_variant_id 
-        AND warehouse_id = p_warehouse_id 
-        AND batch_number = v_batch_number
-      FOR UPDATE;
-
-      IF v_batch_id IS NOT NULL THEN
-        UPDATE inventory_batches
-        SET quantity = quantity + v_receive_qty
-        WHERE id = v_batch_id;
-      ELSE
-        INSERT INTO inventory_batches (product_id, variant_id, warehouse_id, batch_number, quantity, expiry_date)
-        VALUES (v_product_id, v_variant_id, p_warehouse_id, v_batch_number, v_receive_qty, v_expiry_date);
-      END IF;
-    END IF;
-
-    -- C. Gestionar Stock General (inventory_stock)
-    SELECT id INTO v_stock_id
-    FROM inventory_stock
-    WHERE product_id = v_product_id 
-      AND variant_id = v_variant_id 
-      AND warehouse_id = p_warehouse_id
-    FOR UPDATE;
-
-    IF v_stock_id IS NOT NULL THEN
-      UPDATE inventory_stock
-      SET quantity = quantity + v_receive_qty
-      WHERE id = v_stock_id;
-    ELSE
-      INSERT INTO inventory_stock (product_id, variant_id, warehouse_id, quantity)
-      VALUES (v_product_id, v_variant_id, p_warehouse_id, v_receive_qty);
-    END IF;
-
-  END LOOP;
-
-  -- 2. Actualizar el estado de la orden (purchase_orders)
-  UPDATE purchase_orders
-  SET 
-    status = CASE WHEN v_all_fully_received THEN 'RECEIVED' ELSE 'PARTIAL' END,
-    updated_at = NOW()
-  WHERE id = p_order_id;
-
-  RETURN jsonb_build_object('success', true);
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION "public"."rpc_receive_purchase_order_items"(uuid, uuid, jsonb) TO "authenticated";
-GRANT EXECUTE ON FUNCTION "public"."rpc_receive_purchase_order_items"(uuid, uuid, jsonb) TO "service_role";
