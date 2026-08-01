@@ -59,7 +59,7 @@ class GeocodingService {
   static const Map<String, String> _headers = {
     'User-Agent': 'InventoryStoreApp/1.0 (com.inventorystore.app; contact@inventorystore.app)',
     'Accept': 'application/json',
-    'Accept-Language': 'es,es-ES;q=0.9,en;q=0.8',
+    'Accept-Language': 'es,es-ES;q=0.9,es-419;q=0.8',
   };
 
   /// Busca lugares usando Photon (OSM)
