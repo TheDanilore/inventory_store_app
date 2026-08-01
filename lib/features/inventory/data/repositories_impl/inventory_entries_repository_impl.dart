@@ -41,20 +41,18 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         'p_purchase_order_id': purchaseOrderId,
         'p_payment_mode': paymentMode,
         'p_account_id': accountId,
-        'p_active_shift_id': activeShiftId,
+        'p_active_shift_id': null, // Validation moved to server RPC
         'p_document_type': documentType,
         'p_document_number': documentNumber,
         'p_document_date': documentDate?.toIso8601String().split('T').first,
         'p_notes': notes,
         'p_items': itemsJson,
       });
+    } on PostgrestException catch (e) {
+      debugPrint('[InventoryEntriesRepo] createInventoryEntry error: ${e.message}');
+      throw Exception(e.message);
     } catch (e) {
-      if (e.toString().contains('Saldo insuficiente')) {
-        throw Exception('Saldo insuficiente en la cuenta financiera.');
-      }
-      if (e.toString().contains('La caja seleccionada no tiene un turno abierto')) {
-        throw Exception('La caja seleccionada no tiene un turno abierto.');
-      }
+      debugPrint('[InventoryEntriesRepo] createInventoryEntry unexpected error: $e');
       rethrow;
     }
   }
@@ -102,105 +100,8 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
       );
     }
 
-    // 2. Fallback de cliente
-    final poItems = await supabase
-        .from('purchase_order_items')
-        .select(
-          'id, product_id, variant_id, quantity_ordered, quantity_received',
-        )
-        .eq('purchase_order_id', purchaseOrderId);
-
-    final poItemsList = poItems as List;
-    if (poItemsList.isEmpty) {
-      debugPrint('[syncPurchaseOrder] PO has no items.');
-      return;
-    }
-
-    final entryItemsResp = await supabase
-        .from('inventory_entry_items')
-        .select(
-          'product_id, variant_id, quantity, inventory_entries!inner(purchase_order_id)',
-        )
-        .eq('inventory_entries.purchase_order_id', purchaseOrderId);
-
-    final entryItemsList = entryItemsResp as List;
-    debugPrint(
-      '[syncPurchaseOrder] Found ${entryItemsList.length} entry item records for PO.',
-    );
-
-    bool allReceived = true;
-    bool anyReceived = false;
-
-    for (final poi in poItemsList) {
-      final poiId = poi['id'] as String;
-      final productId = poi['product_id'] as String?;
-      final variantId = poi['variant_id'] as String?;
-      final ordered = (poi['quantity_ordered'] as num?)?.toDouble() ?? 0.0;
-
-      final totalReceived = entryItemsList
-          .where((ei) {
-            final eiVariantId = ei['variant_id'] as String?;
-            final eiProductId = ei['product_id'] as String?;
-            if (variantId != null &&
-                variantId.isNotEmpty &&
-                eiVariantId != null &&
-                eiVariantId.isNotEmpty &&
-                variantId == eiVariantId) {
-              return true;
-            }
-            if (productId != null &&
-                productId.isNotEmpty &&
-                eiProductId != null &&
-                eiProductId.isNotEmpty &&
-                productId == eiProductId) {
-              return true;
-            }
-            return false;
-          })
-          .fold(
-            0.0,
-            (sum, ei) => sum + ((ei['quantity'] as num?)?.toDouble() ?? 0.0),
-          );
-
-      debugPrint(
-        '[syncPurchaseOrder] Item $poiId -> ordered=$ordered, totalReceived=$totalReceived',
-      );
-
-      try {
-        await supabase
-            .from('purchase_order_items')
-            .update({'quantity_received': totalReceived})
-            .eq('id', poiId);
-      } catch (e) {
-        debugPrint(
-          '[syncPurchaseOrder] Error updating item $poiId (RLS Policy Issue): $e',
-        );
-      }
-
-      if (totalReceived > 0) anyReceived = true;
-      if (totalReceived < ordered) allReceived = false;
-    }
-
-    final String newStatus =
-        allReceived ? 'RECEIVED' : (anyReceived ? 'PARTIAL' : 'SENT');
-
-    debugPrint(
-      '[syncPurchaseOrder] Updating PO $purchaseOrderId status -> $newStatus (allReceived=$allReceived, anyReceived=$anyReceived)',
-    );
-
-    try {
-      await supabase
-          .from('purchase_orders')
-          .update({
-            'status': newStatus,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', purchaseOrderId);
-    } catch (e) {
-      debugPrint(
-        '[syncPurchaseOrder] Error updating PO status (RLS Policy Issue): $e',
-      );
-    }
+    // 2. No se usa fallback de cliente. La sincronización se delega 
+    // completamente al backend (RPC y base de datos).
   }
 
   Future<List<Map<String, dynamic>>> getActiveWarehouses() async {
@@ -235,12 +136,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    var query = _supabase.from('inventory_entries').select('''
+      var query = _supabase.from('inventory_entries').select('''
           id, created_at, notes, total_amount,
           document_type, document_number, document_date, purchase_order_id,
           warehouses!inner(name),
-          suppliers(name),
-          inventory_entry_items(id)
+          suppliers(name)
         ''');
 
     if (searchQuery != null && searchQuery.isNotEmpty) {
@@ -282,14 +182,13 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
 
   @override
   Future<List<dynamic>> getEntryItems(String entryId) async {
-    final resp = await _supabase
+      final resp = await _supabase
         .from('inventory_entry_items')
         .select('''
           quantity, unit_cost, batch_number, expiry_date, variant_id,
           products!inner(
             name, 
-            uses_batches, 
-            product_images(image_url, is_main, variant_id)
+            uses_batches
           ),
           product_variants!inner(
             variant_attribute_values(

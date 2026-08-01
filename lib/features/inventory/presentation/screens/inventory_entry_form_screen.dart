@@ -271,6 +271,15 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             _documentNumberCtrl.text = state.documentNumber!;
           }
         },
+        buildWhen: (prev, curr) =>
+            prev.isLoading != curr.isLoading ||
+            prev.isSaving != curr.isSaving ||
+            prev.selectedWarehouseId != curr.selectedWarehouseId ||
+            prev.selectedSupplierId != curr.selectedSupplierId ||
+            prev.paymentMode != curr.paymentMode ||
+            prev.documentType != curr.documentType ||
+            prev.documentDate != curr.documentDate ||
+            prev.selectedAccountId != curr.selectedAccountId,
         builder: (context, state) {
           final cubit = context.read<InventoryEntryFormCubit>();
           if (cubit.state.isLoading) {
@@ -756,9 +765,12 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     InventoryEntryFormCubit cubit,
   ) {
     return _SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: BlocSelector<InventoryEntryFormCubit, InventoryEntryFormState, List<InventoryEntryItemEntity>>(
+        selector: (state) => state.items,
+        builder: (context, items) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -782,7 +794,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                       foregroundColor: AppColors.primary,
                     ),
                   ),
-                  if (cubit.state.items.isNotEmpty &&
+                  if (items.isNotEmpty &&
                       widget.purchaseOrderId == null)
                     PopupMenuButton<String>(
                       tooltip: 'Más opciones',
@@ -823,7 +835,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOut,
             child:
-                cubit.state.items.isEmpty
+                items.isEmpty
                     ? Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
@@ -883,10 +895,10 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                     : ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: cubit.state.items.length,
+                      itemCount: items.length,
                       itemBuilder: (context, index) {
                         return POFormItemTile(
-                          item: cubit.state.items[index],
+                          item: items[index],
                           onUpdateQuantity: (newQty) {
                             cubit.updateItemQuantity(index, newQty);
                           },
@@ -898,13 +910,15 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                       },
                     ),
           ),
-          if (cubit.state.items.isNotEmpty) ...[
+          if (items.isNotEmpty) ...[
             const SizedBox(height: 16),
-            POFormSummaryCard(items: cubit.state.items),
+            POFormSummaryCard(items: items),
           ],
         ],
-      ),
-    );
+      );
+    },
+  ),
+);
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -916,45 +930,50 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     InventoryEntryFormState state,
     InventoryEntryFormCubit cubit,
   ) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: state.items.isEmpty ? null : _handleSave,
-                icon: const Icon(Icons.check_circle_outline_rounded),
-                label: const Text(
-                  'Confirmar Ingreso',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 0,
-                ),
+    return BlocSelector<InventoryEntryFormCubit, InventoryEntryFormState, bool>(
+      selector: (state) => state.items.isNotEmpty,
+      builder: (context, hasItems) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: Colors.grey.shade200)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -4),
               ),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: !hasItems ? null : _handleSave,
+                    icon: const Icon(Icons.check_circle_outline_rounded),
+                    label: const Text(
+                      'Confirmar Ingreso',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
