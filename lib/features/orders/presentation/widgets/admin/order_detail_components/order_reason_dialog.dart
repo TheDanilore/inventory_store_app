@@ -23,7 +23,19 @@ class OrderReasonDialog extends StatefulWidget {
 }
 
 class _OrderReasonDialogState extends State<OrderReasonDialog> {
-  String _notes = '';
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +51,7 @@ class _OrderReasonDialogState extends State<OrderReasonDialog> {
           Text(widget.hint, style: const TextStyle(fontSize: 14)),
           const SizedBox(height: 12),
           TextField(
+            controller: _controller,
             maxLines: 3,
             autofocus: true,
             decoration: InputDecoration(
@@ -47,11 +60,6 @@ class _OrderReasonDialogState extends State<OrderReasonDialog> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            onChanged: (val) {
-              setState(() {
-                _notes = val;
-              });
-            },
           ),
         ],
       ),
@@ -61,7 +69,7 @@ class _OrderReasonDialogState extends State<OrderReasonDialog> {
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.pop(context, _notes),
+          onPressed: () => Navigator.pop(context, _controller.text.trim()),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.teal,
             foregroundColor: Colors.white,
