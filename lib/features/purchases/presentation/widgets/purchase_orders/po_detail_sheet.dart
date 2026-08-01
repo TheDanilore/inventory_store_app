@@ -3,9 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_active_cash_shift_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_financial_accounts_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/register_order_payment_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/update_order_payment_method_usecase.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_cubit.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_state.dart';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/purchases/data/models/purchase_order_model.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/purchase_order_item_entity.dart';
 
@@ -132,16 +139,12 @@ class _PODetailSheetState extends State<PODetailSheet> {
   }
 
   Future<void> _showPaymentDialog() async {
-    final supabase = Supabase.instance.client;
-    List<Map<String, dynamic>> accounts = [];
-    try {
-      final aRes = await supabase
-          .from('financial_accounts')
-          .select('id, name, type, balance')
-          .eq('is_active', true)
-          .order('name');
-      accounts = List<Map<String, dynamic>>.from(aRes as List);
-    } catch (_) {}
+    List<SupplierFinancialAccountOption> accounts = [];
+    final accountsRes = await sl<GetFinancialAccountsUseCase>().call();
+    accountsRes.fold(
+      (failure) => developer.log('Error al cargar cuentas: ${failure.message}'),
+      (list) => accounts = list,
+    );
 
     if (!mounted) return;
     if (accounts.isEmpty) {
@@ -153,23 +156,23 @@ class _PODetailSheetState extends State<PODetailSheet> {
       return;
     }
 
-    String selectedAccountId = accounts.first['id'] as String;
+    String selectedAccountId = accounts.first.id;
 
     // ── Pre-cargar turnos de caja abiertos ───────────────────────────
     final Map<String, String> activeShiftByAccount = {};
-    try {
-      final openShiftsRes = await supabase
-          .from('cash_shifts')
-          .select('id, account_id')
-          .eq('status', 'OPEN');
-      for (final s in openShiftsRes as List) {
-        final accId = s['account_id'] as String?;
-        final shiftId = s['id'] as String?;
-        if (accId != null && shiftId != null) {
-          activeShiftByAccount[accId] = shiftId;
-        }
+    for (final acc in accounts) {
+      if (acc.type == 'CAJA') {
+        final shiftRes = await sl<GetActiveCashShiftUseCase>().call(acc.id);
+        shiftRes.fold(
+          (failure) => developer.log('Error al consultar turno: ${failure.message}'),
+          (shift) {
+            if (shift != null && shift['id'] != null) {
+              activeShiftByAccount[acc.id] = shift['id'] as String;
+            }
+          },
+        );
       }
-    } catch (_) {}
+    }
 
     final amountCtrl = TextEditingController(text: _pending.toStringAsFixed(2));
 
@@ -180,16 +183,14 @@ class _PODetailSheetState extends State<PODetailSheet> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final selAcc = accounts.firstWhere(
-              (a) => a['id'] == selectedAccountId,
+              (a) => a.id == selectedAccountId,
               orElse: () => accounts.first,
             );
-            final accType = selAcc['type'] as String? ?? 'OTRO';
+            final accType = selAcc.type;
             final isCaja = accType == 'CAJA';
-            final hasShift = activeShiftByAccount.containsKey(
-              selectedAccountId,
-            );
+            final hasShift = activeShiftByAccount.containsKey(selectedAccountId);
             final isNoShiftWarning = isCaja && !hasShift;
-            final accBalance = (selAcc['balance'] as num? ?? 0).toDouble();
+            final accBalance = selAcc.balance;
             final payInput = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
             final isInsufficientFunds = accBalance < payInput && payInput > 0;
 
@@ -248,12 +249,10 @@ class _PODetailSheetState extends State<PODetailSheet> {
                       ),
                       items:
                           accounts.map((acc) {
-                            final name = acc['name'] as String;
-                            final bal = (acc['balance'] as num).toDouble();
                             return DropdownMenuItem<String>(
-                              value: acc['id'] as String,
+                              value: acc.id,
                               child: Text(
-                                '$name (Saldo: S/ ${bal.toStringAsFixed(2)})',
+                                '${acc.name} (Saldo: S/ ${acc.balance.toStringAsFixed(2)})',
                                 style: const TextStyle(fontSize: 13),
                               ),
                             );
@@ -416,62 +415,24 @@ class _PODetailSheetState extends State<PODetailSheet> {
         return;
       }
 
-      // Validación de saldo suficiente en la cuenta seleccionada
       final selAccFinal = accounts.firstWhere(
-        (a) => a['id'] == selectedAccountId,
+        (a) => a.id == selectedAccountId,
         orElse: () => accounts.first,
       );
-      final accBalanceFinal = (selAccFinal['balance'] as num? ?? 0).toDouble();
+      final accBalanceFinal = selAccFinal.balance;
       if (accBalanceFinal < payAmount) {
         if (mounted) {
           AppSnackbar.show(
             context,
             message:
-                'Saldo insuficiente. La cuenta tiene S/ ${accBalanceFinal.toStringAsFixed(2)} y el monto requerido es S/ ${payAmount.toStringAsFixed(2)}.',
+                'Saldo insuficiente en la cuenta "${selAccFinal.name}". Saldo disponible: S/ ${accBalanceFinal.toStringAsFixed(2)}, Monto a pagar: S/ ${payAmount.toStringAsFixed(2)}.',
             type: SnackbarType.error,
           );
         }
         return;
       }
 
-      final selAcc = accounts.firstWhere(
-        (a) => a['id'] == selectedAccountId,
-        orElse: () => accounts.first,
-      );
-      final accType = selAcc['type'] as String? ?? 'OTRO';
-      final accBalance = (selAcc['balance'] as num?)?.toDouble() ?? 0.0;
-      final accName = selAcc['name'] as String? ?? 'la cuenta';
-
-      if (accBalance < payAmount) {
-        if (mounted) {
-          AppSnackbar.show(
-            context,
-            message:
-                'Saldo insuficiente en la cuenta "$accName". Saldo disponible: S/ ${accBalance.toStringAsFixed(2)}, Monto a pagar: S/ ${payAmount.toStringAsFixed(2)}.',
-            type: SnackbarType.warning,
-          );
-        }
-        return;
-      }
-
-      // ── Validar Turno de Caja Activo ───────────────────────────────
-
-      String? activeShiftId;
-      try {
-        final shiftRes =
-            await supabase
-                .from('cash_shifts')
-                .select('id')
-                .eq('account_id', selectedAccountId)
-                .eq('status', 'OPEN')
-                .maybeSingle();
-
-        if (shiftRes != null) {
-          activeShiftId = shiftRes['id'] as String?;
-        }
-      } catch (_) {}
-
-      if (accType == 'CAJA' && activeShiftId == null) {
+      if (selAccFinal.type == 'CAJA' && !activeShiftByAccount.containsKey(selectedAccountId)) {
         if (mounted) {
           AppSnackbar.show(
             context,
@@ -483,71 +444,25 @@ class _PODetailSheetState extends State<PODetailSheet> {
         return;
       }
 
-      setState(() => _isProcessingAction = true);
-      try {
-        // Obtener el UUID del usuario actualmente logueado
-        final currentUserId = supabase.auth.currentUser?.id;
-
-        final response = await supabase.rpc(
-          'register_supplier_credit_payment_rpc',
-          params: {
-            'p_supplier_id': widget.po.supplierId,
-            'p_credit_id': null,
-            'p_amount': payAmount,
-            'p_account_id': selectedAccountId,
-            'p_order_id': widget.po.id,
-            'p_notes':
-                'Pago de Orden de Compra #${widget.po.id.substring(0, 8)}',
-            'p_shift_id': activeShiftId,
-            'p_profile_id': currentUserId, // ← UUID del usuario logueado
-          },
-        );
-
-        // El RPC retorna un JSONB: {'success': true} o {'success': false, 'error': '...'}
-        // Si no se verifica esto, cualquier error interno del RPC pasa silencioso.
-        final result = response as Map<String, dynamic>?;
-        final didSucceed = result?['success'] == true;
-
-        if (!mounted) return;
-
-        if (!didSucceed) {
-          final errMsg =
-              result?['error'] as String? ??
-              result?['detail'] as String? ??
-              'Error desconocido en el servidor.';
-          AppSnackbar.show(
-            context,
-            message: 'Error del servidor: $errMsg',
-            type: SnackbarType.error,
-          );
-          return;
-        }
-
-        setState(() {
-          _amountPaid += payAmount;
-        });
+      final supplierId = widget.po.supplierId;
+      if (supplierId == null) {
         AppSnackbar.show(
           context,
-          message:
-              'Pago de S/ ${payAmount.toStringAsFixed(2)} registrado correctamente.',
-          type: SnackbarType.success,
+          message: 'Error: La orden no tiene un proveedor asociado.',
+          type: SnackbarType.error,
         );
-
-        try {
-          context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
-        } catch (_) {}
-        widget.onPaymentSuccess?.call();
-      } catch (e) {
-        if (mounted) {
-          AppSnackbar.show(
-            context,
-            message: 'Error al registrar pago: $e',
-            type: SnackbarType.error,
-          );
-        }
-      } finally {
-        if (mounted) setState(() => _isProcessingAction = false);
+        return;
       }
+
+      context.read<PurchaseOrdersCubit>().registerOrderPayment(
+        RegisterOrderPaymentParams(
+          orderId: widget.po.id,
+          supplierId: supplierId,
+          amount: payAmount,
+          accountId: selectedAccountId,
+          shiftId: activeShiftByAccount[selectedAccountId],
+        ),
+      );
     }
   }
 
@@ -645,181 +560,25 @@ class _PODetailSheetState extends State<PODetailSheet> {
 
     if (confirmed == true && mounted) {
       if (selectedMethod == _paymentMethod) return;
-
-      setState(() => _isProcessingAction = true);
-      try {
-        final supabase = Supabase.instance.client;
-        final supplierId = widget.po.supplierId;
-
-        if (supplierId == null) return;
-        final orderAmount = widget.po.totalAmount;
-
-        // Si se cambia la forma de pago A Crédito (CRÉDITO)
-        if (selectedMethod == 'CRÉDITO') {
-          final creditRes =
-              await supabase
-                  .from('supplier_credits')
-                  .select('id, current_debt, credit_limit, is_active')
-                  .eq('supplier_id', supplierId)
-                  .maybeSingle();
-
-          if (creditRes == null) {
-            if (mounted) {
-              AppSnackbar.show(
-                context,
-                message:
-                    'El proveedor no tiene una línea de crédito habilitada. Por favor regístrala en Créditos Proveedores.',
-                type: SnackbarType.error,
-              );
-            }
-            return;
-          }
-
-          final isActive = creditRes['is_active'] as bool? ?? true;
-          if (!isActive) {
-            if (mounted) {
-              AppSnackbar.show(
-                context,
-                message: 'La línea de crédito de este proveedor está inactiva.',
-                type: SnackbarType.error,
-              );
-            }
-            return;
-          }
-
-          final creditLimit =
-              (creditRes['credit_limit'] as num?)?.toDouble() ?? 0.0;
-          final currentDebtTable =
-              (creditRes['current_debt'] as num?)?.toDouble() ?? 0.0;
-
-          // Calcular deuda acumulada en órdenes pendientes
-          final pendingPosRes = await supabase
-              .from('purchase_orders')
-              .select('total_amount, amount_paid')
-              .eq('supplier_id', supplierId)
-              .inFilter('payment_status', ['PENDING', 'PARTIAL'])
-              .neq('status', 'CANCELLED');
-
-          double poDebt = 0.0;
-          for (final po in pendingPosRes as List) {
-            final total = (po['total_amount'] as num?)?.toDouble() ?? 0.0;
-            final paid = (po['amount_paid'] as num?)?.toDouble() ?? 0.0;
-            final debt = (total - paid) > 0 ? (total - paid) : 0.0;
-            poDebt += debt;
-          }
-
-          final realDebt =
-              currentDebtTable > poDebt ? currentDebtTable : poDebt;
-
-          if (creditLimit <= 0) {
-            if (mounted) {
-              AppSnackbar.show(
-                context,
-                message:
-                    'El proveedor tiene un límite de crédito de S/ 0.00. Configura un límite en Créditos Proveedores.',
-                type: SnackbarType.error,
-              );
-            }
-            return;
-          }
-
-          if ((realDebt + orderAmount) > creditLimit) {
-            final available = (creditLimit - realDebt).clamp(
-              0.0,
-              double.infinity,
-            );
-            if (mounted) {
-              AppSnackbar.show(
-                context,
-                message:
-                    'Límite de crédito excedido. Disponible: S/ ${available.toStringAsFixed(2)}, Monto de la orden: S/ ${orderAmount.toStringAsFixed(2)}.',
-                type: SnackbarType.error,
-              );
-            }
-            return;
-          }
-
-          // Actualizar deuda en la tabla supplier_credits
-          final creditId = creditRes['id'] as String;
-          await supabase
-              .from('supplier_credits')
-              .update({
-                'current_debt': currentDebtTable + orderAmount,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', creditId);
-
-          // Registrar movimiento de cargo
-          final currentUserId = supabase.auth.currentUser?.id;
-          await supabase.from('supplier_credit_movements').insert({
-            'supplier_credit_id': creditId,
-            'purchase_order_id': widget.po.id,
-            'movement_type': 'CHARGE',
-            'amount': orderAmount,
-            'notes':
-                'Cambio de método de pago a CRÉDITO en Orden #${widget.po.id.substring(0, 8)}',
-            'created_by': currentUserId,
-          });
-        }
-
-        // Si se cambia de CRÉDITO a otra forma de pago (EFECTIVO o TARJETA)
-        if (_paymentMethod == 'CRÉDITO' && selectedMethod != 'CRÉDITO') {
-          final creditRes =
-              await supabase
-                  .from('supplier_credits')
-                  .select('id, current_debt')
-                  .eq('supplier_id', supplierId)
-                  .maybeSingle();
-
-          if (creditRes != null) {
-            final creditId = creditRes['id'] as String;
-            final currentDebtTable =
-                (creditRes['current_debt'] as num?)?.toDouble() ?? 0.0;
-            final newDebt = (currentDebtTable - orderAmount).clamp(
-              0.0,
-              double.infinity,
-            );
-            await supabase
-                .from('supplier_credits')
-                .update({
-                  'current_debt': newDebt,
-                  'updated_at': DateTime.now().toIso8601String(),
-                })
-                .eq('id', creditId);
-          }
-        }
-
-        await supabase
-            .from('purchase_orders')
-            .update({
-              'payment_method': selectedMethod,
-              'updated_at': DateTime.now().toIso8601String(),
-            })
-            .eq('id', widget.po.id);
-
-        if (mounted) {
-          setState(() => _paymentMethod = selectedMethod);
-          AppSnackbar.show(
-            context,
-            message: 'Método de pago actualizado a $selectedMethod',
-            type: SnackbarType.success,
-          );
-          try {
-            context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
-          } catch (_) {}
-          widget.onPaymentSuccess?.call();
-        }
-      } catch (e) {
-        if (mounted) {
-          AppSnackbar.show(
-            context,
-            message: 'Error al cambiar método de pago: $e',
-            type: SnackbarType.error,
-          );
-        }
-      } finally {
-        if (mounted) setState(() => _isProcessingAction = false);
+      final supplierId = widget.po.supplierId;
+      if (supplierId == null) {
+        AppSnackbar.show(
+          context,
+          message: 'Error: La orden no tiene un proveedor asociado.',
+          type: SnackbarType.error,
+        );
+        return;
       }
+
+      context.read<PurchaseOrdersCubit>().updateOrderPaymentMethod(
+        UpdateOrderPaymentMethodParams(
+          orderId: widget.po.id,
+          supplierId: supplierId,
+          newMethod: selectedMethod,
+          oldMethod: _paymentMethod,
+          orderAmount: widget.po.totalAmount,
+        ),
+      );
     }
   }
 
@@ -950,8 +709,41 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
     final shortCode =
         '#${widget.po.id.length >= 8 ? widget.po.id.substring(0, 8).toUpperCase() : widget.po.id.toUpperCase()}';
 
-    return Material(
-      color: AppColors.background,
+    return BlocListener<PurchaseOrdersCubit, PurchaseOrdersState>(
+      listener: (context, state) {
+        if (state is PurchaseOrderActionLoading) {
+          setState(() => _isProcessingAction = true);
+        } else if (state is PurchaseOrderActionSuccess) {
+          setState(() {
+            _isProcessingAction = false;
+            if (state.orderId == widget.po.id) {
+              if (state.newAmountPaid != null) {
+                _amountPaid += state.newAmountPaid!;
+              }
+              if (state.newPaymentMethod != null) {
+                _paymentMethod = state.newPaymentMethod!;
+              }
+            }
+          });
+          if (state.orderId == widget.po.id) {
+            AppSnackbar.show(
+              context,
+              message: state.message,
+              type: SnackbarType.success,
+            );
+            widget.onPaymentSuccess?.call();
+          }
+        } else if (state is PurchaseOrderActionError) {
+          setState(() => _isProcessingAction = false);
+          AppSnackbar.show(
+            context,
+            message: state.message,
+            type: SnackbarType.error,
+          );
+        }
+      },
+      child: Material(
+        color: AppColors.background,
       borderRadius:
           widget.isDialog
               ? BorderRadius.circular(20)
@@ -1421,6 +1213,7 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
           ],
         ),
       ),
+    ),
     );
   }
 }

@@ -2259,6 +2259,109 @@ $$;
 
 ALTER FUNCTION "public"."sync_purchase_order_reception_rpc"("p_purchase_order_id" "uuid") OWNER TO "postgres";
 
+
+CREATE OR REPLACE FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_credit_record RECORD;
+    v_new_debt NUMERIC;
+    v_available_credit NUMERIC;
+BEGIN
+    -- 1. Si el método es idéntico al actual, retornar éxito sin realizar cambios
+    IF p_new_method = p_old_method THEN
+        RETURN jsonb_build_object('success', true, 'message', 'El método de pago es idéntico al actual.');
+    END IF;
+
+    -- 2. Si involucra 'CRÉDITO' (ya sea origen o destino), bloqueamos la fila de crédito de forma transaccional (ACID)
+    IF p_new_method = 'CRÉDITO' OR p_old_method = 'CRÉDITO' THEN
+        SELECT id, current_debt, credit_limit, is_active
+        INTO v_credit_record
+        FROM supplier_credits
+        WHERE supplier_id = p_supplier_id
+        FOR UPDATE;
+    END IF;
+
+    -- 3. Si el nuevo método es 'CRÉDITO':
+    IF p_new_method = 'CRÉDITO' THEN
+        -- a. Verificar existencia del crédito
+        IF NOT FOUND OR v_credit_record.id IS NULL THEN
+            RETURN jsonb_build_object('success', false, 'error', 'El proveedor no tiene una línea de crédito habilitada. Regístrala en Créditos Proveedores.');
+        END IF;
+
+        -- b. Verificar estado activo
+        IF NOT v_credit_record.is_active THEN
+            RETURN jsonb_build_object('success', false, 'error', 'La línea de crédito de este proveedor está inactiva.');
+        END IF;
+
+        -- c. Verificar límite de crédito mayor a 0
+        IF v_credit_record.credit_limit <= 0 THEN
+            RETURN jsonb_build_object('success', false, 'error', 'El proveedor tiene un límite de crédito de S/ 0.00. Configura un límite mayor a 0.');
+        END IF;
+
+        -- d. Verificar disponibilidad de crédito suficiente
+        v_available_credit := GREATEST(0, v_credit_record.credit_limit - v_credit_record.current_debt);
+        IF (v_credit_record.current_debt + p_order_amount) > v_credit_record.credit_limit THEN
+            RETURN jsonb_build_object(
+                'success', false, 
+                'error', format('Límite de crédito excedido. Disponible: S/ %s, Monto de la orden: S/ %s.', 
+                                round(v_available_credit, 2), round(p_order_amount, 2))
+            );
+        END IF;
+
+        -- e. UPDATE supplier_credits SET current_debt = current_debt + p_order_amount
+        UPDATE supplier_credits
+        SET current_debt = current_debt + p_order_amount,
+            updated_at = NOW()
+        WHERE id = v_credit_record.id;
+
+        -- f. INSERT en supplier_credit_movements (CHARGE)
+        INSERT INTO supplier_credit_movements (
+            supplier_credit_id,
+            purchase_order_id,
+            movement_type,
+            amount,
+            notes,
+            created_by
+        ) VALUES (
+            v_credit_record.id,
+            p_order_id,
+            'CHARGE',
+            p_order_amount,
+            format('Cambio de método de pago a CRÉDITO en Orden #%s', upper(substring(p_order_id::text from 1 for 8))),
+            p_profile_id
+        );
+    END IF;
+
+    -- 4. Si el método anterior era 'CRÉDITO' y se cambia a uno diferente ('EFECTIVO' o 'TARJETA'):
+    IF p_old_method = 'CRÉDITO' AND p_new_method != 'CRÉDITO' THEN
+        IF v_credit_record.id IS NOT NULL THEN
+            -- a. Reducimos la deuda y aseguramos que no caiga debajo de 0
+            v_new_debt := GREATEST(0, v_credit_record.current_debt - p_order_amount);
+
+            UPDATE supplier_credits
+            SET current_debt = v_new_debt,
+                updated_at = NOW()
+            WHERE id = v_credit_record.id;
+        END IF;
+    END IF;
+
+    -- 5. Actualizar método en purchase_orders
+    UPDATE purchase_orders
+    SET payment_method = p_new_method,
+        updated_at = NOW()
+    WHERE id = p_order_id;
+
+    -- 6. Confirmación de éxito
+    RETURN jsonb_build_object('success', true);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") OWNER TO "postgres";
+
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
@@ -4854,6 +4957,12 @@ GRANT ALL ON FUNCTION "public"."set_default_location"("p_profile_id" "uuid", "p_
 GRANT ALL ON FUNCTION "public"."sync_purchase_order_reception_rpc"("p_purchase_order_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."sync_purchase_order_reception_rpc"("p_purchase_order_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."sync_purchase_order_reception_rpc"("p_purchase_order_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") TO "service_role";
 
 
 
