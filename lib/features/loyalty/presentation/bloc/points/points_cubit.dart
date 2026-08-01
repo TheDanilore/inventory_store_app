@@ -279,10 +279,14 @@ class PointsCubit extends Cubit<PointsState> {
         state.copyWith(
           movements: [...state.movements, ...moreMovs],
           hasMoreMovements: moreMovs.length == _movementsLimit,
+          loadMoreError: null,
         ),
       );
     } catch (e, st) {
       developer.log('Error en loadMoreMovements', error: e, stackTrace: st);
+      if (!isClosed) {
+        emit(state.copyWith(loadMoreError: 'No se pudieron cargar más movimientos.'));
+      }
     } finally {
       if (!isClosed) emit(state.copyWith(isLoadingMore: false));
     }
@@ -315,25 +319,37 @@ class PointsCubit extends Cubit<PointsState> {
         actionByProfileId: state.profileId!,
       );
 
-      result.fold((failure) {}, (_) {
-        if (isClosed) return;
-        final newMovement = {
-          'points': rewardForToday,
-          'description': 'Check-in diario del $todayDate',
-          'created_at': now.toIso8601String(),
-        };
+      result.fold(
+        (failure) {
+          if (!isClosed) {
+            emit(state.copyWith(errorMessage: failure.message));
+          }
+        }, 
+        (_) {
+          if (isClosed) return;
+          final newMovement = {
+            'points': rewardForToday,
+            'description': 'Check-in diario del $todayDate',
+            'created_at': now.toIso8601String(),
+          };
 
-        emit(
-          state.copyWith(
-            hasTodayCheckin: true,
-            currentStreak: nextStreakDay,
-            lastCheckinDate: currentDay,
-            nextCheckinReward: _rewardForStreakDay(nextStreakDay + 1),
-            movements: [newMovement, ...state.movements],
-            currentBalance: state.currentBalance + rewardForToday,
-          ),
-        );
-      });
+          emit(
+            state.copyWith(
+              hasTodayCheckin: true,
+              currentStreak: nextStreakDay,
+              lastCheckinDate: currentDay,
+              nextCheckinReward: _rewardForStreakDay(nextStreakDay + 1),
+              movements: [newMovement, ...state.movements],
+              currentBalance: state.currentBalance + rewardForToday,
+            ),
+          );
+        }
+      );
+    } catch (e, st) {
+      developer.log('Error claimDailyCheckin', error: e, stackTrace: st);
+      if (!isClosed) {
+        emit(state.copyWith(errorMessage: 'Ocurrió un error inesperado al reclamar el check-in.'));
+      }
     } finally {
       if (!isClosed) emit(state.copyWith(isClaimingCheckin: false));
     }
@@ -450,23 +466,33 @@ class PointsCubit extends Cubit<PointsState> {
         description: description,
       );
 
-      result.fold((l) => null, (_) {
-        if (!isClosed) {
-          final newMovement = {
-            'points': points,
-            'description': description,
-            'created_at': now.toIso8601String(),
-          };
-          emit(
-            state.copyWith(
-              currentBalance: state.currentBalance + points,
-              movements: [newMovement, ...state.movements],
-            ),
-          );
+      result.fold(
+        (failure) {
+          if (!isClosed) {
+            emit(state.copyWith(errorMessage: failure.message));
+          }
+        }, 
+        (_) {
+          if (!isClosed) {
+            final newMovement = {
+              'points': points,
+              'description': description,
+              'created_at': now.toIso8601String(),
+            };
+            emit(
+              state.copyWith(
+                currentBalance: state.currentBalance + points,
+                movements: [newMovement, ...state.movements],
+              ),
+            );
+          }
         }
-      });
+      );
     } catch (e, st) {
       developer.log('Error al guardar minijuego', error: e, stackTrace: st);
+      if (!isClosed) {
+        emit(state.copyWith(errorMessage: 'Ocurrió un error inesperado al guardar el premio.'));
+      }
     }
   }
 

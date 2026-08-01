@@ -36,6 +36,7 @@ class PointsState extends Equatable {
 
   final List<Map<String, dynamic>> movements;
   final String? errorMessage;
+  final String? loadMoreError;
 
   const PointsState({
     this.isLoading = true,
@@ -68,6 +69,7 @@ class PointsState extends Equatable {
     this.nextCheckinReward = 20,
     this.movements = const [],
     this.errorMessage,
+    this.loadMoreError,
   });
 
   PointsState copyWith({
@@ -101,7 +103,9 @@ class PointsState extends Equatable {
     int? nextCheckinReward,
     List<Map<String, dynamic>>? movements,
     String? errorMessage,
+    String? loadMoreError,
     bool clearErrorMessage = false,
+    bool clearLoadMoreError = false,
   }) {
     return PointsState(
       isLoading: isLoading ?? this.isLoading,
@@ -136,6 +140,8 @@ class PointsState extends Equatable {
       movements: movements ?? this.movements,
       errorMessage:
           clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      loadMoreError:
+          clearLoadMoreError ? null : (loadMoreError ?? this.loadMoreError),
     );
   }
 
@@ -171,5 +177,6 @@ class PointsState extends Equatable {
     nextCheckinReward,
     movements,
     errorMessage,
+    loadMoreError,
   ];
 }

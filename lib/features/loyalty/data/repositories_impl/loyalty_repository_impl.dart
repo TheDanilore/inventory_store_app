@@ -203,55 +203,23 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
     int limit,
   ) async {
     try {
-      final ordersRes = await _supabase
-          .from('orders')
-          .select('customer_id, total_amount')
-          .eq('status', 'COMPLETED');
-
-      final Map<String, double> spentByCustomer = {};
-      for (final o in ordersRes) {
-        final cid = o['customer_id'] as String?;
-        if (cid == null) continue;
-        final amount = (o['total_amount'] as num).toDouble();
-        spentByCustomer[cid] = (spentByCustomer[cid] ?? 0) + amount;
-      }
-
-      final sortedEntries =
-          spentByCustomer.entries.toList()
-            ..sort((a, b) => b.value.compareTo(a.value));
-
-      final topIds = sortedEntries.take(limit).map((e) => e.key).toList();
-
-      if (topIds.isEmpty) return right([]);
-
-      final profilesRes = await _supabase
-          .from('profiles')
-          .select(
-            'id, full_name, avatar_url, is_active, wallet_balance, created_at',
-          )
-          .inFilter('id', topIds);
-
-      final Map<String, dynamic> profilesMap = {
-        for (var p in profilesRes) p['id'] as String: p,
-      };
+      final response = await _supabase.rpc(
+        'get_top_customers',
+        params: {'p_limit': limit},
+      );
 
       final customers =
-          topIds
-              .map((id) {
-                final p = profilesMap[id];
-                if (p == null) return null;
-                return CustomerEntity(
-                  id: p['id'],
-                  fullName: p['full_name'] ?? 'Desconocido',
-                  avatarUrl: p['avatar_url'],
-                  isActive: p['is_active'] ?? true,
-                  walletBalance: p['wallet_balance'] ?? 0,
-                  createdAt: DateTime.parse(p['created_at']),
-                  totalRevenue: spentByCustomer[id] ?? 0,
-                );
-              })
-              .whereType<CustomerEntity>()
-              .toList();
+          List<Map<String, dynamic>>.from(response).map((p) {
+            return CustomerEntity(
+              id: p['id'],
+              fullName: p['full_name'] ?? 'Desconocido',
+              avatarUrl: p['avatar_url'],
+              isActive: p['is_active'] ?? true,
+              walletBalance: p['wallet_balance'] ?? 0,
+              createdAt: DateTime.parse(p['created_at']),
+              totalRevenue: (p['total_revenue'] as num).toDouble(),
+            );
+          }).toList();
 
       return right(customers);
     } catch (e, st) {
