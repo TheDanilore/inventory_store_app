@@ -185,6 +185,7 @@ class _LocationManagementView extends StatelessWidget {
           showBackButton: true,
           showBottomNav: false,
           showCartIcon: false,
+          showWalletChip: false,
           body: Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
