@@ -3,6 +3,7 @@ import 'package:inventory_store_app/features/orders/domain/entities/order_entity
 
 class CustomerOrdersState extends Equatable {
   final List<OrderEntity> orders;
+  final List<OrderEntity> filteredOrders;
   final bool isLoading;
   final bool isLoadingMore;
   final bool hasMore;
@@ -14,6 +15,7 @@ class CustomerOrdersState extends Equatable {
 
   const CustomerOrdersState({
     this.orders = const [],
+    this.filteredOrders = const [],
     this.isLoading = true,
     this.isLoadingMore = false,
     this.hasMore = true,
@@ -26,6 +28,7 @@ class CustomerOrdersState extends Equatable {
 
   CustomerOrdersState copyWith({
     List<OrderEntity>? orders,
+    List<OrderEntity>? filteredOrders,
     bool? isLoading,
     bool? isLoadingMore,
     bool? hasMore,
@@ -37,6 +40,7 @@ class CustomerOrdersState extends Equatable {
   }) {
     return CustomerOrdersState(
       orders: orders ?? this.orders,
+      filteredOrders: filteredOrders ?? this.filteredOrders,
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       hasMore: hasMore ?? this.hasMore,
@@ -48,16 +52,7 @@ class CustomerOrdersState extends Equatable {
     );
   }
 
-  List<OrderEntity> get filteredOrders {
-    return orders.where((order) {
-      final matchesStatus =
-          statusFilter == 'ALL' || order.status == statusFilter;
-      final matchesSearch =
-          searchQuery.isEmpty ||
-          order.id.toLowerCase().contains(searchQuery.toLowerCase());
-      return matchesStatus && matchesSearch;
-    }).toList();
-  }
+
 
   bool isOrderProcessing(String orderId) {
     return false;
@@ -66,6 +61,7 @@ class CustomerOrdersState extends Equatable {
   @override
   List<Object?> get props => [
     orders,
+    filteredOrders,
     isLoading,
     isLoadingMore,
     hasMore,

@@ -18,10 +18,10 @@ class OrdersRepositoryImpl implements OrdersRepository {
   Future<Either<Failure, List<OrderEntity>>> getCustomerOrders(
     String profileId, {
     int limit = 10,
-    int offset = 0,
+    DateTime? lastCreatedAt,
   }) async {
     try {
-      final data = await _supabase
+      var query = _supabase
           .from('orders')
           .select('''
             id, customer_id, customer_name, total_amount, total_profit,
@@ -31,9 +31,14 @@ class OrdersRepositoryImpl implements OrdersRepository {
             profiles!orders_customer_id_fkey ( id, full_name, phone ),
             warehouses!orders_store_id_fkey ( id, name )
           ''')
-          .eq('customer_id', profileId)
-          .order('created_at', ascending: false)
-          .range(offset, offset + limit - 1);
+          .eq('customer_id', profileId);
+
+      if (lastCreatedAt != null) {
+        // Keyset pagination para infinito scroll estable
+        query = query.lt('created_at', lastCreatedAt.toUtc().toIso8601String());
+      }
+
+      final data = await query.order('created_at', ascending: false).limit(limit);
 
       final orders = data.map((json) => OrderModel.fromJson(json)).toList();
       return Right(orders);

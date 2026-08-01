@@ -14,12 +14,12 @@ class GetCustomerOrdersUc {
   Future<Either<Failure, List<OrderEntity>>> call(
     String profileId, {
     int limit = 10,
-    int offset = 0,
+    DateTime? lastCreatedAt,
   }) {
     return repository.getCustomerOrders(
       profileId,
       limit: limit,
-      offset: offset,
+      lastCreatedAt: lastCreatedAt,
     );
   }
 }

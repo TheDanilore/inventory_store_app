@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:fpdart/fpdart.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/get_customer_orders_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/get_order_items_uc.dart';
@@ -16,34 +16,13 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
   final GetOrderItemsUc getOrderItemsUc;
   static const int _limit = 15;
 
-  StreamSubscription<AuthState>? _authSub;
-
   CustomerOrdersCubit({
     required this.getCustomerOrdersUc,
     required this.getOrderItemsUc,
-  }) : super(const CustomerOrdersState()) {
-    _initAuthListener();
-  }
+  }) : super(const CustomerOrdersState());
 
-  void _initAuthListener() {
-    final supabase = Supabase.instance.client;
-    _init(supabase.auth.currentUser?.id);
-
-    _authSub = supabase.auth.onAuthStateChange.listen((event) {
-      if (isClosed) return;
-      if (event.event == AuthChangeEvent.signedIn || event.event == AuthChangeEvent.tokenRefreshed) {
-        _init(event.session?.user.id);
-      } else if (event.event == AuthChangeEvent.signedOut) {
-        _clear();
-      }
-    });
-  }
-
-  void _init(String? profileId) {
-    if (profileId == null) {
-      _clear();
-      return;
-    }
+  void init(String profileId) {
+    if (state.isLoading && state.profileId == profileId) return;
     if (state.orders.isNotEmpty && state.profileId == profileId) {
       return;
     }
@@ -54,29 +33,29 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
     _loadData(profileId);
   }
 
-  void _clear() {
-    _itemsCache.clear();
-    emit(state.copyWith(
-      profileId: null, 
-      orders: [], 
-      isLoading: false, 
-      hasMore: false,
-      errorMessage: ''
-    ));
+  List<OrderEntity> _applyFilters(List<OrderEntity> orders, String status, String query) {
+    return orders.where((order) {
+      final matchesStatus = status == 'ALL' || order.status == status;
+      final matchesSearch = query.isEmpty ||
+          order.id.toLowerCase().contains(query.toLowerCase());
+      return matchesStatus && matchesSearch;
+    }).toList();
   }
 
   @override
   Future<void> close() {
-    _authSub?.cancel();
+    _itemsCache.clear();
     return super.close();
   }
 
   void setStatusFilter(String filter) {
-    emit(state.copyWith(statusFilter: filter));
+    final newFiltered = _applyFilters(state.orders, filter, state.searchQuery);
+    emit(state.copyWith(statusFilter: filter, filteredOrders: newFiltered));
   }
 
   void setSearchQuery(String query) {
-    emit(state.copyWith(searchQuery: query));
+    final newFiltered = _applyFilters(state.orders, state.statusFilter, query);
+    emit(state.copyWith(searchQuery: query, filteredOrders: newFiltered));
   }
 
   final Map<String, List<OrderItemEntity>> _itemsCache = {};
@@ -92,6 +71,10 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
         return Left(failure);
       }, 
       (items) {
+        // Simple FIFO cache eviction policy to prevent memory leaks
+        if (_itemsCache.length >= 20) {
+          _itemsCache.remove(_itemsCache.keys.first);
+        }
         _itemsCache[orderId] = items;
         return Right(items);
       }
@@ -102,7 +85,6 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
     final result = await getCustomerOrdersUc(
       profileId,
       limit: _limit,
-      offset: 0,
     );
 
     result.fold(
@@ -111,10 +93,12 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
         emit(state.copyWith(isLoading: false, errorMessage: failure.message));
       },
       (orders) {
+        final newFiltered = _applyFilters(orders, state.statusFilter, state.searchQuery);
         emit(
           state.copyWith(
             isLoading: false,
             orders: orders,
+            filteredOrders: newFiltered,
             hasMore: orders.length == _limit,
             errorMessage: '',
           ),
@@ -130,7 +114,6 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
     final result = await getCustomerOrdersUc(
       state.profileId!,
       limit: _limit,
-      offset: 0,
     );
 
     result.fold(
@@ -140,10 +123,12 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
       }, 
       (orders) {
         _itemsCache.clear();
+        final newFiltered = _applyFilters(orders, state.statusFilter, state.searchQuery);
         emit(
           state.copyWith(
             isBackgroundLoading: false,
             orders: orders,
+            filteredOrders: newFiltered,
             hasMore: orders.length == _limit,
           ),
         );
@@ -152,16 +137,17 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
   }
 
   Future<void> loadMore() async {
-    if (state.profileId == null || state.isLoadingMore || !state.hasMore) {
+    if (state.profileId == null || state.isLoadingMore || !state.hasMore || state.orders.isEmpty) {
       return;
     }
 
     emit(state.copyWith(isLoadingMore: true));
 
+    final lastOrder = state.orders.last;
     final result = await getCustomerOrdersUc(
       state.profileId!,
       limit: _limit,
-      offset: state.orders.length,
+      lastCreatedAt: lastOrder.createdAt,
     );
 
     result.fold(
@@ -170,10 +156,13 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
         emit(state.copyWith(isLoadingMore: false, errorMessage: failure.message));
       },
       (newOrders) {
+        final combinedOrders = [...state.orders, ...newOrders];
+        final newFiltered = _applyFilters(combinedOrders, state.statusFilter, state.searchQuery);
         emit(
           state.copyWith(
             isLoadingMore: false,
-            orders: [...state.orders, ...newOrders],
+            orders: combinedOrders,
+            filteredOrders: newFiltered,
             hasMore: newOrders.length == _limit,
           ),
         );

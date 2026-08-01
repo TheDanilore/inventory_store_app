@@ -8,7 +8,7 @@ abstract class OrdersRepository {
   Future<Either<Failure, List<OrderEntity>>> getCustomerOrders(
     String profileId, {
     int limit = 10,
-    int offset = 0,
+    DateTime? lastCreatedAt,
   });
 
   Future<Either<Failure, List<OrderEntity>>> getPendingOrdersByCustomer(String customerId);
