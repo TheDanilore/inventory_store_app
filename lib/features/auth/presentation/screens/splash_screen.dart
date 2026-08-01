@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+import 'dart:developer' as developer;
 
 class SplashScreen extends StatefulWidget {
   final Future<void> Function(BuildContext context)? onInitialize;
@@ -26,8 +27,13 @@ class _SplashScreenState extends State<SplashScreen> {
     if (widget.onInitialize != null) {
       try {
         await widget.onInitialize!(context);
-      } catch (e) {
-        debugPrint('Error o timeout cargando inicialización: $e');
+      } catch (e, st) {
+        developer.log(
+          'Error o timeout cargando inicialización',
+          error: e,
+          stackTrace: st,
+          name: 'SplashScreen',
+        );
       }
     }
 
