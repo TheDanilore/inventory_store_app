@@ -1,9 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/financial/data/models/account_movement_model.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/account_movement_entity.dart';
 import 'package:inventory_store_app/features/financial/domain/repositories/account_movements_repository.dart';
+import 'dart:developer' as developer;
 
 @LazySingleton(as: AccountMovementsRepository)
 class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
@@ -62,27 +62,20 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
     required MovementFilters filters,
   }) async {
     try {
-      var query = _supabase
-          .from('account_movements')
-          .select('movement_type, amount');
-
-      query = _applyFilters(query, filters);
-      final res = await query as List;
-
-      double totalIncome = 0;
-      double totalExpense = 0;
-      for (final item in res) {
-        final amt = (item['amount'] as num).toDouble();
-        if (item['movement_type'] == 'INCOME') totalIncome += amt;
-        if (item['movement_type'] == 'EXPENSE') totalExpense += amt;
-      }
+      final res = await _supabase.rpc('get_movement_totals_rpc', params: {
+        'p_filter_type': filters.filterType,
+        'p_account_id': filters.filterAccountId,
+        'p_search_text': filters.searchText.trim(),
+        'p_date_from': filters.dateFrom?.toIso8601String(),
+        'p_date_to': filters.dateTo?.toIso8601String(),
+      });
 
       return MovementTotals(
-        totalIncome: totalIncome,
-        totalExpense: totalExpense,
+        totalIncome: (res['totalIncome'] as num).toDouble(),
+        totalExpense: (res['totalExpense'] as num).toDouble(),
       );
-    } catch (e) {
-      debugPrint('AccountMovementsRepositoryImpl.getMovementTotals error: $e');
+    } catch (e, st) {
+      developer.log('getMovementTotals error', error: e, stackTrace: st, name: 'AccountMovementsRepositoryImpl');
       return const MovementTotals(totalIncome: 0, totalExpense: 0);
     }
   }
@@ -107,10 +100,8 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
         'p_reference_id': null,
         'p_created_by': profileId,
       });
-    } catch (e) {
-      debugPrint(
-        'AccountMovementsRepositoryImpl.registerManualMovement error: $e',
-      );
+    } catch (e, st) {
+      developer.log('registerManualMovement error', error: e, stackTrace: st, name: 'AccountMovementsRepositoryImpl');
       rethrow;
     }
   }
@@ -124,45 +115,15 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
     required String description,
   }) async {
     try {
-      final sourceAccRes =
-          await _supabase
-              .from('financial_accounts')
-              .select('name')
-              .eq('id', sourceAccountId)
-              .single();
-      final sourceName = sourceAccRes['name'] as String;
-
-      final destAccRes =
-          await _supabase
-              .from('financial_accounts')
-              .select('name')
-              .eq('id', destAccountId)
-              .single();
-      final destName = destAccRes['name'] as String;
-
-      await _supabase.rpc('register_financial_movement', params: {
-        'p_account_id': sourceAccountId,
-        'p_movement_type': 'EXPENSE',
+      await _supabase.rpc('transfer_funds_rpc', params: {
+        'p_source_account_id': sourceAccountId,
+        'p_dest_account_id': destAccountId,
         'p_amount': amount,
-        'p_description':
-            'Transferencia enviada a $destName${description.isNotEmpty ? ' — $description' : ''}',
-        'p_reference_type': 'manual_transfer',
-        'p_reference_id': null,
+        'p_description': description.trim(),
         'p_created_by': profileId,
       });
-
-      await _supabase.rpc('register_financial_movement', params: {
-        'p_account_id': destAccountId,
-        'p_movement_type': 'INCOME',
-        'p_amount': amount,
-        'p_description':
-            'Transferencia recibida de $sourceName${description.isNotEmpty ? ' — $description' : ''}',
-        'p_reference_type': 'manual_transfer',
-        'p_reference_id': null,
-        'p_created_by': profileId,
-      });
-    } catch (e) {
-      debugPrint('AccountMovementsRepositoryImpl.transferFunds error: $e');
+    } catch (e, st) {
+      developer.log('transferFunds error', error: e, stackTrace: st, name: 'AccountMovementsRepositoryImpl');
       rethrow;
     }
   }
