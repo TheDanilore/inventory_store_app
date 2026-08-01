@@ -11,6 +11,8 @@ abstract class OrdersRepository {
     int offset = 0,
   });
 
+  Future<Either<Failure, List<OrderEntity>>> getPendingOrdersByCustomer(String customerId);
+
   Future<Either<Failure, ({List<OrderEntity> orders, int total})>>
   getFilteredOrders({
     String? customerIdFilter,

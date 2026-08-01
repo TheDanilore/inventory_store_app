@@ -44,6 +44,25 @@ class OrdersRepositoryImpl implements OrdersRepository {
   }
 
   @override
+  Future<Either<Failure, List<OrderEntity>>> getPendingOrdersByCustomer(String customerId) async {
+    try {
+      final data = await _supabase
+          .from('orders')
+          .select('id, total_amount, amount_paid, payment_status, created_at')
+          .eq('customer_id', customerId)
+          .inFilter('payment_status', ['PENDING', 'PARTIAL'])
+          .order('created_at', ascending: true);
+
+      // We only need basic fields for pending orders in the UI
+      final orders = data.map((json) => OrderModel.fromJson(json)).toList();
+      return Right(orders);
+    } catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] Error en getPendingOrdersByCustomer: $e\n$st');
+      return Left(ServerFailure(message: 'Error fetching pending orders: $e'));
+    }
+  }
+
+  @override
   Future<Either<Failure, ({List<OrderEntity> orders, int total})>>
   getFilteredOrders({
     String? customerIdFilter,

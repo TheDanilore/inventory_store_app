@@ -176,6 +176,8 @@ import '../../features/customers/presentation/bloc/customers/customers_cubit.dar
     as _i70;
 import '../../features/customers/presentation/bloc/customers/customers_stats_cubit.dart'
     as _i13;
+import '../../features/customers/presentation/bloc/register_payment/register_payment_cubit.dart'
+    as _i335;
 import '../../features/customers/presentation/bloc/top_customers/top_customers_cubit.dart'
     as _i14;
 import '../../features/dashboard/data/repositories_impl/dashboard_repository_impl.dart'
@@ -337,6 +339,8 @@ import '../../features/orders/domain/usecases/get_order_by_id_usecase.dart'
 import '../../features/orders/domain/usecases/get_order_details_uc.dart'
     as _i93;
 import '../../features/orders/domain/usecases/get_order_items_uc.dart' as _i812;
+import '../../features/orders/domain/usecases/get_pending_customer_orders_uc.dart'
+    as _i315;
 import '../../features/orders/domain/usecases/get_profile_by_id_uc.dart'
     as _i990;
 import '../../features/orders/domain/usecases/process_checkout_uc.dart'
@@ -1121,6 +1125,9 @@ extension GetItInjectableX on _i174.GetIt {
             gh<_i549.UpdatePurchaseOrderStatusUseCase>(),
       ),
     );
+    gh.factory<_i315.GetPendingCustomerOrdersUc>(
+      () => _i315.GetPendingCustomerOrdersUc(gh<_i992.OrdersRepository>()),
+    );
     gh.factory<_i135.CustomerLocationsCubit>(
       () => _i135.CustomerLocationsCubit(
         gh<_i598.GetCustomerLocationsUseCase>(),
@@ -1271,6 +1278,13 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i1.CustomerFormCubit(
         gh<_i1019.SaveCustomerFullProfileUseCase>(),
         gh<_i749.GetCreditAccountByCustomerUseCase>(),
+      ),
+    );
+    gh.factory<_i335.RegisterPaymentCubit>(
+      () => _i335.RegisterPaymentCubit(
+        gh<_i425.GetFinancialAccountsUseCase>(),
+        gh<_i315.GetPendingCustomerOrdersUc>(),
+        gh<_i1006.CheckActiveShiftUc>(),
       ),
     );
     gh.factory<_i556.AppConfigCubit>(
