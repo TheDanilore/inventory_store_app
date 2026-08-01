@@ -311,8 +311,6 @@ import '../../features/loyalty/presentation/bloc/top_customers/loyalty_top_custo
 import '../../features/loyalty/presentation/bloc/wallet_cubit.dart' as _i1028;
 import '../../features/orders/data/repositories_impl/checkout_repository_impl.dart'
     as _i161;
-import '../../features/orders/data/repositories_impl/orders_repository_impl.dart'
-    as _i647;
 import '../../features/orders/domain/repositories/checkout_repository.dart'
     as _i760;
 import '../../features/orders/domain/repositories/orders_repository.dart'
@@ -535,8 +533,26 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1050.CashShiftRepository>(
       () => _i399.CashShiftRepositoryImpl(),
     );
-    gh.lazySingleton<_i992.OrdersRepository>(
-      () => _i647.OrdersRepositoryImpl(),
+    gh.factory<_i857.GetCustomerOrdersUc>(
+      () => _i857.GetCustomerOrdersUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.factory<_i93.GetOrderDetailsUc>(
+      () => _i93.GetOrderDetailsUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i534.CancelOrderUc>(
+      () => _i534.CancelOrderUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i617.GetFilteredOrdersUc>(
+      () => _i617.GetFilteredOrdersUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i711.GetOrderByIdUseCase>(
+      () => _i711.GetOrderByIdUseCase(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i812.GetOrderItemsUc>(
+      () => _i812.GetOrderItemsUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i904.SaveOrderChangesUc>(
+      () => _i904.SaveOrderChangesUc(gh<_i992.OrdersRepository>()),
     );
     gh.factory<_i753.GetActiveProductsAndVariantsUseCase>(
       () =>
@@ -719,6 +735,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i94.GetInventoryEntriesUseCase>(
       () => _i94.GetInventoryEntriesUseCase(
         gh<_i74.InventoryEntriesRepository>(),
+      ),
+    );
+    gh.factory<_i1051.OrdersCubit>(
+      () => _i1051.OrdersCubit(
+        getFilteredOrdersUc: gh<_i617.GetFilteredOrdersUc>(),
+        saveOrderChangesUc: gh<_i904.SaveOrderChangesUc>(),
+        cancelOrderUc: gh<_i534.CancelOrderUc>(),
+        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
+        repository: gh<_i992.OrdersRepository>(),
       ),
     );
     gh.lazySingleton<_i359.FetchSupplierCreditMovementsUseCase>(
@@ -1090,6 +1115,12 @@ extension GetItInjectableX on _i174.GetIt {
         createInventoryExitUseCase: gh<_i738.CreateInventoryExitUseCase>(),
       ),
     );
+    gh.factory<_i808.OrderDetailCubit>(
+      () => _i808.OrderDetailCubit(
+        getOrderDetailsUc: gh<_i93.GetOrderDetailsUc>(),
+        saveOrderChangesUc: gh<_i904.SaveOrderChangesUc>(),
+      ),
+    );
     gh.factory<_i851.CustomerCreditListCubit>(
       () => _i851.CustomerCreditListCubit(
         gh<_i749.GetCreditAccountsUseCase>(),
@@ -1103,6 +1134,12 @@ extension GetItInjectableX on _i174.GetIt {
         fetchPurchaseOrdersUseCase: gh<_i831.FetchPurchaseOrdersUseCase>(),
         updatePurchaseOrderStatusUseCase:
             gh<_i549.UpdatePurchaseOrderStatusUseCase>(),
+      ),
+    );
+    gh.factory<_i442.CustomerOrdersCubit>(
+      () => _i442.CustomerOrdersCubit(
+        getCustomerOrdersUc: gh<_i857.GetCustomerOrdersUc>(),
+        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
       ),
     );
     gh.factory<_i135.CustomerLocationsCubit>(
@@ -1264,27 +1301,6 @@ extension GetItInjectableX on _i174.GetIt {
         getConnectionUrlUseCase: gh<_i653.GetConnectionUrlUseCase>(),
       ),
     );
-    gh.factory<_i857.GetCustomerOrdersUc>(
-      () => _i857.GetCustomerOrdersUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.factory<_i93.GetOrderDetailsUc>(
-      () => _i93.GetOrderDetailsUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.lazySingleton<_i534.CancelOrderUc>(
-      () => _i534.CancelOrderUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.lazySingleton<_i617.GetFilteredOrdersUc>(
-      () => _i617.GetFilteredOrdersUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.lazySingleton<_i711.GetOrderByIdUseCase>(
-      () => _i711.GetOrderByIdUseCase(gh<_i992.OrdersRepository>()),
-    );
-    gh.lazySingleton<_i812.GetOrderItemsUc>(
-      () => _i812.GetOrderItemsUc(gh<_i992.OrdersRepository>()),
-    );
-    gh.lazySingleton<_i904.SaveOrderChangesUc>(
-      () => _i904.SaveOrderChangesUc(gh<_i992.OrdersRepository>()),
-    );
     gh.factory<_i70.CustomersCubit>(
       () => _i70.CustomersCubit(
         gh<_i1019.GetCustomersUseCase>(),
@@ -1355,15 +1371,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i739.LoyaltyTopCustomersCubit>(
       () => _i739.LoyaltyTopCustomersCubit(
         getTopCustomersUC: gh<_i34.GetTopCustomersUC>(),
-      ),
-    );
-    gh.factory<_i1051.OrdersCubit>(
-      () => _i1051.OrdersCubit(
-        getFilteredOrdersUc: gh<_i617.GetFilteredOrdersUc>(),
-        saveOrderChangesUc: gh<_i904.SaveOrderChangesUc>(),
-        cancelOrderUc: gh<_i534.CancelOrderUc>(),
-        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
-        repository: gh<_i992.OrdersRepository>(),
       ),
     );
     gh.factory<_i437.PosCubit>(
@@ -1465,12 +1472,6 @@ extension GetItInjectableX on _i174.GetIt {
         addReview: gh<_i288.AddProductReviewUseCase>(),
       ),
     );
-    gh.factory<_i808.OrderDetailCubit>(
-      () => _i808.OrderDetailCubit(
-        getOrderDetailsUc: gh<_i93.GetOrderDetailsUc>(),
-        saveOrderChangesUc: gh<_i904.SaveOrderChangesUc>(),
-      ),
-    );
     gh.lazySingleton<_i1067.CatalogFormMutationsUC>(
       () => _i1067.CatalogFormMutationsUC(
         gh<_i570.ProductsRepository>(),
@@ -1481,12 +1482,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i1067.SaveVariantUC(
         gh<_i570.ProductsRepository>(),
         gh<_i927.GetCurrentProfileIdUseCase>(),
-      ),
-    );
-    gh.factory<_i442.CustomerOrdersCubit>(
-      () => _i442.CustomerOrdersCubit(
-        getCustomerOrdersUc: gh<_i857.GetCustomerOrdersUc>(),
-        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
       ),
     );
     gh.factory<_i991.CustomerCatalogCubit>(
