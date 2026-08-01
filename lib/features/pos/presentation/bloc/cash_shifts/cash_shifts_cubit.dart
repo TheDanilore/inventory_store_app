@@ -101,10 +101,17 @@ class CashShiftsCubit extends Cubit<CashShiftsState> {
 
     int totalOpen = 0;
     int totalClosed = 0;
-    countRes.fold((l) => null, (r) {
-      totalOpen = r.openCount;
-      totalClosed = r.closedCount;
-    });
+    countRes.fold(
+      (failure) {
+        // Propaga el error visible al usuario pero permite continuar
+        // para al menos mostrar la lista de turnos.
+        emit(state.copyWith(errorMessage: 'Aviso: ${failure.message}'));
+      },
+      (r) {
+        totalOpen = r.openCount;
+        totalClosed = r.closedCount;
+      },
+    );
 
     final shiftsRes = await _getCashShifts(
       GetCashShiftsParams(
