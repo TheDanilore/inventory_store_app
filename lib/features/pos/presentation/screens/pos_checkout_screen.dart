@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'package:inventory_store_app/core/utils/isolate_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
@@ -120,22 +121,42 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         .toSet()
         .toList();
 
-    if (variantIds.isEmpty) return;
+    final simpleProductIds = items
+        .where((i) => i.variantId == null || i.variantId!.isEmpty)
+        .map((i) => i.productId)
+        .toSet()
+        .toList();
 
     final repo = sl<ProductsRepository>();
-    final res = await repo.fetchVariantStockByVariantIds(
-      variantIds,
-      warehouseId: warehouseId,
-    );
 
-    res.fold((_) => null, (stockMap) {
-      for (final item in items) {
-        if (item.variantId != null) {
-          final stock = stockMap[item.variantId] ?? 0;
-          cartCubit.updateAvailableStock(item.cartKey, stock);
+    // 1. Cargar stock de variantes
+    if (variantIds.isNotEmpty) {
+      final res = await repo.fetchVariantStockByVariantIds(
+        variantIds,
+        warehouseId: warehouseId,
+      );
+      res.fold((_) => null, (stockMap) {
+        for (final item in items) {
+          if (item.variantId != null) {
+            final stock = stockMap[item.variantId] ?? 0;
+            cartCubit.updateAvailableStock(item.cartKey, stock);
+          }
         }
-      }
-    });
+      });
+    }
+
+    // 2. Cargar stock de productos simples
+    if (simpleProductIds.isNotEmpty) {
+      final res = await repo.getProductStock(productIds: simpleProductIds);
+      res.fold((_) => null, (stockMap) {
+        for (final item in items) {
+          if (item.variantId == null || item.variantId!.isEmpty) {
+            final stock = stockMap[item.productId] ?? 0;
+            cartCubit.updateAvailableStock(item.cartKey, stock);
+          }
+        }
+      });
+    }
   }
 
   Future<void> _processSale(
@@ -184,12 +205,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         (a) => a['id'] == posCubit.state.selectedAccountId,
         orElse: () => {},
       );
-      final accountType = accountData['type']?.toString().toUpperCase();
-      if ((accountType == 'CAJA' || accountType == 'CASH_REGISTER') &&
-          posCubit.state.activeShift == null) {
+      
+      // Validación estandarizada por booleano, sin Strings quemados (Zero-Trust fallback)
+      final requiresShift = accountData['is_cash_register'] == true || accountData['requires_shift'] == true;
+      if (requiresShift && posCubit.state.activeShift == null) {
         AppSnackbar.show(
           context,
-          message: 'La caja seleccionada no tiene un turno abierto.',
+          message: 'La cuenta seleccionada requiere un turno abierto.',
           type: SnackbarType.error,
         );
         return;
@@ -343,7 +365,8 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
           }
         },
       );
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error cargando lotes', error: e, stackTrace: st);
       if (mounted) {
         AppSnackbar.show(
           context,
@@ -424,7 +447,8 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                           );
                         },
                       );
-                    } catch (e) {
+                    } catch (e, st) {
+                      developer.log('Error generando comprobante', error: e, stackTrace: st);
                       if (dialogContext.mounted) {
                         AppSnackbar.show(
                           dialogContext,
