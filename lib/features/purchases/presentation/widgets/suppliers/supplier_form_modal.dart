@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/suppliers/suppliers_cubit.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/suppliers/suppliers_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
@@ -19,7 +21,6 @@ class SupplierFormModal extends StatefulWidget {
 }
 
 class _SupplierFormModalState extends State<SupplierFormModal> {
-  final _supabase = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
 
   final _nameCtrl = TextEditingController();
@@ -28,8 +29,6 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
-
-  bool _isSaving = false;
 
   bool get _isEditing => widget.supplierToEdit != null;
 
@@ -58,69 +57,21 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
     super.dispose();
   }
 
-  Future<void> _saveSupplier() async {
+  void _saveSupplier() {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isSaving = true);
-    try {
-      final data = {
-        'name': _nameCtrl.text.trim(),
-        'tax_id':
-            _taxIdCtrl.text.trim().isEmpty ? null : _taxIdCtrl.text.trim(),
-        'contact_name':
-            _contactCtrl.text.trim().isEmpty ? null : _contactCtrl.text.trim(),
-        'phone': _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
-        'email': _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
-        'address':
-            _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
-      };
+    final supplier = SupplierEntity(
+      id: _isEditing ? widget.supplierToEdit!.id : '',
+      name: _nameCtrl.text.trim(),
+      taxId: _taxIdCtrl.text.trim().isEmpty ? null : _taxIdCtrl.text.trim(),
+      contactName: _contactCtrl.text.trim().isEmpty ? null : _contactCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+      email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
+      address: _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
+      isActive: _isEditing ? widget.supplierToEdit!.isActive : true,
+    );
 
-      if (_isEditing) {
-        await _supabase
-            .from('suppliers')
-            .update(data)
-            .eq('id', widget.supplierToEdit!.id);
-      } else {
-        await _supabase.from('suppliers').insert(data);
-      }
-
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: _isEditing ? 'Proveedor actualizado' : 'Proveedor creado',
-          type: SnackbarType.success,
-        );
-        widget.onSaved();
-        Navigator.pop(context);
-      }
-    } on PostgrestException catch (e) {
-      if (mounted) {
-        if (e.code == '23505') {
-          // Código de duplicado en PostgreSQL
-          AppSnackbar.show(
-            context,
-            message: 'Ya existe un proveedor con ese número de RUC/ID fiscal.',
-            type: SnackbarType.error,
-          );
-        } else {
-          AppSnackbar.show(
-            context,
-            message: 'Error de base de datos: ${e.message}',
-            type: SnackbarType.error,
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Error inesperado: $e',
-          type: SnackbarType.error,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
+    context.read<SuppliersCubit>().saveSupplier(supplier);
   }
 
   @override
@@ -208,33 +159,48 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
 
               const SizedBox(height: 12),
 
-              ElevatedButton(
-                onPressed: _isSaving ? null : _saveSupplier,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.teal,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child:
-                    _isSaving
-                        ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                        : Text(
-                          _isEditing ? 'Guardar Cambios' : 'Crear Proveedor',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+              BlocConsumer<SuppliersCubit, SuppliersState>(
+                listenWhen: (previous, current) => current is SupplierSaveSuccess || current is SupplierSaveError,
+                listener: (context, state) {
+                  if (state is SupplierSaveError) {
+                    AppSnackbar.show(context, message: state.message, type: SnackbarType.error);
+                  } else if (state is SupplierSaveSuccess) {
+                    AppSnackbar.show(context, message: state.message, type: SnackbarType.success);
+                    widget.onSaved();
+                    Navigator.pop(context);
+                  }
+                },
+                builder: (context, state) {
+                  final isLoading = state is SupplierSaving;
+                  return ElevatedButton(
+                    onPressed: isLoading ? null : _saveSupplier,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.teal,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child:
+                        isLoading
+                            ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                            : Text(
+                              _isEditing ? 'Guardar Cambios' : 'Crear Proveedor',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                  );
+                },
               ),
             ],
           ),

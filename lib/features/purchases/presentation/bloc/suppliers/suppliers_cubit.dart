@@ -3,18 +3,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/fetch_suppliers_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/toggle_supplier_status_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/save_supplier_usecase.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/suppliers/suppliers_state.dart';
 
 @injectable
 class SuppliersCubit extends Cubit<SuppliersState> {
   final FetchSuppliersUseCase fetchSuppliersUseCase;
   final ToggleSupplierStatusUseCase toggleSupplierStatusUseCase;
+  final SaveSupplierUseCase saveSupplierUseCase;
 
   static const int pageSize = 8;
 
   SuppliersCubit({
     required this.fetchSuppliersUseCase,
     required this.toggleSupplierStatusUseCase,
+    required this.saveSupplierUseCase,
   }) : super(SuppliersInitial()) {
     loadSuppliers();
   }
@@ -143,6 +146,85 @@ class SuppliersCubit extends Cubit<SuppliersState> {
             }).toList();
 
         emit(currentState.copyWith(suppliers: updatedSuppliers));
+      },
+    );
+  }
+
+  Future<void> saveSupplier(SupplierEntity supplier) async {
+    final currentState = state;
+    
+    // We only process if we are currently displaying a loaded state or an error state from a previous attempt
+    List<SupplierEntity> currentList = [];
+    String query = '';
+    int page = 0;
+    int count = 0;
+
+    if (currentState is SuppliersLoaded) {
+      currentList = currentState.suppliers;
+      query = currentState.searchQuery;
+      page = currentState.currentPage;
+      count = currentState.totalCount;
+    } else if (currentState is SuppliersError) {
+      currentList = currentState.currentSuppliers;
+      query = currentState.searchQuery;
+      page = currentState.currentPage;
+      count = currentState.totalCount;
+    } else if (currentState is SupplierSaveError) {
+      currentList = currentState.currentSuppliers;
+      query = currentState.searchQuery;
+      page = currentState.currentPage;
+      count = currentState.totalCount;
+    } else {
+      return; // Cannot save if not loaded
+    }
+
+    emit(SupplierSaving(
+      currentSuppliers: currentList,
+      searchQuery: query,
+      currentPage: page,
+      totalCount: count,
+    ));
+
+    final result = await saveSupplierUseCase(supplier);
+
+    result.fold(
+      (failure) {
+        emit(SupplierSaveError(
+          currentSuppliers: currentList,
+          searchQuery: query,
+          currentPage: page,
+          totalCount: count,
+          message: failure.message,
+        ));
+      },
+      (savedSupplier) {
+        List<SupplierEntity> updatedList = List.from(currentList);
+        
+        final index = updatedList.indexWhere((s) => s.id == savedSupplier.id);
+        if (index >= 0) {
+          // Update existing
+          updatedList[index] = savedSupplier;
+        } else {
+          // Add new (at the top)
+          updatedList.insert(0, savedSupplier);
+          count++;
+        }
+
+        emit(SupplierSaveSuccess(
+          currentSuppliers: updatedList,
+          searchQuery: query,
+          currentPage: page,
+          totalCount: count,
+          message: supplier.id.isEmpty ? 'Proveedor creado' : 'Proveedor actualizado',
+        ));
+
+        // Immediately transition back to loaded
+        emit(SuppliersLoaded(
+          suppliers: updatedList,
+          searchQuery: query,
+          currentPage: page,
+          totalCount: count,
+        ));
       },
     );
   }

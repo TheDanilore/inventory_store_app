@@ -62,4 +62,67 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
       return Left(ServerFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, SupplierEntity>> createSupplier(SupplierEntity supplier) async {
+    try {
+      final model = SupplierModel(
+        id: '',
+        name: supplier.name,
+        taxId: supplier.taxId,
+        contactName: supplier.contactName,
+        phone: supplier.phone,
+        email: supplier.email,
+        address: supplier.address,
+        isActive: supplier.isActive,
+      );
+
+      final response = await _supabase
+          .from('suppliers')
+          .insert(model.toJson())
+          .select()
+          .single();
+
+      return Right(SupplierModel.fromJson(response));
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') {
+        return const Left(ValidationFailure(message: 'Ya existe un proveedor con ese número de RUC/ID fiscal.'));
+      }
+      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+    } catch (e) {
+      return Left(ServerFailure(message: 'Error inesperado: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, SupplierEntity>> updateSupplier(SupplierEntity supplier) async {
+    try {
+      final model = SupplierModel(
+        id: supplier.id,
+        name: supplier.name,
+        taxId: supplier.taxId,
+        contactName: supplier.contactName,
+        phone: supplier.phone,
+        email: supplier.email,
+        address: supplier.address,
+        isActive: supplier.isActive,
+      );
+
+      final response = await _supabase
+          .from('suppliers')
+          .update(model.toJson())
+          .eq('id', supplier.id)
+          .select()
+          .single();
+
+      return Right(SupplierModel.fromJson(response));
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') {
+        return const Left(ValidationFailure(message: 'Ya existe un proveedor con ese número de RUC/ID fiscal.'));
+      }
+      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+    } catch (e) {
+      return Left(ServerFailure(message: 'Error inesperado: $e'));
+    }
+  }
 }

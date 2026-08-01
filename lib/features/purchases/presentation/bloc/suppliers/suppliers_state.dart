@@ -89,3 +89,75 @@ class SuppliersError extends SuppliersState {
     totalCount,
   ];
 }
+
+class SupplierSaving extends SuppliersState {
+  final List<SupplierEntity> currentSuppliers;
+  final String searchQuery;
+  final int currentPage;
+  final int totalCount;
+
+  const SupplierSaving({
+    required this.currentSuppliers,
+    required this.searchQuery,
+    required this.currentPage,
+    required this.totalCount,
+  });
+
+  @override
+  List<Object?> get props => [
+    currentSuppliers,
+    searchQuery,
+    currentPage,
+    totalCount,
+  ];
+}
+
+class SupplierSaveSuccess extends SuppliersState {
+  final List<SupplierEntity> currentSuppliers;
+  final String searchQuery;
+  final int currentPage;
+  final int totalCount;
+  final String message;
+
+  const SupplierSaveSuccess({
+    required this.currentSuppliers,
+    required this.searchQuery,
+    required this.currentPage,
+    required this.totalCount,
+    required this.message,
+  });
+
+  @override
+  List<Object?> get props => [
+    currentSuppliers,
+    searchQuery,
+    currentPage,
+    totalCount,
+    message,
+  ];
+}
+
+class SupplierSaveError extends SuppliersState {
+  final List<SupplierEntity> currentSuppliers;
+  final String searchQuery;
+  final int currentPage;
+  final int totalCount;
+  final String message;
+
+  const SupplierSaveError({
+    required this.currentSuppliers,
+    required this.searchQuery,
+    required this.currentPage,
+    required this.totalCount,
+    required this.message,
+  });
+
+  @override
+  List<Object?> get props => [
+    currentSuppliers,
+    searchQuery,
+    currentPage,
+    totalCount,
+    message,
+  ];
+}
