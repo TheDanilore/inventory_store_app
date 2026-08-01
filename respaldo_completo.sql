@@ -2781,6 +2781,68 @@ $$;
 ALTER FUNCTION "public"."set_default_location"("p_profile_id" "uuid", "p_location_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."sync_cloud_cart_rpc"("p_auth_user_id" "uuid", "p_items" "jsonb") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_profile_id uuid;
+  v_cart_id uuid;
+BEGIN
+  -- 1. Obtener el profile_id
+  SELECT id INTO v_profile_id
+  FROM public.profiles
+  WHERE auth_user_id = p_auth_user_id;
+
+  IF v_profile_id IS NULL THEN
+    RAISE EXCEPTION 'Perfil no encontrado para el usuario dado.';
+  END IF;
+
+  -- 2. Obtener o crear el carrito
+  SELECT id INTO v_cart_id
+  FROM public.shopping_carts
+  WHERE profile_id = v_profile_id;
+
+  IF v_cart_id IS NULL THEN
+    INSERT INTO public.shopping_carts (profile_id)
+    VALUES (v_profile_id)
+    RETURNING id INTO v_cart_id;
+  END IF;
+
+  -- 3. Limpiar los items actuales del carrito
+  DELETE FROM public.cart_items WHERE cart_id = v_cart_id;
+
+  -- 4. Insertar los nuevos items usando bulk insert desde JSONB
+  IF p_items IS NOT NULL AND jsonb_array_length(p_items) > 0 THEN
+    INSERT INTO public.cart_items (
+      cart_id,
+      product_id,
+      variant_id,
+      quantity,
+      is_selected
+    )
+    SELECT
+      v_cart_id,
+      (rec.product_id)::uuid,
+      CASE WHEN rec.variant_id IS NULL OR rec.variant_id = '' THEN NULL ELSE (rec.variant_id)::uuid END,
+      (rec.quantity)::integer,
+      (rec.is_selected)::boolean
+    FROM jsonb_to_recordset(p_items) AS rec(
+      product_id text,
+      variant_id text,
+      quantity text,
+      is_selected text
+    );
+  END IF;
+
+  -- 5. Retornar el ID del carrito
+  RETURN v_cart_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."sync_cloud_cart_rpc"("p_auth_user_id" "uuid", "p_items" "jsonb") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."sync_purchase_order_reception_rpc"("p_purchase_order_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -5616,6 +5678,12 @@ GRANT ALL ON FUNCTION "public"."search_ingredients_unaccent"("search_term" "text
 REVOKE ALL ON FUNCTION "public"."set_default_location"("p_profile_id" "uuid", "p_location_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_default_location"("p_profile_id" "uuid", "p_location_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_default_location"("p_profile_id" "uuid", "p_location_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."sync_cloud_cart_rpc"("p_auth_user_id" "uuid", "p_items" "jsonb") TO "anon";
+GRANT ALL ON FUNCTION "public"."sync_cloud_cart_rpc"("p_auth_user_id" "uuid", "p_items" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."sync_cloud_cart_rpc"("p_auth_user_id" "uuid", "p_items" "jsonb") TO "service_role";
 
 
 
