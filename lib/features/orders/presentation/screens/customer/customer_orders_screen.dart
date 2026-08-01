@@ -11,6 +11,7 @@ import 'package:inventory_store_app/features/orders/presentation/bloc/customer_o
 import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders/customer_orders_state.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/orders/customer_order_card.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/orders/customer_order_detail_sheet.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 
@@ -37,6 +38,12 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userId = context.read<AuthCubit>().state.currentUser?.id;
+      if (userId != null && userId.isNotEmpty) {
+        context.read<CustomerOrdersCubit>().init(userId);
+      }
+    });
   }
 
   @override

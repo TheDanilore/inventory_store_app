@@ -24,9 +24,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final data = await _supabase
           .from('orders')
           .select('''
-            *,
+            id, customer_id, customer_name, total_amount, total_profit,
+            discount_amount, payment_method, payment_status, amount_paid,
+            status, due_date, points_used, points_earned, created_at,
+            warehouse_id, created_by,
             profiles!orders_customer_id_fkey ( id, full_name, phone ),
-            warehouses ( id, name )
+            warehouses!orders_store_id_fkey ( id, name )
           ''')
           .eq('customer_id', profileId)
           .order('created_at', ascending: false)
@@ -34,7 +37,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
       final orders = data.map((json) => OrderModel.fromJson(json)).toList();
       return Right(orders);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('🔴 [OrdersRepo] Error en getCustomerOrders: $e\n$st');
       return Left(ServerFailure(message: 'Error fetching orders: $e'));
     }
   }
