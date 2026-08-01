@@ -6,7 +6,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:developer' as developer;
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
-import 'package:inventory_store_app/features/purchases/domain/usecases/get_active_cash_shift_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_financial_accounts_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/register_order_payment_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/update_order_payment_method_usecase.dart';
@@ -158,22 +157,6 @@ class _PODetailSheetState extends State<PODetailSheet> {
 
     String selectedAccountId = accounts.first.id;
 
-    // ── Pre-cargar turnos de caja abiertos ───────────────────────────
-    final Map<String, String> activeShiftByAccount = {};
-    for (final acc in accounts) {
-      if (acc.type == 'CAJA') {
-        final shiftRes = await sl<GetActiveCashShiftUseCase>().call(acc.id);
-        shiftRes.fold(
-          (failure) => developer.log('Error al consultar turno: ${failure.message}'),
-          (shift) {
-            if (shift != null && shift['id'] != null) {
-              activeShiftByAccount[acc.id] = shift['id'] as String;
-            }
-          },
-        );
-      }
-    }
-
     final amountCtrl = TextEditingController(text: _pending.toStringAsFixed(2));
 
     if (!mounted) return;
@@ -182,18 +165,6 @@ class _PODetailSheetState extends State<PODetailSheet> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final selAcc = accounts.firstWhere(
-              (a) => a.id == selectedAccountId,
-              orElse: () => accounts.first,
-            );
-            final accType = selAcc.type;
-            final isCaja = accType == 'CAJA';
-            final hasShift = activeShiftByAccount.containsKey(selectedAccountId);
-            final isNoShiftWarning = isCaja && !hasShift;
-            final accBalance = selAcc.balance;
-            final payInput = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
-            final isInsufficientFunds = accBalance < payInput && payInput > 0;
-
             return AlertDialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -263,74 +234,7 @@ class _PODetailSheetState extends State<PODetailSheet> {
                         }
                       },
                     ),
-                    if (isNoShiftWarning) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.warning),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.warning_amber_rounded,
-                              color: AppColors.warning,
-                              size: 18,
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Esta caja no tiene un turno abierto. Debes abrir la caja antes de registrar un pago.',
-                                style: TextStyle(
-                                  color: AppColors.warning,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    if (isInsufficientFunds) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.danger.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.danger),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.account_balance_wallet_outlined,
-                              color: AppColors.danger,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Saldo insuficiente. La cuenta tiene S/ ${accBalance.toStringAsFixed(2)} y el monto a pagar es S/ ${payInput.toStringAsFixed(2)}.',
-                                style: const TextStyle(
-                                  color: AppColors.danger,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+
                     const SizedBox(height: 16),
                     const Text(
                       'Monto a pagar (S/):',
@@ -366,35 +270,13 @@ class _PODetailSheetState extends State<PODetailSheet> {
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        (isNoShiftWarning || isInsufficientFunds)
-                            ? AppColors.textMuted
-                            : AppColors.success,
+                    backgroundColor: AppColors.success,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  onPressed:
-                      isNoShiftWarning
-                          ? () {
-                            AppSnackbar.show(
-                              context,
-                              message:
-                                  'Debes abrir el turno de caja antes de registrar un egreso en efectivo.',
-                              type: SnackbarType.warning,
-                            );
-                          }
-                          : isInsufficientFunds
-                          ? () {
-                            AppSnackbar.show(
-                              context,
-                              message:
-                                  'Saldo insuficiente en la cuenta seleccionada.',
-                              type: SnackbarType.error,
-                            );
-                          }
-                          : () => Navigator.pop(ctx, true),
+                  onPressed: () => Navigator.pop(ctx, true),
                   child: const Text('Confirmar Pago'),
                 ),
               ],
@@ -432,18 +314,6 @@ class _PODetailSheetState extends State<PODetailSheet> {
         return;
       }
 
-      if (selAccFinal.type == 'CAJA' && !activeShiftByAccount.containsKey(selectedAccountId)) {
-        if (mounted) {
-          AppSnackbar.show(
-            context,
-            message:
-                'No hay un turno de caja abierto para esta cuenta. Debes abrir el turno de caja antes de registrar un egreso en efectivo.',
-            type: SnackbarType.warning,
-          );
-        }
-        return;
-      }
-
       final supplierId = widget.po.supplierId;
       if (supplierId == null) {
         AppSnackbar.show(
@@ -460,7 +330,7 @@ class _PODetailSheetState extends State<PODetailSheet> {
           supplierId: supplierId,
           amount: payAmount,
           accountId: selectedAccountId,
-          shiftId: activeShiftByAccount[selectedAccountId],
+          shiftId: null, // El RPC de backend se encargará de resolver el shiftId
         ),
       );
     }

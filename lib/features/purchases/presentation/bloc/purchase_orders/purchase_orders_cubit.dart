@@ -264,12 +264,16 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     UpdateOrderPaymentMethodParams params,
   ) async {
     final previousState = state;
-    emit(PurchaseOrderActionLoading());
 
     final result = await updateOrderPaymentMethodUseCase(params);
 
     result.fold(
-      (failure) => emit(PurchaseOrderActionError(message: failure.message)),
+      (failure) {
+        emit(PurchaseOrderActionError(message: failure.message));
+        if (previousState is PurchaseOrdersLoaded) {
+          emit(previousState);
+        }
+      },
       (_) {
         // Zero Egress: mutar payment_method en la lista RAM
         if (previousState is PurchaseOrdersLoaded) {
@@ -281,15 +285,18 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
             }
             return o;
           }).toList();
+          
+          emit(
+            PurchaseOrderActionSuccess(
+              message: 'Método de pago actualizado a ${params.newMethod}.',
+              orderId: params.orderId,
+              newPaymentMethod: params.newMethod,
+            ),
+          );
+          
+          // Re-emitir el estado principal para restaurar la lista en pantalla
           emit(previousState.copyWith(orders: updatedOrders));
         }
-        emit(
-          PurchaseOrderActionSuccess(
-            message: 'Método de pago actualizado a ${params.newMethod}.',
-            orderId: params.orderId,
-            newPaymentMethod: params.newMethod,
-          ),
-        );
       },
     );
   }
