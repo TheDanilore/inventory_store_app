@@ -616,14 +616,10 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                     context
                                         .read<OrderDetailCubit>()
                                         .updatePointsUsed(
-                                          pts <= maxPtsUser ? pts : maxPtsUser,
+                                          pts,
                                           pointsToSolesRatio,
                                           earningRate,
                                         );
-                                    if (pts > maxPtsUser) {
-                                      _pointsUsedCtrl.text =
-                                          maxPtsUser.toString();
-                                    }
                                   },
                                 ),
                                 const SizedBox(height: 16),
