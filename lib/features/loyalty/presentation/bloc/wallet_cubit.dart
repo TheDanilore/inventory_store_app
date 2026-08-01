@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:developer' as developer;
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/loyalty/domain/usecases/get_wallet_balance_uc.dart';
 
-class WalletState {
+class WalletState extends Equatable {
   final int? balance;
   final bool isLoading;
   final String? error;
@@ -26,6 +28,9 @@ class WalletState {
       error: clearError ? null : (error ?? this.error),
     );
   }
+
+  @override
+  List<Object?> get props => [balance, isLoading, error];
 }
 
 @injectable
@@ -60,17 +65,18 @@ class WalletCubit extends Cubit<WalletState> {
       return;
     }
 
-    if (isClosed) return;
+    if (isClosed || state.isLoading) return;
     emit(state.copyWith(isLoading: true, clearError: true));
 
     final result = await getWalletBalanceUC(user.id);
     result.fold(
       (failure) {
+        developer.log('Error al cargar Wallet balance', error: failure.message);
         if (isClosed) return;
         emit(
           state.copyWith(
             isLoading: false,
-            error: 'No se pudo cargar el saldo.',
+            error: failure.message,
             balance: state.balance ?? 0,
           ),
         );
