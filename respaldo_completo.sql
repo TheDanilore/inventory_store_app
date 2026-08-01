@@ -145,6 +145,29 @@ $$;
 ALTER FUNCTION "public"."award_mini_game_points"("p_profile_id" "uuid", "p_movement_type" "text", "p_points" integer, "p_description" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."calc_expected_shift_rpc"("p_shift_id" "uuid", "p_account_id" "uuid") RETURNS numeric
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_income  numeric := 0;
+  v_expense numeric := 0;
+BEGIN
+  SELECT
+    COALESCE(SUM(CASE WHEN movement_type = 'INCOME'  THEN amount ELSE 0 END), 0),
+    COALESCE(SUM(CASE WHEN movement_type = 'EXPENSE' THEN amount ELSE 0 END), 0)
+  INTO v_income, v_expense
+  FROM public.account_movements
+  WHERE shift_id   = p_shift_id
+    AND account_id = p_account_id;
+
+  RETURN v_income - v_expense;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."calc_expected_shift_rpc"("p_shift_id" "uuid", "p_account_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."cancel_purchase_order_rpc"("p_purchase_order_id" "uuid", "p_account_id" "uuid" DEFAULT NULL::"uuid", "p_profile_id" "uuid" DEFAULT NULL::"uuid", "p_reason" "text" DEFAULT 'Anulación de orden de compra'::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -492,6 +515,76 @@ $$;
 
 
 ALTER FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text" DEFAULT NULL::"text", "p_date_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_date_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_profile_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_open_count   int;
+  v_closed_count int;
+  v_total_count  int;
+  v_shifts       jsonb;
+BEGIN
+  -- Conteo de OPEN (siempre sin filtro de status para el badge)
+  SELECT COUNT(*) INTO v_open_count
+  FROM public.cash_shifts
+  WHERE (p_profile_id IS NULL OR opened_by = p_profile_id)
+    AND (p_date_from IS NULL OR opened_at >= p_date_from)
+    AND (p_date_to   IS NULL OR opened_at <= p_date_to)
+    AND status = 'OPEN';
+
+  -- Conteo de CLOSED
+  SELECT COUNT(*) INTO v_closed_count
+  FROM public.cash_shifts
+  WHERE (p_profile_id IS NULL OR opened_by = p_profile_id)
+    AND (p_date_from IS NULL OR opened_at >= p_date_from)
+    AND (p_date_to   IS NULL OR opened_at <= p_date_to)
+    AND status = 'CLOSED';
+
+  -- Total con filtro de status aplicado
+  SELECT COUNT(*) INTO v_total_count
+  FROM public.cash_shifts
+  WHERE (p_status     IS NULL OR status = p_status)
+    AND (p_profile_id IS NULL OR opened_by = p_profile_id)
+    AND (p_date_from  IS NULL OR opened_at >= p_date_from)
+    AND (p_date_to    IS NULL OR opened_at <= p_date_to);
+
+  -- Página de turnos con todos los joins
+  SELECT jsonb_agg(row_to_json(s.*)) INTO v_shifts
+  FROM (
+    SELECT
+      cs.id, cs.status, cs.opening_amount, cs.expected_amount,
+      cs.actual_amount, cs.difference_amount, cs.notes,
+      cs.opened_at, cs.closed_at, cs.account_id,
+      jsonb_build_object('id', fa.id, 'name', fa.name, 'type', fa.type) AS financial_accounts,
+      jsonb_build_object('full_name', op.full_name) AS opened_by_profile,
+      jsonb_build_object('full_name', cp.full_name) AS closed_by_profile
+    FROM public.cash_shifts cs
+    JOIN public.financial_accounts fa ON fa.id = cs.account_id
+    LEFT JOIN public.profiles op ON op.id = cs.opened_by
+    LEFT JOIN public.profiles cp ON cp.id = cs.closed_by
+    WHERE (p_status     IS NULL OR cs.status = p_status)
+      AND (p_profile_id IS NULL OR cs.opened_by = p_profile_id)
+      AND (p_date_from  IS NULL OR cs.opened_at >= p_date_from)
+      AND (p_date_to    IS NULL OR cs.opened_at <= p_date_to)
+    ORDER BY
+      CASE cs.status WHEN 'OPEN' THEN 0 ELSE 1 END ASC,
+      cs.opened_at DESC
+    LIMIT p_limit OFFSET p_offset
+  ) s;
+
+  RETURN jsonb_build_object(
+    'shifts',        COALESCE(v_shifts, '[]'::jsonb),
+    'total_count',   v_total_count,
+    'open_count',    v_open_count,
+    'closed_count',  v_closed_count
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_loyalty_dashboard"("p_auth_user_id" "uuid") RETURNS json
@@ -1956,6 +2049,23 @@ BEGIN
         RAISE EXCEPTION 'El pedido no tiene almacén asignado.';
     END IF;
 
+    -- OPTIMIZACIÓN DE DATA EGRESS: Si no vienen ítems del UI, tomarlos de la BD.
+    IF v_items IS NULL OR jsonb_array_length(v_items) = 0 THEN
+        SELECT COALESCE(jsonb_agg(
+            jsonb_build_object(
+                'id', id,
+                'variant_id', variant_id,
+                'quantity', quantity,
+                'unit_cost', unit_cost
+            )
+        ), '[]'::jsonb) INTO v_items
+        FROM order_items
+        WHERE order_id = v_order_id;
+        
+        -- Si no vienen del UI, también recalcular montos (seguridad anti-tampering)
+        SELECT total_amount INTO v_total_amount FROM orders WHERE id = v_order_id;
+    END IF;
+
     -- 2. Validate Payment Method for Completion
     IF v_payment_method = 'POR ACORDAR' OR TRIM(v_payment_method) = '' THEN
         RAISE EXCEPTION '__PAYMENT_METHOD_REQUIRED__';
@@ -1988,7 +2098,7 @@ BEGIN
         v_remaining := v_qty_needed;
         
         -- Check if we have overrides for this item id
-        IF v_overrides ? (v_item->>'id') THEN
+        IF v_overrides IS NOT NULL AND v_overrides ? (v_item->>'id') THEN
             FOR v_override IN SELECT * FROM jsonb_array_elements(v_overrides->(v_item->>'id'))
             LOOP
                 v_take := (v_override->>'assigned')::integer;
@@ -1999,7 +2109,7 @@ BEGIN
                     UPDATE warehouse_stock_batches
                     SET available_quantity = available_quantity - v_take
                     WHERE id = v_batch_id AND available_quantity >= v_take
-                    RETURNING available_quantity INTO v_take; -- v_take here is dummy check
+                    RETURNING available_quantity INTO v_take; -- dummy check
                     
                     IF NOT FOUND THEN
                         RAISE EXCEPTION 'Stock insuficiente en el lote asignado (override).';
@@ -2042,7 +2152,7 @@ BEGIN
                 INSERT INTO inventory_movements 
                     (variant_id, warehouse_id, stock_batch_id, order_id, quantity, unit_cost, reason, notes, created_by)
                 VALUES 
-                    ((v_item->>'variant_id')::uuid, v_warehouse_id, v_batch.id, v_order_id, -v_take, (v_item->>'unit_cost')::numeric, 'SALE', 'Pedido completado desde detalles (FEFO) · Lote: ' || v_batch.batch_number, v_current_profile_id);
+                    ((v_item->>'variant_id')::uuid, v_warehouse_id, v_batch.id, v_order_id, -v_take, (v_item->>'unit_cost')::numeric, 'SALE', 'Pedido completado (FEFO) · Lote: ' || v_batch.batch_number, v_current_profile_id);
 
                 v_remaining := v_remaining - v_take;
             END LOOP;
@@ -2052,12 +2162,14 @@ BEGIN
             END IF;
         END IF;
         
-        -- Update the individual order item
-        UPDATE order_items
-        SET quantity = (v_item->>'quantity')::integer,
-            unit_cost = (v_item->>'unit_cost')::numeric,
-            net_profit = ((v_item->>'applied_price')::numeric - (v_item->>'unit_cost')::numeric) * (v_item->>'quantity')::integer
-        WHERE id = (v_item->>'id')::uuid;
+        -- Update the individual order item ONLY if applied_price is provided (came from UI Edit)
+        IF v_item ? 'applied_price' THEN
+            UPDATE order_items
+            SET quantity = (v_item->>'quantity')::integer,
+                unit_cost = (v_item->>'unit_cost')::numeric,
+                net_profit = ((v_item->>'applied_price')::numeric - (v_item->>'unit_cost')::numeric) * (v_item->>'quantity')::integer
+            WHERE id = (v_item->>'id')::uuid;
+        END IF;
 
     END LOOP;
 
@@ -2073,7 +2185,7 @@ BEGIN
         INSERT INTO customer_credit_movements 
             (customer_credit_id, order_id, movement_type, amount, notes, created_by)
         VALUES 
-            (v_credit_id, v_order_id, 'CHARGE', v_total_amount, 'Activación de pedido desde detalles', v_current_profile_id);
+            (v_credit_id, v_order_id, 'CHARGE', v_total_amount, 'Activación de pedido completado', v_current_profile_id);
     ELSE
         -- Find Financial Account matching payment method
         SELECT id, type, balance INTO v_account_id, v_account_type, v_account_balance
@@ -2131,17 +2243,17 @@ BEGIN
 
     -- 7. Update the Order
     UPDATE orders
-    SET customer_id = v_customer_id,
+    SET customer_id = COALESCE(v_customer_id, customer_id),
         customer_name = COALESCE(v_customer_name, customer_name),
         status = 'COMPLETED',
         payment_method = v_payment_method,
         payment_status = CASE WHEN v_payment_method = 'CRÉDITO' THEN 'PENDING' ELSE 'PAID' END,
         amount_paid = CASE WHEN v_payment_method = 'CRÉDITO' THEN 0 ELSE v_total_amount END,
         total_amount = v_total_amount,
-        total_profit = v_total_profit,
+        total_profit = GREATEST(v_total_profit, total_profit),
         points_used = CASE WHEN v_payment_method = 'CRÉDITO' THEN 0 ELSE v_points_used END,
         points_earned = CASE WHEN v_payment_method = 'CRÉDITO' THEN 0 ELSE v_points_earned END,
-        updated_by = v_current_profile_id,
+        updated_by = COALESCE(v_current_profile_id, updated_by),
         updated_at = NOW()
     WHERE id = v_order_id;
 
@@ -5058,6 +5170,12 @@ GRANT ALL ON FUNCTION "public"."award_mini_game_points"("p_profile_id" "uuid", "
 
 
 
+GRANT ALL ON FUNCTION "public"."calc_expected_shift_rpc"("p_shift_id" "uuid", "p_account_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."calc_expected_shift_rpc"("p_shift_id" "uuid", "p_account_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."calc_expected_shift_rpc"("p_shift_id" "uuid", "p_account_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."cancel_purchase_order_rpc"("p_purchase_order_id" "uuid", "p_account_id" "uuid", "p_profile_id" "uuid", "p_reason" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."cancel_purchase_order_rpc"("p_purchase_order_id" "uuid", "p_account_id" "uuid", "p_profile_id" "uuid", "p_reason" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."cancel_purchase_order_rpc"("p_purchase_order_id" "uuid", "p_account_id" "uuid", "p_profile_id" "uuid", "p_reason" "text") TO "service_role";
@@ -5073,6 +5191,12 @@ GRANT ALL ON FUNCTION "public"."claim_daily_checkin"("p_profile_id" "uuid", "p_a
 GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") TO "service_role";
 
 
 
