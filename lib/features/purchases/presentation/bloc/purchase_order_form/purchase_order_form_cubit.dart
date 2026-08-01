@@ -1,89 +1,88 @@
-import 'package:flutter/material.dart';
-import 'package:injectable/injectable.dart';
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
-
 import 'package:inventory_store_app/features/purchases/domain/usecases/create_purchase_order_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_active_cash_shift_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_purchase_order_form_catalogs_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_supplier_credit_usecase.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_order_form/purchase_order_form_state.dart';
 
 @injectable
 class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
-  final SupabaseClient _supabase = Supabase.instance.client;
   final CreatePurchaseOrderUseCase createPurchaseOrderUseCase;
   final GetActiveCashShiftUseCase getActiveCashShiftUseCase;
+  final GetPurchaseOrderFormCatalogsUseCase getPurchaseOrderFormCatalogsUseCase;
+  final GetSupplierCreditUseCase getSupplierCreditUseCase;
 
   static const _draftKey = 'po_form_draft_v1';
 
   PurchaseOrderFormCubit({
     required this.createPurchaseOrderUseCase,
     required this.getActiveCashShiftUseCase,
+    required this.getPurchaseOrderFormCatalogsUseCase,
+    required this.getSupplierCreditUseCase,
   }) : super(PurchaseOrderFormInitial());
 
-  Future<void> initForm() async {
+  Future<void> initForm({bool forceReload = false}) async {
+    if (!forceReload && state is PurchaseOrderFormLoaded) {
+      final loaded = state as PurchaseOrderFormLoaded;
+      if (loaded.suppliers.isNotEmpty || loaded.warehouses.isNotEmpty) {
+        return; // Evitar recargas redundantes si el estado ya está cargado
+      }
+    }
+
     emit(const PurchaseOrderFormLoading());
 
     try {
-      final pRes = await _supabase
-          .from('suppliers')
-          .select('id, name')
-          .eq('is_active', true)
-          .order('name');
-      final wRes = await _supabase
-          .from('warehouses')
-          .select('id, name, is_active, address')
-          .eq('is_active', true)
-          .order('name');
-      final aRes = await _supabase
-          .from('financial_accounts')
-          .select('id, name, type, balance')
-          .eq('is_active', true)
-          .order('name');
+      final catalogsResult = await getPurchaseOrderFormCatalogsUseCase();
 
-      final creditsRes = await _supabase
-          .from('supplier_credits')
-          .select('id, supplier_id, current_debt, credit_limit, is_active');
-
-      final suppliers = List<Map<String, dynamic>>.from(pRes as List);
-      final warehouses =
-          (wRes as List).map((e) => WarehouseModel.fromJson(e)).toList();
-      final accounts =
-          (aRes as List).map((e) => FinancialAccountModel.fromJson(e)).toList();
-
-      final Map<String, Map<String, dynamic>> supplierCreditsBySupplierId = {};
-      for (final c in (creditsRes as List)) {
-        final sId = c['supplier_id'] as String?;
-        if (sId != null) {
-          supplierCreditsBySupplierId[sId] = Map<String, dynamic>.from(
-            c as Map,
+      await catalogsResult.fold(
+        (failure) async {
+          developer.log(
+            'Error al cargar catálogos en initForm: ${failure.message}',
+            name: 'PurchaseOrderFormCubit',
           );
-        }
-      }
+          emit(
+            PurchaseOrderFormLoaded(
+              suppliers: const [],
+              warehouses: const [],
+              accounts: const [],
+              errorMessage: failure.message,
+            ),
+          );
+        },
+        (data) async {
+          final suppliers =
+              data['suppliers'] as List<Map<String, dynamic>>? ?? [];
+          final warehouses = data['warehouses'] as List<WarehouseModel>? ?? [];
+          final accounts =
+              data['accounts'] as List<FinancialAccountModel>? ?? [];
+          final activeShiftsByAccount =
+              data['activeShiftsByAccount'] as Map<String, String>? ?? {};
 
-      final prefs = await SharedPreferences.getInstance();
-      final draftStr = prefs.getString(_draftKey);
+          bool isDraftRestored = false;
+          List<InventoryEntryItemEntity> initialItems = [];
+          String? initialSupplier;
+          String? initialWarehouse;
 
-      bool isDraftRestored = false;
-      List<InventoryEntryItemEntity> initialItems = [];
-      String? initialSupplier;
-      String? initialWarehouse;
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            final draftStr = prefs.getString(_draftKey);
 
-      if (draftStr != null) {
-        try {
-          final data = jsonDecode(draftStr) as Map<String, dynamic>;
-          initialSupplier = data['supplierId'] as String?;
-          initialWarehouse = data['warehouseId'] as String?;
-          if (data['items'] != null) {
-            final rawItems = data['items'] as List;
-            initialItems =
-                rawItems
-                    .map(
-                      (e) => InventoryEntryItemEntity(
+            if (draftStr != null) {
+              final draftData = jsonDecode(draftStr) as Map<String, dynamic>;
+              initialSupplier = draftData['supplierId'] as String?;
+              initialWarehouse = draftData['warehouseId'] as String?;
+              if (draftData['items'] != null) {
+                final rawItems = draftData['items'] as List;
+                initialItems =
+                    rawItems.map((e) {
+                      return InventoryEntryItemEntity(
                         productId: e['productId'],
                         variantId: e['variantId'],
                         productName: e['productName'],
@@ -97,54 +96,115 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
                                 : null,
                         unitCost: (e['unitCost'] as num?)?.toDouble() ?? 0.0,
                         quantity: (e['quantity'] as num?)?.toDouble() ?? 0.0,
-                      ),
-                    )
-                    .toList();
+                      );
+                    }).toList();
+                isDraftRestored =
+                    initialItems.isNotEmpty ||
+                    initialSupplier != null ||
+                    initialWarehouse != null;
+              }
+            }
+          } catch (e, st) {
+            developer.log(
+              'Error restaurando borrador en SharedPreferences',
+              error: e,
+              stackTrace: st,
+              name: 'PurchaseOrderFormCubit',
+            );
+            try {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove(_draftKey);
+            } catch (removeError, removeSt) {
+              developer.log(
+                'Error al limpiar borrador corrupto en SharedPreferences',
+                error: removeError,
+                stackTrace: removeSt,
+                name: 'PurchaseOrderFormCubit',
+              );
+            }
           }
-        } catch (e) {
-          await prefs.remove(_draftKey);
-        }
-      }
 
-      Map<String, String> activeShiftsByAccount = {};
+          final Map<String, Map<String, dynamic>> supplierCreditsBySupplierId =
+              {};
 
-      try {
-        final shiftsRes = await _supabase
-            .from('cash_shifts')
-            .select('id, account_id')
-            .eq('status', 'OPEN');
-        for (final s in (shiftsRes as List)) {
-          if (s['account_id'] != null && s['id'] != null) {
-            activeShiftsByAccount[s['account_id'] as String] =
-                s['id'] as String;
+          emit(
+            PurchaseOrderFormLoaded(
+              suppliers: suppliers,
+              warehouses: warehouses,
+              accounts: accounts,
+              activeShiftsByAccount: activeShiftsByAccount,
+              supplierCreditsBySupplierId: supplierCreditsBySupplierId,
+              items: initialItems,
+              selectedSupplierId: initialSupplier,
+              selectedWarehouseId: initialWarehouse,
+              isDraftRestored: isDraftRestored,
+            ),
+          );
+
+          // Cargar crédito del proveedor inicial restaurado bajo demanda (Lazy Loading)
+          if (initialSupplier != null) {
+            _fetchSupplierCreditIfNeeded(initialSupplier);
           }
-        }
-      } catch (e) {
-        debugPrint('Error cargando turnos activos de caja: $e');
-      }
-
-      emit(
-        PurchaseOrderFormLoaded(
-          suppliers: suppliers,
-          warehouses: warehouses,
-          accounts: accounts,
-          activeShiftsByAccount: activeShiftsByAccount,
-          supplierCreditsBySupplierId: supplierCreditsBySupplierId,
-          items: initialItems,
-          selectedSupplierId: initialSupplier,
-          selectedWarehouseId: initialWarehouse,
-          isDraftRestored: isDraftRestored,
-        ),
+        },
       );
     } catch (e, st) {
-      debugPrint('Error cargando catálogos en PurchaseOrderFormCubit: $e\n$st');
+      developer.log(
+        'Error inesperado en initForm',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrderFormCubit',
+      );
       emit(
         PurchaseOrderFormLoaded(
           suppliers: const [],
           warehouses: const [],
           accounts: const [],
-          errorMessage: 'Error al cargar catálogos: $e',
+          errorMessage: 'Error inesperado al cargar catálogos: $e',
         ),
+      );
+    }
+  }
+
+  Future<void> _fetchSupplierCreditIfNeeded(String supplierId) async {
+    final currentState = state;
+    if (currentState is! PurchaseOrderFormLoaded) return;
+    if (currentState.supplierCreditsBySupplierId.containsKey(supplierId)) {
+      return; // Crédito ya cargado en caché para este proveedor
+    }
+
+    try {
+      final res = await getSupplierCreditUseCase(supplierId);
+      res.fold(
+        (failure) {
+          developer.log(
+            'Error cargando crédito de proveedor $supplierId: ${failure.message}',
+            name: 'PurchaseOrderFormCubit',
+          );
+        },
+        (creditData) {
+          final updatedState = state;
+          if (updatedState is PurchaseOrderFormLoaded) {
+            final newCreditsMap = Map<String, Map<String, dynamic>>.from(
+              updatedState.supplierCreditsBySupplierId,
+            );
+            if (creditData != null) {
+              newCreditsMap[supplierId] = creditData;
+            } else {
+              newCreditsMap[supplierId] =
+                  {}; // Caché vacío si no tiene crédito configurado
+            }
+            emit(
+              updatedState.copyWith(supplierCreditsBySupplierId: newCreditsMap),
+            );
+          }
+        },
+      );
+    } catch (e, st) {
+      developer.log(
+        'Error inesperado al consultar crédito en _fetchSupplierCreditIfNeeded',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrderFormCubit',
       );
     }
   }
@@ -177,14 +237,28 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
                 .toList(),
       };
       await prefs.setString(_draftKey, jsonEncode(data));
-    } catch (_) {}
+    } catch (e, st) {
+      developer.log(
+        'Error al guardar borrador en SharedPreferences',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrderFormCubit',
+      );
+    }
   }
 
   Future<void> clearDraft() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_draftKey);
-    } catch (_) {}
+    } catch (e, st) {
+      developer.log(
+        'Error al limpiar borrador en SharedPreferences',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrderFormCubit',
+      );
+    }
   }
 
   void updateField({
@@ -216,6 +290,14 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
     );
 
     emit(newState);
+
+    if (supplierId != null && newState.selectedSupplierId != null) {
+      _fetchSupplierCreditIfNeeded(newState.selectedSupplierId!);
+    } else if ((paymentMode == 'CRÉDITO' || paymentStatus == 'PENDING') &&
+        newState.selectedSupplierId != null) {
+      _fetchSupplierCreditIfNeeded(newState.selectedSupplierId!);
+    }
+
     if (supplierId != null || warehouseId != null) {
       _saveDraft();
     }
@@ -224,47 +306,15 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
   void clearDueDate() {
     final currentState = state;
     if (currentState is! PurchaseOrderFormLoaded) return;
-    emit(
-      PurchaseOrderFormLoaded(
-        suppliers: currentState.suppliers,
-        warehouses: currentState.warehouses,
-        accounts: currentState.accounts,
-        items: currentState.items,
-        selectedSupplierId: currentState.selectedSupplierId,
-        selectedWarehouseId: currentState.selectedWarehouseId,
-        dueDate: null, // Clear due date explicitly
-        documentDate: currentState.documentDate,
-        documentType: currentState.documentType,
-        paymentMode: currentState.paymentMode,
-        paymentStatus: currentState.paymentStatus,
-        selectedAccountId: currentState.selectedAccountId,
-        documentNumber: currentState.documentNumber,
-        notes: currentState.notes,
-      ),
-    );
+    emit(currentState.clearDueDate());
+    _saveDraft();
   }
 
   void clearDocumentDate() {
     final currentState = state;
     if (currentState is! PurchaseOrderFormLoaded) return;
-    emit(
-      PurchaseOrderFormLoaded(
-        suppliers: currentState.suppliers,
-        warehouses: currentState.warehouses,
-        accounts: currentState.accounts,
-        items: currentState.items,
-        selectedSupplierId: currentState.selectedSupplierId,
-        selectedWarehouseId: currentState.selectedWarehouseId,
-        dueDate: currentState.dueDate,
-        documentDate: null, // Clear document date explicitly
-        documentType: currentState.documentType,
-        paymentMode: currentState.paymentMode,
-        paymentStatus: currentState.paymentStatus,
-        selectedAccountId: currentState.selectedAccountId,
-        documentNumber: currentState.documentNumber,
-        notes: currentState.notes,
-      ),
-    );
+    emit(currentState.clearDocumentDate());
+    _saveDraft();
   }
 
   void addItem(InventoryEntryItemEntity item) {
@@ -344,10 +394,6 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
       return;
     }
 
-    emit(
-      currentState.copyWith(isSaving: true, errorMessage: null),
-    ); // Assume null clears. Actually wait, I didn't wrap errorMessage.
-    // I should use clearError() then copyWith.
     final loadingState = currentState.clearError().copyWith(isSaving: true);
     emit(loadingState);
 
@@ -366,10 +412,12 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
           final shiftRes = await getActiveCashShiftUseCase(
             loadingState.selectedAccountId!,
           );
-          shiftRes.fold(
-            (failure) => null,
-            (data) => activeShiftId = data?['id'] as String?,
-          );
+          shiftRes.fold((failure) {
+            developer.log(
+              'Error buscando turno de caja: ${failure.message}',
+              name: 'PurchaseOrderFormCubit',
+            );
+          }, (data) => activeShiftId = data?['id'] as String?);
         }
       }
 
@@ -386,12 +434,16 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
         dueDate: loadingState.dueDate,
         documentDate: loadingState.documentDate,
         documentType: loadingState.documentType,
-        documentNumber: loadingState.documentNumber,
-        notes: loadingState.notes,
+        documentNumber: loadingState.documentNumber.trim(),
+        notes: loadingState.notes.trim(),
       );
 
       await result.fold(
         (failure) async {
+          developer.log(
+            'Error al crear orden en submitOrder: ${failure.message}',
+            name: 'PurchaseOrderFormCubit',
+          );
           emit(
             loadingState.copyWith(
               isSaving: false,
@@ -404,7 +456,13 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
           emit(PurchaseOrderFormSuccess());
         },
       );
-    } catch (e) {
+    } catch (e, st) {
+      developer.log(
+        'Error inesperado al ejecutar submitOrder',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrderFormCubit',
+      );
       emit(
         loadingState.copyWith(
           isSaving: false,

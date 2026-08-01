@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:injectable/injectable.dart';
 import 'package:fpdart/fpdart.dart';
@@ -9,6 +10,8 @@ import 'package:inventory_store_app/features/purchases/domain/repositories/purch
 import 'package:inventory_store_app/features/purchases/data/models/purchase_order_model.dart';
 import 'package:inventory_store_app/features/purchases/data/models/purchase_order_item_model.dart';
 import 'package:inventory_store_app/features/inventory/data/repositories_impl/inventory_entries_repository_impl.dart';
+import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
 
 @LazySingleton(as: PurchaseOrdersRepository)
 class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
@@ -522,159 +525,63 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       }
 
       // 3. Ejecución atómica mediante RPC en Supabase
-      try {
-        final itemsJson =
-            items.map((item) {
-              return {
-                'product_id': item.productId,
-                'variant_id': item.variantId,
-                'quantity': item.quantity,
-                'unit_cost': item.unitCost,
-                'batch_number': item.batchNumber,
-                'expiry_date': item.expiryDate?.toIso8601String(),
-              };
-            }).toList();
+      final itemsJson =
+          items.map((item) {
+            return {
+              'product_id': item.productId,
+              'variant_id': item.variantId,
+              'quantity': item.quantity,
+              'unit_cost': item.unitCost,
+              'batch_number': item.batchNumber,
+              'expiry_date': item.expiryDate?.toIso8601String(),
+            };
+          }).toList();
 
-        final rpcRes = await _supabase.rpc(
-          'create_purchase_order_rpc',
-          params: {
-            'p_supplier_id': supplierId,
-            'p_supplier_name': supplierName,
-            'p_warehouse_id': warehouseId,
-            'p_total_amount': totalAmount,
-            'p_payment_method': paymentMode,
-            'p_payment_status': paymentStatus,
-            'p_account_id': accountId,
-            'p_active_shift_id': activeShiftId,
-            'p_due_date': dueDate?.toIso8601String().split('T').first,
-            'p_document_date': documentDate?.toIso8601String().split('T').first,
-            'p_document_type': documentType,
-            'p_document_number': documentNumber,
-            'p_notes': notes,
-            'p_profile_id': profileId,
-            'p_items': itemsJson,
-          },
-        );
+      final rpcRes = await _supabase.rpc(
+        'create_purchase_order_rpc',
+        params: {
+          'p_supplier_id': supplierId,
+          'p_supplier_name': supplierName,
+          'p_warehouse_id': warehouseId,
+          'p_total_amount': totalAmount,
+          'p_payment_method': paymentMode,
+          'p_payment_status': paymentStatus,
+          'p_account_id': accountId,
+          'p_active_shift_id': activeShiftId,
+          'p_due_date': dueDate?.toIso8601String().split('T').first,
+          'p_document_date': documentDate?.toIso8601String().split('T').first,
+          'p_document_type': documentType,
+          'p_document_number': documentNumber,
+          'p_notes': notes,
+          'p_profile_id': profileId,
+          'p_items': itemsJson,
+        },
+      );
 
-        if (rpcRes != null && rpcRes is Map) {
-          final isSuccess = rpcRes['success'] as bool? ?? false;
-          if (isSuccess) {
-            return const Right(null);
-          } else if (rpcRes['error'] != null) {
-            return Left(ServerFailure(message: rpcRes['error'].toString()));
-          }
+      if (rpcRes != null && rpcRes is Map) {
+        final isSuccess = rpcRes['success'] as bool? ?? false;
+        if (isSuccess) {
+          return const Right(null);
+        } else if (rpcRes['error'] != null) {
+          return Left(ServerFailure(message: rpcRes['error'].toString()));
         }
-      } catch (e) {
-        debugPrint('RPC create_purchase_order_rpc fallback local: $e');
       }
-
-      final poResp =
-          await _supabase
-              .from('purchase_orders')
-              .insert({
-                'supplier_id': supplierId,
-                'supplier_name': supplierName,
-                'warehouse_id': warehouseId,
-                'status': 'PENDING',
-                'total_amount': totalAmount,
-                'payment_method': paymentMode,
-                'payment_status': paymentStatus,
-                'amount_paid': paymentStatus == 'PAID' ? totalAmount : 0,
-                'due_date': dueDate?.toIso8601String().split('T').first,
-                'document_type': documentType,
-                'document_number': documentNumber,
-                'document_date':
-                    documentDate?.toIso8601String().split('T').first,
-                'notes': notes,
-                'created_by': profileId,
-              })
-              .select('id')
-              .single();
-
-      final poId = poResp['id'] as String;
-
-      // Inserción en lote (batch insert) para evitar peticiones N+1
-      final itemsPayload =
-          items
-              .map(
-                (item) => {
-                  'purchase_order_id': poId,
-                  'product_id': item.productId,
-                  'variant_id': item.variantId.isEmpty ? null : item.variantId,
-                  'quantity_ordered': item.quantity,
-                  'quantity_received': 0,
-                  'unit_cost': item.unitCost,
-                  'batch_number': item.batchNumber,
-                  'expiry_date': item.expiryDate?.toIso8601String(),
-                },
-              )
-              .toList();
-
-      if (itemsPayload.isNotEmpty) {
-        await _supabase.from('purchase_order_items').insert(itemsPayload);
-      }
-
-      if ((paymentMode == 'CRÉDITO' || paymentStatus == 'PENDING') &&
-          paymentStatus != 'PAID') {
-        final creditRes =
-            await _supabase
-                .from('supplier_credits')
-                .select('id, current_debt')
-                .eq('supplier_id', supplierId)
-                .maybeSingle();
-
-        if (creditRes != null) {
-          final creditId = creditRes['id'] as String;
-          final currentDebt =
-              (creditRes['current_debt'] as num?)?.toDouble() ?? 0.0;
-          final newDebt = currentDebt + totalAmount;
-          await _supabase
-              .from('supplier_credits')
-              .update({
-                'current_debt': newDebt,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', creditId);
-
-          try {
-            await _supabase.from('supplier_credit_movements').insert({
-              'supplier_credit_id': creditId,
-              'purchase_order_id': poId,
-              'movement_type': 'CHARGE',
-              'amount': totalAmount,
-              'notes': 'Nueva orden de compra generada ($paymentMode)',
-              if (profileId != null) 'created_by': profileId,
-            });
-          } catch (e) {
-            debugPrint('Error no crítico insertando movimiento de crédito: $e');
-          }
-        }
-      } else if (paymentStatus == 'PAID' && accountId != null) {
-        await _supabase.from('account_movements').insert({
-          'account_id': accountId,
-          if (activeShiftId != null) 'shift_id': activeShiftId,
-          'movement_type': 'EXPENSE',
-          'amount': totalAmount,
-          'description': 'Pago contado de Orden de Compra $documentNumber',
-          'reference_type': 'purchase_orders',
-          'reference_id': poId,
-          'created_by': profileId,
-        });
-
-        final accountData =
-            await _supabase
-                .from('financial_accounts')
-                .select('balance')
-                .eq('id', accountId)
-                .single();
-        final currentBalance = (accountData['balance'] as num).toDouble();
-        await _supabase
-            .from('financial_accounts')
-            .update({'balance': currentBalance - totalAmount})
-            .eq('id', accountId);
-      }
-      return const Right(null);
-    } catch (e) {
+      return Left(ServerFailure(message: 'El servidor rechazó la creación de la orden (respuesta no confirmada).'));
+    } on PostgrestException catch (e, st) {
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] createPurchaseOrder PostgrestException: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
+      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+    } catch (e, st) {
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] createPurchaseOrder unexpected error: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -879,4 +786,96 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       return Left(ServerFailure(message: 'Error inesperado al cambiar método de pago: $e'));
     }
   }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> getFormCatalogs() async {
+    try {
+      final pRes = await _supabase
+          .from('suppliers')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('name');
+      final wRes = await _supabase
+          .from('warehouses')
+          .select('id, name, is_active, address')
+          .eq('is_active', true)
+          .order('name');
+      final aRes = await _supabase
+          .from('financial_accounts')
+          .select('id, name, type, balance')
+          .eq('is_active', true)
+          .order('name');
+      final shiftsRes = await _supabase
+          .from('cash_shifts')
+          .select('id, account_id')
+          .eq('status', 'OPEN');
+
+      final suppliers = List<Map<String, dynamic>>.from(pRes as List);
+      final warehouses =
+          (wRes as List).map((e) => WarehouseModel.fromJson(e)).toList();
+      final accounts =
+          (aRes as List).map((e) => FinancialAccountModel.fromJson(e)).toList();
+
+      final Map<String, String> activeShiftsByAccount = {};
+      for (final s in (shiftsRes as List)) {
+        if (s['account_id'] != null && s['id'] != null) {
+          activeShiftsByAccount[s['account_id'] as String] = s['id'] as String;
+        }
+      }
+
+      return Right({
+        'suppliers': suppliers,
+        'warehouses': warehouses,
+        'accounts': accounts,
+        'activeShiftsByAccount': activeShiftsByAccount,
+      });
+    } on PostgrestException catch (e, st) {
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] getFormCatalogs PostgrestException: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
+      return Left(ServerFailure(message: 'Error al cargar catálogos: ${e.message}'));
+    } catch (e, st) {
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] getFormCatalogs unexpected: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
+      return Left(ServerFailure(message: 'Error inesperado al cargar catálogos: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>?>> getSupplierCredit(
+    String supplierId,
+  ) async {
+    try {
+      final creditRes = await _supabase
+          .from('supplier_credits')
+          .select('id, supplier_id, current_debt, credit_limit, is_active')
+          .eq('supplier_id', supplierId)
+          .maybeSingle();
+      return Right(creditRes != null ? Map<String, dynamic>.from(creditRes) : null);
+    } on PostgrestException catch (e, st) {
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] getSupplierCredit PostgrestException: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
+      return Left(ServerFailure(message: 'Error al consultar crédito: ${e.message}'));
+    } catch (e, st) {
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] getSupplierCredit unexpected: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
+      return Left(ServerFailure(message: 'Error inesperado al consultar crédito: $e'));
+    }
+  }
 }
+

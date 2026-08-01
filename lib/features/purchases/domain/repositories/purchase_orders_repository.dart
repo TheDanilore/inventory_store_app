@@ -62,4 +62,11 @@ abstract class PurchaseOrdersRepository {
     required double orderAmount,
     required String? profileId,
   });
+
+  Future<Either<Failure, Map<String, dynamic>>> getFormCatalogs();
+
+  Future<Either<Failure, Map<String, dynamic>?>> getSupplierCredit(
+    String supplierId,
+  );
 }
+

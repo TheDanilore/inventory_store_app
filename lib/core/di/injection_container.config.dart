@@ -428,6 +428,10 @@ import '../../features/purchases/domain/usecases/get_pending_purchase_orders_use
     as _i261;
 import '../../features/purchases/domain/usecases/get_purchase_order_by_id_usecase.dart'
     as _i611;
+import '../../features/purchases/domain/usecases/get_purchase_order_form_catalogs_usecase.dart'
+    as _i913;
+import '../../features/purchases/domain/usecases/get_supplier_credit_usecase.dart'
+    as _i348;
 import '../../features/purchases/domain/usecases/receive_purchase_order_items_usecase.dart'
     as _i323;
 import '../../features/purchases/domain/usecases/register_order_payment_usecase.dart'
@@ -908,6 +912,15 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i362.PurchaseOrdersRepository>(),
       ),
     );
+    gh.lazySingleton<_i913.GetPurchaseOrderFormCatalogsUseCase>(
+      () => _i913.GetPurchaseOrderFormCatalogsUseCase(
+        gh<_i362.PurchaseOrdersRepository>(),
+      ),
+    );
+    gh.lazySingleton<_i348.GetSupplierCreditUseCase>(
+      () =>
+          _i348.GetSupplierCreditUseCase(gh<_i362.PurchaseOrdersRepository>()),
+    );
     gh.lazySingleton<_i323.ReceivePurchaseOrderItemsUseCase>(
       () => _i323.ReceivePurchaseOrderItemsUseCase(
         gh<_i362.PurchaseOrdersRepository>(),
@@ -998,12 +1011,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i175.ToggleSupplierStatusUseCase>(
       () => _i175.ToggleSupplierStatusUseCase(gh<_i943.SuppliersRepository>()),
     );
-    gh.factory<_i334.PurchaseOrderFormCubit>(
-      () => _i334.PurchaseOrderFormCubit(
-        createPurchaseOrderUseCase: gh<_i699.CreatePurchaseOrderUseCase>(),
-        getActiveCashShiftUseCase: gh<_i1008.GetActiveCashShiftUseCase>(),
-      ),
-    );
     gh.factory<_i832.ChangePasswordUseCase>(
       () => _i832.ChangePasswordUseCase(gh<_i787.AuthRepository>()),
     );
@@ -1034,6 +1041,15 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i1019.UpdateCustomerUseCase>(),
         gh<_i690.GetCustomerRecentOrdersUseCase>(),
         gh<_i528.GetCustomerTopProductsUseCase>(),
+      ),
+    );
+    gh.factory<_i334.PurchaseOrderFormCubit>(
+      () => _i334.PurchaseOrderFormCubit(
+        createPurchaseOrderUseCase: gh<_i699.CreatePurchaseOrderUseCase>(),
+        getActiveCashShiftUseCase: gh<_i1008.GetActiveCashShiftUseCase>(),
+        getPurchaseOrderFormCatalogsUseCase:
+            gh<_i913.GetPurchaseOrderFormCatalogsUseCase>(),
+        getSupplierCreditUseCase: gh<_i348.GetSupplierCreditUseCase>(),
       ),
     );
     gh.factory<_i738.CreateInventoryExitUseCase>(

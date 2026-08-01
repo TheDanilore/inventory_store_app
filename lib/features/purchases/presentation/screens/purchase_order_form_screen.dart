@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
@@ -263,6 +264,55 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                               context.read<PurchaseOrderFormCubit>().initForm(),
                       icon: const Icon(Icons.refresh_rounded),
                       label: const Text('Reintentar'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        if (viewModel.suppliers.isEmpty || viewModel.warehouses.isEmpty) {
+          return AdminLayout(
+            title: 'Nueva Orden',
+            showBackButton: true,
+            showProfileButton: false,
+            showDrawerButton: false,
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      size: 64,
+                      color: AppColors.warning,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'No se puede crear una orden de compra sin almacenes activos ni proveedores configurados.\nPor favor regístralos primero en las secciones correspondientes.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/admin/purchase-orders');
+                        }
+                      },
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: const Text('Volver al listado'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
@@ -1047,6 +1097,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                 child: TextFormField(
                   controller: _documentNumberCtrl,
                   maxLength: 50,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-\.\/\s]')),
+                  ],
                   keyboardType: TextInputType.text,
                   textInputAction: TextInputAction.next,
                   autovalidateMode: AutovalidateMode.onUserInteraction,

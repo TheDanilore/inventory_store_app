@@ -193,6 +193,55 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
     );
   }
 
+  PurchaseOrderFormLoaded clearDueDate() {
+    return PurchaseOrderFormLoaded(
+      suppliers: suppliers,
+      warehouses: warehouses,
+      accounts: accounts,
+      activeShiftsByAccount: activeShiftsByAccount,
+      supplierCreditsBySupplierId: supplierCreditsBySupplierId,
+      items: items,
+      selectedSupplierId: selectedSupplierId,
+      selectedWarehouseId: selectedWarehouseId,
+      dueDate: null,
+      documentDate: documentDate,
+      documentType: documentType,
+      paymentMode: paymentMode,
+      paymentStatus: paymentStatus,
+      selectedAccountId: selectedAccountId,
+      documentNumber: documentNumber,
+      notes: notes,
+      isSaving: isSaving,
+      errorMessage: errorMessage,
+      isDraftRestored: isDraftRestored,
+    );
+  }
+
+  PurchaseOrderFormLoaded clearDocumentDate() {
+    return PurchaseOrderFormLoaded(
+      suppliers: suppliers,
+      warehouses: warehouses,
+      accounts: accounts,
+      activeShiftsByAccount: activeShiftsByAccount,
+      supplierCreditsBySupplierId: supplierCreditsBySupplierId,
+      items: items,
+      selectedSupplierId: selectedSupplierId,
+      selectedWarehouseId: selectedWarehouseId,
+      dueDate: dueDate,
+      documentDate: null,
+      documentType: documentType,
+      paymentMode: paymentMode,
+      paymentStatus: paymentStatus,
+      selectedAccountId: selectedAccountId,
+      documentNumber: documentNumber,
+      notes: notes,
+      isSaving: isSaving,
+      errorMessage: errorMessage,
+      isDraftRestored: isDraftRestored,
+    );
+  }
+
+
   @override
   List<Object?> get props => [
     suppliers,
