@@ -944,18 +944,6 @@ class OrdersRepositoryImpl implements OrdersRepository {
   @override
   Future<Either<Failure, String?>> checkActiveCashShift() async {
     try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) return const Right(null);
-      final userId = user.id;
-
-      final profileRes = await _supabase
-          .from('profiles')
-          .select('id')
-          .eq('auth_user_id', userId)
-          .maybeSingle();
-      
-      final profileId = profileRes?['id'] as String? ?? userId;
-
       // The active shift is no longer checked in the client side.
       // We return null since the RPC register_financial_movement will handle it.
       return const Right(null);
