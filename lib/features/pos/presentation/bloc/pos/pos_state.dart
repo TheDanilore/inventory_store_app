@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
+import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
 
 enum PosStatus { initial, loading, success, error }
 
@@ -28,6 +29,10 @@ class PosState extends Equatable {
   final Map<String, dynamic>? creditInfo;
   final String? selectedAccountId;
 
+  final List<OrderModel> recentOrders;
+  final bool isLoadingRecentOrders;
+  final String recentOrdersError;
+
   const PosState({
     this.isLoading = false,
     this.errorMessage = '',
@@ -46,6 +51,9 @@ class PosState extends Equatable {
     this.lastOrderId,
     this.creditInfo,
     this.selectedAccountId,
+    this.recentOrders = const [],
+    this.isLoadingRecentOrders = false,
+    this.recentOrdersError = '',
   });
 
   PosState copyWith({
@@ -66,6 +74,9 @@ class PosState extends Equatable {
     String? lastOrderId,
     Map<String, dynamic>? creditInfo,
     String? selectedAccountId,
+    List<OrderModel>? recentOrders,
+    bool? isLoadingRecentOrders,
+    String? recentOrdersError,
     bool clearClient = false,
   }) {
     return PosState(
@@ -89,6 +100,9 @@ class PosState extends Equatable {
       lastOrderId: lastOrderId ?? this.lastOrderId,
       creditInfo: clearClient ? null : (creditInfo ?? this.creditInfo),
       selectedAccountId: selectedAccountId ?? this.selectedAccountId,
+      recentOrders: recentOrders ?? this.recentOrders,
+      isLoadingRecentOrders: isLoadingRecentOrders ?? this.isLoadingRecentOrders,
+      recentOrdersError: recentOrdersError ?? this.recentOrdersError,
     );
   }
 
@@ -111,5 +125,8 @@ class PosState extends Equatable {
     lastOrderId,
     creditInfo,
     selectedAccountId,
+    recentOrders,
+    isLoadingRecentOrders,
+    recentOrdersError,
   ];
 }

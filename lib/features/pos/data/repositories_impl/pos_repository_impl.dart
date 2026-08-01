@@ -239,4 +239,25 @@ class PosRepositoryImpl implements PosRepository {
       return left(Failure.from(e));
     }
   }
+  @override
+  Future<Either<Failure, List<OrderModel>>> fetchRecentOrders({
+    int limit = 10,
+  }) async {
+    try {
+      final res = await _supabase
+          .from('orders')
+          .select('id, total_amount, created_at, customer_name, status')
+          .order('created_at', ascending: false)
+          .limit(limit);
+
+      final List<OrderModel> orders = (res as List)
+          .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      return Right(orders);
+    } catch (e, st) {
+      developer.log('Error fetching recent POS orders', error: e, stackTrace: st);
+      return Left(ServerFailure(message: 'Error al cargar ventas recientes: $e'));
+    }
+  }
 }

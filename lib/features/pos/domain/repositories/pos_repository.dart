@@ -45,4 +45,7 @@ abstract class PosRepository {
   /// para no bloquear la UI al imprimir o mostrar el comprobante.
   Future<Either<Failure, ({OrderModel order, List<OrderItemModel> items})>>
   fetchOrderForReceipt(String orderId);
+
+  /// Obtiene las ventas más recientes realizadas en el POS para mostrar en el Drawer
+  Future<Either<Failure, List<OrderModel>>> fetchRecentOrders({int limit = 10});
 }

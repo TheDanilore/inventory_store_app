@@ -144,6 +144,33 @@ class PosCubit extends Cubit<PosState> {
     emit(state.copyWith(batchOverrides: {}));
   }
 
+  Future<void> fetchRecentOrders({bool forceRefresh = false}) async {
+    if (!forceRefresh && state.recentOrders.isNotEmpty) {
+      return;
+    }
+    emit(state.copyWith(isLoadingRecentOrders: true, recentOrdersError: ''));
+    
+    final result = await _posRepository.fetchRecentOrders(limit: 10);
+    result.fold(
+      (failure) {
+        emit(
+          state.copyWith(
+            isLoadingRecentOrders: false,
+            recentOrdersError: failure.message,
+          ),
+        );
+      },
+      (orders) {
+        emit(
+          state.copyWith(
+            isLoadingRecentOrders: false,
+            recentOrders: orders,
+          ),
+        );
+      },
+    );
+  }
+
   Future<Either<Failure, OrderDetailsResult>> fetchOrderDetailsForTicket(
     String orderId,
   ) async {
@@ -355,6 +382,8 @@ class PosCubit extends Cubit<PosState> {
         },
         (orderId) {
           emit(state.copyWith(status: PosStatus.success, lastOrderId: orderId));
+          // Refrescar caché de ventas recientes sin bloquear la UI
+          fetchRecentOrders(forceRefresh: true);
         },
       );
     } catch (e, stack) {
