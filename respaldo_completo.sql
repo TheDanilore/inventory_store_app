@@ -665,6 +665,43 @@ $$;
 ALTER FUNCTION "public"."get_loyalty_dashboard"("p_auth_user_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_movement_totals_rpc"("p_filter_type" "text", "p_account_id" "text", "p_search_text" "text", "p_date_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_date_to" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $_$
+DECLARE
+  v_income NUMERIC := 0;
+  v_expense NUMERIC := 0;
+  v_is_uuid BOOLEAN := FALSE;
+BEGIN
+  -- Detectar si la búsqueda es un UUID
+  v_is_uuid := p_search_text ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
+
+  SELECT 
+    COALESCE(SUM(amount) FILTER (WHERE movement_type = 'INCOME'), 0),
+    COALESCE(SUM(amount) FILTER (WHERE movement_type = 'EXPENSE'), 0)
+  INTO v_income, v_expense
+  FROM public.account_movements
+  WHERE (p_filter_type = 'Todos' OR movement_type = p_filter_type)
+    AND (p_account_id = 'Todas' OR account_id::text = p_account_id)
+    AND (
+      p_search_text = '' OR 
+      (v_is_uuid AND (description ILIKE '%' || p_search_text || '%' OR reference_id::text = p_search_text)) OR
+      (NOT v_is_uuid AND description ILIKE '%' || p_search_text || '%')
+    )
+    AND (p_date_from IS NULL OR created_at >= p_date_from)
+    AND (p_date_to IS NULL OR created_at <= p_date_to);
+
+  RETURN jsonb_build_object(
+    'totalIncome', v_income,
+    'totalExpense', v_expense
+  );
+END;
+$_$;
+
+
+ALTER FUNCTION "public"."get_movement_totals_rpc"("p_filter_type" "text", "p_account_id" "text", "p_search_text" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -2952,6 +2989,60 @@ $$;
 
 
 ALTER FUNCTION "public"."sync_purchase_order_reception_rpc"("p_purchase_order_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid", "p_dest_account_id" "uuid", "p_amount" numeric, "p_description" "text", "p_created_by" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_source_name TEXT;
+  v_dest_name TEXT;
+  v_desc_source TEXT;
+  v_desc_dest TEXT;
+BEGIN
+  -- 1. Obtener nombres de las cuentas
+  SELECT name INTO v_source_name FROM public.financial_accounts WHERE id = p_source_account_id;
+  SELECT name INTO v_dest_name FROM public.financial_accounts WHERE id = p_dest_account_id;
+
+  IF v_source_name IS NULL OR v_dest_name IS NULL THEN
+      RAISE EXCEPTION 'Una de las cuentas financieras no existe.';
+  END IF;
+
+  -- 2. Formatear descripciones
+  IF p_description IS NOT NULL AND p_description <> '' THEN
+      v_desc_source := 'Transferencia enviada a ' || v_dest_name || ' — ' || p_description;
+      v_desc_dest := 'Transferencia recibida de ' || v_source_name || ' — ' || p_description;
+  ELSE
+      v_desc_source := 'Transferencia enviada a ' || v_dest_name;
+      v_desc_dest := 'Transferencia recibida de ' || v_source_name;
+  END IF;
+
+  -- 3. Registrar Expense en origen (Llama al RPC base atómicamente)
+  PERFORM public.register_financial_movement(
+    p_source_account_id,
+    'EXPENSE',
+    p_amount,
+    v_desc_source,
+    'manual_transfer',
+    NULL,
+    p_created_by
+  );
+
+  -- 4. Registrar Income en destino (Llama al RPC base atómicamente)
+  PERFORM public.register_financial_movement(
+    p_dest_account_id,
+    'INCOME',
+    p_amount,
+    v_desc_dest,
+    'manual_transfer',
+    NULL,
+    p_created_by
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid", "p_dest_account_id" "uuid", "p_amount" numeric, "p_description" "text", "p_created_by" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") RETURNS "jsonb"
@@ -5582,6 +5673,12 @@ GRANT ALL ON FUNCTION "public"."get_loyalty_dashboard"("p_auth_user_id" "uuid") 
 
 
 
+GRANT ALL ON FUNCTION "public"."get_movement_totals_rpc"("p_filter_type" "text", "p_account_id" "text", "p_search_text" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_movement_totals_rpc"("p_filter_type" "text", "p_account_id" "text", "p_search_text" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_movement_totals_rpc"("p_filter_type" "text", "p_account_id" "text", "p_search_text" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") TO "service_role";
@@ -5711,6 +5808,12 @@ GRANT ALL ON FUNCTION "public"."sync_cloud_cart_rpc"("p_auth_user_id" "uuid", "p
 GRANT ALL ON FUNCTION "public"."sync_purchase_order_reception_rpc"("p_purchase_order_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."sync_purchase_order_reception_rpc"("p_purchase_order_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."sync_purchase_order_reception_rpc"("p_purchase_order_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid", "p_dest_account_id" "uuid", "p_amount" numeric, "p_description" "text", "p_created_by" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid", "p_dest_account_id" "uuid", "p_amount" numeric, "p_description" "text", "p_created_by" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid", "p_dest_account_id" "uuid", "p_amount" numeric, "p_description" "text", "p_created_by" "uuid") TO "service_role";
 
 
 
