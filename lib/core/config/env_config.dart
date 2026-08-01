@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:developer' as developer;
 
 abstract class EnvConfig {
   static String _supabaseUrl = '';
@@ -15,35 +15,37 @@ abstract class EnvConfig {
   /// 2. `rootBundle` asset `env.json` (En modo debug/desarrollo)
   /// 3. `SharedPreferences` (Si el usuario configuró credenciales en la app)
   static Future<void> load(SharedPreferences prefs) async {
-    String url = const String.fromEnvironment(
-      'SUPABASE_URL',
-      defaultValue: '',
-    );
-    String key = const String.fromEnvironment(
-      'SUPABASE_KEY',
-      defaultValue: '',
-    );
+    // 1. PRIORIDAD BAJA: Caché persistente
+    String url = prefs.getString('SUPABASE_URL') ?? '';
+    String key = prefs.getString('SUPABASE_KEY') ?? '';
 
-    // Si no vinieron por variables de entorno, intentar cargar env.json como asset en modo depuración
-    if (url.isEmpty || key.isEmpty) {
-      try {
-        final jsonString = await rootBundle.loadString('env.json');
-        final Map<String, dynamic> jsonMap = json.decode(jsonString);
-        url = (jsonMap['SUPABASE_URL'] as String?)?.trim() ?? url;
-        key = (jsonMap['SUPABASE_KEY'] as String?)?.trim() ?? key;
-      } catch (e) {
-        debugPrint('EnvConfig: No se pudo cargar env.json desde assets: $e');
-      }
+    // 2. PRIORIDAD MEDIA: Archivo de entorno local (env.json)
+    try {
+      final jsonString = await rootBundle.loadString('env.json');
+      final Map<String, dynamic> jsonMap = json.decode(jsonString);
+      final jsonUrl = (jsonMap['SUPABASE_URL'] as String?)?.trim() ?? '';
+      final jsonKey = (jsonMap['SUPABASE_KEY'] as String?)?.trim() ?? '';
+      if (jsonUrl.isNotEmpty) url = jsonUrl;
+      if (jsonKey.isNotEmpty) key = jsonKey;
+    } catch (e) {
+      developer.log(
+        'No se pudo cargar env.json desde assets',
+        error: e,
+        name: 'EnvConfig',
+      );
     }
 
-    // Fallback final a SharedPreferences
-    url = prefs.getString('SUPABASE_URL') ?? url;
-    key = prefs.getString('SUPABASE_KEY') ?? key;
+    // 3. PRIORIDAD MÁXIMA: Banderas de compilación (--dart-define)
+    const envUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: '');
+    const envKey = String.fromEnvironment('SUPABASE_KEY', defaultValue: '');
+
+    if (envUrl.isNotEmpty) url = envUrl;
+    if (envKey.isNotEmpty) key = envKey;
 
     if (url.isEmpty || key.isEmpty) {
       throw Exception(
         'FALLO CRÍTICO: Las credenciales de Supabase no están configuradas. '
-        'Asegúrate de tener el archivo env.json en la raíz o pasar las banderas --dart-define-from-file=env.json',
+        'Asegúrate de tener el archivo env.json en la raíz o pasar las banderas --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_KEY=...',
       );
     }
 
