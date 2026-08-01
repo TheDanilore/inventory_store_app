@@ -121,42 +121,22 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         .toSet()
         .toList();
 
-    final simpleProductIds = items
-        .where((i) => i.variantId == null || i.variantId!.isEmpty)
-        .map((i) => i.productId)
-        .toSet()
-        .toList();
+    if (variantIds.isEmpty) return;
 
     final repo = sl<ProductsRepository>();
+    final res = await repo.fetchVariantStockByVariantIds(
+      variantIds,
+      warehouseId: warehouseId,
+    );
 
-    // 1. Cargar stock de variantes
-    if (variantIds.isNotEmpty) {
-      final res = await repo.fetchVariantStockByVariantIds(
-        variantIds,
-        warehouseId: warehouseId,
-      );
-      res.fold((_) => null, (stockMap) {
-        for (final item in items) {
-          if (item.variantId != null) {
-            final stock = stockMap[item.variantId] ?? 0;
-            cartCubit.updateAvailableStock(item.cartKey, stock);
-          }
+    res.fold((_) => null, (stockMap) {
+      for (final item in items) {
+        if (item.variantId != null) {
+          final stock = stockMap[item.variantId] ?? 0;
+          cartCubit.updateAvailableStock(item.cartKey, stock);
         }
-      });
-    }
-
-    // 2. Cargar stock de productos simples
-    if (simpleProductIds.isNotEmpty) {
-      final res = await repo.getProductStock(productIds: simpleProductIds);
-      res.fold((_) => null, (stockMap) {
-        for (final item in items) {
-          if (item.variantId == null || item.variantId!.isEmpty) {
-            final stock = stockMap[item.productId] ?? 0;
-            cartCubit.updateAvailableStock(item.cartKey, stock);
-          }
-        }
-      });
-    }
+      }
+    });
   }
 
   Future<void> _processSale(
