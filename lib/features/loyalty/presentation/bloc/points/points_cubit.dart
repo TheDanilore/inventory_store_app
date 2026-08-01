@@ -404,18 +404,19 @@ class PointsCubit extends Cubit<PointsState> {
         }
       );
     } catch (e, st) {
-      developer.log('Error al guardar minijuego', error: e, stackTrace: st);
+      developer.log('Error recordMiniGameResult', error: e, stackTrace: st);
       if (!isClosed) {
-        emit(state.copyWith(errorMessage: 'Ocurrió un error inesperado al guardar el premio.'));
+        emit(state.copyWith(errorMessage: 'Ocurrió un error inesperado al guardar el resultado.'));
       }
     }
   }
+
 
   void _initWalletChannel(String authUserId) {
     if (_walletChannel != null) return; // Ya está suscrito
 
     _walletChannel = _supabase
-        .channel('public:profiles_points_$authUserId')
+        .channel('public:profiles_wallet_$authUserId')
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
           schema: 'public',

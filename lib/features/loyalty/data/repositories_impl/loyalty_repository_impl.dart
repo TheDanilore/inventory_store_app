@@ -19,7 +19,12 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
   LoyaltyRepositoryImpl(this._supabase);
 
   Either<Failure, T> _handleError<T>(Object e, StackTrace st) {
-    developer.log('LoyaltyRepositoryError', error: e, stackTrace: st);
+    developer.log(
+      'Error crítico en LoyaltyRepository',
+      error: e.toString(),
+      stackTrace: st,
+    );
+
     if (e is PostgrestException) {
       if (e.code == 'P0002' || e.code == 'P0001') {
         return left(Failure.from(e.message));
@@ -71,7 +76,9 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
   }
 
   @override
-  Future<Either<Failure, Map<String, dynamic>>> getLoyaltyDashboardData(String profileId) async {
+  Future<Either<Failure, Map<String, dynamic>>> getLoyaltyDashboardData(
+    String profileId,
+  ) async {
     try {
       final response = await _supabase.rpc(
         'get_loyalty_dashboard',
@@ -180,10 +187,7 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
     try {
       await _supabase.rpc(
         'claim_daily_checkin',
-        params: {
-          'p_profile_id': profileId,
-          'p_action_by': actionByProfileId,
-        },
+        params: {'p_profile_id': profileId, 'p_action_by': actionByProfileId},
       );
       return right(null);
     } catch (e, st) {

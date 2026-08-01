@@ -49,8 +49,13 @@ class WalletCubit extends Cubit<WalletState> {
 
     _authSub = _supabase.auth.onAuthStateChange.listen((event) {
       if (isClosed) return;
-      if (event.event == AuthChangeEvent.signedIn ||
-          event.event == AuthChangeEvent.tokenRefreshed) {
+      if (event.event == AuthChangeEvent.signedIn) {
+        _init();
+      } else if (event.event == AuthChangeEvent.tokenRefreshed) {
+        // Optimización Data Egress: Ignorar refresco si ya tenemos el saldo y la suscripción está viva
+        if (state.hasBalance && _walletChannel != null) {
+          return;
+        }
         _init();
       } else if (event.event == AuthChangeEvent.signedOut) {
         _clear();
@@ -100,7 +105,8 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   void _listenToWalletChanges(String userId) {
-    _walletChannel?.unsubscribe();
+    if (_walletChannel != null) return; // Optimización: Ya está escuchando
+    
     _walletChannel =
         _supabase
             .channel('public:profiles_wallet_$userId')
