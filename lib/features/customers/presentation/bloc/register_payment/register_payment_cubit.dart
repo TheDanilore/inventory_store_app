@@ -6,7 +6,7 @@ import 'package:inventory_store_app/features/orders/domain/usecases/get_pending_
 import 'package:inventory_store_app/features/pos/domain/usecases/check_active_shift_uc.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/register_payment/register_payment_state.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
-import 'package:flutter/foundation.dart';
+import 'dart:developer' as developer;
 
 @injectable
 class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
@@ -34,7 +34,7 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
 
       List<OrderEntity> pendingOrders = [];
       ordersResult.fold(
-        (l) => debugPrint('[RegisterPaymentCubit] orders error: ${l.message}'),
+        (l) => developer.log('orders error: ${l.message}', name: 'RegisterPaymentCubit'),
         (r) => pendingOrders = r as List<OrderEntity>,
       );
 
@@ -42,7 +42,7 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
       if (accountsResult is List<FinancialAccountEntity>) {
         accounts = accountsResult.where((a) => a.isActive).toList();
       } else {
-        debugPrint('[RegisterPaymentCubit] accounts error');
+        developer.log('accounts error: invalid type or result', name: 'RegisterPaymentCubit');
       }
       
       // Select first account if available
@@ -62,7 +62,7 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
         await _checkActiveShift(selectedAccount.id);
       }
     } catch (e, st) {
-      debugPrint('[RegisterPaymentCubit] loadInitialData error: $e\n$st');
+      developer.log('loadInitialData error', error: e, stackTrace: st, name: 'RegisterPaymentCubit');
       emit(state.copyWith(
         isLoading: false,
         loadingError: 'Error al cargar los datos: $e',
@@ -78,7 +78,7 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
         (r) => emit(state.copyWith(activeShift: r)),
       );
     } catch (e, st) {
-      debugPrint('[RegisterPaymentCubit] checkActiveShift error: $e\n$st');
+      developer.log('checkActiveShift error', error: e, stackTrace: st, name: 'RegisterPaymentCubit');
       emit(state.copyWith(clearActiveShift: true));
     }
   }
@@ -126,6 +126,7 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
 
     if (state.selectedOrder != null) {
       final pending = state.selectedOrder!.totalAmount - state.selectedOrder!.amountPaid;
+      
       if (amount > pending) {
         emit(state.copyWith(
           amount: value,
@@ -180,7 +181,7 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
       );
       emit(state.copyWith(isSaving: false, isSuccess: true));
     } catch (e, st) {
-      debugPrint('[RegisterPaymentCubit] submitPayment error: $e\n$st');
+      developer.log('submitPayment error', error: e, stackTrace: st, name: 'RegisterPaymentCubit');
       emit(state.copyWith(
         isSaving: false, 
         errorMessage: 'Error al registrar el pago: $e',
