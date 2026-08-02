@@ -38,18 +38,6 @@ class AdminSidebar extends StatefulWidget {
 }
 
 class _AdminSidebarState extends State<AdminSidebar> {
-  final Set<String> _expandedGroups = {};
-
-  void _toggleGroup(String title) {
-    setState(() {
-      if (_expandedGroups.contains(title)) {
-        _expandedGroups.remove(title);
-      } else {
-        _expandedGroups.add(title);
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final width = widget.isCollapsed ? 72.0 : 260.0;
@@ -110,7 +98,11 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     if (state is SidebarBadgeLoaded && state.count > 0) {
                       badge = _buildBadge(state.count);
                     } else if (state is SidebarBadgeError) {
-                      badge = const Icon(Icons.warning_rounded, color: AppColors.error, size: 14);
+                      badge = const Icon(
+                        Icons.warning_rounded,
+                        color: AppColors.error,
+                        size: 14,
+                      );
                     }
 
                     return _buildSidebarTile(
@@ -125,9 +117,9 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   },
                 ),
 
-                _buildExpandableSidebarGroup(
-                  context,
-                  const AdminSidebarItem(
+                _ExpandableSidebarGroup(
+                  isCollapsed: widget.isCollapsed,
+                  item: const AdminSidebarItem(
                     icon: Icons.shopping_bag_outlined,
                     title: 'Compras',
                     routePath: '',
@@ -156,9 +148,9 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   ),
                 ),
 
-                _buildExpandableSidebarGroup(
-                  context,
-                  const AdminSidebarItem(
+                _ExpandableSidebarGroup(
+                  isCollapsed: widget.isCollapsed,
+                  item: const AdminSidebarItem(
                     icon: Icons.inventory_2_outlined,
                     title: 'Inventario',
                     routePath: '',
@@ -187,9 +179,9 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   ),
                 ),
 
-                _buildExpandableSidebarGroup(
-                  context,
-                  const AdminSidebarItem(
+                _ExpandableSidebarGroup(
+                  isCollapsed: widget.isCollapsed,
+                  item: const AdminSidebarItem(
                     icon: Icons.people_outline_rounded,
                     title: 'Clientes y Créditos',
                     routePath: '',
@@ -354,35 +346,35 @@ class _AdminSidebarState extends State<AdminSidebar> {
               const SizedBox(width: 12),
               Expanded(
                 child: BlocSelector<AppConfigCubit, AppConfigState, String>(
-                selector:
-                    (state) =>
-                        state.businessInfo?.businessName ?? 'ERP Tienda',
-                builder: (context, name) {
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                  selector:
+                      (state) =>
+                          state.businessInfo?.businessName ?? 'ERP Tienda',
+                  builder: (context, name) {
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
-                      ),
-                      const Text(
-                        'Panel de Control',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
+                        const Text(
+                          'Panel de Control',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ],
           ],
@@ -418,10 +410,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
     return false;
   }
 
-  Widget _buildSidebarTile(
-    BuildContext context,
-    AdminSidebarItem item,
-  ) {
+  Widget _buildSidebarTile(BuildContext context, AdminSidebarItem item) {
     return Builder(
       builder: (context) {
         final currentPath = GoRouterState.of(context).uri.path;
@@ -455,7 +444,9 @@ class _AdminSidebarState extends State<AdminSidebar> {
                         item.icon,
                         size: 20,
                         color:
-                            isActive ? AppColors.primary : AppColors.textSecondary,
+                            isActive
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
                       ),
                       if (!widget.isCollapsed) ...[
                         const SizedBox(width: 12),
@@ -489,155 +480,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
           return Tooltip(message: item.title, child: tile);
         }
         return tile;
-      }
-    );
-  }
-
-  Widget _buildExpandableSidebarGroup(
-    BuildContext context,
-    AdminSidebarItem item,
-  ) {
-    return Builder(
-      builder: (context) {
-        final currentPath = GoRouterState.of(context).uri.path;
-        final hasActiveChild = item.children.any(
-          (sub) => _isItemActive(sub.routePath, currentPath),
-        );
-        final isOpen = _expandedGroups.contains(item.title) || hasActiveChild;
-
-        if (widget.isCollapsed) {
-          return PopupMenuButton<String>(
-            tooltip: item.title,
-            offset: const Offset(60, 0),
-            onSelected: (route) => context.go(route),
-            itemBuilder:
-                (ctx) =>
-                    item.children
-                        .map(
-                          (sub) => PopupMenuItem(
-                            value: sub.routePath,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  sub.icon,
-                                  size: 18,
-                                  color: AppColors.textSecondary,
-                                ),
-                                const SizedBox(width: 10),
-                                Text(sub.title),
-                              ],
-                            ),
-                          ),
-                        )
-                        .toList(),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              child: Container(
-                height: 42,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color:
-                      hasActiveChild
-                          ? AppColors.primary.withValues(alpha: 0.1)
-                          : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  item.icon,
-                  size: 20,
-                  color:
-                      hasActiveChild ? AppColors.primary : AppColors.textSecondary,
-                ),
-              ),
-            ),
-          );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: () => _toggleGroup(item.title),
-                  hoverColor: AppColors.primaryLight,
-                  child: Container(
-                    height: 42,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        Icon(
-                          item.icon,
-                          size: 20,
-                          color:
-                              hasActiveChild
-                                  ? AppColors.primary
-                                  : AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            item.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight:
-                                  hasActiveChild
-                                      ? FontWeight.w800
-                                      : FontWeight.w500,
-                              color:
-                                  hasActiveChild
-                                      ? AppColors.primary
-                                      : AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        AnimatedRotation(
-                          turns: isOpen ? 0.5 : 0,
-                          duration: const Duration(milliseconds: 200),
-                          child: const Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            size: 18,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            AnimatedCrossFade(
-              duration: const Duration(milliseconds: 200),
-              crossFadeState:
-                  isOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-              firstChild: const SizedBox.shrink(),
-              secondChild: Container(
-                margin: const EdgeInsets.only(left: 20, right: 8, bottom: 4),
-                padding: const EdgeInsets.only(left: 8),
-                decoration: const BoxDecoration(
-                  border: Border(
-                    left: BorderSide(color: AppColors.border, width: 2),
-                  ),
-                ),
-                child: Column(
-                  children:
-                      item.children
-                          .map(
-                            (sub) => _buildSidebarTile(context, sub),
-                          )
-                          .toList(),
-                ),
-              ),
-            ),
-          ],
-        );
-      }
+      },
     );
   }
 
@@ -656,6 +499,244 @@ class _AdminSidebarState extends State<AdminSidebar> {
           fontWeight: FontWeight.bold,
         ),
       ),
+    );
+  }
+}
+
+class _ExpandableSidebarGroup extends StatefulWidget {
+  final AdminSidebarItem item;
+  final bool isCollapsed;
+
+  const _ExpandableSidebarGroup({
+    required this.item,
+    required this.isCollapsed,
+  });
+
+  @override
+  State<_ExpandableSidebarGroup> createState() =>
+      _ExpandableSidebarGroupState();
+}
+
+class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
+  bool _isManuallyExpanded = false;
+
+  bool _isItemActive(String routePath, String currentPath) {
+    if (routePath.isEmpty) return false;
+    if (currentPath == routePath) return true;
+    if (routePath != '/admin' && currentPath.startsWith('$routePath/')) {
+      return true;
+    }
+    return false;
+  }
+
+  Widget _buildSidebarTile(BuildContext context, AdminSidebarItem item) {
+    final currentPath = GoRouterState.of(context).uri.path;
+    final isActive = _isItemActive(item.routePath, currentPath);
+
+    final tile = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Material(
+        color:
+            isActive
+                ? AppColors.primary.withValues(alpha: 0.1)
+                : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => context.go(item.routePath),
+          hoverColor: AppColors.primaryLight,
+          child: Container(
+            height: 42,
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.isCollapsed ? 0 : 12,
+            ),
+            child: ClipRect(
+              child: Row(
+                mainAxisAlignment:
+                    widget.isCollapsed
+                        ? MainAxisAlignment.center
+                        : MainAxisAlignment.start,
+                children: [
+                  Icon(
+                    item.icon,
+                    size: 20,
+                    color:
+                        isActive ? AppColors.primary : AppColors.textSecondary,
+                  ),
+                  if (!widget.isCollapsed) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight:
+                              isActive ? FontWeight.w800 : FontWeight.w500,
+                          color:
+                              isActive
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (item.trailing != null) item.trailing!,
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (widget.isCollapsed) {
+      return Tooltip(message: item.title, child: tile);
+    }
+    return tile;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentPath = GoRouterState.of(context).uri.path;
+    final hasActiveChild = widget.item.children.any(
+      (sub) => _isItemActive(sub.routePath, currentPath),
+    );
+    final isOpen = _isManuallyExpanded || hasActiveChild;
+
+    if (widget.isCollapsed) {
+      return PopupMenuButton<String>(
+        tooltip: widget.item.title,
+        offset: const Offset(60, 0),
+        onSelected: (route) => context.go(route),
+        itemBuilder:
+            (ctx) =>
+                widget.item.children
+                    .map(
+                      (sub) => PopupMenuItem(
+                        value: sub.routePath,
+                        child: Row(
+                          children: [
+                            Icon(
+                              sub.icon,
+                              size: 18,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(sub.title),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          child: Container(
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color:
+                  hasActiveChild
+                      ? AppColors.primary.withValues(alpha: 0.1)
+                      : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              widget.item.icon,
+              size: 20,
+              color:
+                  hasActiveChild ? AppColors.primary : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap:
+                  () => setState(
+                    () => _isManuallyExpanded = !_isManuallyExpanded,
+                  ),
+              hoverColor: AppColors.primaryLight,
+              child: Container(
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    Icon(
+                      widget.item.icon,
+                      size: 20,
+                      color:
+                          hasActiveChild
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        widget.item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight:
+                              hasActiveChild
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                          color:
+                              hasActiveChild
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    AnimatedRotation(
+                      turns: isOpen ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        AnimatedCrossFade(
+          duration: const Duration(milliseconds: 200),
+          crossFadeState:
+              isOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          firstChild: const SizedBox.shrink(),
+          secondChild: Container(
+            margin: const EdgeInsets.only(left: 20, right: 8, bottom: 4),
+            padding: const EdgeInsets.only(left: 8),
+            decoration: const BoxDecoration(
+              border: Border(
+                left: BorderSide(color: AppColors.border, width: 2),
+              ),
+            ),
+            child: Column(
+              children:
+                  widget.item.children
+                      .map((sub) => _buildSidebarTile(context, sub))
+                      .toList(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

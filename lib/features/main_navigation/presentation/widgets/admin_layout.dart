@@ -79,6 +79,9 @@ class _AdminLayoutState extends State<AdminLayout> {
     _isCacheLoaded = true;
     if (mounted && collapsed != _isSidebarCollapsed) {
       setState(() => _isSidebarCollapsed = collapsed);
+    } else if (mounted && !_isSidebarCollapsed) {
+      // Just trigger a rebuild to remove the "loading" blocker if any
+      setState(() {});
     }
   }
 
@@ -103,6 +106,14 @@ class _AdminLayoutState extends State<AdminLayout> {
 
   @override
   Widget build(BuildContext context) {
+    // Avoid layout jitter by waiting for SharedPreferences on the very first load
+    if (!_isCacheLoaded) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -280,6 +291,38 @@ class _AdminLayoutState extends State<AdminLayout> {
     }
   }
 
+  static const _breadcrumbMap = <String, String>{
+    '/admin/purchase-orders/form': 'Inicio  ›  Órdenes de Compra  ›  Nueva Orden',
+    '/admin/purchase-orders': 'Inicio  ›  Órdenes de Compra',
+    '/admin/inventory-entries/form': 'Inicio  ›  Entradas de Inventario  ›  Nueva Entrada',
+    '/admin/inventory-entries': 'Inicio  ›  Entradas de Inventario',
+    '/admin/inventory-exits/form': 'Inicio  ›  Salidas de Inventario  ›  Nueva Salida',
+    '/admin/inventory-exits': 'Inicio  ›  Salidas de Inventario',
+    '/admin/products/form': 'Inicio  ›  Productos  ›  Formulario',
+    '/admin/products': 'Inicio  ›  Productos',
+    '/admin/catalog/form': 'Inicio  ›  Catálogo  ›  Formulario',
+    '/admin/catalog': 'Inicio  ›  Catálogo',
+    '/admin/users/form': 'Inicio  ›  Usuarios  ›  Formulario Usuario',
+    '/admin/users': 'Inicio  ›  Usuarios',
+    '/admin/customer-credit-movements': 'Inicio  ›  Créditos Clientes  ›  Movimientos',
+    '/admin/customer-credits': 'Inicio  ›  Créditos Clientes',
+    '/admin/customers/customer-detail': 'Inicio  ›  Clientes  ›  Detalle',
+    '/admin/customers': 'Inicio  ›  Clientes',
+    '/admin/supplier-credits': 'Inicio  ›  Créditos Proveedores',
+    '/admin/suppliers': 'Inicio  ›  Proveedores',
+    '/admin/orders': 'Inicio  ›  Pedidos',
+    '/admin/kardex': 'Inicio  ›  Kardex',
+    '/admin/financial-accounts': 'Inicio  ›  Cuentas Financieras',
+    '/admin/categories': 'Inicio  ›  Categorías',
+    '/admin/warehouses': 'Inicio  ›  Almacenes',
+    '/admin/attributes': 'Inicio  ›  Atributos',
+    '/admin/active-ingredients': 'Inicio  ›  Ingredientes Activos',
+    '/admin/business-info': 'Inicio  ›  Información de la Empresa',
+    '/admin/points-settings': 'Inicio  ›  Ajustes de Puntos',
+    '/admin/inventory': 'Inicio  ›  Inventario',
+    '/admin/dashboard': 'Inicio  ›  Dashboard',
+  };
+
   String _buildBreadcrumbText(BuildContext context) {
     if (widget.breadcrumb != null && widget.breadcrumb!.isNotEmpty) {
       return widget.breadcrumb!;
@@ -290,47 +333,7 @@ class _AdminLayoutState extends State<AdminLayout> {
         return 'Panel de Administración ERP';
       }
 
-      // Mapa declarativo con rutas ordenadas de más a menos específica.
-      // Usar startsWith garantiza que "/admin/users/form" coincida antes
-      // de "/admin/users", eliminando el riesgo de captura accidental
-      // por substrings parciales.
-      const breadcrumbMap = <String, String>{
-        '/admin/purchase-orders/form':
-            'Inicio  ›  Órdenes de Compra  ›  Nueva Orden',
-        '/admin/purchase-orders': 'Inicio  ›  Órdenes de Compra',
-        '/admin/inventory-entries/form':
-            'Inicio  ›  Entradas de Inventario  ›  Nueva Entrada',
-        '/admin/inventory-entries': 'Inicio  ›  Entradas de Inventario',
-        '/admin/inventory-exits/form':
-            'Inicio  ›  Salidas de Inventario  ›  Nueva Salida',
-        '/admin/inventory-exits': 'Inicio  ›  Salidas de Inventario',
-        '/admin/products/form': 'Inicio  ›  Productos  ›  Formulario',
-        '/admin/products': 'Inicio  ›  Productos',
-        '/admin/catalog/form': 'Inicio  ›  Catálogo  ›  Formulario',
-        '/admin/catalog': 'Inicio  ›  Catálogo',
-        '/admin/users/form': 'Inicio  ›  Usuarios  ›  Formulario Usuario',
-        '/admin/users': 'Inicio  ›  Usuarios',
-        '/admin/customer-credit-movements':
-            'Inicio  ›  Créditos Clientes  ›  Movimientos',
-        '/admin/customer-credits': 'Inicio  ›  Créditos Clientes',
-        '/admin/customers/customer-detail': 'Inicio  ›  Clientes  ›  Detalle',
-        '/admin/customers': 'Inicio  ›  Clientes',
-        '/admin/supplier-credits': 'Inicio  ›  Créditos Proveedores',
-        '/admin/suppliers': 'Inicio  ›  Proveedores',
-        '/admin/orders': 'Inicio  ›  Pedidos',
-        '/admin/kardex': 'Inicio  ›  Kardex',
-        '/admin/financial-accounts': 'Inicio  ›  Cuentas Financieras',
-        '/admin/categories': 'Inicio  ›  Categorías',
-        '/admin/warehouses': 'Inicio  ›  Almacenes',
-        '/admin/attributes': 'Inicio  ›  Atributos',
-        '/admin/active-ingredients': 'Inicio  ›  Ingredientes Activos',
-        '/admin/business-info': 'Inicio  ›  Información de la Empresa',
-        '/admin/points-settings': 'Inicio  ›  Ajustes de Puntos',
-        '/admin/inventory': 'Inicio  ›  Inventario',
-        '/admin/dashboard': 'Inicio  ›  Dashboard',
-      };
-
-      for (final entry in breadcrumbMap.entries) {
+      for (final entry in _breadcrumbMap.entries) {
         if (path.startsWith(entry.key)) return entry.value;
       }
       return 'Panel de Administración ERP';
