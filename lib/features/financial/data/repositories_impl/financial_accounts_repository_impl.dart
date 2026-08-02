@@ -1,9 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/domain/repositories/financial_accounts_repository.dart';
+import 'dart:developer' as developer;
 
 @LazySingleton(as: FinancialAccountsRepository)
 class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
@@ -19,44 +19,73 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
     final start = page * pageSize;
     final end = start + pageSize - 1;
 
-    final response = await _supabase
-        .from('financial_accounts')
-        .select('id, name, type, balance, is_active, created_at')
-        .order('is_active', ascending: false)
-        .order('name')
-        .range(start, end)
-        .count(CountOption.exact);
+    try {
+      final response = await _supabase
+          .from('financial_accounts')
+          .select('id, name, type, balance, is_active, created_at')
+          .order('is_active', ascending: false)
+          .order('name')
+          .range(start, end);
 
-    final data = response.data as List;
-    return data
-        .map(
-          (e) =>
-              FinancialAccountModel.fromJson(
-                Map<String, dynamic>.from(e as Map),
-              ).toEntity(),
-        )
-        .toList();
+      final data = response as List;
+      return data
+          .map(
+            (e) =>
+                FinancialAccountModel.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ).toEntity(),
+          )
+          .toList();
+    } catch (e, st) {
+      developer.log(
+        'getAccounts error',
+        error: e,
+        stackTrace: st,
+        name: 'FinancialAccountsRepositoryImpl',
+      );
+      rethrow;
+    }
   }
 
   @override
   Future<FinancialAccountEntity?> getAccountById(String accountId) async {
-    final response =
-        await _supabase
-            .from('financial_accounts')
-            .select('id, name, type, balance, is_active, created_at')
-            .eq('id', accountId)
-            .maybeSingle();
-    if (response == null) return null;
-    return FinancialAccountModel.fromJson(response).toEntity();
+    try {
+      final response =
+          await _supabase
+              .from('financial_accounts')
+              .select('id, name, type, balance, is_active, created_at')
+              .eq('id', accountId)
+              .maybeSingle();
+      if (response == null) return null;
+      return FinancialAccountModel.fromJson(response).toEntity();
+    } catch (e, st) {
+      developer.log(
+        'getAccountById error',
+        error: e,
+        stackTrace: st,
+        name: 'FinancialAccountsRepositoryImpl',
+      );
+      rethrow;
+    }
   }
 
   @override
   Future<int> getAccountsCount() async {
-    final response = await _supabase
-        .from('financial_accounts')
-        .select('id')
-        .count(CountOption.exact);
-    return response.count;
+    try {
+      final response = await _supabase
+          .from('financial_accounts')
+          .select('id')
+          .count(CountOption.exact);
+      return response.count;
+    } catch (e, st) {
+      developer.log(
+        'getAccountsCount error',
+        error: e,
+        stackTrace: st,
+        name: 'FinancialAccountsRepositoryImpl',
+      );
+      return 0;
+    }
   }
 
   @override
@@ -81,8 +110,13 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
           'is_active': isActive,
         });
       }
-    } catch (e) {
-      debugPrint('FinancialAccountsRepositoryImpl.saveAccount error: $e');
+    } catch (e, st) {
+      developer.log(
+        'saveAccount error',
+        error: e,
+        stackTrace: st,
+        name: 'FinancialAccountsRepositoryImpl',
+      );
       rethrow;
     }
   }
