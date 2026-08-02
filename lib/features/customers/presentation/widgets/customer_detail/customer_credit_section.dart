@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
-import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/register_payment_modal.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/customer_credit_payment_modal.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit/customer_credits_cubit.dart';
@@ -30,7 +30,7 @@ class CustomerCreditSection extends StatelessWidget {
   });
 
   void _showRegisterPayment(BuildContext context) {
-    RegisterPaymentModal.show(
+    CustomerCreditPaymentModal.show(
       context,
       onSaved: onPaymentRegistered,
       account: CustomerCreditEntity(

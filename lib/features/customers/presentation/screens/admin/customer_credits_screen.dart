@@ -15,7 +15,7 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/credit_account_card.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/global_stats_bar.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/credit_account_modal.dart';
-import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/register_payment_modal.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/customer_credit_payment_modal.dart';
 
 class CustomerCreditsScreen extends StatelessWidget {
   const CustomerCreditsScreen({super.key});
@@ -384,7 +384,7 @@ class _CustomerCreditsScreenContentState
                 onTap: () {
                   Navigator.pop(ctx);
                   if (account.isActive && account.currentDebt > 0) {
-                    RegisterPaymentModal.show(
+                    CustomerCreditPaymentModal.show(
                       context,
                       account: account,
                       onSaved: () => cubit.loadData(),

@@ -58,36 +58,55 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<AdminCatalogCubit>();
+    final isDesktop = MediaQuery.of(context).size.width >= 900;
 
     return AdminLayout(
       title: 'Inventario de Productos',
       showBackButton: true,
-      actions: [
-        ElevatedButton.icon(
-          onPressed: () => context.go('/admin/products/product-form'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppColors.radiusSm),
-            ),
-          ),
-          icon: const Icon(Icons.add_rounded, size: 18),
-          label: const Text(
-            'Nuevo Producto',
-            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-          ),
-        ),
-      ],
+      actions: isDesktop
+          ? [
+              ElevatedButton.icon(
+                onPressed: () => context.go('/admin/products/product-form'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  ),
+                ),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text(
+                  'Nuevo Producto',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+              ),
+            ]
+          : null,
+      floatingActionButton: !isDesktop
+          ? FloatingActionButton.extended(
+              onPressed: () => context.go('/admin/products/product-form'),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 4,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text(
+                'Nuevo Producto',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+              ),
+            )
+          : null,
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final isDesktop = constraints.maxWidth >= 900;
+          final isDesktopLayout = constraints.maxWidth >= 900;
 
           return Container(
             color: AppColors.background,
-            padding: EdgeInsets.all(isDesktop ? 24.0 : 16.0),
+            padding: EdgeInsets.all(isDesktopLayout ? 24.0 : 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -121,23 +140,44 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    OutlinedButton.icon(
-                      onPressed: () => cubit.refreshProducts(),
-                      icon: const Icon(Icons.refresh_rounded, size: 18),
-                      label:
-                          isDesktop
-                              ? const Text('Actualizar')
-                              : const SizedBox.shrink(),
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isDesktop ? 16 : 14,
-                          vertical: 14,
+                    if (isDesktopLayout)
+                      OutlinedButton.icon(
+                        onPressed: () => cubit.refreshProducts(),
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: const Text('Actualizar'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppColors.radius),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
+                      )
+                    else
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
                           borderRadius: BorderRadius.circular(AppColors.radius),
+                          border: Border.all(color: AppColors.border),
+                          boxShadow: AppColors.cardShadow(),
+                        ),
+                        child: IconButton(
+                          onPressed: () => cubit.refreshProducts(),
+                          icon: const Icon(
+                            Icons.refresh_rounded,
+                            color: AppColors.textPrimary,
+                            size: 20,
+                          ),
+                          tooltip: 'Actualizar',
+                          padding: const EdgeInsets.all(12),
+                          constraints: const BoxConstraints(
+                            minWidth: 48,
+                            minHeight: 48,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -151,7 +191,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                             previous.products != current.products ||
                             previous.errorMessage != current.errorMessage,
                     builder: (context, state) {
-                      return isDesktop
+                      return isDesktopLayout
                           ? _buildDesktopTableContainer(state, cubit)
                           : _buildMobileCardList(state, cubit);
                     },

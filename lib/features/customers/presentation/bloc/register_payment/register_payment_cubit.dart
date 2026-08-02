@@ -111,7 +111,10 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
   }
 
   void selectOrder(OrderEntity? order, double maxDebt) {
-    emit(state.copyWith(selectedOrder: order));
+    emit(state.copyWith(
+      selectedOrder: order,
+      clearSelectedOrder: order == null,
+    ));
     validateAmount(state.amount, maxDebt);
   }
 

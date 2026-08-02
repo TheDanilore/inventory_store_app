@@ -258,9 +258,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           quantity, unit_cost, batch_number, expiry_date, variant_id,
           products!inner(
             name, 
-            uses_batches
+            uses_batches,
+            product_images(image_url, is_main, variant_id)
           ),
           product_variants!inner(
+            product_images(image_url, is_main),
             variant_attribute_values(
               attribute_values(value)
             )
