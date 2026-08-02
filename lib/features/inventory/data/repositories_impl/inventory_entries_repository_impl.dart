@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -6,6 +5,7 @@ import 'package:injectable/injectable.dart';
 
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_entries_repository.dart';
+import 'dart:developer' as developer;
 
 @LazySingleton(as: InventoryEntriesRepository)
 class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
@@ -48,11 +48,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         'p_notes': notes,
         'p_items': itemsJson,
       });
-    } on PostgrestException catch (e) {
-      debugPrint('[InventoryEntriesRepo] createInventoryEntry error: ${e.message}');
+    } on PostgrestException catch (e, st) {
+      developer.log('[InventoryEntriesRepo] createInventoryEntry error: ${e.message}', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
       throw Exception(e.message);
-    } catch (e) {
-      debugPrint('[InventoryEntriesRepo] createInventoryEntry unexpected error: $e');
+    } catch (e, st) {
+      developer.log('[InventoryEntriesRepo] createInventoryEntry unexpected error', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
       rethrow;
     }
   }
@@ -61,12 +61,9 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
     SupabaseClient supabase,
     String purchaseOrderId,
   ) async {
-    debugPrint('[syncPurchaseOrder] Starting sync for PO: $purchaseOrderId');
+    developer.log('[syncPurchaseOrder] Starting sync for PO: $purchaseOrderId', name: 'InventoryEntriesRepositoryImpl');
 
-    // 0. Nunca recalcular el estado de una orden ya anulada. Este método
-    //    se invoca también desde lecturas (fetchOrderItems), así que sin
-    //    este guard, con solo abrir el detalle de una orden CANCELLED se
-    //    la "resucitaba" a SENT/PARTIAL/RECEIVED.
+    // 0. Nunca recalcular el estado de una orden ya anulada.
     try {
       final currentPo =
           await supabase
@@ -75,13 +72,14 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
               .eq('id', purchaseOrderId)
               .maybeSingle();
       if (currentPo != null && currentPo['status'] == 'CANCELLED') {
-        debugPrint(
+        developer.log(
           '[syncPurchaseOrder] PO $purchaseOrderId is CANCELLED, skipping sync.',
+          name: 'InventoryEntriesRepositoryImpl',
         );
         return;
       }
-    } catch (e) {
-      debugPrint('[syncPurchaseOrder] Could not check current status: $e');
+    } catch (e, st) {
+      developer.log('[syncPurchaseOrder] Could not check current status', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
     }
 
     // 1. Intentar primero con la RPC con SECURITY DEFINER (para ignorar RLS)
@@ -90,41 +88,58 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         'sync_purchase_order_reception_rpc',
         params: {'p_purchase_order_id': purchaseOrderId},
       );
-      debugPrint('[syncPurchaseOrder] RPC Result: $rpcResult');
+      developer.log('[syncPurchaseOrder] RPC Result: $rpcResult', name: 'InventoryEntriesRepositoryImpl');
       if (rpcResult != null && rpcResult['success'] == true) {
         return;
       }
-    } catch (e) {
-      debugPrint(
-        '[syncPurchaseOrder] RPC failed or not installed: $e. Falling back to direct update...',
+    } catch (e, st) {
+      developer.log(
+        '[syncPurchaseOrder] RPC failed or not installed. Falling back to direct update...',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntriesRepositoryImpl',
       );
     }
 
-    // 2. No se usa fallback de cliente. La sincronización se delega 
-    // completamente al backend (RPC y base de datos).
+    // 2. No se usa fallback de cliente. La sincronización se delega completamente al backend.
   }
 
   Future<List<Map<String, dynamic>>> getActiveWarehouses() async {
-    return await _supabase
-        .from('warehouses')
-        .select('id, name')
-        .eq('is_active', true);
+    try {
+      return await _supabase
+          .from('warehouses')
+          .select('id, name')
+          .eq('is_active', true);
+    } catch (e, st) {
+      developer.log('getActiveWarehouses error', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
+      rethrow;
+    }
   }
 
   Future<List<Map<String, dynamic>>> getActiveSuppliers() async {
-    return await _supabase
-        .from('suppliers')
-        .select('id, name')
-        .eq('is_active', true)
-        .order('name');
+    try {
+      return await _supabase
+          .from('suppliers')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('name');
+    } catch (e, st) {
+      developer.log('getActiveSuppliers error', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
+      rethrow;
+    }
   }
 
   Future<List<Map<String, dynamic>>> getActiveAccounts() async {
-    return await _supabase
-        .from('financial_accounts')
-        .select('id, name, type, balance')
-        .eq('is_active', true)
-        .order('name');
+    try {
+      return await _supabase
+          .from('financial_accounts')
+          .select('id, name, type, balance')
+          .eq('is_active', true)
+          .order('name');
+    } catch (e, st) {
+      developer.log('getActiveAccounts error', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
+      rethrow;
+    }
   }
 
   @override
@@ -136,6 +151,7 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    try {
       var query = _supabase.from('inventory_entries').select('''
           id, created_at, notes, total_amount,
           document_type, document_number, document_date, purchase_order_id,
@@ -143,45 +159,50 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           suppliers(name)
         ''');
 
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      // Usamos or para buscar en notas o en nombre del proveedor
-      // Nota: Si queremos buscar en la tabla relacionada suppliers, supabase postgrest tiene limitaciones con or en relaciones
-      // Pero si usamos .ilike('suppliers.name') requiere inner join con !inner, lo cual descarta las entradas sin proveedor.
-      // Si la búsqueda incluye el número de documento:
-      query = query.or(
-        'document_number.ilike.%$searchQuery%,notes.ilike.%$searchQuery%',
-      );
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        // Usamos or para buscar en notas o en nombre del proveedor
+        // Nota: Si queremos buscar en la tabla relacionada suppliers, supabase postgrest tiene limitaciones con or en relaciones
+        // Pero si usamos .ilike('suppliers.name') requiere inner join con !inner, lo cual descarta las entradas sin proveedor.
+        // Si la búsqueda incluye el número de documento:
+        query = query.or(
+          'document_number.ilike.%$searchQuery%,notes.ilike.%$searchQuery%',
+        );
+      }
+
+      if (warehouseFilter != null && warehouseFilter != 'Todos') {
+        query = query.eq('warehouses.name', warehouseFilter);
+      }
+
+      if (startDate != null) {
+        query = query.gte('created_at', startDate.toIso8601String());
+      }
+
+      if (endDate != null) {
+        query = query.lte(
+          'created_at',
+          endDate.add(const Duration(days: 1)).toIso8601String(),
+        );
+      }
+
+      final resp = await query
+          .order('created_at', ascending: false)
+          .range(start, end)
+          .count(CountOption.exact);
+
+      final data =
+          (resp.data as List<dynamic>)
+              .map((e) => InventoryEntryModel.fromJson(e).toEntity())
+              .toList();
+      return (data: data, count: resp.count);
+    } catch (e, st) {
+      developer.log('getEntries error', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
+      rethrow;
     }
-
-    if (warehouseFilter != null && warehouseFilter != 'Todos') {
-      query = query.eq('warehouses.name', warehouseFilter);
-    }
-
-    if (startDate != null) {
-      query = query.gte('created_at', startDate.toIso8601String());
-    }
-
-    if (endDate != null) {
-      query = query.lte(
-        'created_at',
-        endDate.add(const Duration(days: 1)).toIso8601String(),
-      );
-    }
-
-    final resp = await query
-        .order('created_at', ascending: false)
-        .range(start, end)
-        .count(CountOption.exact);
-
-    final data =
-        (resp.data as List<dynamic>)
-            .map((e) => InventoryEntryModel.fromJson(e).toEntity())
-            .toList();
-    return (data: data, count: resp.count);
   }
 
   @override
   Future<List<dynamic>> getEntryItems(String entryId) async {
+    try {
       final resp = await _supabase
         .from('inventory_entry_items')
         .select('''
@@ -197,6 +218,10 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           )
         ''')
         .eq('entry_id', entryId);
-    return resp as List<dynamic>;
+      return resp as List<dynamic>;
+    } catch (e, st) {
+      developer.log('getEntryItems error', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
+      rethrow;
+    }
   }
 }
