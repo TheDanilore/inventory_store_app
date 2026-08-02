@@ -73,4 +73,46 @@ class PurchaseOrderModel extends PurchaseOrderEntity {
 
   double get pending => totalAmount - amountPaid;
   bool get isFullyPaid => paymentStatus == 'PAID';
+
+  PurchaseOrderModel copyWith({
+    String? id,
+    DateTime? createdAt,
+    String? supplierId,
+    String? supplierName,
+    String? warehouseId,
+    String? warehouseName,
+    String? status,
+    double? totalAmount,
+    String? paymentMethod,
+    String? paymentStatus,
+    double? amountPaid,
+    DateTime? dueDate,
+    double? discountAmount,
+    double? taxAmount,
+    String? documentType,
+    String? documentNumber,
+    String? notes,
+    int? itemCount,
+  }) {
+    return PurchaseOrderModel(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      supplierId: supplierId ?? this.supplierId,
+      supplierName: supplierName ?? this.supplierName,
+      warehouseId: warehouseId ?? this.warehouseId,
+      warehouseName: warehouseName ?? this.warehouseName,
+      status: status ?? this.status,
+      totalAmount: totalAmount ?? this.totalAmount,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      amountPaid: amountPaid ?? this.amountPaid,
+      dueDate: dueDate ?? this.dueDate,
+      discountAmount: discountAmount ?? this.discountAmount,
+      taxAmount: taxAmount ?? this.taxAmount,
+      documentType: documentType ?? this.documentType,
+      documentNumber: documentNumber ?? this.documentNumber,
+      notes: notes ?? this.notes,
+      itemCount: itemCount ?? this.itemCount,
+    );
+  }
 }

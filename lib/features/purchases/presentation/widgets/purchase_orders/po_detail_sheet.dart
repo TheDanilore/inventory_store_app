@@ -155,165 +155,17 @@ class _PODetailSheetState extends State<PODetailSheet> {
       return;
     }
 
-    String selectedAccountId = accounts.first.id;
-
-    final amountCtrl = TextEditingController(text: _pending.toStringAsFixed(2));
-
-    if (!mounted) return;
-    final confirmed = await showDialog<bool>(
+    final result = await showDialog<_PaymentDialogResult>(
       context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: const Row(
-                children: [
-                  Icon(Icons.payments_rounded, color: AppColors.success),
-                  SizedBox(width: 8),
-                  Text(
-                    'Registrar Pago de Orden',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Proveedor: ${widget.po.supplierName}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Deuda Pendiente: S/ ${_pending.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: AppColors.danger,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Cuenta Origen (Caja / Banco):',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedAccountId,
-                      isExpanded: true,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                      ),
-                      items:
-                          accounts.map((acc) {
-                            return DropdownMenuItem<String>(
-                              value: acc.id,
-                              child: Text(
-                                '${acc.name} (Saldo: S/ ${acc.balance.toStringAsFixed(2)})',
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                            );
-                          }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setDialogState(() => selectedAccountId = val);
-                        }
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Monto a pagar (S/):',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: amountCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      onChanged: (_) => setDialogState(() {}),
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Confirmar Pago'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder:
+          (ctx) => _OrderPaymentDialog(
+            supplierName: widget.po.supplierName,
+            pending: _pending,
+            accounts: accounts,
+          ),
     );
 
-    if (confirmed == true && mounted) {
-      final payAmount = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
-      if (payAmount <= 0) {
-        AppSnackbar.show(
-          context,
-          message: 'Ingrese un monto válido mayor a 0.',
-          type: SnackbarType.error,
-        );
-        return;
-      }
-
-      final selAccFinal = accounts.firstWhere(
-        (a) => a.id == selectedAccountId,
-        orElse: () => accounts.first,
-      );
-      final accBalanceFinal = selAccFinal.balance;
-      if (accBalanceFinal < payAmount) {
-        if (mounted) {
-          AppSnackbar.show(
-            context,
-            message:
-                'Saldo insuficiente en la cuenta "${selAccFinal.name}". Saldo disponible: S/ ${accBalanceFinal.toStringAsFixed(2)}, Monto a pagar: S/ ${payAmount.toStringAsFixed(2)}.',
-            type: SnackbarType.error,
-          );
-        }
-        return;
-      }
-
+    if (result != null && mounted) {
       final supplierId = widget.po.supplierId;
       if (supplierId == null) {
         AppSnackbar.show(
@@ -328,9 +180,9 @@ class _PODetailSheetState extends State<PODetailSheet> {
         RegisterOrderPaymentParams(
           orderId: widget.po.id,
           supplierId: supplierId,
-          amount: payAmount,
-          accountId: selectedAccountId,
-          shiftId: null, // El RPC de backend se encargará de resolver el shiftId
+          amount: result.amount,
+          accountId: result.accountId,
+          shiftId: null, // El RPC de backend se encargará de resolver el shiftId de forma atómica
         ),
       );
     }
@@ -1253,5 +1105,209 @@ class _StickyFooter extends StatelessWidget {
 
     // RECEIVED o CANCELLED: sin acción primaria
     return const SizedBox.shrink(key: ValueKey('none'));
+  }
+}
+
+class _PaymentDialogResult {
+  final double amount;
+  final String accountId;
+
+  const _PaymentDialogResult({required this.amount, required this.accountId});
+}
+
+class _OrderPaymentDialog extends StatefulWidget {
+  final String supplierName;
+  final double pending;
+  final List<SupplierFinancialAccountOption> accounts;
+
+  const _OrderPaymentDialog({
+    required this.supplierName,
+    required this.pending,
+    required this.accounts,
+  });
+
+  @override
+  State<_OrderPaymentDialog> createState() => _OrderPaymentDialogState();
+}
+
+class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _amountCtrl;
+  late String _selectedAccountId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedAccountId = widget.accounts.first.id;
+    _amountCtrl = TextEditingController(text: widget.pending.toStringAsFixed(2));
+  }
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+    final payAmount = double.tryParse(_amountCtrl.text.trim()) ?? 0.0;
+    if (payAmount <= 0) {
+      AppSnackbar.show(
+        context,
+        message: 'Ingrese un monto válido mayor a 0.',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
+    final selAcc = widget.accounts.firstWhere(
+      (a) => a.id == _selectedAccountId,
+      orElse: () => widget.accounts.first,
+    );
+    if (selAcc.balance < payAmount) {
+      AppSnackbar.show(
+        context,
+        message:
+            'Saldo insuficiente en la cuenta "${selAcc.name}". Saldo disponible: S/ ${selAcc.balance.toStringAsFixed(2)}, Monto a pagar: S/ ${payAmount.toStringAsFixed(2)}.',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
+    Navigator.pop(
+      context,
+      _PaymentDialogResult(amount: payAmount, accountId: _selectedAccountId),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      title: const Row(
+        children: [
+          Icon(Icons.payments_rounded, color: AppColors.success),
+          SizedBox(width: 8),
+          Text(
+            'Registrar Pago de Orden',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Proveedor: ${widget.supplierName}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Deuda Pendiente: S/ ${widget.pending.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: AppColors.danger,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Cuenta Origen (Caja / Banco):',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                value: _selectedAccountId,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+                items: widget.accounts.map((acc) {
+                  return DropdownMenuItem<String>(
+                    value: acc.id,
+                    child: Text(
+                      '${acc.name} (Saldo: S/ ${acc.balance.toStringAsFixed(2)})',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _selectedAccountId = val);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Monto a pagar (S/):',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _amountCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}$')),
+                ],
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Ingrese un monto a pagar';
+                  }
+                  final parsed = double.tryParse(val.trim());
+                  if (parsed == null || parsed <= 0) {
+                    return 'El monto debe ser mayor a 0';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.success,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          onPressed: _submit,
+          child: const Text('Confirmar Pago'),
+        ),
+      ],
+    );
   }
 }

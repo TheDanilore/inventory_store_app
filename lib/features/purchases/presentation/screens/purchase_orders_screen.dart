@@ -108,31 +108,35 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   }
 
   void _showDetail(BuildContext context, PurchaseOrderModel po) async {
+    final cubit = context.read<PurchaseOrdersCubit>();
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (_) => PODetailSheet(
-            po: po,
-            onPaymentSuccess: () {
-              if (context.mounted) {
-                context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
-              }
-            },
-            loadItems: () async {
-              final res = await sl<FetchPurchaseOrderItemsUseCase>().call(
-                po.id,
-              );
-              return res.fold((l) => [], (r) => r);
-            },
-            onReceive: () => _handleReceiveOrder(context, po),
-            onUpdateStatus: (status) async {
-              await viewModel.updateOrderStatus(po.id, status);
-              if (context.mounted) {
-                context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
-              }
-            },
+          (_) => BlocProvider.value(
+            value: cubit,
+            child: PODetailSheet(
+              po: po,
+              onPaymentSuccess: () {
+                if (context.mounted) {
+                  context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
+                }
+              },
+              loadItems: () async {
+                final res = await sl<FetchPurchaseOrderItemsUseCase>().call(
+                  po.id,
+                );
+                return res.fold((l) => [], (r) => r);
+              },
+              onReceive: () => _handleReceiveOrder(context, po),
+              onUpdateStatus: (status) async {
+                await viewModel.updateOrderStatus(po.id, status);
+                if (context.mounted) {
+                  context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
+                }
+              },
+            ),
           ),
     );
   }

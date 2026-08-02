@@ -5,6 +5,7 @@ import 'package:inventory_store_app/features/purchases/domain/usecases/update_pu
 import 'package:inventory_store_app/features/purchases/domain/usecases/register_order_payment_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/update_order_payment_method_usecase.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_state.dart';
+import 'package:inventory_store_app/features/purchases/data/models/purchase_order_model.dart';
 
 @injectable
 class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
@@ -250,14 +251,10 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
         // Zero Egress: mutar amount_paid y payment_status en la lista RAM
         if (previousState is PurchaseOrdersLoaded) {
           final updatedOrders = previousState.orders.map((o) {
-            final dynamic order = o;
-            final dynamic oId = order is Map ? order['id'] : null;
-            if (oId == params.orderId) {
-              final currentPaid = (order['amount_paid'] as num?)?.toDouble() ?? 0.0;
-              final totalAmount = (order['total_amount'] as num?)?.toDouble() ?? 0.0;
-              final newPaid = currentPaid + params.amount;
-              final newStatus = newPaid >= totalAmount ? 'PAID' : 'PARTIAL';
-              return {...(order as Map<String, dynamic>), 'amount_paid': newPaid, 'payment_status': newStatus};
+            if (o is PurchaseOrderModel && o.id == params.orderId) {
+              final newPaid = o.amountPaid + params.amount;
+              final newStatus = newPaid >= o.totalAmount ? 'PAID' : 'PARTIAL';
+              return o.copyWith(amountPaid: newPaid, paymentStatus: newStatus);
             }
             return o;
           }).toList();
@@ -294,10 +291,8 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
         // Zero Egress: mutar payment_method en la lista RAM
         if (previousState is PurchaseOrdersLoaded) {
           final updatedOrders = previousState.orders.map((o) {
-            final dynamic order = o;
-            final dynamic oId = order is Map ? order['id'] : null;
-            if (oId == params.orderId) {
-              return {...(order as Map<String, dynamic>), 'payment_method': params.newMethod};
+            if (o is PurchaseOrderModel && o.id == params.orderId) {
+              return o.copyWith(paymentMethod: params.newMethod);
             }
             return o;
           }).toList();
