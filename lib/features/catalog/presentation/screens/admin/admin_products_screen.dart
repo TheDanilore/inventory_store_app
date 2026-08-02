@@ -145,6 +145,11 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                 // ── Contenido Camaleónico (Desktop vs Mobile) ──────────
                 Expanded(
                   child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+                    buildWhen:
+                        (previous, current) =>
+                            previous.catalogState != current.catalogState ||
+                            previous.products != current.products ||
+                            previous.errorMessage != current.errorMessage,
                     builder: (context, state) {
                       return isDesktop
                           ? _buildDesktopTableContainer(state, cubit)

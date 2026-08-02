@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -33,6 +34,8 @@ class VariantDraftCard extends StatefulWidget {
 class _VariantDraftCardState extends State<VariantDraftCard> {
   final List<_AttributeSelection> _selectedAttributes = [];
   bool _isExpanded = false;
+  Timer? _debounceTimer;
+
   late final TextEditingController skuCtrl;
   late final TextEditingController barcodeCtrl;
   late final TextEditingController priceCtrl;
@@ -58,39 +61,51 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
     reorderPointCtrl = TextEditingController(text: widget.draft.reorderPoint);
     unitCostCtrl = TextEditingController(text: widget.draft.unitCost);
 
-    skuCtrl.addListener(() {
-      widget.onUpdate(widget.draft.copyWith(sku: skuCtrl.text));
-    });
-    barcodeCtrl.addListener(() {
-      widget.onUpdate(widget.draft.copyWith(barcode: barcodeCtrl.text));
-    });
-    priceCtrl.addListener(() {
-      widget.onUpdate(widget.draft.copyWith(price: priceCtrl.text));
-    });
-    wholesalePriceCtrl.addListener(() {
-      widget.onUpdate(
-        widget.draft.copyWith(wholesalePrice: wholesalePriceCtrl.text),
-      );
-    });
-    wholesaleMinQuantityCtrl.addListener(() {
-      widget.onUpdate(
-        widget.draft.copyWith(
-          wholesaleMinQuantity: wholesaleMinQuantityCtrl.text,
-        ),
-      );
-    });
-    reorderPointCtrl.addListener(() {
-      widget.onUpdate(
-        widget.draft.copyWith(reorderPoint: reorderPointCtrl.text),
-      );
-    });
-    unitCostCtrl.addListener(() {
-      widget.onUpdate(widget.draft.copyWith(unitCost: unitCostCtrl.text));
-    });
+    skuCtrl.addListener(_onFieldChanged);
+    barcodeCtrl.addListener(_onFieldChanged);
+    priceCtrl.addListener(_onFieldChanged);
+    wholesalePriceCtrl.addListener(_onFieldChanged);
+    wholesaleMinQuantityCtrl.addListener(_onFieldChanged);
+    reorderPointCtrl.addListener(_onFieldChanged);
+    unitCostCtrl.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() {
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), _syncAllToDraft);
+  }
+
+  void _syncAllToDraft() {
+    if (!mounted) return;
+    final List<Map<String, dynamic>> finalAttributes = [];
+    for (final row in _selectedAttributes) {
+      if (row.attributeId != null && row.valueId != null) {
+        finalAttributes.add({
+          'attribute_id': row.attributeId,
+          'attribute_name': row.attributeName,
+          'value_id': row.valueId,
+          'value_name': row.valueName,
+        });
+      }
+    }
+
+    widget.onUpdate(
+      widget.draft.copyWith(
+        sku: skuCtrl.text,
+        barcode: barcodeCtrl.text,
+        price: priceCtrl.text,
+        wholesalePrice: wholesalePriceCtrl.text,
+        wholesaleMinQuantity: wholesaleMinQuantityCtrl.text,
+        reorderPoint: reorderPointCtrl.text,
+        unitCost: unitCostCtrl.text,
+        selectedAttributes: finalAttributes,
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     skuCtrl.dispose();
     barcodeCtrl.dispose();
     priceCtrl.dispose();
@@ -124,18 +139,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
   }
 
   void _synchronizeToDraft() {
-    final List<Map<String, dynamic>> finalAttributes = [];
-    for (final row in _selectedAttributes) {
-      if (row.attributeId != null && row.valueId != null) {
-        finalAttributes.add({
-          'attribute_id': row.attributeId,
-          'attribute_name': row.attributeName,
-          'value_id': row.valueId,
-          'value_name': row.valueName,
-        });
-      }
-    }
-    widget.onUpdate(widget.draft.copyWith(selectedAttributes: finalAttributes));
+    _syncAllToDraft();
   }
 
   void _removeAttributeRow(int index) {

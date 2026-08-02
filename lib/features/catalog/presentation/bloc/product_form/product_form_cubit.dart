@@ -166,10 +166,24 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     try {
       ProductEntity? targetProduct = product;
+      final effectiveId = targetProduct?.id ?? productId;
 
-      // Si no viene la entidad pero sí el ID, lo buscamos con el UC
-      if (targetProduct == null && productId != null && productId.isNotEmpty) {
-        targetProduct = await _unwrap(_getProductByIdUC.call(productId));
+      // HIDRATACIÓN BAJO DEMANDA: Al editar, consultamos invariablemente el detalle por ID 
+      // para recuperar las variantes con el árbol completo de atributos (variant_attribute_values)
+      // que se omitieron en el listado por control de Data Egress.
+      if (effectiveId != null && effectiveId.isNotEmpty) {
+        try {
+          final fullProduct = await _unwrap(_getProductByIdUC.call(effectiveId));
+          if (fullProduct != null) {
+            targetProduct = fullProduct;
+          }
+        } catch (e, st) {
+          developer.log(
+            'ProductFormCubit: Error al hidratar el detalle completo por ID: $effectiveId',
+            error: e,
+            stackTrace: st,
+          );
+        }
       }
 
       _productToEdit = targetProduct;
