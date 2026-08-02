@@ -11,8 +11,10 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/add_entry_product/add_entry_product_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/add_entry_product/add_entry_product_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'dart:developer' as developer;
 
 class AddEntryProductSheet extends StatefulWidget {
   final String? warehouseId;
@@ -29,10 +31,10 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   double _quantity = 1;
   final _costCtrl = TextEditingController();
   final _batchCtrl = TextEditingController();
+  final _batchSearchCtrl = TextEditingController(); // Controlador extraído para no forzar rebuilds de Autocomplete
   DateTime? _expiryDate;
-  // Clave única para forzar la reconstrucción del widget Autocomplete de lotes
-  // cuando cambia el producto/variante, reseteando su controller interno.
-  Key _batchAutocompleteKey = UniqueKey();
+  
+  final _searchDebouncer = _Debouncer(milliseconds: 500);
 
   late final AddEntryProductCubit _cubit;
   late final ProductsRepository _repository;
@@ -46,8 +48,10 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
 
   @override
   void dispose() {
+    _searchDebouncer.dispose();
     _costCtrl.dispose();
     _batchCtrl.dispose();
+    _batchSearchCtrl.dispose();
     _cubit.close();
     super.dispose();
   }
@@ -66,8 +70,8 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       _selectedVariant = null;
       _quantity = 1;
       _batchCtrl.clear();
+      _batchSearchCtrl.clear();
       _expiryDate = null;
-      _batchAutocompleteKey = UniqueKey();
       if (val != null) {
         _costCtrl.text = (val.defaultVariant?.unitCost ?? 0).toStringAsFixed(2);
       } else {
@@ -90,7 +94,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       final cost = _effectiveCost(variant: val, product: _selectedProduct);
       _costCtrl.text = cost.toStringAsFixed(2);
       _batchCtrl.clear();
-      _batchAutocompleteKey = UniqueKey();
+      _batchSearchCtrl.clear();
     });
 
     if (val != null &&
@@ -155,7 +159,8 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   }
 
   void _submit(AddEntryProductState state) {
-    final cost = double.tryParse(_costCtrl.text.trim()) ?? 0.0;
+    final sanitizedCost = _costCtrl.text.trim().replaceAll(',', '.');
+    final cost = double.tryParse(sanitizedCost);
     final availableVariants = state.availableVariants;
 
     if (_selectedProduct == null) {
@@ -174,10 +179,10 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       );
       return;
     }
-    if (cost < 0) {
+    if (cost == null || cost < 0) {
       AppSnackbar.show(
         context,
-        message: 'El costo no puede ser negativo',
+        message: 'Ingresa un costo válido (positivo)',
         type: SnackbarType.error,
       );
       return;
@@ -231,7 +236,12 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   Widget build(BuildContext context) {
     return BlocProvider.value(
       value: _cubit,
-      child: BlocBuilder<AddEntryProductCubit, AddEntryProductState>(
+      child: BlocConsumer<AddEntryProductCubit, AddEntryProductState>(
+        listener: (context, state) {
+          if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
+            AppSnackbar.show(context, message: state.errorMessage!, type: SnackbarType.error);
+          }
+        },
         builder: (context, state) {
           final availableVariants = state.availableVariants;
           final theme = Theme.of(context);
@@ -309,19 +319,25 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                               if (textEditingValue.text.isEmpty) {
                                 return const Iterable<ProductModel>.empty();
                               }
-                              try {
-                                final res = await _repository
-                                    .searchProductsForEntry(
-                                      textEditingValue.text,
-                                    );
+                              return _searchDebouncer.run<Iterable<ProductModel>>(() async {
+                                final res = await _repository.searchProductsForEntry(
+                                  textEditingValue.text,
+                                );
                                 return res.fold(
-                                  (l) => const Iterable<ProductModel>.empty(),
+                                  (l) {
+                                    developer.log('Error de red al buscar', error: l.message);
+                                    if (mounted) {
+                                      AppSnackbar.show(
+                                        context,
+                                        message: 'Error de red al buscar productos. Revisa tu conexión.',
+                                        type: SnackbarType.error,
+                                      );
+                                    }
+                                    return const Iterable<ProductModel>.empty();
+                                  },
                                   (r) => r.map((p) => ProductModel.fromJson(p)),
                                 );
-                              } catch (e) {
-                                debugPrint('Error en autocomplete: $e');
-                                return const Iterable<ProductModel>.empty();
-                              }
+                              }, const Iterable<ProductModel>.empty());
                             },
                             onSelected: _onProductChanged,
                             fieldViewBuilder: (
@@ -611,7 +627,6 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                             )
                           else
                             Autocomplete<WarehouseStockBatchModel>(
-                              key: _batchAutocompleteKey,
                               optionsBuilder: (
                                 TextEditingValue textEditingValue,
                               ) {
@@ -642,6 +657,14 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                                 focusNode,
                                 onFieldSubmitted,
                               ) {
+                                if (textEditingController != _batchSearchCtrl) {
+                                   textEditingController.text = _batchSearchCtrl.text;
+                                   textEditingController.addListener(() {
+                                     _batchSearchCtrl.text = textEditingController.text;
+                                     _batchCtrl.text = textEditingController.text;
+                                   });
+                                }
+                                
                                 return TextField(
                                   controller: textEditingController,
                                   focusNode: focusNode,
@@ -1177,5 +1200,40 @@ class _ProductThumbnail extends StatelessWidget {
                 ),
       ),
     );
+  }
+}
+
+class _Debouncer {
+  final int milliseconds;
+  Timer? _timer;
+  Completer? _completer;
+  
+  _Debouncer({required this.milliseconds});
+  
+  Future<T> run<T>(Future<T> Function() action, T fallbackValue) {
+    if (_timer?.isActive ?? false) {
+      _timer!.cancel();
+      _completer?.complete(fallbackValue);
+    }
+    
+    _completer = Completer<T>();
+    _timer = Timer(Duration(milliseconds: milliseconds), () async {
+      try {
+        final result = await action();
+        if (!_completer!.isCompleted) _completer!.complete(result);
+      } catch (e, st) {
+        developer.log('Debouncer error', error: e, stackTrace: st);
+        if (!_completer!.isCompleted) _completer!.complete(fallbackValue);
+      }
+    });
+    
+    return _completer!.future as Future<T>;
+  }
+  
+  void dispose() {
+    _timer?.cancel();
+    if (_completer != null && !_completer!.isCompleted) {
+       _completer!.completeError('disposed');
+    }
   }
 }

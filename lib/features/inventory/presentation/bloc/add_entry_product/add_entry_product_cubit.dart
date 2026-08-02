@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
@@ -27,28 +28,12 @@ class AddEntryProductCubit extends Cubit<AddEntryProductState> {
 
     final res = await _repository.loadActiveVariants(productId);
     res.fold(
-      (l) => emit(state.copyWith(isLoadingVariants: false, errorMessage: l.message)),
+      (l) {
+        developer.log('Error loading variants', error: l.message);
+        emit(state.copyWith(isLoadingVariants: false, errorMessage: l.message));
+      },
       (r) async {
-        final parsedVariants = r.map((v) {
-          // Aplanar atributos igual que en la versión original
-          if (v['variant_attribute_values'] is List) {
-            final Map<String, dynamic> flatAttributes = {};
-            for (final vav in v['variant_attribute_values'] as List) {
-              if (vav is Map && vav['attribute_values'] is Map) {
-                final av = vav['attribute_values'] as Map;
-                if (av['attributes'] is Map) {
-                  final attr = av['attributes'] as Map;
-                  if (attr['name'] != null) {
-                    flatAttributes[attr['name'].toString()] = av['value']?.toString() ?? '';
-                  }
-                }
-              }
-            }
-            v['attributes'] = flatAttributes;
-          }
-          return ProductVariantModel.fromJson(v);
-        }).toList();
-
+        final parsedVariants = r.map((v) => ProductVariantModel.fromJson(v)).toList();
         parsedVariants.sort((a, b) => a.label.compareTo(b.label));
 
         List<Map<String, dynamic>> batches = [];
