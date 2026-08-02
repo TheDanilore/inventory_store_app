@@ -29,7 +29,7 @@ class AdminOrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = order.status;
     final date = (order.createdAt ?? DateTime.now()).toLocal();
-    final dateString = DateFormat('dd MMM yyyy, hh:mm a').format(date);
+    final dateString = DateFormat('dd MMM yyyy, hh:mm a', 'es').format(date);
     final customerName = order.displayCustomerName;
     final shortId = order.id.substring(0, 8).toUpperCase();
 

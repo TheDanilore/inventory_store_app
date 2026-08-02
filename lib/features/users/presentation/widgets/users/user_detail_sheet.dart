@@ -51,7 +51,7 @@ class _UserDetailContentState extends State<_UserDetailContent> {
     if (dateStr == null) return 'N/A';
     try {
       final date = DateTime.parse(dateStr).toLocal();
-      return DateFormat('dd/MM/yyyy HH:mm').format(date);
+      return DateFormat('dd/MM/yyyy HH:mm', 'es').format(date);
     } catch (_) {
       return dateStr;
     }

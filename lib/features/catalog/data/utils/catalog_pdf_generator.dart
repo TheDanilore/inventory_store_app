@@ -88,7 +88,7 @@ class CatalogPdfGenerator {
     }
 
     final doc = pw.Document();
-    final generatedAt = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
+    final generatedAt = DateFormat('dd/MM/yyyy HH:mm', 'es').format(DateTime.now());
 
     // Descarga de imágenes en lotes pequeños (máximo 5 a la vez) para no saturar sockets
     final Map<String, Uint8List?> productImages = {};
@@ -354,7 +354,7 @@ class CatalogPdfGenerator {
       variantsByProduct: variantsByProduct,
       stockByVariant: stockByVariant,
     );
-    final fileName = 'Catalogo_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf';
+    final fileName = 'Catalogo_${DateFormat('yyyyMMdd', 'es').format(DateTime.now())}.pdf';
     if (kIsWeb || Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       await Printing.layoutPdf(
         onLayout: (_) async => bytes,

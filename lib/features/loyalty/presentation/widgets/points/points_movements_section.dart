@@ -231,7 +231,7 @@ class _MovementRow extends StatelessWidget {
                 if (parsedDate != null) ...[
                   const SizedBox(height: 4),
                   Text(
-                    DateFormat('dd MMM yyyy, hh:mm a').format(parsedDate),
+                    DateFormat('dd MMM yyyy, hh:mm a', 'es').format(parsedDate),
                     style: const TextStyle(
                       fontSize: 11,
                       color: PointsDS.textMuted,

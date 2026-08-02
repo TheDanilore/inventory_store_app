@@ -512,7 +512,7 @@ class _GlobalShiftCardState extends State<_GlobalShiftCard> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            DateFormat('dd MMM HH:mm').format(shift.openedAt),
+                            DateFormat('dd MMM HH:mm', 'es').format(shift.openedAt),
                             style: theme.textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.w600,
                               color: colorScheme.onSurfaceVariant,

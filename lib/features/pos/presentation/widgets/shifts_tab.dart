@@ -616,7 +616,7 @@ class _ShiftCardState extends State<_ShiftCard> {
                           const SizedBox(width: 4),
                           Text(
                             DateFormat(
-                              'dd/MM/yyyy HH:mm',
+                              'dd/MM/yyyy HH:mm', 'es'
                             ).format(shift.openedAt.toLocal()),
                             style: const TextStyle(
                               fontSize: 12,

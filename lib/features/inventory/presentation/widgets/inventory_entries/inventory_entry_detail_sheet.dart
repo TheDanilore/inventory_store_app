@@ -76,7 +76,7 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final fmt = DateFormat('dd/MM/yyyy HH:mm');
+    final fmt = DateFormat('dd/MM/yyyy HH:mm', 'es');
     final entry = widget.entry;
 
     // Migrado de DraggableScrollableSheet a Container de altura fija
@@ -300,7 +300,7 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                           // Fecha de vencimiento como badge si aplica
                           badgeText:
                               item.usesBatches && item.expiryDate != null
-                                  ? 'Vence: ${DateFormat('dd/MM/yyyy').format(item.expiryDate!)}'
+                                  ? 'Vence: ${DateFormat('dd/MM/yyyy', 'es').format(item.expiryDate!)}'
                                   : null,
                           badgeColor: AppColors.warning,
                           trailing: ItemPriceColumnTrailing(

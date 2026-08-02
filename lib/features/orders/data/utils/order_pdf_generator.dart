@@ -52,7 +52,7 @@ class OrderPdfGenerator {
     final pdf = pw.Document();
 
     final peruTime = _toPeruTime(order.createdAt ?? DateTime.now());
-    final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(peruTime);
+    final dateStr = DateFormat('dd/MM/yyyy HH:mm', 'es').format(peruTime);
 
     // 2. Construir el diseño del PDF (Formato Ticket/Rollo)
     pdf.addPage(

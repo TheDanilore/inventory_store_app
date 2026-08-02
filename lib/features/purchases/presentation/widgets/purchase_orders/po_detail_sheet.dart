@@ -360,7 +360,7 @@ class _PODetailSheetState extends State<PODetailSheet> {
 📋 *ORDEN DE COMPRA $shortCode*
 
 *Proveedor:* ${widget.po.supplierName}
-*Fecha Emisión:* ${DateFormat('dd/MM/yyyy').format(widget.po.createdAt)}
+*Fecha Emisión:* ${DateFormat('dd/MM/yyyy', 'es').format(widget.po.createdAt)}
 *Total Orden:* S/ ${widget.po.totalAmount.toStringAsFixed(2)}
 
 📦 *DETALLE DE PRODUCTOS:*
@@ -752,7 +752,7 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                                   ),
                                   Text(
                                     DateFormat(
-                                      'dd/MM/yyyy HH:mm',
+                                      'dd/MM/yyyy HH:mm', 'es'
                                     ).format(widget.po.createdAt.toLocal()),
                                     style: const TextStyle(
                                       fontSize: 14,

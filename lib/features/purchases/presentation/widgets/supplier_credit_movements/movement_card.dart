@@ -19,7 +19,7 @@ class SupplierCreditMovementCard extends StatelessWidget {
     final sign = isCharge ? '+' : '-';
     final timeStr =
         movement.createdAt != null
-            ? DateFormat('HH:mm').format(movement.createdAt!.toLocal())
+            ? DateFormat('HH:mm', 'es').format(movement.createdAt!.toLocal())
             : '--:--';
 
     return Container(

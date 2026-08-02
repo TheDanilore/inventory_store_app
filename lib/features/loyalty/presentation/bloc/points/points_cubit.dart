@@ -213,7 +213,7 @@ class PointsCubit extends Cubit<PointsState> {
     emit(state.copyWith(isClaimingCheckin: true));
 
     final now = DateTime.now();
-    final todayDate = DateFormat('yyyy-MM-dd').format(now);
+    final todayDate = DateFormat('yyyy-MM-dd', 'es').format(now);
     final currentDay = DateTime(now.year, now.month, now.day);
     final yesterday = currentDay.subtract(const Duration(days: 1));
 
@@ -312,7 +312,7 @@ class PointsCubit extends Cubit<PointsState> {
     emit(state.copyWith(isPlayingMiniGame: true));
 
     final now = DateTime.now();
-    final todayDate = DateFormat('yyyy-MM-dd').format(now);
+    final todayDate = DateFormat('yyyy-MM-dd', 'es').format(now);
     final isForFun =
         state.boxesPlaysToday >= boxesLimit || state.profileId == null;
     final reward = state.miniGameBoxes[boxIndex];

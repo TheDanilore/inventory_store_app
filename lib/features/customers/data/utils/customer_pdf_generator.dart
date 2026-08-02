@@ -76,7 +76,7 @@ class CustomerPdfGenerator {
     final italicFont = pw.Font.ttf(args.fontItalicBytes.buffer.asByteData());
 
     final doc = pw.Document();
-    final generatedAt = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
+    final generatedAt = DateFormat('dd/MM/yyyy HH:mm', 'es').format(DateTime.now());
 
     doc.addPage(
       pw.MultiPage(
@@ -155,7 +155,7 @@ class CustomerPdfGenerator {
 
   static Future<void> shareOrPrintPdf(List<CustomerEntity> customers) async {
     final pdfBytes = await _buildPdf(customers: customers);
-    final generatedAt = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+    final generatedAt = DateFormat('yyyyMMdd_HHmm', 'es').format(DateTime.now());
     await Printing.sharePdf(
       bytes: pdfBytes,
       filename: 'clientes_$generatedAt.pdf',

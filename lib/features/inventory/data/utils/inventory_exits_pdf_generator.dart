@@ -23,7 +23,7 @@ class InventoryExitsPdfGenerator {
     final italicFont = await PdfGoogleFonts.notoSansItalic();
 
     final doc = pw.Document();
-    final generatedAt = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
+    final generatedAt = DateFormat('dd/MM/yyyy HH:mm', 'es').format(DateTime.now());
 
     double totalGeneralCost = exits.fold(
       0.0,
@@ -32,8 +32,8 @@ class InventoryExitsPdfGenerator {
 
     String dateText = 'Rango: Histórico Completo';
     if (dateRange != null) {
-      final start = DateFormat('dd/MM/yyyy').format(dateRange.start);
-      final end = DateFormat('dd/MM/yyyy').format(dateRange.end);
+      final start = DateFormat('dd/MM/yyyy', 'es').format(dateRange.start);
+      final end = DateFormat('dd/MM/yyyy', 'es').format(dateRange.end);
       dateText = 'Rango: $start - $end';
     }
 
@@ -161,7 +161,7 @@ class InventoryExitsPdfGenerator {
                           child: pw.Text(
                             exit.createdAt != null
                                 ? DateFormat(
-                                  'dd/MM/yy HH:mm',
+                                  'dd/MM/yy HH:mm', 'es'
                                 ).format(exit.createdAt!.toLocal())
                                 : '',
                             style: const pw.TextStyle(fontSize: 9),
@@ -234,7 +234,7 @@ class InventoryExitsPdfGenerator {
     await Printing.layoutPdf(
       onLayout: (_) async => bytes,
       name:
-          'Reporte_Salidas_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+          'Reporte_Salidas_${DateFormat('yyyyMMdd', 'es').format(DateTime.now())}.pdf',
     );
   }
 
@@ -246,7 +246,7 @@ class InventoryExitsPdfGenerator {
     await Printing.sharePdf(
       bytes: bytes,
       filename:
-          'Reporte_Salidas_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+          'Reporte_Salidas_${DateFormat('yyyyMMdd', 'es').format(DateTime.now())}.pdf',
     );
   }
 }

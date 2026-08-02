@@ -152,7 +152,7 @@ class _CustomerListCardState extends State<CustomerListCard> {
                         const SizedBox(height: 4),
                         if (widget.customer.lastOrderAt != null)
                           Text(
-                            'Últ: ${DateFormat('dd/MM/yy').format(widget.customer.lastOrderAt!)}',
+                            'Últ: ${DateFormat('dd/MM/yy','es').format(widget.customer.lastOrderAt!)}',
                             style: const TextStyle(
                               fontSize: 11,
                               color: AppColors.textSecondary,

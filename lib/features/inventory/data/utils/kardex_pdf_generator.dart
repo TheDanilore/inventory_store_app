@@ -32,7 +32,7 @@ class KardexPdfGenerator {
                     ),
                   ),
                   pw.Text(
-                    DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()),
+                    DateFormat('dd/MM/yyyy HH:mm', 'es').format(DateTime.now()),
                   ),
                 ],
               ),
@@ -41,7 +41,7 @@ class KardexPdfGenerator {
 
             if (startDate != null && endDate != null)
               pw.Text(
-                'Fechas: ${DateFormat('dd/MM/yyyy').format(startDate)} - ${DateFormat('dd/MM/yyyy').format(endDate)}',
+                'Fechas: ${DateFormat('dd/MM/yyyy', 'es').format(startDate)} - ${DateFormat('dd/MM/yyyy', 'es').format(endDate)}',
               ),
 
             pw.Text('Tipo de filtro: ${_getTypeFilterName(typeFilter)}'),
@@ -65,7 +65,7 @@ class KardexPdfGenerator {
               data:
                   allMovements.map((m) {
                     return [
-                      DateFormat('dd/MM/yy HH:mm').format(m.date.toLocal()),
+                      DateFormat('dd/MM/yy HH:mm', 'es').format(m.date.toLocal()),
                       m.type,
                       m.description,
                       m.reference,
@@ -84,7 +84,7 @@ class KardexPdfGenerator {
     await Printing.sharePdf(
       bytes: bytes,
       filename:
-          'Kardex_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf',
+          'Kardex_${DateFormat('yyyyMMdd_HHmm', 'es').format(DateTime.now())}.pdf',
     );
   }
 

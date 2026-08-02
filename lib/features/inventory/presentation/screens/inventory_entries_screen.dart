@@ -606,7 +606,7 @@ class _EntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fmt = DateFormat('dd/MM/yyyy HH:mm');
+    final fmt = DateFormat('dd/MM/yyyy HH:mm', 'es');
     final hasDoc =
         entry.documentType != 'NINGUNO' &&
         entry.documentNumber != null &&
