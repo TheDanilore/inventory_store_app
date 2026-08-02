@@ -6,11 +6,9 @@ import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
-import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders/customer_orders_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders/customer_orders_state.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/orders/customer_order_card.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/customer/orders/customer_order_detail_sheet.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 
@@ -37,6 +35,11 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<CustomerOrdersCubit>().init();
+      }
+    });
   }
 
   @override
@@ -121,33 +124,6 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     }
   }
 
-  Future<void> _showOrderDetails(OrderEntity order) async {
-    final result = await context.read<CustomerOrdersCubit>().fetchOrderItems(
-      order.id,
-    );
-
-    if (!mounted) return;
-    
-    result.fold(
-      (failure) {
-        AppSnackbar.show(
-          context,
-          message: failure.message,
-          type: SnackbarType.error,
-        );
-      },
-      (items) {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder:
-              (context) => CustomerOrderDetailSheet(order: order, items: items),
-        );
-      }
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<CustomerOrdersCubit>();
@@ -166,7 +142,16 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
             onRefresh: () async {
               await cubit.refresh();
             },
-            child: BlocBuilder<CustomerOrdersCubit, CustomerOrdersState>(
+            child: BlocConsumer<CustomerOrdersCubit, CustomerOrdersState>(
+              listener: (context, state) {
+                if (state.errorMessage.isNotEmpty && state.orders.isNotEmpty && !state.isLoadingMore && !state.isBackgroundLoading) {
+                  AppSnackbar.show(
+                    context,
+                    message: state.errorMessage,
+                    type: SnackbarType.error,
+                  );
+                }
+              },
               builder: (context, state) {
                 final displayOrders = state.filteredOrders;
 
@@ -486,14 +471,11 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
       delegate: SliverChildBuilderDelegate((context, index) {
         final order = displayOrders[index];
         final isProcessing = state.isOrderProcessing(order.id);
-        return GestureDetector(
-          onTap: () => _showOrderDetails(order),
-          child: CustomerOrderCard(
-            key: ValueKey(order.id),
-            order: order,
-            isProcessing: isProcessing,
-            onReorder: () => _handleReorder(order.id),
-          ),
+        return CustomerOrderCard(
+          key: ValueKey(order.id),
+          order: order,
+          isProcessing: isProcessing,
+          onReorder: () => _handleReorder(order.id),
         );
       }, childCount: displayOrders.length),
     );

@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:fpdart/fpdart.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/get_current_profile_id_usecase.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/get_customer_orders_uc.dart';
@@ -14,23 +15,34 @@ import 'package:injectable/injectable.dart';
 class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
   final GetCustomerOrdersUc getCustomerOrdersUc;
   final GetOrderItemsUc getOrderItemsUc;
+  final GetCurrentProfileIdUseCase getCurrentProfileIdUc;
   static const int _limit = 15;
 
   CustomerOrdersCubit({
     required this.getCustomerOrdersUc,
     required this.getOrderItemsUc,
+    required this.getCurrentProfileIdUc,
   }) : super(const CustomerOrdersState());
 
-  void init(String profileId) {
-    if (state.isLoading && state.profileId == profileId) return;
-    if (state.orders.isNotEmpty && state.profileId == profileId) {
+  Future<void> init([String? customProfileId]) async {
+    var pid = customProfileId ?? state.profileId;
+    if (pid == null) {
+      final res = await getCurrentProfileIdUc();
+      pid = res.fold((l) => null, (r) => r);
+    }
+    if (pid == null) {
+      emit(state.copyWith(isLoading: false, errorMessage: 'Usuario no autenticado'));
+      return;
+    }
+    if (state.isLoading && state.profileId == pid && state.orders.isNotEmpty) return;
+    if (state.orders.isNotEmpty && state.profileId == pid) {
       return;
     }
     emit(
-      state.copyWith(profileId: profileId, isLoading: true, errorMessage: ''),
+      state.copyWith(profileId: pid, isLoading: true, errorMessage: ''),
     );
     _itemsCache.clear();
-    _loadData(profileId);
+    await _loadData(pid);
   }
 
   List<OrderEntity> _applyFilters(List<OrderEntity> orders, String status, String query) {
@@ -119,7 +131,7 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
     result.fold(
       (failure) {
         developer.log('Error en refresh CustomerOrders', error: failure.message);
-        emit(state.copyWith(isBackgroundLoading: false));
+        emit(state.copyWith(isBackgroundLoading: false, errorMessage: failure.message));
       }, 
       (orders) {
         _itemsCache.clear();

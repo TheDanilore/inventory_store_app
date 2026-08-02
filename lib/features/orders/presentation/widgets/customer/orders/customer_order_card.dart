@@ -5,6 +5,7 @@ import 'package:inventory_store_app/features/orders/domain/entities/order_entity
 import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders/customer_orders_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/orders/customer_order_detail_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class CustomerOrderCard extends StatefulWidget {
   final OrderEntity order;
@@ -232,24 +233,23 @@ class _CustomerOrderCardState extends State<CustomerOrderCard> {
 
       result.fold(
         (failure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(failure.message)),
+          AppSnackbar.show(
+            context,
+            message: failure.message,
+            type: SnackbarType.error,
           );
         },
         (items) {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => CustomerOrderDetailSheet(order: order, items: items),
-          );
+          CustomerOrderDetailSheet.show(context, order: order, items: items);
         },
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoadingDetails = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error inesperado: $e')),
+      AppSnackbar.show(
+        context,
+        message: 'No se pudo cargar el detalle del pedido',
+        type: SnackbarType.error,
       );
     }
   }

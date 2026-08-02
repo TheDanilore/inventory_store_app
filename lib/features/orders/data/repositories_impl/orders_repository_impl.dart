@@ -27,11 +27,10 @@ class OrdersRepositoryImpl implements OrdersRepository {
       var query = _supabase
           .from('orders')
           .select('''
-            id, customer_id, customer_name, total_amount, total_profit,
+            id, customer_id, customer_name, total_amount,
             discount_amount, payment_method, payment_status, amount_paid,
             status, due_date, points_used, points_earned, created_at,
-            warehouse_id, created_by,
-            profiles!orders_customer_id_fkey ( id, full_name, phone ),
+            warehouse_id,
             warehouses!orders_store_id_fkey ( id, name )
           ''')
           .eq('customer_id', profileId);

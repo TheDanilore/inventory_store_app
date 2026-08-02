@@ -25,7 +25,7 @@ class OrdersRoutes {
       path: '/orders',
       builder:
           (context, state) => BlocProvider(
-            create: (ctx) => sl<CustomerOrdersCubit>(),
+            create: (ctx) => sl<CustomerOrdersCubit>()..init(),
             child: const CustomerOrdersScreen(),
           ),
     ),

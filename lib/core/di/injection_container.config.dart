@@ -1608,12 +1608,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i927.GetCurrentProfileIdUseCase>(),
       ),
     );
-    gh.factory<_i442.CustomerOrdersCubit>(
-      () => _i442.CustomerOrdersCubit(
-        getCustomerOrdersUc: gh<_i857.GetCustomerOrdersUc>(),
-        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
-      ),
-    );
     gh.factory<_i991.CustomerCatalogCubit>(
       () => _i991.CustomerCatalogCubit(
         getCategoriesUC: gh<_i700.GetCategoriesUC>(),
@@ -1639,6 +1633,13 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i927.GetCurrentProfileIdUseCase>(),
         gh<_i600.GetWishlistUseCase>(),
         gh<_i600.RemoveFromWishlistUseCase>(),
+      ),
+    );
+    gh.factory<_i442.CustomerOrdersCubit>(
+      () => _i442.CustomerOrdersCubit(
+        getCustomerOrdersUc: gh<_i857.GetCustomerOrdersUc>(),
+        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
+        getCurrentProfileIdUc: gh<_i927.GetCurrentProfileIdUseCase>(),
       ),
     );
     gh.factory<_i73.ProductFormCubit>(

@@ -15,29 +15,63 @@ class CustomerOrderDetailSheet extends StatelessWidget {
     required this.items,
   });
 
+  static void show(
+    BuildContext context, {
+    required OrderEntity order,
+    required List<OrderItemEntity> items,
+  }) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= 600) {
+      showDialog(
+        context: context,
+        builder: (ctx) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520, maxHeight: 700),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(32),
+              child: CustomerOrderDetailSheet(order: order, items: items),
+            ),
+          ),
+        ),
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => CustomerOrderDetailSheet(order: order, items: items),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isTablet = MediaQuery.of(context).size.width >= 600;
     return Container(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
+        maxHeight: isTablet ? 700 : MediaQuery.of(context).size.height * 0.85,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        borderRadius: isTablet ? BorderRadius.circular(32) : const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Drag handle
-          Container(
-            margin: const EdgeInsets.only(top: 12, bottom: 8),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2),
+          // Drag handle solo para móvil
+          if (!isTablet)
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
+          if (isTablet) const SizedBox(height: 16),
 
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
