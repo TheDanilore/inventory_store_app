@@ -50,8 +50,20 @@ class VariantAttributeValueModel {
 
   factory VariantAttributeValueModel.fromJson(Map<String, dynamic> json) {
     // Viene del join: variant_attribute_values → attribute_values → attributes
-    final av = json['attribute_values'] as Map<String, dynamic>? ?? json;
-    final attr = av['attributes'] as Map<String, dynamic>? ?? {};
+    // Blindaje QA contra variaciones de Postgrest (puede devolver Map o List<dynamic>)
+    final rawAv = json['attribute_values'];
+    final av = rawAv is Map<String, dynamic>
+        ? rawAv
+        : (rawAv is List && rawAv.isNotEmpty && rawAv.first is Map
+            ? Map<String, dynamic>.from(rawAv.first as Map)
+            : (rawAv is Map ? Map<String, dynamic>.from(rawAv) : json));
+
+    final rawAttr = av['attributes'];
+    final attr = rawAttr is Map<String, dynamic>
+        ? rawAttr
+        : (rawAttr is List && rawAttr.isNotEmpty && rawAttr.first is Map
+            ? Map<String, dynamic>.from(rawAttr.first as Map)
+            : (rawAttr is Map ? Map<String, dynamic>.from(rawAttr) : <String, dynamic>{}));
 
     return VariantAttributeValueModel(
       attributeValueId: av['id'] as String? ?? '',

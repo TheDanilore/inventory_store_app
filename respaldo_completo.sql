@@ -341,6 +341,50 @@ $$;
 ALTER FUNCTION "public"."claim_daily_checkin"("p_profile_id" "uuid", "p_action_by" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."clear_cloud_cart_rpc"("p_user_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_profile_id UUID;
+  v_cart_id UUID;
+BEGIN
+  -- 1. Resolver el profile.id nativo comparando tanto contra id como contra auth_user_id
+  SELECT id INTO v_profile_id
+  FROM public.profiles
+  WHERE id = p_user_id OR auth_user_id = p_user_id
+  LIMIT 1;
+
+  -- 2. Si no se halló en profiles, verificar si p_user_id ya existe como profile_id en shopping_carts
+  IF v_profile_id IS NULL THEN
+    SELECT profile_id INTO v_profile_id
+    FROM public.shopping_carts
+    WHERE profile_id = p_user_id
+    LIMIT 1;
+  END IF;
+
+  -- Si tras la búsqueda extensiva es NULL, no existe carrito activo que limpiar
+  IF v_profile_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  -- 3. Obtener el cart_id asociado al usuario
+  SELECT id INTO v_cart_id
+  FROM public.shopping_carts
+  WHERE profile_id = v_profile_id
+  LIMIT 1;
+
+  -- 4. Borrar todos los items dentro del carrito en una sola transacción atómica
+  IF v_cart_id IS NOT NULL THEN
+    DELETE FROM public.cart_items WHERE cart_id = v_cart_id;
+  END IF;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."clear_cloud_cart_rpc"("p_user_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -5657,6 +5701,12 @@ GRANT ALL ON FUNCTION "public"."cancel_purchase_order_rpc"("p_purchase_order_id"
 GRANT ALL ON FUNCTION "public"."claim_daily_checkin"("p_profile_id" "uuid", "p_action_by" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."claim_daily_checkin"("p_profile_id" "uuid", "p_action_by" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."claim_daily_checkin"("p_profile_id" "uuid", "p_action_by" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."clear_cloud_cart_rpc"("p_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."clear_cloud_cart_rpc"("p_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."clear_cloud_cart_rpc"("p_user_id" "uuid") TO "service_role";
 
 
 

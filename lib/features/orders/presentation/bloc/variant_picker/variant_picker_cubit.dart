@@ -24,31 +24,65 @@ class VariantPickerCubit extends Cubit<VariantPickerState> {
 
       final variantsData = variantsRes.fold(
         (l) {
-          developer.log('Error loading variants', error: l.message, name: 'VariantPickerCubit');
+          developer.log(
+            'Error al descargar variantes desde Repositorio',
+            error: l.message,
+            name: 'VariantPickerCubit',
+          );
           throw Exception(l.message);
         },
         (r) => r as List<Map<String, dynamic>>,
       );
 
-      final variants = variantsData
-          .map((v) => ProductVariantModel.fromJson(v).toEntity())
-          .toList();
+      final variants = <ProductVariantModel>[];
+      for (final v in variantsData) {
+        try {
+          variants.add(ProductVariantModel.fromJson(v));
+        } catch (e, st) {
+          developer.log(
+            'Error de serialización JSON en variante (id: ${v['id']})',
+            error: e,
+            stackTrace: st,
+            name: 'VariantPickerCubit',
+          );
+        }
+      }
 
       final stockByVariant = stockRes.fold(
         (l) {
-          developer.log('Error loading stock', error: l.message, name: 'VariantPickerCubit');
+          developer.log(
+            'Advertencia: No se pudo obtener el resumen de stock por variante',
+            error: l.message,
+            name: 'VariantPickerCubit',
+          );
           return <String, int>{};
         },
         (r) => r as Map<String, int>,
       );
 
       emit(VariantPickerLoaded(
-        variants: variants,
+        variants: variants.map((v) => v.toEntity()).toList(),
         stockByVariant: stockByVariant,
       ));
     } catch (e, st) {
-      developer.log('Fatal error loading variant data', error: e, stackTrace: st, name: 'VariantPickerCubit');
-      emit(const VariantPickerError('No se pudo cargar la información de las variantes. Verifica tu conexión e intenta nuevamente.'));
+      developer.log(
+        'Fallo crítico en loadData de VariantPickerCubit',
+        error: e,
+        stackTrace: st,
+        name: 'VariantPickerCubit',
+      );
+      final errMsg = e.toString().replaceAll('Exception: ', '');
+      final isNetworkError =
+          errMsg.toLowerCase().contains('socket') ||
+          errMsg.toLowerCase().contains('connection') ||
+          errMsg.toLowerCase().contains('network') ||
+          errMsg.toLowerCase().contains('red');
+
+      emit(VariantPickerError(
+        isNetworkError
+            ? 'No se pudo contactar al servidor. Verifica tu conexión e intenta nuevamente.'
+            : 'Error al cargar variantes: $errMsg',
+      ));
     }
   }
 }

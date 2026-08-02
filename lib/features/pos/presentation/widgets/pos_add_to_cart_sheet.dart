@@ -1,6 +1,7 @@
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -91,63 +92,15 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
     int current,
     int maxStock,
   ) async {
-    final qtyCtrl = TextEditingController(text: current.toString());
+    final cubit = context.read<PosAddToCartCubit>();
     await showDialog<void>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text(
-              'Cantidad exacta',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            content: TextField(
-              controller: qtyCtrl,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 20),
-                helperText:
-                    widget.productEntity.stockControl
-                        ? 'Stock máximo disponible: $maxStock'
-                        : 'Stock libre (Sin límite)',
-                helperStyle: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                ),
-                onPressed: () {
-                  final newQty = int.tryParse(qtyCtrl.text.trim());
-                  if (newQty != null && newQty > 0) {
-                    context.read<PosAddToCartCubit>().updateQuantity(newQty);
-                  }
-                  Navigator.pop(ctx);
-                },
-                child: const Text(
-                  'Guardar',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
+      builder: (ctx) => _QuantityDialog(
+        currentQuantity: current,
+        maxStock: maxStock,
+        stockControl: widget.productEntity.stockControl,
+        onSave: (newQty) => cubit.updateQuantity(newQty),
+      ),
     );
   }
 
@@ -625,6 +578,120 @@ class _QtyButton extends StatelessWidget {
           size: 20,
         ),
       ),
+    );
+  }
+}
+
+class _QuantityDialog extends StatefulWidget {
+  final int currentQuantity;
+  final int maxStock;
+  final bool stockControl;
+  final void Function(int) onSave;
+
+  const _QuantityDialog({
+    required this.currentQuantity,
+    required this.maxStock,
+    required this.stockControl,
+    required this.onSave,
+  });
+
+  @override
+  State<_QuantityDialog> createState() => _QuantityDialogState();
+}
+
+class _QuantityDialogState extends State<_QuantityDialog> {
+  late final TextEditingController _qtyCtrl;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _qtyCtrl = TextEditingController(text: widget.currentQuantity.toString());
+  }
+
+  @override
+  void dispose() {
+    _qtyCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState?.validate() ?? false) {
+      final newQty = int.tryParse(_qtyCtrl.text.trim());
+      if (newQty != null && newQty > 0) {
+        widget.onSave(newQty);
+      }
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text(
+        'Cantidad exacta',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _qtyCtrl,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          maxLength: 5,
+          autofocus: true,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
+          decoration: InputDecoration(
+            counterText: '',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            contentPadding: const EdgeInsets.symmetric(vertical: 20),
+            helperText: widget.stockControl
+                ? 'Stock máximo disponible: ${widget.maxStock}'
+                : 'Stock libre (Sin límite)',
+            helperStyle: const TextStyle(
+              color: AppColors.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Ingrese una cantidad';
+            }
+            final val = int.tryParse(value.trim());
+            if (val == null || val <= 0) {
+              return 'Mayor a 0';
+            }
+            if (widget.stockControl && val > widget.maxStock) {
+              return 'Supera el stock (${widget.maxStock})';
+            }
+            return null;
+          },
+          onFieldSubmitted: (_) => _submit(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text(
+            'Cancelar',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+          ),
+          onPressed: _submit,
+          child: const Text(
+            'Guardar',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      ],
     );
   }
 }

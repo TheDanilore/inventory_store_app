@@ -96,15 +96,23 @@ class CartRepositoryImpl implements CartRepository {
     }
   }
 
-  /// Traduce el auth_user_id (Supabase Auth UUID) al profiles.id real (FK destino).
-  Future<String?> _getProfileId(String authUserId) async {
-    final profile =
-        await _supabase
-            .from('profiles')
-            .select('id')
-            .eq('auth_user_id', authUserId)
-            .maybeSingle();
-    return profile?['id'] as String?;
+  /// Traduce el auth_user_id (Supabase Auth UUID) o el profiles.id real al FK destino.
+  Future<String?> _getProfileId(String identifier) async {
+    // Búsqueda resiliente: valida si es auth_user_id o directamente profiles.id
+    final profile = await _supabase
+        .from('profiles')
+        .select('id')
+        .or('auth_user_id.eq.$identifier,id.eq.$identifier')
+        .maybeSingle();
+    if (profile != null) return profile['id'] as String?;
+
+    // Respaldo defensivo si RLS restringe profiles pero el identifier ya es el FK en shopping_carts
+    final cart = await _supabase
+        .from('shopping_carts')
+        .select('profile_id')
+        .eq('profile_id', identifier)
+        .maybeSingle();
+    return cart?['profile_id'] as String?;
   }
 
   @override
@@ -273,7 +281,22 @@ class CartRepositoryImpl implements CartRepository {
       if (cartType == 'pos') {
         return right(unit);
       }
-      // profileId recibido es el auth_user_id. Traducir a profiles.id real.
+
+      // 1. Intento de limpieza atómica mediante RPC optimizado (1 sola llamada de red)
+      try {
+        await _supabase.rpc('clear_cloud_cart_rpc', params: {
+          'p_user_id': profileId,
+        });
+        return right(unit);
+      } catch (rpcError) {
+        developer.log(
+          'RPC clear_cloud_cart_rpc no disponible o falló. Usando respaldo resiliente.',
+          error: rpcError,
+          name: 'CartRepo',
+        );
+      }
+
+      // 2. Respaldo resiliente: Traduce auth_user_id o valida profiles.id real sin fallar con "Perfil no encontrado".
       final realProfileId = await _getProfileId(profileId);
       if (realProfileId == null) {
         return left(const ServerFailure(message: 'Perfil no encontrado.'));
@@ -283,7 +306,7 @@ class CartRepositoryImpl implements CartRepository {
           .select('id')
           .eq('profile_id', realProfileId)
           .maybeSingle();
-          
+
       if (existing == null) {
         // No existe carrito en BD, no es necesario crearlo solo para vaciarlo
         return right(unit);

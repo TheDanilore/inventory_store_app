@@ -133,8 +133,12 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
                   : const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: AppEmptyState(
-              icon: Icons.wifi_off_rounded,
-              title: 'Error de conexión',
+              icon: state.message.toLowerCase().contains('conexión') || state.message.toLowerCase().contains('red')
+                  ? Icons.wifi_off_rounded
+                  : Icons.error_outline_rounded,
+              title: state.message.toLowerCase().contains('conexión') || state.message.toLowerCase().contains('red')
+                  ? 'Error de conexión'
+                  : 'Inconveniente al obtener datos',
               message: state.message,
               action: ElevatedButton.icon(
                 onPressed: () => context.read<VariantPickerCubit>().loadData(widget.product.id),

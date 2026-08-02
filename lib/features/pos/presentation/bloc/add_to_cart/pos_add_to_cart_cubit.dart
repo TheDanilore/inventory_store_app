@@ -25,7 +25,11 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
 
       final variantMap = variantMapRes.fold(
         (l) {
-          developer.log('Error loading variants', error: l.message, name: 'PosAddToCartCubit');
+          developer.log(
+            'Error al descargar variantes para el POS desde Repositorio',
+            error: l.message,
+            name: 'PosAddToCartCubit',
+          );
           throw Exception(l.message);
         },
         (r) => r as Map<String, List<ProductVariantEntity>>,
@@ -35,7 +39,11 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
 
       final stockByVariant = stockRes.fold(
         (l) {
-          developer.log('Error loading stock', error: l.message, name: 'PosAddToCartCubit');
+          developer.log(
+            'Advertencia: No se pudo cargar el stock del POS por variante',
+            error: l.message,
+            name: 'PosAddToCartCubit',
+          );
           return <String, int>{};
         },
         (r) => r as Map<String, int>,
@@ -56,8 +64,24 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
         productEntity: product,
       ));
     } catch (e, st) {
-      developer.log('Fatal error loading POS variant data', error: e, stackTrace: st, name: 'PosAddToCartCubit');
-      emit(const PosAddToCartError('Error de red. Verifica tu conexión a internet o los servidores de Supabase e intenta nuevamente.'));
+      developer.log(
+        'Fallo crítico cargando datos del producto en POS',
+        error: e,
+        stackTrace: st,
+        name: 'PosAddToCartCubit',
+      );
+      final errMsg = e.toString().replaceAll('Exception: ', '');
+      final isNetworkError =
+          errMsg.toLowerCase().contains('socket') ||
+          errMsg.toLowerCase().contains('connection') ||
+          errMsg.toLowerCase().contains('network') ||
+          errMsg.toLowerCase().contains('red');
+
+      emit(PosAddToCartError(
+        isNetworkError
+            ? 'Error de red. Verifica tu conexión a internet e intenta nuevamente.'
+            : 'Error al cargar datos del producto para POS: $errMsg',
+      ));
     }
   }
 
