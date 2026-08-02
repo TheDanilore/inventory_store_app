@@ -161,6 +161,10 @@ class ProductDetailState extends Equatable {
   int get effectiveStock {
     if (product?.stockControl != true) return 999;
 
+    if (warehouseStocks.isEmpty) {
+      return product?.totalStock ?? 0;
+    }
+
     if (variants.isNotEmpty && selectedVariant == null) {
       int total = 0;
       for (final row in warehouseStocks) {
@@ -168,11 +172,18 @@ class ProductDetailState extends Equatable {
           total += (row['available_quantity'] as num?)?.toInt() ?? 0;
         }
       }
-      return total;
+      return total > 0 ? total : (product?.totalStock ?? 0);
     }
 
     final v = selectedVariant;
-    if (v == null) return 0;
+    if (v == null) {
+      int total = 0;
+      for (final row in warehouseStocks) {
+        total += (row['available_quantity'] as num?)?.toInt() ?? 0;
+      }
+      return total > 0 ? total : (product?.totalStock ?? 0);
+    }
+
     int s = 0;
     for (final row in warehouseStocks) {
       if (row['variant_id'] == v.id) {

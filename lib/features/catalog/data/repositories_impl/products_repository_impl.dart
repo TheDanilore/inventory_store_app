@@ -926,7 +926,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
       final response = await _supabase
           .from('product_variants')
           .select(
-            '*, product_images(*), variant_attribute_values(attribute_values(id, value, attributes(id, name)))',
+            'id, product_id, sku, sale_price, wholesale_price, wholesale_min_quantity, is_active, unit_cost, product_images(id, product_id, variant_id, image_url, is_main, display_order), variant_attribute_values(attribute_values(id, value, attributes(id, name)))',
           )
           .eq('product_id', productId)
           .eq('is_active', true)

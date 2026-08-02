@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
@@ -137,7 +138,13 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
       emit(
         state.copyWith(isWishlisted: isWishlisted, isWishlistLoading: false),
       );
-    } catch (_) {
+    } catch (e, st) {
+      developer.log(
+        'Error al verificar el estado de wishlist del producto',
+        error: e,
+        stackTrace: st,
+        name: 'ProductDetailCubit',
+      );
       emit(state.copyWith(isWishlisted: false, isWishlistLoading: false));
     }
   }
@@ -238,7 +245,14 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
           variantSummaries: variantSummaries,
         ),
       );
-    } catch (_) {}
+    } catch (e, st) {
+      developer.log(
+        'Error al descargar información transaccional y variantes del producto',
+        error: e,
+        stackTrace: st,
+        name: 'ProductDetailCubit',
+      );
+    }
   }
 
   Future<void> toggleWishlist() async {
@@ -358,7 +372,17 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
 
     result.fold(
       (failure) {
-        emit(state.copyWith(viewState: ViewState.success));
+        developer.log(
+          'Error al generar y exportar PDF del producto',
+          error: failure.message,
+          name: 'ProductDetailCubit',
+        );
+        emit(
+          state.copyWith(
+            viewState: ViewState.error,
+            errorMessage: failure.message,
+          ),
+        );
       },
       (_) {
         emit(state.copyWith(viewState: ViewState.success));
@@ -442,11 +466,17 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
       );
 
       await loadData();
-    } catch (e) {
+    } catch (e, st) {
+      developer.log(
+        'Error al enviar reseña de producto',
+        error: e,
+        stackTrace: st,
+        name: 'ProductDetailCubit',
+      );
       emit(
         state.copyWith(
           viewState: ViewState.error,
-          errorMessage: 'Error al enviar reseña: $e',
+          errorMessage: Failure.from(e).message,
         ),
       );
     }

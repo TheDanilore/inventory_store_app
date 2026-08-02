@@ -245,20 +245,10 @@ class _ProductDetailScreenContentState
         );
       } else {
         final cartCubit = context.read<CartCubit>();
-        showModalBottomSheet(
+        CartVariantPickerSheet.show(
           context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder:
-              (sheetContext) => Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-                ),
-                child: CartVariantPickerSheet(
-                  cartCubit: cartCubit,
-                  product: widget.product,
-                ),
-              ),
+          cartCubit: cartCubit,
+          product: widget.product,
         );
       }
       return;
@@ -1150,24 +1140,14 @@ class _ProductDetailScreenContentState
               } else {
                 final cartCubit = context.read<CartCubit>();
                 final productDetailCubit = context.read<ProductDetailCubit>();
-                showModalBottomSheet(
+                CartVariantPickerSheet.show(
                   context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder:
-                      (sheetContext) => Padding(
-                        padding: EdgeInsets.only(
-                          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-                        ),
-                        child: CartVariantPickerSheet(
-                          cartCubit: cartCubit,
-                          product: widget.product,
-                          onVariantSelected: (variant) {
-                            productDetailCubit.setVariant(variant.id);
-                            productDetailCubit.selectVariantImage(variant.id);
-                          },
-                        ),
-                      ),
+                  cartCubit: cartCubit,
+                  product: widget.product,
+                  onVariantSelected: (variant) {
+                    productDetailCubit.setVariant(variant.id);
+                    productDetailCubit.selectVariantImage(variant.id);
+                  },
                 );
               }
             },
