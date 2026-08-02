@@ -125,6 +125,9 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
 
   Widget _buildBody(BuildContext context) {
     return BlocBuilder<CartCubit, CartState>(
+      buildWhen: (previous, current) =>
+          previous.isLoading != current.isLoading ||
+          previous.items != current.items,
       builder: (context, cartState) {
         if (cartState.isLoading) {
           return const Center(

@@ -1424,14 +1424,6 @@ extension GetItInjectableX on _i174.GetIt {
         getItemsUseCase: gh<_i441.GetExitItemsUseCase>(),
       ),
     );
-    gh.factory<_i793.CartCubit>(
-      () => _i793.CartCubit(
-        loadCart: gh<_i281.LoadCartUseCase>(),
-        saveCart: gh<_i1022.SaveCartUseCase>(),
-        syncCart: gh<_i480.SyncCartUseCase>(),
-        clearCart: gh<_i596.ClearCartUseCase>(),
-      ),
-    );
     gh.factory<_i1029.CashShiftsCubit>(
       () => _i1029.CashShiftsCubit(
         getCashShifts: gh<_i486.GetCashShiftsUseCase>(),
@@ -1545,6 +1537,15 @@ extension GetItInjectableX on _i174.GetIt {
         verifyStockUc: gh<_i713.VerifyStockUc>(),
         processCheckoutUc: gh<_i446.ProcessCheckoutUc>(),
         sendWhatsAppOrderUc: gh<_i895.SendWhatsAppOrderUc>(),
+      ),
+    );
+    gh.factory<_i793.CartCubit>(
+      () => _i793.CartCubit(
+        loadCart: gh<_i281.LoadCartUseCase>(),
+        saveCart: gh<_i1022.SaveCartUseCase>(),
+        syncCart: gh<_i480.SyncCartUseCase>(),
+        clearCart: gh<_i596.ClearCartUseCase>(),
+        getCurrentUser: gh<_i813.GetCurrentUserUseCase>(),
       ),
     );
     gh.lazySingleton<_i110.CreateCategoryUseCase>(

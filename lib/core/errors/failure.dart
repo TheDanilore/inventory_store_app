@@ -1,4 +1,5 @@
 import 'package:inventory_store_app/core/errors/app_exception.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Representa un fallo en la capa de dominio.
 ///
@@ -40,6 +41,27 @@ sealed class Failure {
     }
     if (error is CacheException) {
       return CacheFailure(message: error.message, code: error.code);
+    }
+    if (error is PostgrestException) {
+      return ServerFailure(
+        message: 'Error en base de datos: ${error.message}',
+        code: error.code ?? 'POSTGREST_ERROR',
+      );
+    }
+    if (error is StorageException) {
+      return ServerFailure(
+        message: error.message,
+        code: error.statusCode?.toString() ?? 'STORAGE_ERROR',
+      );
+    }
+    if (error is AuthException) {
+      if (error.statusCode == '401' || error.message.toLowerCase().contains('unauthorized')) {
+        return const UnauthorizedFailure();
+      }
+      return ServerFailure(
+        message: error.message,
+        code: error.statusCode?.toString() ?? 'AUTH_ERROR',
+      );
     }
     if (error is AppException) {
       return ServerFailure(message: error.message, code: error.code);

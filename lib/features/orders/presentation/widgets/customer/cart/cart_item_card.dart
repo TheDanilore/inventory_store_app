@@ -9,7 +9,7 @@ import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.d
 import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_by_id_usecase.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
@@ -30,157 +30,12 @@ class CartItemCard extends StatelessWidget {
   });
 
   void _showDirectQuantityDialog(BuildContext context) {
-    final controller = TextEditingController(text: '${item.quantity}');
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.edit_note_rounded,
-                  color: AppColors.primary,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Editar Cantidad',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                item.productName,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  labelText: 'Cantidad deseada',
-                  labelStyle: const TextStyle(color: AppColors.primary),
-                  suffixText: 'unidades',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(
-                      color: AppColors.primary,
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                children: [
-                  _buildQuickAddChip(context, controller, 5),
-                  _buildQuickAddChip(context, controller, 10),
-                  _buildQuickAddChip(context, controller, 50),
-                  _buildQuickAddChip(context, controller, 100),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancelar',
-                style: TextStyle(color: AppColors.textMuted),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final newQty = int.tryParse(controller.text) ?? item.quantity;
-                if (newQty <= 0) {
-                  cartCubit.removeItem(item.cartKey);
-                } else {
-                  if (item.usesBatches &&
-                      item.availableStock > 0 &&
-                      newQty > item.availableStock) {
-                    AppSnackbar.show(
-                      context,
-                      message:
-                          'Cantidad ajustada al stock máximo disponible (${item.availableStock})',
-                      type: SnackbarType.warning,
-                    );
-                    cartCubit.updateQuantity(item.cartKey, item.availableStock);
-                  } else {
-                    cartCubit.updateQuantity(item.cartKey, newQty);
-                  }
-                }
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                'Guardar',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildQuickAddChip(
-    BuildContext context,
-    TextEditingController controller,
-    int value,
-  ) {
-    return ActionChip(
-      label: Text('+$value'),
-      labelStyle: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
-        color: AppColors.primary,
+      builder: (context) => _QuantityEditDialog(
+        item: item,
+        cartCubit: cartCubit,
       ),
-      backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-      side: BorderSide.none,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onPressed: () {
-        final current = int.tryParse(controller.text) ?? 0;
-        controller.text = '${current + value}';
-      },
     );
   }
 
@@ -304,14 +159,22 @@ class CartItemCard extends StatelessWidget {
                                 ),
                           );
 
-                          final repo = sl<ProductsRepository>();
-                          final res = await repo.getProductById(item.productId);
+                          final useCase = sl<GetProductByIdUseCase>();
+                          final res = await useCase(item.productId);
 
                           if (context.mounted) {
                             Navigator.pop(context); // cerrar loader
                           }
 
-                          res.fold((l) => null, (product) {
+                          res.fold((failure) {
+                            if (context.mounted) {
+                              AppSnackbar.show(
+                                context,
+                                message: 'Error al obtener variantes: ${failure.message}',
+                                type: SnackbarType.error,
+                              );
+                            }
+                          }, (product) {
                             if (product != null && context.mounted) {
                               CartVariantPickerSheet.show(
                                 context: context,
@@ -581,6 +444,185 @@ class _StepperButtonState extends State<_StepperButton> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _QuantityEditDialog extends StatefulWidget {
+  final CartItemEntity item;
+  final CartCubit cartCubit;
+
+  const _QuantityEditDialog({
+    required this.item,
+    required this.cartCubit,
+  });
+
+  @override
+  State<_QuantityEditDialog> createState() => _QuantityEditDialogState();
+}
+
+class _QuantityEditDialogState extends State<_QuantityEditDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: '${widget.item.quantity}');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.edit_note_rounded,
+              color: AppColors.primary,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Editar Cantidad',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.item.productName,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _controller,
+            keyboardType: TextInputType.number,
+            autofocus: true,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(6),
+            ],
+            decoration: InputDecoration(
+              labelText: 'Cantidad deseada',
+              labelStyle: const TextStyle(color: AppColors.primary),
+              suffixText: 'unidades',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 2,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            children: [
+              _buildQuickAddChip(5),
+              _buildQuickAddChip(10),
+              _buildQuickAddChip(50),
+              _buildQuickAddChip(100),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text(
+            'Cancelar',
+            style: TextStyle(color: AppColors.textMuted),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final textTrimmed = _controller.text.trim();
+            final newQty = int.tryParse(textTrimmed) ?? widget.item.quantity;
+            if (newQty <= 0) {
+              widget.cartCubit.removeItem(widget.item.cartKey);
+            } else {
+              if (widget.item.usesBatches &&
+                  widget.item.availableStock > 0 &&
+                  newQty > widget.item.availableStock) {
+                AppSnackbar.show(
+                  context,
+                  message:
+                      'Cantidad ajustada al stock máximo disponible (${widget.item.availableStock})',
+                  type: SnackbarType.warning,
+                );
+                widget.cartCubit.updateQuantity(widget.item.cartKey, widget.item.availableStock);
+              } else {
+                widget.cartCubit.updateQuantity(widget.item.cartKey, newQty);
+              }
+            }
+            Navigator.pop(context);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text(
+            'Guardar',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickAddChip(int value) {
+    return ActionChip(
+      label: Text('+$value'),
+      labelStyle: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+        color: AppColors.primary,
+      ),
+      backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+      side: BorderSide.none,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onPressed: () {
+        final current = int.tryParse(_controller.text.trim()) ?? 0;
+        _controller.text = '${current + value}';
+      },
     );
   }
 }

@@ -107,27 +107,6 @@ class CartRepositoryImpl implements CartRepository {
     return profile?['id'] as String?;
   }
 
-  Future<String?> _getOrCreateCartId(String profileId) async {
-    final existing =
-        await _supabase
-            .from('shopping_carts')
-            .select('id')
-            .eq('profile_id', profileId)
-            .maybeSingle();
-
-    if (existing != null) {
-      return existing['id'] as String?;
-    }
-
-    final created =
-        await _supabase
-            .from('shopping_carts')
-            .insert({'profile_id': profileId})
-            .select('id')
-            .maybeSingle();
-    return created?['id'] as String?;
-  }
-
   @override
   Future<Either<Failure, Map<String, CartItemEntity>>> syncCloudCart(
     String cartType,
@@ -157,7 +136,7 @@ class CartRepositoryImpl implements CartRepository {
 
       final String cartId = responseRpc.toString();
 
-      // 2. Descargamos la nube para obtener los datos frescos de productos (precios, stock, etc.)
+      // 2. Descargamos la nube optimizando Data Egress: seleccionando campos mínimos e incluyendo lotes de stock
       final itemsResponse = await _supabase
           .from('cart_items')
           .select('''
@@ -165,9 +144,10 @@ class CartRepositoryImpl implements CartRepository {
             variant_id,
             is_selected,
             products (
-              id, name, description, unit_cost, sale_price,
+              id, name, unit_cost, sale_price,
               wholesale_price, wholesale_min_quantity, is_active, uses_batches,
-              product_images (id, product_id, image_url, is_main, display_order)
+              product_images (id, product_id, image_url, is_main, display_order),
+              warehouse_stock_batches (available_quantity, variant_id)
             ),
             product_variants (
               id, product_id, sku, barcode,
@@ -234,6 +214,24 @@ class CartRepositoryImpl implements CartRepository {
                 ? variant!.unitCost!
                 : (product.defaultVariant?.unitCost ?? 0.0);
 
+        // Cálculo de stock real a partir de lotes e inventarios
+        int calculatedStock = 0;
+        if (productJson['warehouse_stock_batches'] is List) {
+          final batches = productJson['warehouse_stock_batches'] as List;
+          for (final b in batches) {
+            if (b is Map) {
+              final bVarId = b['variant_id'] as String?;
+              if (finalVariantId == null || bVarId == null || bVarId == finalVariantId) {
+                calculatedStock += (b['available_quantity'] as num?)?.toInt() ?? 0;
+              }
+            }
+          }
+        }
+        if (calculatedStock <= 0 && product.totalStock > 0) {
+          calculatedStock = product.totalStock;
+        }
+        final finalStock = (calculatedStock == 0 && !product.stockControl) ? 999 : calculatedStock;
+
         final entity = CartItemEntity(
           productId: product.id,
           productName: product.name,
@@ -250,7 +248,7 @@ class CartRepositoryImpl implements CartRepository {
                   ? variant.images.first.imageUrl
                   : product.primaryImageUrl,
           sku: variant?.sku,
-          availableStock: 999, // Legacy hardcode
+          availableStock: finalStock, // Reemplazo de hardcode legacy por stock verificado
           cartKey: cartKey,
           usesBatches: product.usesBatches,
           isSelected: isSelected,
@@ -280,14 +278,17 @@ class CartRepositoryImpl implements CartRepository {
       if (realProfileId == null) {
         return left(const ServerFailure(message: 'Perfil no encontrado.'));
       }
-      final cartId = await _getOrCreateCartId(realProfileId);
-      if (cartId == null) {
-        return left(
-          const ServerFailure(
-            message: 'No se pudo crear/obtener carrito en la nube.',
-          ),
-        );
+      final existing = await _supabase
+          .from('shopping_carts')
+          .select('id')
+          .eq('profile_id', realProfileId)
+          .maybeSingle();
+          
+      if (existing == null) {
+        // No existe carrito en BD, no es necesario crearlo solo para vaciarlo
+        return right(unit);
       }
+      final cartId = existing['id'] as String;
       await _supabase.from('cart_items').delete().eq('cart_id', cartId);
       return right(unit);
     } catch (e, st) {

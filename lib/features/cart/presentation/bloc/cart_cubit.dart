@@ -6,7 +6,8 @@ import 'package:inventory_store_app/features/cart/domain/usecases/save_cart_uc.d
 import 'package:inventory_store_app/features/cart/domain/usecases/clear_cart_uc.dart';
 import 'package:inventory_store_app/features/cart/domain/usecases/sync_cart_uc.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/core/usecases/usecase.dart';
+import 'package:inventory_store_app/features/auth/domain/usecases/get_current_user_uc.dart';
 
 @injectable
 class CartCubit extends Cubit<CartState> {
@@ -14,6 +15,7 @@ class CartCubit extends Cubit<CartState> {
   final SaveCartUseCase _saveCart;
   final SyncCartUseCase _syncCart;
   final ClearCartUseCase _clearCart;
+  final GetCurrentUserUseCase _getCurrentUser;
 
   String _cartType = 'customer';
 
@@ -22,10 +24,12 @@ class CartCubit extends Cubit<CartState> {
     required SaveCartUseCase saveCart,
     required SyncCartUseCase syncCart,
     required ClearCartUseCase clearCart,
+    required GetCurrentUserUseCase getCurrentUser,
   }) : _loadCart = loadCart,
        _saveCart = saveCart,
        _syncCart = syncCart,
        _clearCart = clearCart,
+       _getCurrentUser = getCurrentUser,
        super(const CartState());
 
   void setCartType(String cartType) {
@@ -48,31 +52,29 @@ class CartCubit extends Cubit<CartState> {
     // Sync if user is authenticated (Note: auth check can be delegated or done here)
     // Actually, in Clean Architecture, we could pass the profile ID if known,
     // but we can let the caller trigger sync, or do a quick check here.
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      await syncCloudCart();
-    }
+    final userRes = await _getCurrentUser(const NoParams());
+    userRes.fold(
+      (_) => null,
+      (user) async {
+        await syncCloudCart(profileId: user.id);
+      },
+    );
   }
 
-  Future<void> syncCloudCart() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
+  Future<void> syncCloudCart({String? profileId}) async {
+    String? userId = profileId;
+    if (userId == null) {
+      final userRes = await _getCurrentUser(const NoParams());
+      userId = userRes.fold((_) => null, (u) => u.id);
+    }
+    if (userId == null) return;
 
     emit(state.copyWith(isSyncing: true));
-
-    // Supabase will automatically map the auth ID to profile ID inside the repository if we want,
-    // or we can pass auth_user_id and let repository handle it. The repo takes profileId.
-    // Wait, the repository `syncCloudCart` takes profileId, but old implementation passed auth.currentUser.id!
-    // So the repo `_getOrCreateCartId` handles profileId, wait no, old CartCloudService did `_getProfileId(authUserId)`.
-    // I need to ensure my `CartRepositoryImpl.syncCloudCart` gets the profile ID correctly.
-    // In CartRepositoryImpl, `syncCloudCart` parameter is `String profileId`. We can assume the caller passes authUserId and the repo looks it up, OR we can look it up here.
-    // Let's pass the auth user ID to the repo and let it translate it (or we can just leave it as is if repo does it).
-    // I will assume `profileId` parameter in SyncCartParams is actually `authUserId` based on legacy.
 
     final res = await _syncCart(
       SyncCartParams(
         cartType: _cartType,
-        profileId: user.id,
+        profileId: userId,
         localItems: state.items,
       ),
     );
@@ -81,6 +83,7 @@ class CartCubit extends Cubit<CartState> {
           emit(state.copyWith(isSyncing: false, errorMessage: failure.message)),
       (items) {
         emit(state.copyWith(isSyncing: false, items: items));
+        _saveLocal(); // Convergencia de caché: persistir los datos descargados para coherencia offline
       },
     );
   }
@@ -175,14 +178,20 @@ class CartCubit extends Cubit<CartState> {
     _saveLocal();
   }
 
-  Future<void> clearCart() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    final profileId = user?.id; // Note: passed as authUserId to usecase/repository
+  Future<void> clearCart({String? profileId}) async {
+    String? userId = profileId;
+    if (userId == null) {
+      final userRes = await _getCurrentUser(const NoParams());
+      userId = userRes.fold((_) => null, (u) => u.id);
+    }
 
-    await _clearCart(
-      ClearCartParams(cartType: _cartType, profileId: profileId),
+    final res = await _clearCart(
+      ClearCartParams(cartType: _cartType, profileId: userId),
     );
-    emit(state.copyWith(items: {}));
+    res.fold(
+      (failure) => emit(state.copyWith(errorMessage: failure.message)),
+      (_) => emit(state.copyWith(items: {}, clearErrorMessage: true)),
+    );
   }
 
   void updateAvailableStock(String cartKey, int newStock) {
