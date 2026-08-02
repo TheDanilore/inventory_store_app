@@ -6,6 +6,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_var
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 
 abstract class ProductsRepository {
   // Productos (Lectura)
@@ -19,6 +20,8 @@ abstract class ProductsRepository {
     int limit = 20,
     int offset = 0,
     bool sortByPriceAsc = true,
+    CatalogStockFilter? stockFilter,
+    CatalogSortOption? sortOption,
   });
   Future<Either<Failure, ProductEntity?>> getProductById(String id);
   Future<Either<Failure, Map<String, int>>> getProductStock({

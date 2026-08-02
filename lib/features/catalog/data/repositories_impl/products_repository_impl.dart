@@ -13,6 +13,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/attribute_e
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 
 @LazySingleton(as: ProductsRepository)
@@ -25,6 +26,10 @@ class ProductsRepositoryImpl implements ProductsRepository {
     developer.log('ProductsRepositoryImpl Error', error: e, stackTrace: st);
     if (e is PostgrestException) {
       return left(Failure.from('Error de BD: ${e.message}'));
+    } else if (e is StorageException) {
+      return left(Failure.from('Error en Storage (Imágenes): ${e.message}'));
+    } else if (e is AuthException) {
+      return left(Failure.from('Error de autenticación: ${e.message}'));
     }
     return left(Failure.from('Ocurrió un error inesperado: ${e.toString()}'));
   }
@@ -81,6 +86,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
     int limit = 20,
     int offset = 0,
     bool sortByPriceAsc = true,
+    CatalogStockFilter? stockFilter,
+    CatalogSortOption? sortOption,
   }) async {
     try {
       String variantSelect =
@@ -119,18 +126,58 @@ class ProductsRepositoryImpl implements ProductsRepository {
         }
       }
 
-      var transformQuery = query.order('name');
+      if (stockFilter != null && stockFilter != CatalogStockFilter.all) {
+        final summaryRes = await _supabase
+            .from('product_stock_summary')
+            .select('product_id, total_stock');
+        final matchingIds = <String>{};
+        for (final row in List<Map<String, dynamic>>.from(summaryRes)) {
+          final pid = row['product_id'] as String?;
+          final stock = (row['total_stock'] as num?)?.toInt() ?? 0;
+          if (pid != null) {
+            if (stockFilter == CatalogStockFilter.inStock && stock > 0) {
+              matchingIds.add(pid);
+            } else if (stockFilter == CatalogStockFilter.outOfStock &&
+                stock == 0) {
+              matchingIds.add(pid);
+            }
+          }
+        }
+        if (matchingIds.isEmpty) {
+          return right((products: <ProductEntity>[], totalCount: 0));
+        }
+        query = query.inFilter('id', matchingIds.toList());
+      }
+
+      var transformQuery =
+          sortOption == CatalogSortOption.recent
+              ? query.order('created_at', ascending: false)
+              : query.order('name', ascending: true);
       transformQuery = transformQuery.range(offset, offset + limit - 1);
       final response = await transformQuery.count(CountOption.exact);
 
       final responseData = response.data as List;
-      final entities = await IsolateUtils.run(() {
+      var entities = await IsolateUtils.run(() {
         final models =
             List<Map<String, dynamic>>.from(
               responseData,
             ).map(ProductModel.fromJson).toList();
         return models.map((m) => m.toEntity()).toList();
       });
+
+      if (sortOption == CatalogSortOption.priceAsc) {
+        entities.sort(
+          (a, b) =>
+              (a.displaySalePrice ?? 0).compareTo(b.displaySalePrice ?? 0),
+        );
+      } else if (sortOption == CatalogSortOption.priceDesc) {
+        entities.sort(
+          (a, b) =>
+              (b.displaySalePrice ?? 0).compareTo(a.displaySalePrice ?? 0),
+        );
+      } else if (sortOption == CatalogSortOption.highStock) {
+        entities.sort((a, b) => b.totalStock.compareTo(a.totalStock));
+      }
 
       return right((products: entities, totalCount: response.count));
     } catch (e, st) {
@@ -719,23 +766,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
     List<String> attributeValueIds,
   ) async {
     try {
-      await _supabase
-          .from('variant_attribute_values')
-          .delete()
-          .eq('variant_id', variantId);
-      if (attributeValueIds.isEmpty) return right(null);
-      await _supabase
-          .from('variant_attribute_values')
-          .insert(
-            attributeValueIds
-                .map(
-                  (valId) => {
-                    'variant_id': variantId,
-                    'attribute_value_id': valId,
-                  },
-                )
-                .toList(),
-          );
+      await _supabase.rpc(
+        'save_variant_attributes_rpc',
+        params: {
+          'p_variant_id': variantId,
+          'p_attribute_value_ids': attributeValueIds,
+        },
+      );
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);

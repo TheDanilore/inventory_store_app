@@ -2844,6 +2844,30 @@ $$;
 ALTER FUNCTION "public"."save_product_complete"("payload" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."save_variant_attributes_rpc"("p_variant_id" "uuid", "p_attribute_value_ids" "uuid"[]) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_attr_id uuid;
+BEGIN
+    -- Operación 100% atómica dentro de la transacción del motor de PostgreSQL
+    DELETE FROM variant_attribute_values WHERE product_variant_id = p_variant_id;
+    
+    IF p_attribute_value_ids IS NOT NULL AND array_length(p_attribute_value_ids, 1) > 0 THEN
+        FOREACH v_attr_id IN ARRAY p_attribute_value_ids
+        LOOP
+            INSERT INTO variant_attribute_values (product_variant_id, attribute_value_id)
+            VALUES (p_variant_id, v_attr_id);
+        END LOOP;
+    END IF;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."save_variant_attributes_rpc"("p_variant_id" "uuid", "p_attribute_value_ids" "uuid"[]) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."search_ingredients_unaccent"("search_term" "text") RETURNS TABLE("id" "text")
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public', 'extensions'
@@ -5837,6 +5861,12 @@ GRANT ALL ON FUNCTION "public"."rpc_receive_purchase_order_items"("p_order_id" "
 GRANT ALL ON FUNCTION "public"."save_product_complete"("payload" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."save_product_complete"("payload" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."save_product_complete"("payload" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."save_variant_attributes_rpc"("p_variant_id" "uuid", "p_attribute_value_ids" "uuid"[]) TO "anon";
+GRANT ALL ON FUNCTION "public"."save_variant_attributes_rpc"("p_variant_id" "uuid", "p_attribute_value_ids" "uuid"[]) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."save_variant_attributes_rpc"("p_variant_id" "uuid", "p_attribute_value_ids" "uuid"[]) TO "service_role";
 
 
 

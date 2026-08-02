@@ -149,6 +149,8 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       limit: AdminCatalogState.pageSize,
       offset: offset,
       sortByPriceAsc: true,
+      stockFilter: state.stockFilter,
+      sortOption: state.sortOption,
     );
 
     result.fold(
@@ -170,39 +172,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         );
       },
       (data) async {
-        List<ProductEntity> enriched = data.products;
-
-        // 1. Filtrar por stock
-        if (state.stockFilter == CatalogStockFilter.inStock) {
-          enriched =
-              enriched
-                  .where((p) => !p.stockControl || p.totalStock > 0)
-                  .toList();
-        } else if (state.stockFilter == CatalogStockFilter.outOfStock) {
-          enriched =
-              enriched
-                  .where((p) => p.stockControl && p.totalStock == 0)
-                  .toList();
-        }
-
-        // 2. Ordenar según sortOption
-        if (state.sortOption == CatalogSortOption.nameAsc) {
-          enriched.sort(
-            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-          );
-        } else if (state.sortOption == CatalogSortOption.priceAsc) {
-          enriched.sort(
-            (a, b) =>
-                (a.displaySalePrice ?? 0).compareTo(b.displaySalePrice ?? 0),
-          );
-        } else if (state.sortOption == CatalogSortOption.priceDesc) {
-          enriched.sort(
-            (a, b) =>
-                (b.displaySalePrice ?? 0).compareTo(a.displaySalePrice ?? 0),
-          );
-        } else if (state.sortOption == CatalogSortOption.highStock) {
-          enriched.sort((a, b) => b.totalStock.compareTo(a.totalStock));
-        }
+        final enriched = data.products;
 
         final matchedMap = <String, String>{};
         for (final p in enriched) {

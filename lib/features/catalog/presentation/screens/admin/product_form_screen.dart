@@ -196,7 +196,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
           if (Navigator.canPop(context)) {
             Navigator.pop(context, true);
           } else {
-            context.go('/admin');
+            context.go('/admin/products');
           }
           return;
         }
@@ -216,6 +216,10 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
         }
       },
       child: BlocBuilder<ProductFormCubit, ProductFormState>(
+        buildWhen: (prev, curr) =>
+            prev.isInitializingData != curr.isInitializingData ||
+            prev.hasErrorLoading != curr.hasErrorLoading ||
+            prev.isSaving != curr.isSaving,
         builder: (context, state) {
           final cubit = context.read<ProductFormCubit>();
           final canPopNow =
@@ -354,6 +358,15 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
             AppPrimaryButton(
               label: 'Reintentar cargar datos',
               onPressed: _loadData,
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () => context.go('/admin/products'),
+              icon: const Icon(Icons.arrow_back_rounded, size: 18),
+              label: const Text('Volver al Inventario'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.textSecondary,
+              ),
             ),
           ],
         ),

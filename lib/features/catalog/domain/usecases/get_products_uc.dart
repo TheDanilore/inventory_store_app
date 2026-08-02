@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 
 @lazySingleton
@@ -20,6 +21,8 @@ class GetProductsUC {
     int limit = 20,
     int offset = 0,
     bool sortByPriceAsc = true,
+    CatalogStockFilter? stockFilter,
+    CatalogSortOption? sortOption,
   }) async {
     return await repository.getProducts(
       searchQuery: searchQuery,
@@ -30,6 +33,8 @@ class GetProductsUC {
       limit: limit,
       offset: offset,
       sortByPriceAsc: sortByPriceAsc,
+      stockFilter: stockFilter,
+      sortOption: sortOption,
     );
   }
 }
