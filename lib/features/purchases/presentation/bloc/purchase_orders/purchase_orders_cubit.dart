@@ -171,10 +171,16 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
   }
 
   Future<bool> updateOrderStatus(String poId, String newStatus) async {
+    if (_isProcessingAction) return false;
+    _isProcessingAction = true;
     final currentState = state;
-    if (currentState is! PurchaseOrdersLoaded) return false;
+    if (currentState is! PurchaseOrdersLoaded) {
+      _isProcessingAction = false;
+      return false;
+    }
 
     final result = await updatePurchaseOrderStatusUseCase(poId, newStatus);
+    _isProcessingAction = false;
     return result.fold(
       (failure) {
         String msg = 'Error al actualizar estado: ${failure.message}';
@@ -222,11 +228,16 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     }
   }
 
+  bool _isProcessingAction = false;
+
   // ── Registrar Pago de Orden (Zero Egress) ─────────────────────────────────
   Future<void> registerOrderPayment(RegisterOrderPaymentParams params) async {
+    if (_isProcessingAction) return;
+    _isProcessingAction = true;
     final previousState = state;
 
     final result = await registerOrderPaymentUseCase(params);
+    _isProcessingAction = false;
 
     result.fold(
       (failure) {

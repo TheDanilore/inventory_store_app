@@ -1,5 +1,4 @@
 import 'dart:developer' as developer;
-import 'package:flutter/material.dart';
 import 'package:injectable/injectable.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -9,7 +8,6 @@ import 'package:inventory_store_app/features/purchases/domain/entities/purchase_
 import 'package:inventory_store_app/features/purchases/domain/repositories/purchase_orders_repository.dart';
 import 'package:inventory_store_app/features/purchases/data/models/purchase_order_model.dart';
 import 'package:inventory_store_app/features/purchases/data/models/purchase_order_item_model.dart';
-import 'package:inventory_store_app/features/inventory/data/repositories_impl/inventory_entries_repository_impl.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
 
@@ -23,12 +21,17 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
     try {
       final poResp = await _supabase
           .from('purchase_orders')
-          .select('*, suppliers(name)')
+          .select('id, supplier_id, warehouse_id, status, total_amount, payment_method, payment_status, amount_paid, due_date, document_type, document_number, notes, created_at, updated_at, suppliers(name)')
           .eq('id', poId)
           .maybeSingle();
       return Right(poResp);
+    } on PostgrestException catch (e, st) {
+      developer.log('[PurchaseOrdersRepositoryImpl] getPurchaseOrderById PostgrestException: $e',
+          error: e, stackTrace: st, name: 'PurchaseOrdersRepositoryImpl');
+      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
     } catch (e, st) {
-      debugPrint('[PurchaseOrdersRepositoryImpl] getPurchaseOrderById error: $e\n$st');
+      developer.log('[PurchaseOrdersRepositoryImpl] getPurchaseOrderById error: $e',
+          error: e, stackTrace: st, name: 'PurchaseOrdersRepositoryImpl');
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -89,7 +92,21 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
               .toList();
 
       return Right({'data': dataList, 'count': response.count});
-    } catch (e) {
+    } on PostgrestException catch (e, st) {
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] fetchOrders PostgrestException: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
+      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+    } catch (e, st) {
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] fetchOrders error: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -99,20 +116,6 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
     String poId,
   ) async {
     try {
-      try {
-        await InventoryEntriesRepositoryImpl.syncPurchaseOrderItemsAndStatus(
-          _supabase,
-          poId,
-        );
-      } catch (e, st) {
-        developer.log(
-          '[PurchaseOrdersRepositoryImpl] Error in syncPurchaseOrderItemsAndStatus',
-          error: e,
-          stackTrace: st,
-          name: 'PurchaseOrdersRepositoryImpl',
-        );
-      }
-
       // ── 1. Fetch data through single RPC (Zero N+1 Data Egress) ────────
       final response = await _supabase.rpc(
         'get_purchase_order_items_details',
@@ -123,24 +126,28 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       if (rows.isEmpty) return const Right([]);
 
       // ── 2. Build result ────────────────────────────────────────────────
-      final list = rows.map((r) {
-        return PurchaseOrderItemModel(
-          productId: r['product_id'] as String? ?? '',
-          variantId: r['variant_id'] as String? ?? '',
-          productName: r['product_name'] as String? ?? 'Producto',
-          variantAttrs: r['variant_attrs'] as String? ?? 'Única',
-          sku: r['sku'] as String?,
-          quantityOrdered: (r['quantity_ordered'] as num?)?.toDouble() ?? 0.0,
-          quantityReceived: (r['quantity_received'] as num?)?.toDouble() ?? 0.0,
-          unitCost: (r['unit_cost'] as num?)?.toDouble() ?? 0.0,
-          batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
-          expiryDate: r['expiry_date'] != null
-              ? DateTime.tryParse(r['expiry_date'] as String)
-              : null,
-          usesBatches: r['uses_batches'] as bool? ?? false,
-          imageUrl: r['image_url'] as String?,
-        );
-      }).toList();
+      final list =
+          rows.map((r) {
+            return PurchaseOrderItemModel(
+              productId: r['product_id'] as String? ?? '',
+              variantId: r['variant_id'] as String? ?? '',
+              productName: r['product_name'] as String? ?? 'Producto',
+              variantAttrs: r['variant_attrs'] as String? ?? 'Única',
+              sku: r['sku'] as String?,
+              quantityOrdered:
+                  (r['quantity_ordered'] as num?)?.toDouble() ?? 0.0,
+              quantityReceived:
+                  (r['quantity_received'] as num?)?.toDouble() ?? 0.0,
+              unitCost: (r['unit_cost'] as num?)?.toDouble() ?? 0.0,
+              batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
+              expiryDate:
+                  r['expiry_date'] != null
+                      ? DateTime.tryParse(r['expiry_date'] as String)
+                      : null,
+              usesBatches: r['uses_batches'] as bool? ?? false,
+              imageUrl: r['image_url'] as String?,
+            );
+          }).toList();
 
       return Right(list);
     } catch (e, st) {
@@ -278,7 +285,12 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           return Left(ServerFailure(message: rpcRes['error'].toString()));
         }
       }
-      return Left(ServerFailure(message: 'El servidor rechazó la creación de la orden (respuesta no confirmada).'));
+      return Left(
+        ServerFailure(
+          message:
+              'El servidor rechazó la creación de la orden (respuesta no confirmada).',
+        ),
+      );
     } on PostgrestException catch (e, st) {
       developer.log(
         '[PurchaseOrdersRepositoryImpl] createPurchaseOrder PostgrestException: $e',
@@ -286,7 +298,9 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         stackTrace: st,
         name: 'PurchaseOrdersRepositoryImpl',
       );
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
       developer.log(
         '[PurchaseOrdersRepositoryImpl] createPurchaseOrder unexpected error: $e',
@@ -305,17 +319,18 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
     required String warehouseId,
   }) async {
     try {
-      final itemsPayload = receivedItems.map((pItem) {
-        return {
-          'receiveQty': (pItem['receiveQty'] as num).toDouble(),
-          'fullyReceived': pItem['fullyReceived'] as bool? ?? false,
-          'product_id': pItem['product_id'],
-          'variant_id': pItem['variant_id'],
-          'uses_batches': pItem['uses_batches'] as bool? ?? false,
-          'batch_number': pItem['batch_number'],
-          'expiry_date': pItem['expiry_date'],
-        };
-      }).toList();
+      final itemsPayload =
+          receivedItems.map((pItem) {
+            return {
+              'receiveQty': (pItem['receiveQty'] as num).toDouble(),
+              'fullyReceived': pItem['fullyReceived'] as bool? ?? false,
+              'product_id': pItem['product_id'],
+              'variant_id': pItem['variant_id'],
+              'uses_batches': pItem['uses_batches'] as bool? ?? false,
+              'batch_number': pItem['batch_number'],
+              'expiry_date': pItem['expiry_date'],
+            };
+          }).toList();
 
       final response = await _supabase.rpc(
         'rpc_receive_purchase_order_items',
@@ -327,7 +342,13 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       );
 
       if (response is Map && response['success'] == false) {
-        return Left(ServerFailure(message: response['error']?.toString() ?? 'Error al procesar inventario.'));
+        return Left(
+          ServerFailure(
+            message:
+                response['error']?.toString() ??
+                'Error al procesar inventario.',
+          ),
+        );
       }
 
       return const Right(null);
@@ -359,7 +380,8 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           'p_amount': amount,
           'p_account_id': accountId,
           'p_order_id': orderId,
-          'p_notes': 'Pago de Orden de Compra #${orderId.substring(0, 8).toUpperCase()}',
+          'p_notes':
+              'Pago de Orden de Compra #${orderId.substring(0, 8).toUpperCase()}',
           'p_shift_id': shiftId,
           'p_profile_id': _supabase.auth.currentUser?.id,
         },
@@ -376,10 +398,20 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       }
       return const Right(null);
     } on PostgrestException catch (e, st) {
-      debugPrint('[PurchaseOrdersRepositoryImpl] registerOrderPayment error: $e\n$st');
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] registerOrderPayment PostgrestException: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
       return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
     } catch (e, st) {
-      debugPrint('[PurchaseOrdersRepositoryImpl] registerOrderPayment unexpected: $e\n$st');
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] registerOrderPayment unexpected: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
       return Left(ServerFailure(message: 'Error inesperado al registrar el pago: $e'));
     }
   }
@@ -416,10 +448,20 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       }
       return const Right(null);
     } on PostgrestException catch (e, st) {
-      debugPrint('[PurchaseOrdersRepositoryImpl] updateOrderPaymentMethod error: $e\n$st');
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] updateOrderPaymentMethod PostgrestException: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
       return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
     } catch (e, st) {
-      debugPrint('[PurchaseOrdersRepositoryImpl] updateOrderPaymentMethod unexpected: $e\n$st');
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] updateOrderPaymentMethod unexpected: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
       return Left(ServerFailure(message: 'Error inesperado al cambiar método de pago: $e'));
     }
   }
@@ -473,7 +515,9 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         stackTrace: st,
         name: 'PurchaseOrdersRepositoryImpl',
       );
-      return Left(ServerFailure(message: 'Error al cargar catálogos: ${e.message}'));
+      return Left(
+        ServerFailure(message: 'Error al cargar catálogos: ${e.message}'),
+      );
     } catch (e, st) {
       developer.log(
         '[PurchaseOrdersRepositoryImpl] getFormCatalogs unexpected: $e',
@@ -481,7 +525,9 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         stackTrace: st,
         name: 'PurchaseOrdersRepositoryImpl',
       );
-      return Left(ServerFailure(message: 'Error inesperado al cargar catálogos: $e'));
+      return Left(
+        ServerFailure(message: 'Error inesperado al cargar catálogos: $e'),
+      );
     }
   }
 
@@ -490,12 +536,15 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
     String supplierId,
   ) async {
     try {
-      final creditRes = await _supabase
-          .from('supplier_credits')
-          .select('id, supplier_id, current_debt, credit_limit, is_active')
-          .eq('supplier_id', supplierId)
-          .maybeSingle();
-      return Right(creditRes != null ? Map<String, dynamic>.from(creditRes) : null);
+      final creditRes =
+          await _supabase
+              .from('supplier_credits')
+              .select('id, supplier_id, current_debt, credit_limit, is_active')
+              .eq('supplier_id', supplierId)
+              .maybeSingle();
+      return Right(
+        creditRes != null ? Map<String, dynamic>.from(creditRes) : null,
+      );
     } on PostgrestException catch (e, st) {
       developer.log(
         '[PurchaseOrdersRepositoryImpl] getSupplierCredit PostgrestException: $e',
@@ -503,7 +552,9 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         stackTrace: st,
         name: 'PurchaseOrdersRepositoryImpl',
       );
-      return Left(ServerFailure(message: 'Error al consultar crédito: ${e.message}'));
+      return Left(
+        ServerFailure(message: 'Error al consultar crédito: ${e.message}'),
+      );
     } catch (e, st) {
       developer.log(
         '[PurchaseOrdersRepositoryImpl] getSupplierCredit unexpected: $e',
@@ -511,8 +562,9 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         stackTrace: st,
         name: 'PurchaseOrdersRepositoryImpl',
       );
-      return Left(ServerFailure(message: 'Error inesperado al consultar crédito: $e'));
+      return Left(
+        ServerFailure(message: 'Error inesperado al consultar crédito: $e'),
+      );
     }
   }
 }
-
