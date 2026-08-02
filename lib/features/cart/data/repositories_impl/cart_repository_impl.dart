@@ -152,8 +152,7 @@ class CartRepositoryImpl implements CartRepository {
             variant_id,
             is_selected,
             products (
-              id, name, unit_cost, sale_price,
-              wholesale_price, wholesale_min_quantity, is_active, uses_batches,
+              id, name, is_active, uses_batches, stock_control,
               product_images (id, product_id, image_url, is_main, display_order),
               warehouse_stock_batches (available_quantity, variant_id)
             ),
@@ -299,7 +298,7 @@ class CartRepositoryImpl implements CartRepository {
       // 2. Respaldo resiliente: Traduce auth_user_id o valida profiles.id real sin fallar con "Perfil no encontrado".
       final realProfileId = await _getProfileId(profileId);
       if (realProfileId == null) {
-        return left(const ServerFailure(message: 'Perfil no encontrado.'));
+        return left(const NotFoundFailure(message: 'Perfil no encontrado.'));
       }
       final existing = await _supabase
           .from('shopping_carts')

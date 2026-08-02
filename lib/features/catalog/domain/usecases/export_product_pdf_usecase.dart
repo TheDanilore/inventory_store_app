@@ -22,7 +22,7 @@ class ExportProductPdfUseCase {
       );
       return right(null);
     } catch (e) {
-      return left(ServerFailure(message: e.toString()));
+      return left(Failure.from(e));
     }
   }
 }
