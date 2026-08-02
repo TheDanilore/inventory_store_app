@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:developer' as developer;
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
@@ -944,23 +945,29 @@ class _DrawerFooter extends StatelessWidget {
                               ),
                               tooltip: 'Cerrar Sesión',
                               onPressed: () async {
-                                Navigator.pop(context);
                                 final authCubit = context.read<AuthCubit>();
+                                final messenger = ScaffoldMessenger.of(context);
+                                final navigator = Navigator.of(context);
+                                
                                 try {
                                   await authCubit.logout();
-                                } catch (e, st) {
-                                  debugPrint(
-                                    '🔴 [AppDrawer] Error al cerrar sesión: $e\n$st',
-                                  );
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'No se pudo cerrar sesión. Inténtalo de nuevo.',
-                                        ),
-                                      ),
-                                    );
+                                  if (navigator.mounted) {
+                                    navigator.pop();
                                   }
+                                } catch (e, st) {
+                                  developer.log(
+                                    'Error al cerrar sesión',
+                                    error: e,
+                                    stackTrace: st,
+                                    name: 'AppDrawer',
+                                  );
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'No se pudo cerrar sesión. Inténtalo de nuevo.',
+                                      ),
+                                    ),
+                                  );
                                 }
                               },
                             ),
