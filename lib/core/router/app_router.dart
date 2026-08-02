@@ -22,6 +22,7 @@ import 'package:inventory_store_app/features/financial/presentation/routes/finan
 import 'package:inventory_store_app/features/inventory/presentation/routes/inventory_routes.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/routes/loyalty_routes.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/points/points_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/routes/orders_routes.dart';
 import 'package:inventory_store_app/features/pos/presentation/routes/pos_routes.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
@@ -252,13 +253,29 @@ class AppRouter {
             StatefulShellBranch(
               routes: [
                 ...CustomersRoutes.customerRoutes,
-                ...LoyaltyRoutes.customerRoutes,
                 ...OrdersRoutes.customerRoutes.where(
                   (route) => (route as GoRoute).path != '/cart',
                 ),
               ],
             ),
           ],
+        ),
+
+        // LOYALTY ROUTES (Sin AppBar del indexedStack para usar su propio CustomerLayout con retroceso)
+        ShellRoute(
+          builder:
+              (context, state, child) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(create: (_) => sl<PointsCubit>()),
+                  BlocProvider(create: (_) => sl<WalletCubit>()),
+                  BlocProvider(
+                    create:
+                        (_) => sl<CartCubit>()..initCart(cartType: 'customer'),
+                  ),
+                ],
+                child: child,
+              ),
+          routes: LoyaltyRoutes.customerRoutes,
         ),
       ],
     );
