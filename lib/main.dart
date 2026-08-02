@@ -58,12 +58,11 @@ Future<void> main() async {
       stackTrace: stackTrace,
       name: 'MainEntrypoint',
     );
-    
+
     // Fallback: Mostrar pantalla de error segura en vez de crashear el framework
-    runApp(FatalErrorApp(
-      error: error.toString(),
-      stackTrace: stackTrace.toString(),
-    ));
+    runApp(
+      FatalErrorApp(error: error.toString(), stackTrace: stackTrace.toString()),
+    );
   }
 }
 

@@ -92,6 +92,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
   }
 
   bool _isShowingPopDialog = false;
+  bool _allowExplicitPop = false;
 
   Future<bool> _onWillPop() async {
     final cubit = context.read<ProductFormCubit>();
@@ -138,6 +139,33 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     }
   }
 
+  Future<void> _handleExit() async {
+    final cubit = context.read<ProductFormCubit>();
+    final state = cubit.state;
+    if (!cubit.hasUnsavedChanges && !state.isSaving && !state.isInitializingData) {
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      } else {
+        context.go('/admin/products');
+      }
+      return;
+    }
+
+    final shouldPop = await _onWillPop();
+    if (shouldPop && mounted) {
+      setState(() => _allowExplicitPop = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          } else {
+            context.go('/admin/products');
+          }
+        }
+      });
+    }
+  }
+
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -145,8 +173,8 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     if (cubit.state.isSaving) return;
 
     await cubit.saveProduct(
-      nombre: _nombreCtrl.text,
-      desc: _descCtrl.text,
+      nombre: _nombreCtrl.text.trim(),
+      desc: _descCtrl.text.trim(),
       ingredients: cubit.state.ingredientRows,
     );
   }
@@ -188,12 +216,24 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
       child: BlocBuilder<ProductFormCubit, ProductFormState>(
         builder: (context, state) {
           final cubit = context.read<ProductFormCubit>();
+          final canPopNow = _allowExplicitPop || (!cubit.hasUnsavedChanges && !state.isSaving && !state.isInitializingData);
           return PopScope(
-            canPop: false,
+            canPop: canPopNow,
             onPopInvokedWithResult: (didPop, result) async {
               if (didPop) return;
               final shouldPop = await _onWillPop();
-              if (shouldPop && context.mounted) Navigator.pop(context);
+              if (shouldPop && context.mounted) {
+                setState(() => _allowExplicitPop = true);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (context.mounted) {
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context, result);
+                    } else {
+                      context.go('/admin/products');
+                    }
+                  }
+                });
+              }
             },
             child: CallbackShortcuts(
               bindings: {
@@ -201,10 +241,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                     _guardar,
                 const SingleActivator(LogicalKeyboardKey.keyS, meta: true):
                     _guardar,
-                const SingleActivator(LogicalKeyboardKey.escape): () async {
-                  final shouldPop = await _onWillPop();
-                  if (shouldPop && context.mounted) Navigator.pop(context);
-                },
+                const SingleActivator(LogicalKeyboardKey.escape): _handleExit,
               },
               child: AdminLayout(
                 title: isEdit ? 'Editar Producto' : 'Nuevo Producto',
@@ -213,15 +250,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                 showBackButton: true,
                 showProfileButton: false,
                 showDrawerButton: false,
-                onBack: () async {
-                  final shouldPop = await _onWillPop();
-                  if (!shouldPop || !context.mounted) return;
-                  if (Navigator.canPop(context)) {
-                    Navigator.pop(context);
-                  } else {
-                    context.go('/admin/products');
-                  }
-                },
+                onBack: _handleExit,
                 body: Scaffold(
                   backgroundColor: AppColors.background,
                   body:

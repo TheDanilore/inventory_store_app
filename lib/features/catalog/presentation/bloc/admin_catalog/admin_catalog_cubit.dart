@@ -283,70 +283,75 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         offset: 0,
         sortByPriceAsc: true,
       );
-      result.fold(
+      final resUnwrapped = result.fold((failure) => failure, (data) => data);
+      if (resUnwrapped is! ({List<ProductEntity> products, int totalCount})) {
+        final failureMsg = resUnwrapped is Exception
+            ? resUnwrapped.toString()
+            : (resUnwrapped as dynamic).message ?? 'Error desconocido';
+        developer.log('AdminCatalogCubit: Error al cargar productos para PDF: $failureMsg');
+        emit(
+          state.copyWith(
+            actionState: ViewState.error,
+            errorMessage: 'Error al cargar productos: $failureMsg',
+          ),
+        );
+        return;
+      }
+
+      final allProducts = resUnwrapped.products;
+      if (allProducts.isEmpty) {
+        emit(
+          state.copyWith(
+            actionState: ViewState.error,
+            errorMessage: 'No hay productos para exportar.',
+          ),
+        );
+        return;
+      }
+
+      final visibleProducts = state.products;
+      final max50Products = allProducts.take(50).toList();
+
+      List<ProductEntity> filteredProducts = [];
+      if (optionsMode == 0) {
+        filteredProducts = visibleProducts;
+      } else if (optionsMode == 1) {
+        filteredProducts = max50Products;
+      } else if (optionsMode == 2) {
+        filteredProducts =
+            max50Products.where((p) => selectedIds.contains(p.id)).toList();
+      }
+
+      if (filteredProducts.isEmpty) {
+        emit(
+          state.copyWith(
+            actionState: ViewState.error,
+            errorMessage: 'No hay productos seleccionados.',
+          ),
+        );
+        return;
+      }
+
+      final exportResult = await exportCatalogPdfUC(
+        products: filteredProducts,
+      );
+
+      exportResult.fold(
         (failure) {
+          developer.log('AdminCatalogCubit: Error en exportCatalogPdfUC: ${failure.message}');
           emit(
             state.copyWith(
               actionState: ViewState.error,
-              errorMessage: 'Error al cargar productos: ${failure.message}',
+              errorMessage: 'Error al generar PDF: ${failure.message}',
             ),
           );
         },
-        (data) async {
-          if (data.products.isEmpty) {
-            emit(
-              state.copyWith(
-                actionState: ViewState.error,
-                errorMessage: 'No hay productos para exportar.',
-              ),
-            );
-            return;
-          }
-
-          final allProducts = data.products;
-          final visibleProducts = state.products;
-          final max50Products = allProducts.take(50).toList();
-
-          List<ProductEntity> filteredProducts = [];
-          if (optionsMode == 0) {
-            filteredProducts = visibleProducts;
-          } else if (optionsMode == 1) {
-            filteredProducts = max50Products;
-          } else if (optionsMode == 2) {
-            filteredProducts =
-                max50Products.where((p) => selectedIds.contains(p.id)).toList();
-          }
-
-          if (filteredProducts.isEmpty) {
-            emit(
-              state.copyWith(
-                actionState: ViewState.error,
-                errorMessage: 'No hay productos seleccionados.',
-              ),
-            );
-            return;
-          }
-
-          final exportResult = await exportCatalogPdfUC(
-            products: filteredProducts,
-          );
-
-          exportResult.fold(
-            (failure) {
-              emit(
-                state.copyWith(
-                  actionState: ViewState.error,
-                  errorMessage: 'Error al generar PDF: ${failure.message}',
-                ),
-              );
-            },
-            (_) {
-              emit(state.copyWith(actionState: ViewState.success));
-            },
-          );
+        (_) {
+          emit(state.copyWith(actionState: ViewState.success));
         },
       );
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('AdminCatalogCubit: Error inesperado en exportCatalogPdf', error: e, stackTrace: st);
       emit(
         state.copyWith(
           actionState: ViewState.error,

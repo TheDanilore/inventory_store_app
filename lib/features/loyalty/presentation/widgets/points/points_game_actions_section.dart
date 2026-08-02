@@ -22,18 +22,11 @@ class PointsGameActionsSection extends StatelessWidget {
 
     final r = await context.push<int>('$path/$pId');
     if (r != null && context.mounted) {
-      if (!forFun && r > 0 && state.profileId != null) {
+      if (!forFun && r >= 0 && state.profileId != null) {
         await context.read<PointsCubit>().recordMiniGameResult(
           movementType,
           r,
           description,
-        );
-      }
-
-      // Refresh points data after playing
-      if (context.mounted && state.profileId != null) {
-        await context.read<PointsCubit>().fetchPointsData(
-          context.read<AppConfigCubit>(),
         );
       }
     }
@@ -306,7 +299,7 @@ class _GameTile extends StatelessWidget {
                 height: 1.2,
               ),
             ),
-            const Spacer(),
+            const Flexible(child: SizedBox(height: 8)),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(

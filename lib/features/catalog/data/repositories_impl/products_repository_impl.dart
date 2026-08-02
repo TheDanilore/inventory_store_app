@@ -87,7 +87,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
           ? 'product_variants(id, product_id, sku, sale_price, is_active, product_images(*))'
           : 'product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, product_images(*))';
       String selectString =
-          'id, name, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), warehouse_stock_batches(id, product_id, available_quantity), $variantSelect';
+          'id, name, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), warehouse_stock_batches(id, product_id, variant_id, available_quantity), $variantSelect';
 
       if (searchByIngredient &&
           searchQuery != null &&
@@ -305,7 +305,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
           await _supabase
               .from('attributes')
               .insert({'name': name.trim()})
-              .select()
+              .select('id, name')
               .single();
       return right(AttributeEntity(id: res['id'], name: res['name']));
     } catch (e, st) {
@@ -346,7 +346,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
           await _supabase
               .from('attribute_values')
               .insert({'attribute_id': attributeId, 'value': value.trim()})
-              .select()
+              .select('id, attribute_id, value')
               .single();
       return right(
         AttributeValueEntity(
@@ -496,7 +496,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
     try {
       final response = await _supabase
           .from('product_images')
-          .select()
+          .select('id, product_id, image_url, is_main, display_order')
           .eq('product_id', productId)
           .order('display_order');
       final models =

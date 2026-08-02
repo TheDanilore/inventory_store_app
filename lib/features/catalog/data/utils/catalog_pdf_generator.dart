@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/catalog/data/utils/product_pdf_generator.dart';
@@ -73,9 +74,18 @@ class CatalogPdfGenerator {
     required Map<String, List<ProductVariantEntity>> variantsByProduct,
     required Map<String, int> stockByVariant,
   }) async {
-    final baseFont = await PdfGoogleFonts.notoSansRegular();
-    final boldFont = await PdfGoogleFonts.notoSansBold();
-    final italicFont = await PdfGoogleFonts.notoSansItalic();
+    pw.Font baseFont;
+    pw.Font boldFont;
+    pw.Font italicFont;
+    try {
+      baseFont = await PdfGoogleFonts.notoSansRegular();
+      boldFont = await PdfGoogleFonts.notoSansBold();
+      italicFont = await PdfGoogleFonts.notoSansItalic();
+    } catch (_) {
+      baseFont = pw.Font.helvetica();
+      boldFont = pw.Font.helveticaBold();
+      italicFont = pw.Font.helveticaOblique();
+    }
 
     final doc = pw.Document();
     final generatedAt = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
@@ -147,6 +157,15 @@ class CatalogPdfGenerator {
     required Uint8List? imageBytes,
     required Map<String, int> stockByVariant,
   }) {
+    pw.ImageProvider? imageProvider;
+    if (imageBytes != null) {
+      try {
+        imageProvider = pw.MemoryImage(imageBytes);
+      } catch (_) {
+        imageProvider = null;
+      }
+    }
+
     return pw.Container(
       margin: const pw.EdgeInsets.only(bottom: 12),
       padding: const pw.EdgeInsets.all(10),
@@ -161,7 +180,7 @@ class CatalogPdfGenerator {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               // Imagen o placeholder
-              imageBytes != null
+              imageProvider != null
                   ? pw.Container(
                     width: 86,
                     height: 86,
@@ -173,7 +192,7 @@ class CatalogPdfGenerator {
                       horizontalRadius: 6,
                       verticalRadius: 6,
                       child: pw.Image(
-                        pw.MemoryImage(imageBytes),
+                        imageProvider,
                         fit: pw.BoxFit.cover,
                       ),
                     ),
@@ -197,7 +216,7 @@ class CatalogPdfGenerator {
 
               pw.SizedBox(width: 12),
 
-              // Nombre + descripción
+              // Nombre + descripción + resumen de precio y stock
               pw.Expanded(
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -209,9 +228,21 @@ class CatalogPdfGenerator {
                         fontWeight: pw.FontWeight.bold,
                       ),
                     ),
-                    pw.SizedBox(height: 6),
+                    pw.SizedBox(height: 4),
+                    if (product.categoryName != null &&
+                        product.categoryName!.trim().isNotEmpty) ...[
+                      pw.Text(
+                        'Categoría: ${product.categoryName}',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          color: PdfColors.grey700,
+                          fontStyle: pw.FontStyle.italic,
+                        ),
+                      ),
+                      pw.SizedBox(height: 3),
+                    ],
                     if (product.description != null &&
-                        product.description!.trim().isNotEmpty)
+                        product.description!.trim().isNotEmpty) ...[
                       pw.Text(
                         product.description!,
                         style: pw.TextStyle(
@@ -219,17 +250,28 @@ class CatalogPdfGenerator {
                           color: PdfColors.grey700,
                         ),
                       ),
+                      pw.SizedBox(height: 4),
+                    ],
+                    // Siempre mostrar resumen de precio y stock por defecto
+                    pw.Text(
+                      'Precio base: ${_currencyFormat.format(product.displaySalePrice ?? 0.0)}   |   Stock total: ${product.totalStock}',
+                      style: pw.TextStyle(
+                        fontSize: 10,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blueGrey800,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
 
-          // Tabla de variantes
+          // Tabla de variantes si tiene variantes personalizadas o múltiples
           if (variants.isNotEmpty) ...[
             pw.SizedBox(height: 8),
             pw.Text(
-              'Variantes',
+              'Variantes / Desglose de Stock',
               style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 4),
@@ -245,7 +287,7 @@ class CatalogPdfGenerator {
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                   children:
-                      ['Atributos', 'Precio', 'Stock'].map((label) {
+                      ['Atributos / SKU', 'Precio', 'Stock'].map((label) {
                         return pw.Padding(
                           padding: const pw.EdgeInsets.all(6),
                           child: pw.Text(
@@ -260,8 +302,11 @@ class CatalogPdfGenerator {
                 ),
                 // Filas de variantes
                 ...variants.map((variant) {
-                  final stock = stockByVariant[variant.id] ?? 0;
-                  final price = variant.salePrice;
+                  var stock = stockByVariant[variant.id] ?? 0;
+                  if (stock == 0 && variants.length == 1 && product.totalStock > 0) {
+                    stock = product.totalStock;
+                  }
+                  final price = variant.salePrice ?? product.displaySalePrice ?? 0.0;
                   return pw.TableRow(
                     children: [
                       pw.Padding(
@@ -309,9 +354,17 @@ class CatalogPdfGenerator {
       variantsByProduct: variantsByProduct,
       stockByVariant: stockByVariant,
     );
-    await Printing.sharePdf(
-      bytes: bytes,
-      filename: 'Catalogo_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
-    );
+    final fileName = 'Catalogo_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf';
+    if (kIsWeb || Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      await Printing.layoutPdf(
+        onLayout: (_) async => bytes,
+        name: fileName,
+      );
+    } else {
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: fileName,
+      );
+    }
   }
 }
