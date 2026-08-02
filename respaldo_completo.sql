@@ -4106,6 +4106,11 @@ ALTER TABLE ONLY "public"."suppliers"
 
 
 
+ALTER TABLE ONLY "public"."financial_accounts"
+    ADD CONSTRAINT "unique_financial_account_name" UNIQUE ("name");
+
+
+
 ALTER TABLE ONLY "public"."variant_attribute_values"
     ADD CONSTRAINT "variant_attribute_values_pkey" PRIMARY KEY ("variant_id", "attribute_value_id");
 
