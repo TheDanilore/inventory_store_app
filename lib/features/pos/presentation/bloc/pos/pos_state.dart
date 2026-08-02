@@ -22,6 +22,7 @@ class PosState extends Equatable {
   final List<WarehouseModel> warehouses;
   final List<Map<String, dynamic>> accounts;
 
+
   final PosStatus status;
   final CashShiftEntity? activeShift;
   final List<Map<String, dynamic>> clientMatches;
@@ -32,6 +33,9 @@ class PosState extends Equatable {
   final List<OrderModel> recentOrders;
   final bool isLoadingRecentOrders;
   final String recentOrdersError;
+
+  final String discountText;
+  final bool isDiscountPercentage;
 
   const PosState({
     this.isLoading = false,
@@ -54,6 +58,8 @@ class PosState extends Equatable {
     this.recentOrders = const [],
     this.isLoadingRecentOrders = false,
     this.recentOrdersError = '',
+    this.discountText = '',
+    this.isDiscountPercentage = false,
   });
 
   PosState copyWith({
@@ -77,6 +83,8 @@ class PosState extends Equatable {
     List<OrderModel>? recentOrders,
     bool? isLoadingRecentOrders,
     String? recentOrdersError,
+    String? discountText,
+    bool? isDiscountPercentage,
     bool clearClient = false,
   }) {
     return PosState(
@@ -103,6 +111,8 @@ class PosState extends Equatable {
       recentOrders: recentOrders ?? this.recentOrders,
       isLoadingRecentOrders: isLoadingRecentOrders ?? this.isLoadingRecentOrders,
       recentOrdersError: recentOrdersError ?? this.recentOrdersError,
+      discountText: discountText ?? this.discountText,
+      isDiscountPercentage: isDiscountPercentage ?? this.isDiscountPercentage,
     );
   }
 
@@ -128,5 +138,7 @@ class PosState extends Equatable {
     recentOrders,
     isLoadingRecentOrders,
     recentOrdersError,
+    discountText,
+    isDiscountPercentage,
   ];
 }

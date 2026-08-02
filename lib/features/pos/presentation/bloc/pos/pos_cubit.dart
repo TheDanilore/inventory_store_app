@@ -288,12 +288,18 @@ class PosCubit extends Cubit<PosState> {
     }
   }
 
+  void setDiscountText(String text) {
+    emit(state.copyWith(discountText: text));
+  }
+
+  void setIsDiscountPercentage(bool isPercentage) {
+    emit(state.copyWith(isDiscountPercentage: isPercentage, discountText: ''));
+  }
+
   Future<void> processSale({
     required CartState cartState,
     required double pointsToSolesRatio,
     required double earningRate,
-    required String discountText,
-    required bool isDiscountPercentage,
     required String? customClientName,
     required String? accountId,
     required CashShiftEntity? activeShift,
@@ -302,8 +308,8 @@ class PosCubit extends Cubit<PosState> {
     emit(state.copyWith(status: PosStatus.loading));
     try {
       final totalFinal = PosCalculatorUtils.calcularTotalFinal(
-        discountText: discountText,
-        isDiscountPercentage: isDiscountPercentage,
+        discountText: state.discountText,
+        isDiscountPercentage: state.isDiscountPercentage,
         pos: state,
         cart: cartState,
         ratio: pointsToSolesRatio,
@@ -317,16 +323,16 @@ class PosCubit extends Cubit<PosState> {
       );
 
       final totalProfit = PosCalculatorUtils.calcularGananciaTotal(
-        discountText: discountText,
-        isDiscountPercentage: isDiscountPercentage,
+        discountText: state.discountText,
+        isDiscountPercentage: state.isDiscountPercentage,
         pos: state,
         cart: cartState,
         ratio: pointsToSolesRatio,
       );
 
       final descuentoExtra = PosCalculatorUtils.getCustomDiscountAmount(
-        discountText: discountText,
-        isDiscountPercentage: isDiscountPercentage,
+        discountText: state.discountText,
+        isDiscountPercentage: state.isDiscountPercentage,
         pos: state,
         cart: cartState,
         ratio: pointsToSolesRatio,

@@ -260,12 +260,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       if (confirmed != true) return;
     }
 
+    posCubit.setDiscountText(_descuentoCtrl.text);
+    posCubit.setIsDiscountPercentage(_isDiscountPercentageNotifier.value);
+
     await posCubit.processSale(
       cartState: cartCubit.state,
       pointsToSolesRatio: pointsToSolesRatio,
       earningRate: earningRate,
-      discountText: _descuentoCtrl.text,
-      isDiscountPercentage: _isDiscountPercentageNotifier.value,
       customClientName:
           _clienteCtrl.text.trim().isNotEmpty ? _clienteCtrl.text.trim() : null,
       accountId: posCubit.state.selectedAccountId,
