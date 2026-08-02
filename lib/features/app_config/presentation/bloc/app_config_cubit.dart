@@ -55,9 +55,6 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   ViewState get businessInfoState => state.status;
   ViewState get saveState => state.saveStatus;
 
-  void addListener(Function() listener) {}
-  void removeListener(Function() listener) {}
-
   Future<bool> saveValue(
     String key,
     dynamic value, {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
@@ -258,18 +259,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
       _fillControllers(config);
       setState(() => _isInitialized = true);
     } else {
-      config.addListener(_onConfigLoaded);
-    }
-  }
-
-  void _onConfigLoaded() {
-    final config = context.read<AppConfigCubit>();
-    if (config.settingsState == ViewState.success) {
-      config.removeListener(_onConfigLoaded);
-      if (mounted) {
-        _fillControllers(config);
-        setState(() => _isInitialized = true);
-      }
+      config.loadConfig();
     }
   }
 
@@ -354,102 +344,116 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     final config = context.watch<AppConfigCubit>();
     final isGlobalEnabled = config.loyaltyGlobalEnabled;
 
-    return AdminLayout(
-      title: 'Configuración de Juegos',
-      showBackButton: true,
-      body:
-          !_isInitialized
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
-                children: [
-                  if (!isGlobalEnabled)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.all(16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.warning_rounded,
-                            color: Colors.red.shade700,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'El módulo de Lealtad (Monedas) está desactivado globalmente en la Información del Negocio. Estos ajustes no tendrán efecto hasta que lo actives.',
-                              style: TextStyle(
-                                color: Colors.red.shade900,
-                                fontWeight: FontWeight.w600,
+    if (!_isInitialized && config.settingsState == ViewState.success) {
+      _fillControllers(config);
+      _isInitialized = true;
+    }
+
+    return BlocListener<AppConfigCubit, AppConfigState>(
+      listener: (context, state) {
+        if (!_isInitialized && state.status == ViewState.success) {
+          final cubit = context.read<AppConfigCubit>();
+          _fillControllers(cubit);
+          setState(() => _isInitialized = true);
+        }
+      },
+      child: AdminLayout(
+        title: 'Configuración de Juegos',
+        showBackButton: true,
+        body:
+            !_isInitialized
+                ? const Center(child: CircularProgressIndicator())
+                : Column(
+                  children: [
+                    if (!isGlobalEnabled)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.warning_rounded,
+                              color: Colors.red.shade700,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'El módulo de Lealtad (Monedas) está desactivado globalmente en la Información del Negocio. Estos ajustes no tendrán efecto hasta que lo actives.',
+                                style: TextStyle(
+                                  color: Colors.red.shade900,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isWide = constraints.maxWidth >= 800;
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isWide = constraints.maxWidth >= 800;
 
-                        if (isWide) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          if (isWide) {
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildNavigationRail(),
+                                Container(width: 1, color: Colors.grey.shade200),
+                                Expanded(
+                                  child: Container(
+                                    color: AppColors.background,
+                                    alignment: Alignment.topCenter,
+                                    child: _buildSelectedTabContent(
+                                      _selectedIndex,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+
+                          return Column(
                             children: [
-                              _buildNavigationRail(),
-                              Container(width: 1, color: Colors.grey.shade200),
+                              TabBar(
+                                controller: _tabController,
+                                labelColor: AppColors.primary,
+                                unselectedLabelColor: Colors.grey,
+                                indicatorColor: AppColors.primary,
+                                isScrollable: true,
+                                tabs: const [
+                                  Tab(text: 'Sistema y Ratio'),
+                                  Tab(text: 'Límites Diarios'),
+                                  Tab(text: 'Premios'),
+                                ],
+                              ),
                               Expanded(
                                 child: Container(
                                   color: AppColors.background,
-                                  alignment: Alignment.topCenter,
-                                  child: _buildSelectedTabContent(
-                                    _selectedIndex,
+                                  child: TabBarView(
+                                    controller: _tabController,
+                                    children: [
+                                      _buildSelectedTabContent(0),
+                                      _buildSelectedTabContent(1),
+                                      _buildSelectedTabContent(2),
+                                    ],
                                   ),
                                 ),
                               ),
                             ],
                           );
-                        }
-
-                        return Column(
-                          children: [
-                            TabBar(
-                              controller: _tabController,
-                              labelColor: AppColors.primary,
-                              unselectedLabelColor: Colors.grey,
-                              indicatorColor: AppColors.primary,
-                              isScrollable: true,
-                              tabs: const [
-                                Tab(text: 'Sistema y Ratio'),
-                                Tab(text: 'Límites Diarios'),
-                                Tab(text: 'Premios'),
-                              ],
-                            ),
-                            Expanded(
-                              child: Container(
-                                color: AppColors.background,
-                                child: TabBarView(
-                                  controller: _tabController,
-                                  children: [
-                                    _buildSelectedTabContent(0),
-                                    _buildSelectedTabContent(1),
-                                    _buildSelectedTabContent(2),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+                        },
+                      ),
                     ),
-                  ),
-                ],
-              ),
-      bottomNavigationBar: _isInitialized ? _buildGlobalSaveButton() : null,
+                  ],
+                ),
+        bottomNavigationBar: _isInitialized ? _buildGlobalSaveButton() : null,
+      ),
     );
   }
 

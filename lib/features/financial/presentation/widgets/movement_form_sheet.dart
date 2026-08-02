@@ -12,11 +12,19 @@ class MovementFormSheet extends StatefulWidget {
   const MovementFormSheet({super.key});
 
   static Future<bool?> show(BuildContext context) {
+    final accCubit = context.read<FinancialAccountsCubit>();
+    final movCubit = context.read<AccountMovementsCubit>();
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const MovementFormSheet(),
+      builder: (_) => MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: accCubit),
+          BlocProvider.value(value: movCubit),
+        ],
+        child: const MovementFormSheet(),
+      ),
     );
   }
 

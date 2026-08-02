@@ -176,6 +176,7 @@ class _AdminLayoutState extends State<AdminLayout> {
                 ],
               ),
               floatingActionButton: widget.floatingActionButton,
+              bottomNavigationBar: widget.bottomNavigationBar,
             );
           }
 
