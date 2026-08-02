@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/core/network/network_state.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/widgets/offline_games_suggestion.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/app_drawer.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_sidebar.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
-import 'package:inventory_store_app/core/network/network_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:developer' as developer;
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_offline_banner.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_desktop_top_bar.dart';
 
 class AdminLayout extends StatefulWidget {
   final String title;
@@ -58,30 +58,31 @@ class AdminLayout extends StatefulWidget {
 
 class _AdminLayoutState extends State<AdminLayout> {
   static const _sidebarCollapsedKey = 'admin_sidebar_collapsed';
-  static bool _sidebarCollapsedCache = false;
-  static bool _isCacheLoaded = false;
 
-  late bool _isSidebarCollapsed;
+  bool _isSidebarCollapsed = false;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _isSidebarCollapsed = _sidebarCollapsedCache;
-    if (!_isCacheLoaded) {
-      _loadSidebarState();
-    }
+    _loadSidebarState();
   }
 
   Future<void> _loadSidebarState() async {
-    final prefs = await SharedPreferences.getInstance();
-    final collapsed = prefs.getBool(_sidebarCollapsedKey) ?? false;
-    _sidebarCollapsedCache = collapsed;
-    _isCacheLoaded = true;
-    if (mounted && collapsed != _isSidebarCollapsed) {
-      setState(() => _isSidebarCollapsed = collapsed);
-    } else if (mounted && !_isSidebarCollapsed) {
-      // Just trigger a rebuild to remove the "loading" blocker if any
-      setState(() {});
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final collapsed = prefs.getBool(_sidebarCollapsedKey) ?? false;
+      if (mounted) {
+        setState(() {
+          _isSidebarCollapsed = collapsed;
+          _isInitialized = true;
+        });
+      }
+    } catch (e, st) {
+      developer.log('Error loading sidebar state', error: e, stackTrace: st, name: 'AdminLayout');
+      if (mounted) {
+        setState(() => _isInitialized = true);
+      }
     }
   }
 
@@ -98,20 +99,21 @@ class _AdminLayoutState extends State<AdminLayout> {
 
   Future<void> _toggleSidebar() async {
     final newValue = !_isSidebarCollapsed;
-    _sidebarCollapsedCache = newValue;
     setState(() => _isSidebarCollapsed = newValue);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_sidebarCollapsedKey, newValue);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_sidebarCollapsedKey, newValue);
+    } catch (e, st) {
+      developer.log('Error saving sidebar state', error: e, stackTrace: st, name: 'AdminLayout');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Avoid layout jitter by waiting for SharedPreferences on the very first load
-    if (!_isCacheLoaded) {
-      return const Scaffold(
-        backgroundColor: AppColors.background,
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-      );
+    if (!_isInitialized) {
+      // Retornar un contenedor vacío para evitar jank o bloqueos visuales completos
+      // en el primer frame, que es instantáneo.
+      return const SizedBox.shrink();
     }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -140,10 +142,21 @@ class _AdminLayoutState extends State<AdminLayout> {
                     child: Column(
                       children: [
                         // ── TopBar ERP ───────────────────────────────────────
-                        _buildDesktopTopBar(context),
+                        AdminDesktopTopBar(
+                          isSidebarCollapsed: _isSidebarCollapsed,
+                          onToggleSidebar: _toggleSidebar,
+                          showBackButton: widget.showBackButton,
+                          onBack: () => _handleBackButton(context),
+                          title: widget.title,
+                          breadcrumbText: _buildBreadcrumbText(context),
+                          actions: widget.actions,
+                          showSettingsButton: widget.showSettingsButton,
+                          settingsActions: widget.settingsActions,
+                          onSettingsSelected: widget.onSettingsSelected,
+                        ),
 
                         // ── Offline Banner ───────────────────────────────────
-                        _buildOfflineBanner(),
+                        const AdminOfflineBanner(),
 
                         // ── Content View ─────────────────────────────────────
                         Expanded(child: widget.body),
@@ -246,7 +259,10 @@ class _AdminLayoutState extends State<AdminLayout> {
               top: !widget.showAppBar,
               bottom: false,
               child: Column(
-                children: [_buildOfflineBanner(), Expanded(child: widget.body)],
+                children: [
+                  const AdminOfflineBanner(), 
+                  Expanded(child: widget.body)
+                ],
               ),
             ),
             floatingActionButton: widget.floatingActionButton,
@@ -257,38 +273,30 @@ class _AdminLayoutState extends State<AdminLayout> {
     );
   }
 
-  // Lógica mejorada del botón atrás según la URL actual
+  // Lógica mejorada del botón atrás según la URL actual de forma dinámica
   void _handleBackButton(BuildContext context) {
     if (widget.onBack != null) {
       widget.onBack!();
       return;
     }
 
-    final currentPath = GoRouterState.of(context).uri.path;
-
-    // Redirección directa para vistas secundarias
-    if (currentPath.contains('customer-detail')) {
-      context.go('/admin/customers');
-      return;
-    } else if (currentPath.contains('customer-credit-movements')) {
-      context.go('/admin/customer-credits');
-      return;
-    } else if (currentPath.contains('/inventory-exits/form')) {
-      context.go('/admin/inventory-exits');
-      return;
-    } else if (currentPath.contains('/inventory-entries/form')) {
-      context.go('/admin/inventory-entries');
-      return;
-    } else if (currentPath.contains('/purchase-orders/form')) {
-      context.go('/admin/purchase-orders');
-      return;
-    }
-
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
-    } else {
-      context.go('/admin/customers');
+      return;
     }
+
+    final currentUri = GoRouterState.of(context).uri;
+    final pathSegments = currentUri.pathSegments;
+
+    // Si tiene más de 2 segmentos (ej. /admin/customers/form), vamos al padre (/admin/customers)
+    if (pathSegments.length > 2 && pathSegments.first == 'admin') {
+      final parentPath = '/${pathSegments.sublist(0, pathSegments.length - 1).join('/')}';
+      context.go(parentPath);
+      return;
+    }
+
+    // Fallback genérico
+    context.go('/admin');
   }
 
   static const _breadcrumbMap = <String, String>{
@@ -338,218 +346,9 @@ class _AdminLayoutState extends State<AdminLayout> {
       }
       return 'Panel de Administración ERP';
     } catch (e, st) {
-      debugPrint('🔴 [AdminLayout] Error al construir breadcrumb: $e\n$st');
+      developer.log('Error al construir breadcrumb', error: e, stackTrace: st, name: 'AdminLayout');
       return 'Panel de Administración ERP';
     }
-  }
-
-  Widget _buildDesktopTopBar(BuildContext context) {
-    return Container(
-      height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
-      ),
-      child: Row(
-        children: [
-          // ── Toggle Sidebar Button ─────────────────────────────────
-          AdminAppBarIconButton(
-            icon:
-                _isSidebarCollapsed
-                    ? Icons.menu_open_rounded
-                    : Icons.menu_rounded,
-            tooltip: _isSidebarCollapsed ? 'Expandir menú' : 'Colapsar menú',
-            onTap: _toggleSidebar,
-          ),
-          if (widget.showBackButton) ...[
-            const SizedBox(width: 8),
-            AdminAppBarIconButton(
-              icon: Icons.arrow_back_rounded,
-              tooltip: 'Volver atrás',
-              onTap:
-                  () =>
-                      _handleBackButton(context), 
-            ),
-          ],
-          const SizedBox(width: 16),
-
-          // ── Title & Breadcrumbs ───────────────────────────────────
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              Text(
-                _buildBreadcrumbText(context),
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-
-          const Spacer(),
-
-          // ── Quick Custom Actions ──────────────────────────────────
-          if (widget.actions != null) ...widget.actions!,
-          if (widget.actions != null && widget.actions!.isNotEmpty)
-            const SizedBox(width: 12),
-
-          // ── Notifications Icon ────────────────────────────────────
-          AdminAppBarIconButton(
-            icon: Icons.notifications_none_rounded,
-            tooltip: 'Notificaciones',
-            onTap: () {
-              showDialog(
-                context: context,
-                builder:
-                    (ctx) => AlertDialog(
-                      title: const Row(
-                        children: [
-                          Icon(Icons.notifications_outlined, size: 20),
-                          SizedBox(width: 8),
-                          Text('Notificaciones'),
-                        ],
-                      ),
-                      content: const Text(
-                        'No tienes notificaciones pendientes.\n\nEste módulo estará disponible próximamente.',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(ctx).pop(),
-                          child: const Text('Entendido'),
-                        ),
-                      ],
-                    ),
-              );
-            },
-          ),
-          const SizedBox(width: 12),
-
-          // ── Settings Dropdown ─────────────────────────────────────
-          if (widget.showSettingsButton &&
-              widget.settingsActions != null &&
-              widget.settingsActions!.isNotEmpty) ...[
-            AdminSettingsMenuButton(
-              items: widget.settingsActions!,
-              onSelected: widget.onSettingsSelected,
-            ),
-            const SizedBox(width: 12),
-          ],
-
-          // ── Admin Profile Dropdown Avatar ─────────────────────────
-          PopupMenuButton<String>(
-            tooltip: 'Opciones de perfil',
-            offset: const Offset(0, 48),
-            onSelected: (value) {
-              if (value == 'profile') context.push('/admin/profile');
-              if (value == 'business') context.go('/admin/business-info');
-              if (value == 'logout') context.read<AuthCubit>().logout();
-            },
-            itemBuilder:
-                (ctx) => [
-                  const PopupMenuItem(
-                    value: 'profile',
-                    child: Row(
-                      children: [
-                        Icon(Icons.person_outline_rounded, size: 18),
-                        SizedBox(width: 8),
-                        Text('Mi Perfil'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'business',
-                    child: Row(
-                      children: [
-                        Icon(Icons.storefront_rounded, size: 18),
-                        SizedBox(width: 8),
-                        Text('Datos de Negocio'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(
-                    value: 'logout',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.logout_rounded,
-                          size: 18,
-                          color: AppColors.error,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Cerrar Sesión',
-                          style: TextStyle(color: AppColors.error),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-            child: const AdminProfileAvatar(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOfflineBanner() {
-    return BlocBuilder<NetworkCubit, NetworkState>(
-      builder: (context, state) {
-        final isOnline = state is NetworkConnected;
-        return AnimatedSize(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.topCenter,
-          child:
-              isOnline
-                  ? const SizedBox(width: double.infinity, height: 0)
-                  : Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        color: AppColors.error,
-                        padding: const EdgeInsets.symmetric(vertical: 7),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.wifi_off_rounded,
-                              color: Colors.white,
-                              size: 14,
-                            ),
-                            SizedBox(width: 6),
-                            Text(
-                              'Sin conexión a internet',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const OfflineGamesSuggestion(),
-                    ],
-                  ),
-        );
-      },
-    );
   }
 }
 
