@@ -3,6 +3,7 @@ import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 
 abstract class OrdersRepository {
   Future<Either<Failure, List<OrderEntity>>> getCustomerOrders(
@@ -31,6 +32,7 @@ abstract class OrdersRepository {
 
   Future<Either<Failure, OrderEntity>> getOrderById(String orderId);
   Future<Either<Failure, List<OrderItemEntity>>> getOrderItems(String orderId);
+  Future<Either<Failure, ({List<CartItemEntity> validItems, List<String> outOfStock, List<String> priceChanged})>> validateReorderItems(List<OrderItemEntity> items);
 
   Future<Either<Failure, void>> updateOrderStatus({
     required OrderEntity order,

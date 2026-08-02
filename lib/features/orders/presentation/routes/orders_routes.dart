@@ -4,6 +4,8 @@ import 'package:inventory_store_app/features/orders/presentation/bloc/orders/ord
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders/customer_orders_cubit.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/admin/orders_screen.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/customer_orders_screen.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/customer_cart_screen.dart';
@@ -24,8 +26,14 @@ class OrdersRoutes {
     GoRoute(
       path: '/orders',
       builder:
-          (context, state) => BlocProvider(
-            create: (ctx) => sl<CustomerOrdersCubit>()..init(),
+          (context, state) => MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (ctx) => sl<CustomerOrdersCubit>()..init()),
+              BlocProvider(create: (_) => sl<WalletCubit>()),
+              BlocProvider(
+                create: (_) => sl<CartCubit>()..initCart(cartType: 'customer'),
+              ),
+            ],
             child: const CustomerOrdersScreen(),
           ),
     ),

@@ -1,6 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart';
 import 'package:injectable/injectable.dart';
 
@@ -12,5 +13,11 @@ class GetOrderItemsUc {
 
   Future<Either<Failure, List<OrderItemEntity>>> call(String orderId) {
     return repository.getOrderItems(orderId);
+  }
+
+  Future<Either<Failure, ({List<CartItemEntity> validItems, List<String> outOfStock, List<String> priceChanged})>> validateReorderItems(
+    List<OrderItemEntity> items,
+  ) {
+    return repository.validateReorderItems(items);
   }
 }

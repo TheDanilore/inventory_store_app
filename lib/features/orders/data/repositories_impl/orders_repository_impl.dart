@@ -9,6 +9,7 @@ import 'package:inventory_store_app/features/orders/data/models/order_model.dart
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:injectable/injectable.dart';
@@ -46,14 +47,30 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
       final orders = data.map((json) => OrderModel.fromJson(json)).toList();
       return Right(orders);
-    } catch (e, st) {
+    } on PostgrestException catch (e, st) {
       developer.log(
-        'Error en getCustomerOrders',
-        error: e,
+        'Error de Supabase en getCustomerOrders',
+        error: e.toString(),
         stackTrace: st,
         name: 'OrdersRepo',
       );
-      return Left(ServerFailure(message: 'Error fetching orders: $e'));
+      return Left(ServerFailure(message: 'Error de base de datos al obtener pedidos: ${e.message}'));
+    } on SocketException catch (e, st) {
+      developer.log(
+        'Error de red en getCustomerOrders',
+        error: e.toString(),
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
+      return Left(ServerFailure(message: 'Sin conexión a internet. Verifique su red.'));
+    } catch (e, st) {
+      developer.log(
+        'Error inesperado en getCustomerOrders',
+        error: e.toString(),
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
+      return Left(ServerFailure(message: 'No se pudieron cargar los pedidos.'));
     }
   }
 
@@ -232,7 +249,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final data = await _supabase
           .from('order_items')
           .select('''
-        *,
+        id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at,
         products ( id, name, product_images (image_url, is_main) ),
         product_variants ( id, sku, product_images (image_url, is_main), variant_attribute_values(attribute_values(value, attributes(name))) )
       ''')
@@ -240,14 +257,166 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
       final items = data.map((json) => OrderItemModel.fromJson(json)).toList();
       return Right(items);
-    } catch (e, st) {
+    } on PostgrestException catch (e, st) {
       developer.log(
-        'Error en getOrderItems',
-        error: e,
+        'Error de Supabase en getOrderItems',
+        error: e.toString(),
         stackTrace: st,
         name: 'OrdersRepo',
       );
-      return Left(ServerFailure(message: 'Error fetching order items: $e'));
+      return Left(ServerFailure(message: 'Error al cargar ítems del pedido: ${e.message}'));
+    } on SocketException catch (e, st) {
+      developer.log(
+        'Error de red en getOrderItems',
+        error: e.toString(),
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
+      return Left(ServerFailure(message: 'Sin conexión a internet al consultar el detalle.'));
+    } catch (e, st) {
+      developer.log(
+        'Error inesperado en getOrderItems',
+        error: e.toString(),
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
+      return Left(ServerFailure(message: 'No se pudo obtener el detalle de la orden.'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ({List<CartItemEntity> validItems, List<String> outOfStock, List<String> priceChanged})>> validateReorderItems(
+    List<OrderItemEntity> items,
+  ) async {
+    try {
+      final productIds = items.map((e) => e.productId).whereType<String>().toSet().toList();
+      if (productIds.isEmpty) {
+        return Right((validItems: const [], outOfStock: const [], priceChanged: const []));
+      }
+
+      final productsData = await _supabase
+          .from('products')
+          .select('id, name, is_active, uses_batches, product_variants(id, sale_price, unit_cost, is_active), warehouse_stock_batches(product_id, variant_id, available_quantity)')
+          .inFilter('id', productIds);
+
+      final productsMap = {
+        for (final p in productsData) p['id'] as String: p,
+      };
+
+      final validItems = <CartItemEntity>[];
+      final outOfStock = <String>[];
+      final priceChanged = <String>[];
+
+      for (final item in items) {
+        if (item.productId == null || !productsMap.containsKey(item.productId)) {
+          outOfStock.add(item.productName ?? 'Producto no disponible');
+          continue;
+        }
+
+        final pData = productsMap[item.productId!];
+        if (pData == null || pData['is_active'] == false) {
+          outOfStock.add(item.productName ?? 'Producto descontinuado');
+          continue;
+        }
+
+        final usesBatches = pData['uses_batches'] == true;
+        double currentPrice = item.appliedPrice;
+        double currentCost = item.unitCost;
+        bool isVariantActive = true;
+
+        final variants = pData['product_variants'] as List<dynamic>? ?? [];
+        if (item.variantId != null && variants.isNotEmpty) {
+          final variant = variants.cast<Map<String, dynamic>>().firstWhere(
+            (v) => v['id'] == item.variantId,
+            orElse: () => <String, dynamic>{},
+          );
+          if (variant.isNotEmpty) {
+            if (variant['is_active'] == false) {
+              isVariantActive = false;
+            } else {
+              currentPrice = (variant['sale_price'] as num?)?.toDouble() ?? currentPrice;
+              currentCost = (variant['unit_cost'] as num?)?.toDouble() ?? currentCost;
+            }
+          } else {
+            isVariantActive = false;
+          }
+        }
+
+        if (!isVariantActive) {
+          outOfStock.add(item.variantDisplayName ?? item.productName ?? 'Variante no disponible');
+          continue;
+        }
+
+        final batches = pData['warehouse_stock_batches'] as List<dynamic>? ?? [];
+        int totalAvailableStock = 0;
+        for (final b in batches) {
+          final bMap = b as Map<String, dynamic>;
+          if (item.variantId != null) {
+            if (bMap['variant_id'] == item.variantId) {
+              totalAvailableStock += (bMap['available_quantity'] as num?)?.toInt() ?? 0;
+            }
+          } else {
+            if (bMap['variant_id'] == null || bMap['variant_id'] == '') {
+              totalAvailableStock += (bMap['available_quantity'] as num?)?.toInt() ?? 0;
+            }
+          }
+        }
+
+        if (totalAvailableStock <= 0) {
+          outOfStock.add(item.variantDisplayName ?? item.productName ?? 'Agotado');
+          continue;
+        }
+
+        if ((currentPrice - item.appliedPrice).abs() > 0.01) {
+          priceChanged.add(item.variantDisplayName ?? item.productName ?? 'Artículo actualizado');
+        }
+
+        final qtyToTake = item.quantity > totalAvailableStock ? totalAvailableStock : item.quantity;
+
+        validItems.add(
+          CartItemEntity(
+            productId: item.productId!,
+            productName: pData['name'] as String? ?? item.productName ?? 'Producto',
+            cartKey: item.variantId ?? item.productId ?? item.id,
+            quantity: qtyToTake,
+            unitPrice: currentPrice,
+            unitCost: currentCost,
+            availableStock: totalAvailableStock,
+            usesBatches: usesBatches,
+            variantId: item.variantId,
+            variantLabel: item.variantDisplayName,
+            imageUrl: item.displayImageUrl,
+            sku: item.sku,
+            isSelected: true,
+          ),
+        );
+      }
+
+      return Right((validItems: validItems, outOfStock: outOfStock, priceChanged: priceChanged));
+    } on PostgrestException catch (e, st) {
+      developer.log(
+        'Error de Supabase en validateReorderItems',
+        error: e.toString(),
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
+      return Left(ServerFailure(message: 'Error al verificar stock: ${e.message}'));
+    } on SocketException catch (e, st) {
+      developer.log(
+        'Error de red en validateReorderItems',
+        error: e.toString(),
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
+      return Left(ServerFailure(message: 'Sin conexión para validar disponibilidad.'));
+    } catch (e, st) {
+      developer.log(
+        'Error inesperado en validateReorderItems',
+        error: e.toString(),
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
+      return Left(ServerFailure(message: 'No se pudo verificar el inventario para reordenar.'));
     }
   }
 

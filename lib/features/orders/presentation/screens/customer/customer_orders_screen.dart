@@ -9,7 +9,6 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders/customer_orders_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders/customer_orders_state.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/orders/customer_order_card.dart';
-import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 
 class CustomerOrdersScreen extends StatefulWidget {
@@ -64,53 +63,53 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
 
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
+    _debounce = Timer(const Duration(milliseconds: 400), () {
       if (!mounted) return;
-      context.read<CustomerOrdersCubit>().setSearchQuery(query);
+      context.read<CustomerOrdersCubit>().setSearchQuery(query.trim());
     });
   }
 
   Future<void> _handleReorder(String orderId) async {
     try {
-      final result = await context.read<CustomerOrdersCubit>().fetchOrderItems(
-        orderId,
-      );
+      final result = await context.read<CustomerOrdersCubit>().reorderOrder(orderId);
       if (!mounted) return;
 
       result.fold(
         (failure) {
           AppSnackbar.show(
             context,
-            message: 'Error al recuperar los productos: ${failure.message}',
+            message: 'Error al procesar reorden: ${failure.message}',
             type: SnackbarType.error,
           );
         },
-        (items) {
-          final cartCubit = context.read<CartCubit>();
-          for (final item in items) {
-            final cartItem = CartItemEntity(
-              productId: item.productId ?? '',
-              productName: item.productName ?? 'Producto',
-              cartKey: item.variantId ?? item.productId ?? item.id,
-              quantity: item.quantity,
-              unitPrice: item.appliedPrice,
-              unitCost: item.unitCost,
-              availableStock: 999,
-              usesBatches: false,
-              variantId: item.variantId,
-              variantLabel: item.variantDisplayName,
-              imageUrl: item.displayImageUrl,
-              sku: item.sku,
-              isSelected: true,
+        (reorderData) {
+          if (reorderData.validItems.isEmpty) {
+            AppSnackbar.show(
+              context,
+              message: 'Los productos de este pedido se encuentran agotados o descontinuados.',
+              type: SnackbarType.error,
             );
+            return;
+          }
+
+          final cartCubit = context.read<CartCubit>();
+          for (final cartItem in reorderData.validItems) {
             cartCubit.addItem(cartItem);
           }
 
-          AppSnackbar.show(
-            context,
-            message: '¡Productos de la orden añadidos al carrito!',
-            type: SnackbarType.success,
-          );
+          if (reorderData.outOfStock.isNotEmpty || reorderData.priceChanged.isNotEmpty) {
+            AppSnackbar.show(
+              context,
+              message: '¡Productos añadidos al carrito! Nota: Algunos artículos cambiaron de precio o están agotados.',
+              type: SnackbarType.warning,
+            );
+          } else {
+            AppSnackbar.show(
+              context,
+              message: '¡Productos de la orden añadidos al carrito!',
+              type: SnackbarType.success,
+            );
+          }
         },
       );
     } catch (e) {
@@ -142,7 +141,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
             onRefresh: () async {
               await cubit.refresh();
             },
-            child: BlocConsumer<CustomerOrdersCubit, CustomerOrdersState>(
+            child: BlocListener<CustomerOrdersCubit, CustomerOrdersState>(
               listener: (context, state) {
                 if (state.errorMessage.isNotEmpty &&
                     state.orders.isNotEmpty &&
@@ -155,50 +154,57 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                   );
                 }
               },
-              builder: (context, state) {
-                final displayOrders = state.filteredOrders;
-
-                return CustomScrollView(
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          BlocSelector<CustomerOrdersCubit, CustomerOrdersState, bool>(
+                            selector: (s) => s.isBackgroundLoading,
+                            builder: (context, isBackgroundLoading) {
+                              if (!isBackgroundLoading) return const SizedBox.shrink();
+                              return _buildBackgroundSyncIndicator();
+                            },
+                          ),
+                          _buildHeaderBanner(),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _StickyFiltersDelegate(
+                      child: Container(
+                        color: AppColors.background,
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (state.isBackgroundLoading)
-                              _buildBackgroundSyncIndicator(),
-                            _buildHeaderBanner(displayOrders.length),
+                            _buildSearchBar(),
+                            const SizedBox(height: 12),
+                            _buildFilters(cubit),
                           ],
                         ),
                       ),
                     ),
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: _StickyFiltersDelegate(
-                        child: Container(
-                          color: AppColors.background,
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildSearchBar(),
-                              const SizedBox(height: 12),
-                              _buildFilters(state, cubit),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      sliver: _buildBody(state, cubit),
-                    ),
-                    if (state.isLoadingMore)
-                      const SliverToBoxAdapter(
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: _buildBody(cubit),
+                  ),
+                  BlocSelector<CustomerOrdersCubit, CustomerOrdersState, bool>(
+                    selector: (s) => s.isLoadingMore,
+                    builder: (context, isLoadingMore) {
+                      if (!isLoadingMore) {
+                        return const SliverToBoxAdapter(child: SizedBox.shrink());
+                      }
+                      return const SliverToBoxAdapter(
                         child: Padding(
                           padding: EdgeInsets.symmetric(vertical: 24),
                           child: Center(
@@ -207,11 +213,12 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                             ),
                           ),
                         ),
-                      ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 40)),
-                  ],
-                );
-              },
+                      );
+                    },
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                ],
+              ),
             ),
           ),
         ),
@@ -252,65 +259,70 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     );
   }
 
-  Widget _buildHeaderBanner(int totalOrders) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, Color(0xFF0F3460)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+  Widget _buildHeaderBanner() {
+    return BlocSelector<CustomerOrdersCubit, CustomerOrdersState, int>(
+      selector: (state) => state.filteredOrders.length,
+      builder: (context, totalOrders) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, Color(0xFF0F3460)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Tus pedidos',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
-                  ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tus pedidos',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$totalOrders pedido${totalOrders == 1 ? '' : 's'} cargados',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '$totalOrders pedido${totalOrders == 1 ? '' : 's'} cargados',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 13,
-                  ),
+              ),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              ],
-            ),
+                child: const Icon(
+                  Icons.receipt_long_rounded,
+                  color: Colors.white,
+                  size: 26,
+                ),
+              ),
+            ],
           ),
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.receipt_long_rounded,
-              color: Colors.white,
-              size: 26,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -326,7 +338,11 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
       child: TextField(
         controller: _searchController,
         onChanged: _onSearchChanged,
+        keyboardType: TextInputType.text,
+        textInputAction: TextInputAction.search,
+        maxLength: 50,
         decoration: InputDecoration(
+          counterText: '',
           hintText: 'Buscar por ID de pedido...',
           hintStyle: const TextStyle(
             color: AppColors.textSecondary,
@@ -357,130 +373,139 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     );
   }
 
-  Widget _buildFilters(CustomerOrdersState state, CustomerOrdersCubit cubit) {
-    return SizedBox(
-      height: 38,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _filters.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final filter = _filters[index];
-          final value = filter['value']!;
-          final label = filter['label']!;
-          final isSelected = state.statusFilter == value;
+  Widget _buildFilters(CustomerOrdersCubit cubit) {
+    return BlocSelector<CustomerOrdersCubit, CustomerOrdersState, String>(
+      selector: (state) => state.statusFilter,
+      builder: (context, currentFilter) {
+        return SizedBox(
+          height: 38,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _filters.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final filter = _filters[index];
+              final value = filter['value']!;
+              final label = filter['label']!;
+              final isSelected = currentFilter == value;
 
-          return Material(
-            color: isSelected ? AppColors.primary : AppColors.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(40),
-              side: BorderSide(
-                color: isSelected ? AppColors.primary : AppColors.border,
-                width: 1.5,
-              ),
-            ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(40),
-              onTap: () => cubit.setStatusFilter(value),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Center(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color:
-                          isSelected ? Colors.white : AppColors.textSecondary,
+              return Material(
+                color: isSelected ? AppColors.primary : AppColors.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(40),
+                  side: BorderSide(
+                    color: isSelected ? AppColors.primary : AppColors.border,
+                    width: 1.5,
+                  ),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(40),
+                  onTap: () => cubit.setStatusFilter(value),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Center(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color:
+                              isSelected ? Colors.white : AppColors.textSecondary,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildBody(CustomerOrdersState state, CustomerOrdersCubit cubit) {
-    if (state.isLoading) {
-      return SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => const Padding(
-            padding: EdgeInsets.only(bottom: 16),
-            child: AppShimmer(
-              width: double.infinity,
-              height: 180,
-              borderRadius: 22,
+  Widget _buildBody(CustomerOrdersCubit cubit) {
+    return BlocBuilder<CustomerOrdersCubit, CustomerOrdersState>(
+      builder: (context, state) {
+        if (state.isLoading) {
+          return SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: AppShimmer(
+                  width: double.infinity,
+                  height: 180,
+                  borderRadius: 22,
+                ),
+              ),
+              childCount: 5,
             ),
-          ),
-          childCount: 5,
-        ),
-      );
-    }
+          );
+        }
 
-    if (state.profileId == null) {
-      return const SliverToBoxAdapter(
-        child: Padding(
-          padding: EdgeInsets.only(top: 40),
-          child: AppEmptyState(
-            icon: Icons.person_off_outlined,
-            title: 'Necesitas iniciar sesión',
-            message: 'Inicia sesión para ver tu historial de pedidos.',
-          ),
-        ),
-      );
-    }
+        if (state.profileId == null) {
+          return const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.only(top: 40),
+              child: AppEmptyState(
+                icon: Icons.person_off_outlined,
+                title: 'Necesitas iniciar sesión',
+                message: 'Inicia sesión para ver tu historial de pedidos.',
+              ),
+            ),
+          );
+        }
 
-    if (state.errorMessage.isNotEmpty && state.orders.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 40),
-          child: AppEmptyState(
-            icon: Icons.error_outline,
-            title: 'Algo salió mal',
-            message: state.errorMessage,
-          ),
-        ),
-      );
-    }
+        if (state.errorMessage.isNotEmpty && state.orders.isEmpty) {
+          return SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 40),
+              child: AppEmptyState(
+                icon: Icons.error_outline,
+                title: 'Algo salió mal',
+                message: state.errorMessage,
+              ),
+            ),
+          );
+        }
 
-    final displayOrders = state.filteredOrders;
+        final displayOrders = state.filteredOrders;
 
-    if (displayOrders.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 40),
-          child: AppEmptyState(
-            icon:
-                state.searchQuery.isNotEmpty
-                    ? Icons.search_off_rounded
-                    : Icons.receipt_long_outlined,
-            title:
-                state.searchQuery.isNotEmpty
-                    ? 'No se encontraron resultados'
-                    : 'Aún no tienes pedidos',
-            message:
-                state.searchQuery.isNotEmpty
-                    ? 'Intenta buscar con otro término u otro filtro.'
-                    : 'Cuando realices una compra, aparecerá aquí tu historial.',
-          ),
-        ),
-      );
-    }
+        if (displayOrders.isEmpty) {
+          return SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 40),
+              child: AppEmptyState(
+                icon:
+                    state.searchQuery.isNotEmpty
+                        ? Icons.search_off_rounded
+                        : Icons.receipt_long_outlined,
+                title:
+                    state.searchQuery.isNotEmpty
+                        ? 'No se encontraron resultados'
+                        : 'Aún no tienes pedidos',
+                message:
+                    state.searchQuery.isNotEmpty
+                        ? 'Intenta buscar con otro término u otro filtro.'
+                        : 'Cuando realices una compra, aparecerá aquí tu historial.',
+              ),
+            ),
+          );
+        }
 
-    return SliverList(
-      delegate: SliverChildBuilderDelegate((context, index) {
-        final order = displayOrders[index];
-        final isProcessing = state.isOrderProcessing(order.id);
-        return CustomerOrderCard(
-          key: ValueKey(order.id),
-          order: order,
-          isProcessing: isProcessing,
-          onReorder: () => _handleReorder(order.id),
+        return SliverList(
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final order = displayOrders[index];
+            final isProcessing = state.isOrderProcessing(order.id);
+            return CustomerOrderCard(
+              key: ValueKey(order.id),
+              order: order,
+              isProcessing: isProcessing,
+              onReorder: () => _handleReorder(order.id),
+            );
+          }, childCount: displayOrders.length),
         );
-      }, childCount: displayOrders.length),
+      },
     );
   }
 }

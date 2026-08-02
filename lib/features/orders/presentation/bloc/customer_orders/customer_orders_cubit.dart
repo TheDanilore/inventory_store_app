@@ -6,6 +6,7 @@ import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_current_profile_id_usecase.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/get_customer_orders_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/get_order_items_uc.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/customer_orders/customer_orders_state.dart';
@@ -75,8 +76,9 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
   }
 
   void setSearchQuery(String query) {
-    final newFiltered = _applyFilters(state.orders, state.statusFilter, query);
-    emit(state.copyWith(searchQuery: query, filteredOrders: newFiltered));
+    final trimmed = query.trim();
+    final newFiltered = _applyFilters(state.orders, state.statusFilter, trimmed);
+    emit(state.copyWith(searchQuery: trimmed, filteredOrders: newFiltered));
   }
 
   final Map<String, List<OrderItemEntity>> _itemsCache = {};
@@ -101,6 +103,16 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
         _itemsCache[orderId] = items;
         return Right(items);
       },
+    );
+  }
+
+  Future<Either<Failure, ({List<CartItemEntity> validItems, List<String> outOfStock, List<String> priceChanged})>> reorderOrder(
+    String orderId,
+  ) async {
+    final itemsResult = await fetchOrderItems(orderId);
+    return itemsResult.fold(
+      (f) => Left(f),
+      (items) => getOrderItemsUc.validateReorderItems(items),
     );
   }
 

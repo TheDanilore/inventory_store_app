@@ -83,7 +83,7 @@ class _CustomerOrderCardState extends State<CustomerOrderCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Pedido #${widget.order.id.substring(0, 8).toUpperCase()}',
+                            'Pedido #${widget.order.id.length >= 8 ? widget.order.id.substring(0, 8).toUpperCase() : widget.order.id.toUpperCase()}',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
                               fontSize: 15,
