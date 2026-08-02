@@ -18,7 +18,8 @@ class OrdersCubit extends Cubit<OrdersState> {
   final GetFilteredOrdersUc _getFilteredOrdersUc;
   final UpdateOrderStatusUc _updateOrderStatusUc;
   final GetOrderItemsUc _getOrderItemsUc;
-  final OrdersRepository _repository; // For fetchOrderItemsForPdf and general access
+  final OrdersRepository
+  _repository; // For fetchOrderItemsForPdf and general access
 
   OrdersCubit({
     required GetFilteredOrdersUc getFilteredOrdersUc,
@@ -118,15 +119,14 @@ class OrdersCubit extends Cubit<OrdersState> {
     loadOrders(reset: true);
   }
 
-  Future<Either<Failure, List<OrderItemEntity>>> fetchOrderItems(String orderId) async {
+  Future<Either<Failure, List<OrderItemEntity>>> fetchOrderItems(
+    String orderId,
+  ) async {
     final result = await _getOrderItemsUc(orderId);
-    return result.fold(
-      (failure) {
-        developer.log('Error en fetchOrderItems (Admin)', error: failure.message);
-        return Left(failure);
-      },
-      (items) => Right(items),
-    );
+    return result.fold((failure) {
+      developer.log('Error en fetchOrderItems (Admin)', error: failure.message);
+      return Left(failure);
+    }, (items) => Right(items));
   }
 
   Future<void> updateOrderStatus(OrderEntity order, String newStatus) async {
@@ -154,8 +154,16 @@ class OrdersCubit extends Cubit<OrdersState> {
         },
       );
     } catch (e, st) {
-      developer.log('Error inesperado actualizando estado', error: e, stackTrace: st);
-      emit(state.copyWith(errorMessage: 'Ocurrió un error inesperado al actualizar la orden.'));
+      developer.log(
+        'Error inesperado actualizando estado',
+        error: e,
+        stackTrace: st,
+      );
+      emit(
+        state.copyWith(
+          errorMessage: 'Ocurrió un error inesperado al actualizar la orden.',
+        ),
+      );
     } finally {
       final updatedProcessing = Set<String>.from(state.processingOrders)
         ..remove(order.id);
@@ -178,7 +186,10 @@ class OrdersCubit extends Cubit<OrdersState> {
 
       await rawItemsResult.fold(
         (failure) async {
-          developer.log('Error obteniendo items para PDF', error: failure.message);
+          developer.log(
+            'Error obteniendo items para PDF',
+            error: failure.message,
+          );
           emit(state.copyWith(errorMessage: failure.message));
         },
         (rawItems) async {

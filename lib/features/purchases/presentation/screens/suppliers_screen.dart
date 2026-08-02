@@ -47,7 +47,8 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
             value: cubit,
             child: SupplierFormModal(
               supplierToEdit: supplier,
-              onSaved: () {}, // Zero Egress: la actualización ocurre in-memory de forma instantnea
+              onSaved:
+                  () {}, // Zero Egress: la actualización ocurre in-memory de forma instantnea
             ),
           ),
     );

@@ -30,7 +30,8 @@ class UsersTab extends StatefulWidget {
   State<UsersTab> createState() => _UsersTabState();
 }
 
-class _UsersTabState extends State<UsersTab> with AutomaticKeepAliveClientMixin {
+class _UsersTabState extends State<UsersTab>
+    with AutomaticKeepAliveClientMixin {
   bool _hasFetched = false;
 
   @override

@@ -255,7 +255,7 @@ class OrderPdfGenerator {
     required String phone,
   }) async {
     final bytes = await buildPdfBytes(
-      order, 
+      order,
       items: items,
       businessName: businessName,
       taxId: taxId,
@@ -278,7 +278,7 @@ class OrderPdfGenerator {
     required String phone,
   }) async {
     final bytes = await buildPdfBytes(
-      order, 
+      order,
       items: items,
       businessName: businessName,
       taxId: taxId,
@@ -301,7 +301,7 @@ class OrderPdfGenerator {
     required String phone,
   }) async {
     final bytes = await buildPdfBytes(
-      order, 
+      order,
       items: items,
       businessName: businessName,
       taxId: taxId,
@@ -326,7 +326,7 @@ class OrderPdfGenerator {
     required String phone,
   }) async {
     final bytes = await buildPdfBytes(
-      order, 
+      order,
       items: items,
       businessName: businessName,
       taxId: taxId,

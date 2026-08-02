@@ -22,7 +22,6 @@ class PosState extends Equatable {
   final List<WarehouseModel> warehouses;
   final List<Map<String, dynamic>> accounts;
 
-
   final PosStatus status;
   final CashShiftEntity? activeShift;
   final List<Map<String, dynamic>> clientMatches;
@@ -109,7 +108,8 @@ class PosState extends Equatable {
       creditInfo: clearClient ? null : (creditInfo ?? this.creditInfo),
       selectedAccountId: selectedAccountId ?? this.selectedAccountId,
       recentOrders: recentOrders ?? this.recentOrders,
-      isLoadingRecentOrders: isLoadingRecentOrders ?? this.isLoadingRecentOrders,
+      isLoadingRecentOrders:
+          isLoadingRecentOrders ?? this.isLoadingRecentOrders,
       recentOrdersError: recentOrdersError ?? this.recentOrdersError,
       discountText: discountText ?? this.discountText,
       isDiscountPercentage: isDiscountPercentage ?? this.isDiscountPercentage,

@@ -143,8 +143,6 @@ class _KardexScreenState extends State<KardexScreen> {
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return BlocListener<KardexCubit, KardexState>(
@@ -168,312 +166,371 @@ class _KardexScreenState extends State<KardexScreen> {
               children: [
                 // Acciones principales en Tablet
                 if (isTablet)
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: () => _openEntryScreen(context),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.shade50,
-                              foregroundColor: Colors.green.shade700,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => _openEntryScreen(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.shade50,
+                            foregroundColor: Colors.green.shade700,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
-                            icon: const Icon(Icons.add_shopping_cart, size: 18),
-                            label: const Text(
-                              'Ingreso',
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          ElevatedButton.icon(
-                            onPressed: () => _openExitScreen(context),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade50,
-                              foregroundColor: Colors.red.shade700,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
+                          icon: const Icon(Icons.add_shopping_cart, size: 18),
+                          label: const Text(
+                            'Ingreso',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: () => _openExitScreen(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade50,
+                            foregroundColor: Colors.red.shade700,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
-                            icon: const Icon(
-                              Icons.remove_circle_outline,
-                              size: 18,
-                            ),
-                            label: const Text(
-                              'Salida',
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  Expanded(
-                    child: RefreshIndicator(
-                      color: AppColors.primary,
-                      onRefresh:
-                          () async => context.read<KardexCubit>().loadMovements(
-                            page: 0,
+                          icon: const Icon(
+                            Icons.remove_circle_outline,
+                            size: 18,
                           ),
-                      child: CustomScrollView(
-                        controller: _scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: [
-                          // --- STICKY HEADER (FILTROS Y BÚSQUEDA) ---
-                          SliverPersistentHeader(
-                            pinned: true,
-                            delegate: _StickyKardexFiltersDelegate(
-                              child: Container(
-                                color: AppColors.background,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _SearchField(
-                                            controller: _searchCtrl,
-                                            hint: 'Buscar producto...',
-                                            onChanged: _onSearchChanged,
-                                            onClear: () {
-                                              _searchCtrl.clear();
-                                              context
-                                                  .read<KardexCubit>()
-                                                  .setSearchText('');
-                                            },
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        BlocBuilder<KardexCubit, KardexState>(
-                                          builder: (context, state) {
-                                            final startDate = state is KardexLoaded ? state.startDate : null;
-                                            final endDate = state is KardexLoaded ? state.endDate : null;
-                                            return DateFilterCalendar(
-                                              dateRange: startDate != null && endDate != null
-                                                      ? DateTimeRange(
-                                                        start: startDate,
-                                                        end: endDate,
-                                                      )
-                                                      : null,
-                                              onDateRangeSelected: (picked) {
-                                                context
-                                                    .read<KardexCubit>()
-                                                    .setDateRange(
-                                                      picked.start,
-                                                      picked.end,
-                                                    );
-                                              },
-                                              onClear: () {
-                                                context
-                                                    .read<KardexCubit>()
-                                                    .setDateRange(null, null);
-                                              },
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    SingleChildScrollView(
-                                      scrollDirection: Axis.horizontal,
-                                      child: BlocBuilder<KardexCubit, KardexState>(
-                                        builder: (context, state) {
-                                          final typeFilter = state is KardexLoaded ? state.typeFilter : 'ALL';
-                                          
-                                          Widget buildChip(String label, String value) {
-                                            final isSelected = typeFilter == value;
-                                            return Padding(
-                                              padding: const EdgeInsets.only(right: 8),
-                                              child: AnimatedContainer(
-                                                duration: const Duration(milliseconds: 200),
-                                                child: FilterChip(
-                                                  label: Text(label),
-                                                  selected: isSelected,
-                                                  onSelected: (_) => context.read<KardexCubit>().setTypeFilter(value),
-                                                  selectedColor: AppColors.primary.withValues(alpha: 0.15),
-                                                  checkmarkColor: AppColors.primary,
-                                                  backgroundColor: AppColors.surface,
-                                                  side: BorderSide(
-                                                    color: isSelected ? Colors.transparent : Colors.grey.shade300,
-                                                  ),
-                                                  labelStyle: TextStyle(
-                                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                                    fontSize: 12,
-                                                    color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          }
-
-                                          return Row(
-                                            children: [
-                                              buildChip('Todos', 'ALL'),
-                                              buildChip('Ingresos', 'ENTRY'),
-                                              buildChip('Salidas', 'EXIT'),
-                                              buildChip('Ventas', 'SALE'),
-                                              buildChip('Devoluciones', 'RETURN'),
-                                            ],
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          label: const Text(
+                            'Salida',
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
-
-                          // --- LISTADO REFACTORIZADO ---
-                          SliverToBoxAdapter(
-                            child: BlocBuilder<KardexCubit, KardexState>(
-                              builder: (context, state) {
-                                final isError = state is KardexError;
-                                final isLoading = state is KardexInitial || state is KardexLoading;
-                                final loadedState = state is KardexLoaded ? state : null;
-                                final movements = loadedState?.movements ?? [];
-                                final totalCount = loadedState?.totalCount ?? 0;
-
-                                if (isError) {
-                                  return Padding(
-                                    padding: const EdgeInsets.all(32.0),
-                                    child: Center(
-                                      child: Text(
-                                        'Error al cargar la información',
-                                        style: TextStyle(color: AppColors.textSecondary),
-                                      ),
-                                    ),
-                                  );
-                                } else if (isLoading && movements.isEmpty) {
-                                  return const KardexSkeleton();
-                                } else if (movements.isEmpty) {
-                                  return const AppEmptyState(
-                                    icon: Icons.history,
-                                    title: 'No hay movimientos',
-                                    message: 'Aún no se han registrado ingresos o salidas de inventario con estos filtros.',
-                                  );
-                                }
-
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (!isLoading)
-                                      Padding(
-                                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                                        child: Text(
-                                          '$totalCount movimientos encontrados',
-                                          style: TextStyle(
-                                            color: Colors.grey.shade700,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    Padding(
-                                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                                      child: ListView.builder(
-                                        physics: const NeverScrollableScrollPhysics(),
-                                        shrinkWrap: true,
-                                        itemCount: movements.length,
-                                        itemBuilder: (context, index) {
-                                          return KardexCard(
-                                            item: movements[index],
-                                            isLast: index == movements.length - 1,
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              bottomNavigationBar: BlocBuilder<KardexCubit, KardexState>(
-                builder: (context, state) {
-                  final loadedState = state is KardexLoaded ? state : null;
-                  final totalPages = loadedState?.totalPages ?? 1;
-                  final currentPage = loadedState?.currentPage ?? 0;
-                  final isLoading = state is KardexInitial || state is KardexLoading;
-                  final isError = state is KardexError;
-
-                  if (totalPages <= 1 || isLoading || isError) {
-                    return const SizedBox.shrink();
-                  }
-
-                  return Container(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, -4),
                         ),
                       ],
                     ),
-                    child: SafeArea(
-                      top: false,
-                      child: AdminPageBlocks(
-                        currentPage: currentPage,
-                        totalPages: totalPages,
-                        onPageChanged: (page) => context.read<KardexCubit>().changePage(page),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              floatingActionButton:
-                  !isTablet
-                      ? FloatingActionButton.extended(
-                        onPressed: () => _showActionOptionsMobile(context),
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        icon: const Icon(Icons.add),
-                        label: ValueListenableBuilder<bool>(
-                          valueListenable: _isFabExtended,
-                          builder: (context, isExtended, _) {
-                            return AnimatedSize(
-                              duration: const Duration(milliseconds: 200),
-                              child:
-                                  isExtended
-                                      ? const Text(
-                                        'Movimiento',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
+                  ),
+                Expanded(
+                  child: RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh:
+                        () async =>
+                            context.read<KardexCubit>().loadMovements(page: 0),
+                    child: CustomScrollView(
+                      controller: _scrollController,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        // --- STICKY HEADER (FILTROS Y BÚSQUEDA) ---
+                        SliverPersistentHeader(
+                          pinned: true,
+                          delegate: _StickyKardexFiltersDelegate(
+                            child: Container(
+                              color: AppColors.background,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _SearchField(
+                                          controller: _searchCtrl,
+                                          hint: 'Buscar producto...',
+                                          onChanged: _onSearchChanged,
+                                          onClear: () {
+                                            _searchCtrl.clear();
+                                            context
+                                                .read<KardexCubit>()
+                                                .setSearchText('');
+                                          },
                                         ),
-                                      )
-                                      : const SizedBox.shrink(),
-                            );
-                          },
+                                      ),
+                                      const SizedBox(width: 12),
+                                      BlocBuilder<KardexCubit, KardexState>(
+                                        builder: (context, state) {
+                                          final startDate =
+                                              state is KardexLoaded
+                                                  ? state.startDate
+                                                  : null;
+                                          final endDate =
+                                              state is KardexLoaded
+                                                  ? state.endDate
+                                                  : null;
+                                          return DateFilterCalendar(
+                                            dateRange:
+                                                startDate != null &&
+                                                        endDate != null
+                                                    ? DateTimeRange(
+                                                      start: startDate,
+                                                      end: endDate,
+                                                    )
+                                                    : null,
+                                            onDateRangeSelected: (picked) {
+                                              context
+                                                  .read<KardexCubit>()
+                                                  .setDateRange(
+                                                    picked.start,
+                                                    picked.end,
+                                                  );
+                                            },
+                                            onClear: () {
+                                              context
+                                                  .read<KardexCubit>()
+                                                  .setDateRange(null, null);
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: BlocBuilder<
+                                      KardexCubit,
+                                      KardexState
+                                    >(
+                                      builder: (context, state) {
+                                        final typeFilter =
+                                            state is KardexLoaded
+                                                ? state.typeFilter
+                                                : 'ALL';
+
+                                        Widget buildChip(
+                                          String label,
+                                          String value,
+                                        ) {
+                                          final isSelected =
+                                              typeFilter == value;
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              right: 8,
+                                            ),
+                                            child: AnimatedContainer(
+                                              duration: const Duration(
+                                                milliseconds: 200,
+                                              ),
+                                              child: FilterChip(
+                                                label: Text(label),
+                                                selected: isSelected,
+                                                onSelected:
+                                                    (_) => context
+                                                        .read<KardexCubit>()
+                                                        .setTypeFilter(value),
+                                                selectedColor: AppColors.primary
+                                                    .withValues(alpha: 0.15),
+                                                checkmarkColor:
+                                                    AppColors.primary,
+                                                backgroundColor:
+                                                    AppColors.surface,
+                                                side: BorderSide(
+                                                  color:
+                                                      isSelected
+                                                          ? Colors.transparent
+                                                          : Colors
+                                                              .grey
+                                                              .shade300,
+                                                ),
+                                                labelStyle: TextStyle(
+                                                  fontWeight:
+                                                      isSelected
+                                                          ? FontWeight.w700
+                                                          : FontWeight.w500,
+                                                  fontSize: 12,
+                                                  color:
+                                                      isSelected
+                                                          ? AppColors.primary
+                                                          : AppColors
+                                                              .textSecondary,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }
+
+                                        return Row(
+                                          children: [
+                                            buildChip('Todos', 'ALL'),
+                                            buildChip('Ingresos', 'ENTRY'),
+                                            buildChip('Salidas', 'EXIT'),
+                                            buildChip('Ventas', 'SALE'),
+                                            buildChip('Devoluciones', 'RETURN'),
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                      )
-                      : null,
-            );
-          },
-        ),
+
+                        // --- LISTADO REFACTORIZADO ---
+                        SliverToBoxAdapter(
+                          child: BlocBuilder<KardexCubit, KardexState>(
+                            builder: (context, state) {
+                              final isError = state is KardexError;
+                              final isLoading =
+                                  state is KardexInitial ||
+                                  state is KardexLoading;
+                              final loadedState =
+                                  state is KardexLoaded ? state : null;
+                              final movements = loadedState?.movements ?? [];
+                              final totalCount = loadedState?.totalCount ?? 0;
+
+                              if (isError) {
+                                return Padding(
+                                  padding: const EdgeInsets.all(32.0),
+                                  child: Center(
+                                    child: Text(
+                                      'Error al cargar la información',
+                                      style: TextStyle(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              } else if (isLoading && movements.isEmpty) {
+                                return const KardexSkeleton();
+                              } else if (movements.isEmpty) {
+                                return const AppEmptyState(
+                                  icon: Icons.history,
+                                  title: 'No hay movimientos',
+                                  message:
+                                      'Aún no se han registrado ingresos o salidas de inventario con estos filtros.',
+                                );
+                              }
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (!isLoading)
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        12,
+                                        16,
+                                        12,
+                                      ),
+                                      child: Text(
+                                        '$totalCount movimientos encontrados',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      0,
+                                      16,
+                                      16,
+                                    ),
+                                    child: ListView.builder(
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      shrinkWrap: true,
+                                      itemCount: movements.length,
+                                      itemBuilder: (context, index) {
+                                        return KardexCard(
+                                          item: movements[index],
+                                          isLast: index == movements.length - 1,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            bottomNavigationBar: BlocBuilder<KardexCubit, KardexState>(
+              builder: (context, state) {
+                final loadedState = state is KardexLoaded ? state : null;
+                final totalPages = loadedState?.totalPages ?? 1;
+                final currentPage = loadedState?.currentPage ?? 0;
+                final isLoading =
+                    state is KardexInitial || state is KardexLoading;
+                final isError = state is KardexError;
+
+                if (totalPages <= 1 || isLoading || isError) {
+                  return const SizedBox.shrink();
+                }
+
+                return Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: AdminPageBlocks(
+                      currentPage: currentPage,
+                      totalPages: totalPages,
+                      onPageChanged:
+                          (page) =>
+                              context.read<KardexCubit>().changePage(page),
+                    ),
+                  ),
+                );
+              },
+            ),
+            floatingActionButton:
+                !isTablet
+                    ? FloatingActionButton.extended(
+                      onPressed: () => _showActionOptionsMobile(context),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      icon: const Icon(Icons.add),
+                      label: ValueListenableBuilder<bool>(
+                        valueListenable: _isFabExtended,
+                        builder: (context, isExtended, _) {
+                          return AnimatedSize(
+                            duration: const Duration(milliseconds: 200),
+                            child:
+                                isExtended
+                                    ? const Text(
+                                      'Movimiento',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                    : const SizedBox.shrink(),
+                          );
+                        },
+                      ),
+                    )
+                    : null,
+          );
+        },
+      ),
     );
   }
 }
@@ -545,10 +602,10 @@ class _SearchField extends StatelessWidget {
             builder: (context, value, child) {
               return value.text.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 18),
-                      color: AppColors.textSecondary,
-                      onPressed: onClear,
-                    )
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    color: AppColors.textSecondary,
+                    onPressed: onClear,
+                  )
                   : const SizedBox.shrink();
             },
           ),

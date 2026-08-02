@@ -40,7 +40,10 @@ class PosAddToCartSheet extends StatefulWidget {
               providers: [
                 BlocProvider.value(value: cartCubit),
                 BlocProvider(
-                  create: (_) => PosAddToCartCubit(sl<ProductsRepository>())..loadData(product),
+                  create:
+                      (_) =>
+                          PosAddToCartCubit(sl<ProductsRepository>())
+                            ..loadData(product),
                 ),
               ],
               child: Dialog(
@@ -68,7 +71,10 @@ class PosAddToCartSheet extends StatefulWidget {
               providers: [
                 BlocProvider.value(value: cartCubit),
                 BlocProvider(
-                  create: (_) => PosAddToCartCubit(sl<ProductsRepository>())..loadData(product),
+                  create:
+                      (_) =>
+                          PosAddToCartCubit(sl<ProductsRepository>())
+                            ..loadData(product),
                 ),
               ],
               child: Padding(
@@ -95,12 +101,13 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
     final cubit = context.read<PosAddToCartCubit>();
     await showDialog<void>(
       context: context,
-      builder: (ctx) => _QuantityDialog(
-        currentQuantity: current,
-        maxStock: maxStock,
-        stockControl: widget.productEntity.stockControl,
-        onSave: (newQty) => cubit.updateQuantity(newQty),
-      ),
+      builder:
+          (ctx) => _QuantityDialog(
+            currentQuantity: current,
+            maxStock: maxStock,
+            stockControl: widget.productEntity.stockControl,
+            onSave: (newQty) => cubit.updateQuantity(newQty),
+          ),
     );
   }
 
@@ -117,16 +124,20 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: widget.isDialogMode
-                  ? BorderRadius.circular(20)
-                  : const BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius:
+                  widget.isDialogMode
+                      ? BorderRadius.circular(20)
+                      : const BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: AppEmptyState(
               icon: Icons.wifi_off_rounded,
               title: 'Error de red',
               message: state.message,
               action: ElevatedButton.icon(
-                onPressed: () => context.read<PosAddToCartCubit>().loadData(widget.productEntity),
+                onPressed:
+                    () => context.read<PosAddToCartCubit>().loadData(
+                      widget.productEntity,
+                    ),
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Reintentar'),
               ),
@@ -141,328 +152,353 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                 ? loadedState.selectedVariant!.images.first.imageUrl
                 : widget.productEntity.primaryImageUrl;
 
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        widget.isDialogMode ? 20 : 8,
-        24,
-        widget.isDialogMode
-            ? 24
-            : (MediaQuery.of(context).viewInsets.bottom + 28),
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius:
+        return Container(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            widget.isDialogMode ? 20 : 8,
+            24,
             widget.isDialogMode
-                ? BorderRadius.circular(20)
-                : const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (widget.isDialogMode) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Row(
-                  children: [
-                    Icon(
-                      Icons.shopping_bag_outlined,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Agregar al Carrito',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 20),
-                  onPressed: () => Navigator.pop(context),
-                  tooltip: 'Cerrar',
-                ),
-              ],
-            ),
-            const Divider(height: 20),
-          ] else ...[
-            // Handle
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ],
-
-          // Header producto
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+                ? 24
+                : (MediaQuery.of(context).viewInsets.bottom + 28),
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius:
+                widget.isDialogMode
+                    ? BorderRadius.circular(20)
+                    : const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child:
-                    imageUrl != null
-                        ? Image.network(
-                          imageUrl,
-                          width: 72,
-                          height: 72,
-                          fit: BoxFit.cover,
-                          errorBuilder:
-                              (_, _, _) => const _ImgPlaceholder(size: 72),
-                        )
-                        : const _ImgPlaceholder(size: 72),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              if (widget.isDialogMode) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      widget.productEntity.name,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'S/ ${loadedState.currentPrice.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.teal,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    _StockBadge(
-                      hasStockControl: loadedState.hasStockControl,
-                      stock: stock,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          // Variantes
-          if (loadedState.variants.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            const Text(
-              'Variante',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(AppColors.radius),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<ProductVariantEntity>(
-                  value: loadedState.selectedVariant,
-                  isExpanded: true,
-                  icon: const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.textSecondary,
-                  ),
-                  items:
-                      loadedState.variants.map((v) {
-                        final vStock = loadedState.stockByVariant[v.id] ?? 0;
-                        final stockLabel =
-                            loadedState.hasStockControl
-                                ? '($vStock en stock)'
-                                : '(Stock Libre)';
-                        return DropdownMenuItem(
-                          value: v,
-                          child: Text(
-                            '${v.label} · S/ ${(v.salePrice)?.toStringAsFixed(2)} $stockLabel',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      context.read<PosAddToCartCubit>().selectVariant(val);
-                    }
-                  },
-                ),
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 20),
-          const Text(
-            'Cantidad',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(AppColors.radius),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                _QtyButton(
-                  icon: Icons.remove_rounded,
-                  enabled: loadedState.quantity > 1,
-                  onTap: () => context.read<PosAddToCartCubit>().updateQuantity(loadedState.quantity - 1),
-                ),
-                Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap:
-                          () => _showQuantityDialog(context, loadedState.quantity, stock),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Text(
-                          '${loadedState.quantity}',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
+                    const Row(
+                      children: [
+                        Icon(
+                          Icons.shopping_bag_outlined,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Agregar al Carrito',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
                           ),
                         ),
-                      ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                      tooltip: 'Cerrar',
+                    ),
+                  ],
+                ),
+                const Divider(height: 20),
+              ] else ...[
+                // Handle
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
-                _QtyButton(
-                  icon: Icons.add_rounded,
-                  enabled: !loadedState.hasStockControl || loadedState.quantity < stock,
-                  onTap: () => context.read<PosAddToCartCubit>().updateQuantity(loadedState.quantity + 1),
-                ),
               ],
-            ),
-          ),
-          const SizedBox(height: 24),
 
-          // Botón agregar al POS
-          GestureDetector(
-            onTap:
-                loadedState.canSell
-                    ? () {
-                      // Solo vibrar si no es web para evitar MissingPluginException
-                      if (!kIsWeb) {
-                        Vibration.vibrate(duration: 50, amplitude: 128);
-                      }
-                      
-                      final selVar = loadedState.selectedVariant;
-                      if (selVar == null && loadedState.variants.isNotEmpty) return;
-
-                      try {
-                        final cartItem = CartItemEntity.fromPosSelection(
-                          productEntity: widget.productEntity,
-                          selectedVariant: selVar,
-                          quantity: loadedState.quantity,
-                          stock: stock,
-                          hasStockControl: loadedState.hasStockControl,
-                          imageUrl: imageUrl,
-                        );
-                        
-                        context.read<CartCubit>().addItem(cartItem);
-                        Navigator.pop(context);
-                        AppSnackbar.show(
-                          context,
-                          message: 'Producto agregado a la caja',
-                          type: SnackbarType.success,
-                        );
-                      } catch (e) {
-                        AppSnackbar.show(
-                          context,
-                          message: e.toString().replaceAll('Exception: ', ''),
-                          type: SnackbarType.error,
-                        );
-                      }
-                    }
-                    : null,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                gradient:
-                    loadedState.canSell
-                        ? const LinearGradient(
-                          colors: [Color(0xFF0D9488), Color(0xFF0F766E)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                        : null,
-                color: !loadedState.canSell ? const Color(0xFFE2E8F0) : null,
-                borderRadius: BorderRadius.circular(AppColors.radius),
-                boxShadow:
-                    loadedState.canSell
-                        ? [
-                          BoxShadow(
-                            color: AppColors.teal.withValues(alpha: 0.35),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ]
-                        : null,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              // Header producto
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.shopping_cart_checkout_rounded,
-                    color: loadedState.canSell ? Colors.white : AppColors.textMuted,
-                    size: 20,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child:
+                        imageUrl != null
+                            ? Image.network(
+                              imageUrl,
+                              width: 72,
+                              height: 72,
+                              fit: BoxFit.cover,
+                              errorBuilder:
+                                  (_, _, _) => const _ImgPlaceholder(size: 72),
+                            )
+                            : const _ImgPlaceholder(size: 72),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    loadedState.canSell
-                        ? 'Agregar · S/ ${(loadedState.currentPrice * loadedState.quantity).toStringAsFixed(2)}'
-                        : (loadedState.selectedVariant == null && loadedState.variants.isNotEmpty
-                            ? 'Sin variante activa'
-                            : 'Sin stock disponible'),
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: loadedState.canSell ? Colors.white : AppColors.textMuted,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.productEntity.name,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'S/ ${loadedState.currentPrice.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.teal,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        _StockBadge(
+                          hasStockControl: loadedState.hasStockControl,
+                          stock: stock,
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
+
+              // Variantes
+              if (loadedState.variants.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                const Text(
+                  'Variante',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(AppColors.radius),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<ProductVariantEntity>(
+                      value: loadedState.selectedVariant,
+                      isExpanded: true,
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: AppColors.textSecondary,
+                      ),
+                      items:
+                          loadedState.variants.map((v) {
+                            final vStock =
+                                loadedState.stockByVariant[v.id] ?? 0;
+                            final stockLabel =
+                                loadedState.hasStockControl
+                                    ? '($vStock en stock)'
+                                    : '(Stock Libre)';
+                            return DropdownMenuItem(
+                              value: v,
+                              child: Text(
+                                '${v.label} · S/ ${(v.salePrice)?.toStringAsFixed(2)} $stockLabel',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          context.read<PosAddToCartCubit>().selectVariant(val);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 20),
+              const Text(
+                'Cantidad',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(AppColors.radius),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    _QtyButton(
+                      icon: Icons.remove_rounded,
+                      enabled: loadedState.quantity > 1,
+                      onTap:
+                          () => context
+                              .read<PosAddToCartCubit>()
+                              .updateQuantity(loadedState.quantity - 1),
+                    ),
+                    Expanded(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap:
+                              () => _showQuantityDialog(
+                                context,
+                                loadedState.quantity,
+                                stock,
+                              ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Text(
+                              '${loadedState.quantity}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    _QtyButton(
+                      icon: Icons.add_rounded,
+                      enabled:
+                          !loadedState.hasStockControl ||
+                          loadedState.quantity < stock,
+                      onTap:
+                          () => context
+                              .read<PosAddToCartCubit>()
+                              .updateQuantity(loadedState.quantity + 1),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Botón agregar al POS
+              GestureDetector(
+                onTap:
+                    loadedState.canSell
+                        ? () {
+                          // Solo vibrar si no es web para evitar MissingPluginException
+                          if (!kIsWeb) {
+                            Vibration.vibrate(duration: 50, amplitude: 128);
+                          }
+
+                          final selVar = loadedState.selectedVariant;
+                          if (selVar == null && loadedState.variants.isNotEmpty)
+                            return;
+
+                          try {
+                            final cartItem = CartItemEntity.fromPosSelection(
+                              productEntity: widget.productEntity,
+                              selectedVariant: selVar,
+                              quantity: loadedState.quantity,
+                              stock: stock,
+                              hasStockControl: loadedState.hasStockControl,
+                              imageUrl: imageUrl,
+                            );
+
+                            context.read<CartCubit>().addItem(cartItem);
+                            Navigator.pop(context);
+                            AppSnackbar.show(
+                              context,
+                              message: 'Producto agregado a la caja',
+                              type: SnackbarType.success,
+                            );
+                          } catch (e) {
+                            AppSnackbar.show(
+                              context,
+                              message: e.toString().replaceAll(
+                                'Exception: ',
+                                '',
+                              ),
+                              type: SnackbarType.error,
+                            );
+                          }
+                        }
+                        : null,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    gradient:
+                        loadedState.canSell
+                            ? const LinearGradient(
+                              colors: [Color(0xFF0D9488), Color(0xFF0F766E)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                            : null,
+                    color:
+                        !loadedState.canSell ? const Color(0xFFE2E8F0) : null,
+                    borderRadius: BorderRadius.circular(AppColors.radius),
+                    boxShadow:
+                        loadedState.canSell
+                            ? [
+                              BoxShadow(
+                                color: AppColors.teal.withValues(alpha: 0.35),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                            : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.shopping_cart_checkout_rounded,
+                        color:
+                            loadedState.canSell
+                                ? Colors.white
+                                : AppColors.textMuted,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        loadedState.canSell
+                            ? 'Agregar · S/ ${(loadedState.currentPrice * loadedState.quantity).toStringAsFixed(2)}'
+                            : (loadedState.selectedVariant == null &&
+                                    loadedState.variants.isNotEmpty
+                                ? 'Sin variante activa'
+                                : 'Sin stock disponible'),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color:
+                              loadedState.canSell
+                                  ? Colors.white
+                                  : AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        );
       },
     );
   }
@@ -645,13 +681,12 @@ class _QuantityDialogState extends State<_QuantityDialog> {
           style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
           decoration: InputDecoration(
             counterText: '',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
             contentPadding: const EdgeInsets.symmetric(vertical: 20),
-            helperText: widget.stockControl
-                ? 'Stock máximo disponible: ${widget.maxStock}'
-                : 'Stock libre (Sin límite)',
+            helperText:
+                widget.stockControl
+                    ? 'Stock máximo disponible: ${widget.maxStock}'
+                    : 'Stock libre (Sin límite)',
             helperStyle: const TextStyle(
               color: AppColors.primary,
               fontWeight: FontWeight.bold,
@@ -682,14 +717,9 @@ class _QuantityDialogState extends State<_QuantityDialog> {
           ),
         ),
         ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-          ),
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
           onPressed: _submit,
-          child: const Text(
-            'Guardar',
-            style: TextStyle(color: Colors.white),
-          ),
+          child: const Text('Guardar', style: TextStyle(color: Colors.white)),
         ),
       ],
     );

@@ -57,7 +57,8 @@ class GeocodingService {
 
   // Cabeceras obligatorias para evitar bloqueo (HTTP 403 / 429) en servidores OSM/Photon al ejecutarse como APK en Android
   static const Map<String, String> _headers = {
-    'User-Agent': 'InventoryStoreApp/1.0 (com.inventorystore.app; contact@inventorystore.app)',
+    'User-Agent':
+        'InventoryStoreApp/1.0 (com.inventorystore.app; contact@inventorystore.app)',
     'Accept': 'application/json',
     'Accept-Language': 'es,es-ES;q=0.9,es-419;q=0.8',
   };

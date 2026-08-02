@@ -93,7 +93,10 @@ class _CustomerOrderCardState extends State<CustomerOrderCard> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            DateFormat('dd MMM yyyy · HH:mm', 'es').format(createdAt),
+                            DateFormat(
+                              'dd MMM yyyy · HH:mm',
+                              'es',
+                            ).format(createdAt),
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 12,

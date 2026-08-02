@@ -2,7 +2,8 @@ import 'package:inventory_store_app/features/inventory/domain/entities/kardex_mo
 
 abstract class KardexRepository {
   /// Returns entities — used by domain use cases (PDF export, etc.)
-  Future<({List<KardexMovementEntity> movements, int totalCount})> getKardexMovements({
+  Future<({List<KardexMovementEntity> movements, int totalCount})>
+  getKardexMovements({
     DateTime? startDate,
     DateTime? endDate,
     String typeFilter = 'ALL',

@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as import_developer;
-import 'package:inventory_store_app/features/users/domain/usecases/export_users_csv_usecase.dart' as import_export;
+import 'package:inventory_store_app/features/users/domain/usecases/export_users_csv_usecase.dart'
+    as import_export;
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -105,14 +106,15 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
     }
 
     try {
-      final role = _tabController.index == 0
-          ? AppRoles.customer
-          : _tabController.index == 1
-          ? AppRoles.admin
-          : AppRoles.employee;
+      final role =
+          _tabController.index == 0
+              ? AppRoles.customer
+              : _tabController.index == 1
+              ? AppRoles.admin
+              : AppRoles.employee;
 
       final useCase = sl<import_export.ExportUsersCsvUseCase>();
-      
+
       final result = await useCase(
         role: role,
         searchQuery: _debouncedQuery,
@@ -136,21 +138,21 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
             Navigator.of(context).pop();
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text(
-                  'No hay usuarios encontrados para exportar.',
-                ),
+                content: Text('No hay usuarios encontrados para exportar.'),
               ),
             );
             return;
           }
 
           final bytes = utf8.encode(csvString);
-          final tabLabel = _tabController.index == 0
-              ? 'clientes'
-              : _tabController.index == 1
-              ? 'admins'
-              : 'empleados';
-          final fileName = 'usuarios_${tabLabel}_${DateTime.now().millisecondsSinceEpoch}';
+          final tabLabel =
+              _tabController.index == 0
+                  ? 'clientes'
+                  : _tabController.index == 1
+                  ? 'admins'
+                  : 'empleados';
+          final fileName =
+              'usuarios_${tabLabel}_${DateTime.now().millisecondsSinceEpoch}';
 
           await FileSaver.instance.saveFile(
             name: '$fileName.csv',
@@ -162,9 +164,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
             Navigator.of(context).pop();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                  '✅ Exportado: $fileName.csv',
-                ),
+                content: Text('✅ Exportado: $fileName.csv'),
                 backgroundColor: Colors.green.shade600,
                 duration: const Duration(seconds: 4),
               ),
@@ -173,7 +173,12 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
         },
       );
     } catch (e, st) {
-      import_developer.log('🔴 [CSV Export] Error al exportar: $e', error: e, stackTrace: st, name: 'UsersManagementScreen');
+      import_developer.log(
+        '🔴 [CSV Export] Error al exportar: $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersManagementScreen',
+      );
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -232,20 +237,21 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                               Icons.search_rounded,
                               color: Colors.grey.shade400,
                             ),
-                            suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                              valueListenable: _searchCtrl,
-                              builder: (context, value, child) {
-                                return value.text.isNotEmpty
-                                    ? IconButton(
-                                      icon: const Icon(
-                                        Icons.clear_rounded,
-                                        color: Colors.grey,
-                                      ),
-                                      onPressed: _clearSearch,
-                                    )
-                                    : const SizedBox.shrink();
-                              },
-                            ),
+                            suffixIcon:
+                                ValueListenableBuilder<TextEditingValue>(
+                                  valueListenable: _searchCtrl,
+                                  builder: (context, value, child) {
+                                    return value.text.isNotEmpty
+                                        ? IconButton(
+                                          icon: const Icon(
+                                            Icons.clear_rounded,
+                                            color: Colors.grey,
+                                          ),
+                                          onPressed: _clearSearch,
+                                        )
+                                        : const SizedBox.shrink();
+                                  },
+                                ),
                             filled: true,
                             fillColor: Colors.grey.shade50,
                             contentPadding: const EdgeInsets.symmetric(
@@ -288,22 +294,23 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                           onTap: _isExporting ? null : _exportToCsv,
                           child: Tooltip(
                             message: 'Exportar tab actual a CSV',
-                            child: _isExporting
-                                ? Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
+                            child:
+                                _isExporting
+                                    ? Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.green.shade700,
+                                        ),
+                                      ),
+                                    )
+                                    : Icon(
+                                      Icons.file_download_outlined,
                                       color: Colors.green.shade700,
                                     ),
-                                  ),
-                                )
-                                : Icon(
-                                    Icons.file_download_outlined,
-                                    color: Colors.green.shade700,
-                                  ),
                           ),
                         ),
                       ),

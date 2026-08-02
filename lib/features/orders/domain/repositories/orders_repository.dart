@@ -11,7 +11,9 @@ abstract class OrdersRepository {
     DateTime? lastCreatedAt,
   });
 
-  Future<Either<Failure, List<OrderEntity>>> getPendingOrdersByCustomer(String customerId);
+  Future<Either<Failure, List<OrderEntity>>> getPendingOrdersByCustomer(
+    String customerId,
+  );
 
   Stream<Either<Failure, int>> watchPendingOrdersCount();
 
@@ -71,10 +73,14 @@ abstract class OrdersRepository {
   );
 
   Future<Either<Failure, List<Map<String, dynamic>>>> getFinancialAccounts();
-  Future<Either<Failure, Map<String, dynamic>?>> getProfileById(String profileId);
-  Future<Either<Failure, List<Map<String, dynamic>>>> searchCustomers(String query);
+  Future<Either<Failure, Map<String, dynamic>?>> getProfileById(
+    String profileId,
+  );
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchCustomers(
+    String query,
+  );
   Future<Either<Failure, String?>> checkActiveCashShift();
-  
+
   Future<Either<Failure, void>> registerCreditPayment({
     required String? customerId,
     required String? creditId,

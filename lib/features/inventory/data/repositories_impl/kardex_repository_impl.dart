@@ -47,7 +47,8 @@ class KardexRepositoryImpl implements KardexRepository {
   }
 
   @override
-  Future<({List<KardexMovementEntity> movements, int totalCount})> getKardexMovements({
+  Future<({List<KardexMovementEntity> movements, int totalCount})>
+  getKardexMovements({
     DateTime? startDate,
     DateTime? endDate,
     String typeFilter = 'ALL',
@@ -86,9 +87,10 @@ class KardexRepositoryImpl implements KardexRepository {
     final dataList = response.data as List;
     final count = response.count;
 
-    final movements = dataList
-        .map((row) => KardexMovementModel.fromSupabaseRow(row).toEntity())
-        .toList();
+    final movements =
+        dataList
+            .map((row) => KardexMovementModel.fromSupabaseRow(row).toEntity())
+            .toList();
 
     return (movements: movements, totalCount: count);
   }

@@ -34,7 +34,10 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
 
       List<OrderEntity> pendingOrders = [];
       ordersResult.fold(
-        (l) => developer.log('orders error: ${l.message}', name: 'RegisterPaymentCubit'),
+        (l) => developer.log(
+          'orders error: ${l.message}',
+          name: 'RegisterPaymentCubit',
+        ),
         (r) => pendingOrders = r as List<OrderEntity>,
       );
 
@@ -42,31 +45,43 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
       if (accountsResult is List<FinancialAccountEntity>) {
         accounts = accountsResult.where((a) => a.isActive).toList();
       } else {
-        developer.log('accounts error: invalid type or result', name: 'RegisterPaymentCubit');
+        developer.log(
+          'accounts error: invalid type or result',
+          name: 'RegisterPaymentCubit',
+        );
       }
-      
+
       // Select first account if available
       FinancialAccountEntity? selectedAccount;
       if (accounts.isNotEmpty) {
         selectedAccount = accounts.first;
       }
 
-      emit(state.copyWith(
-        pendingOrders: pendingOrders,
-        accounts: accounts,
-        selectedAccount: selectedAccount,
-        isLoading: false,
-      ));
+      emit(
+        state.copyWith(
+          pendingOrders: pendingOrders,
+          accounts: accounts,
+          selectedAccount: selectedAccount,
+          isLoading: false,
+        ),
+      );
 
       if (selectedAccount != null && selectedAccount.type == 'CAJA') {
         await _checkActiveShift(selectedAccount.id);
       }
     } catch (e, st) {
-      developer.log('loadInitialData error', error: e, stackTrace: st, name: 'RegisterPaymentCubit');
-      emit(state.copyWith(
-        isLoading: false,
-        loadingError: 'Error al cargar los datos: $e',
-      ));
+      developer.log(
+        'loadInitialData error',
+        error: e,
+        stackTrace: st,
+        name: 'RegisterPaymentCubit',
+      );
+      emit(
+        state.copyWith(
+          isLoading: false,
+          loadingError: 'Error al cargar los datos: $e',
+        ),
+      );
     }
   }
 
@@ -78,7 +93,12 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
         (r) => emit(state.copyWith(activeShift: r)),
       );
     } catch (e, st) {
-      developer.log('checkActiveShift error', error: e, stackTrace: st, name: 'RegisterPaymentCubit');
+      developer.log(
+        'checkActiveShift error',
+        error: e,
+        stackTrace: st,
+        name: 'RegisterPaymentCubit',
+      );
       emit(state.copyWith(clearActiveShift: true));
     }
   }
@@ -96,10 +116,12 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
   }
 
   void selectQuickAmount(double amount, String chipId, double maxDebt) {
-    emit(state.copyWith(
-      selectedQuickChip: chipId,
-      amount: amount.toStringAsFixed(2),
-    ));
+    emit(
+      state.copyWith(
+        selectedQuickChip: chipId,
+        amount: amount.toStringAsFixed(2),
+      ),
+    );
     validateAmount(amount.toStringAsFixed(2), maxDebt, fromQuick: true);
   }
 
@@ -115,31 +137,45 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
 
     final amount = double.tryParse(value.trim());
     if (amount == null) {
-      emit(state.copyWith(amount: value, amountError: 'Ingrese un monto válido'));
+      emit(
+        state.copyWith(amount: value, amountError: 'Ingrese un monto válido'),
+      );
       return;
     }
 
     if (amount <= 0) {
-      emit(state.copyWith(amount: value, amountError: 'El monto debe ser mayor a 0'));
+      emit(
+        state.copyWith(
+          amount: value,
+          amountError: 'El monto debe ser mayor a 0',
+        ),
+      );
       return;
     }
 
     if (state.selectedOrder != null) {
-      final pending = state.selectedOrder!.totalAmount - state.selectedOrder!.amountPaid;
-      
+      final pending =
+          state.selectedOrder!.totalAmount - state.selectedOrder!.amountPaid;
+
       if (amount > pending) {
-        emit(state.copyWith(
-          amount: value,
-          amountError: 'Máximo para este pedido: S/ ${pending.toStringAsFixed(2)}',
-        ));
+        emit(
+          state.copyWith(
+            amount: value,
+            amountError:
+                'Máximo para este pedido: S/ ${pending.toStringAsFixed(2)}',
+          ),
+        );
         return;
       }
     } else {
       if (amount > maxDebt) {
-        emit(state.copyWith(
-          amount: value,
-          amountError: 'Supera la deuda total (S/ ${maxDebt.toStringAsFixed(2)})',
-        ));
+        emit(
+          state.copyWith(
+            amount: value,
+            amountError:
+                'Supera la deuda total (S/ ${maxDebt.toStringAsFixed(2)})',
+          ),
+        );
         return;
       }
     }
@@ -149,18 +185,33 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
 
   Future<void> submitPayment({
     required double debt,
-    required Future<void> Function(double amount, String? accountId, String? orderId, String? notes) onSavePayment,
+    required Future<void> Function(
+      double amount,
+      String? accountId,
+      String? orderId,
+      String? notes,
+    )
+    onSavePayment,
     required String notesText,
   }) async {
     if (debt <= 0) {
-      emit(state.copyWith(errorMessage: 'El cliente no tiene deuda pendiente para abonar.'));
+      emit(
+        state.copyWith(
+          errorMessage: 'El cliente no tiene deuda pendiente para abonar.',
+        ),
+      );
       return;
     }
 
     if (state.selectedAccount != null &&
         state.selectedAccount!.type == 'CAJA' &&
         state.activeShift == null) {
-      emit(state.copyWith(errorMessage: 'La cuenta Caja seleccionada no tiene un turno abierto.'));
+      emit(
+        state.copyWith(
+          errorMessage:
+              'La cuenta Caja seleccionada no tiene un turno abierto.',
+        ),
+      );
       return;
     }
 
@@ -170,25 +221,34 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
       return;
     }
 
-    emit(state.copyWith(isSaving: true, clearErrorMessage: true, isSuccess: false));
-    
+    emit(
+      state.copyWith(isSaving: true, clearErrorMessage: true, isSuccess: false),
+    );
+
     try {
       await onSavePayment(
-        amount, 
-        state.selectedAccount?.id, 
-        state.selectedOrder?.id, 
+        amount,
+        state.selectedAccount?.id,
+        state.selectedOrder?.id,
         notesText.isEmpty ? 'Abono registrado a crédito' : notesText,
       );
       emit(state.copyWith(isSaving: false, isSuccess: true));
     } catch (e, st) {
-      developer.log('submitPayment error', error: e, stackTrace: st, name: 'RegisterPaymentCubit');
-      emit(state.copyWith(
-        isSaving: false, 
-        errorMessage: 'Error al registrar el pago: $e',
-      ));
+      developer.log(
+        'submitPayment error',
+        error: e,
+        stackTrace: st,
+        name: 'RegisterPaymentCubit',
+      );
+      emit(
+        state.copyWith(
+          isSaving: false,
+          errorMessage: 'Error al registrar el pago: $e',
+        ),
+      );
     }
   }
-  
+
   void clearErrorMessage() {
     emit(state.copyWith(clearErrorMessage: true));
   }

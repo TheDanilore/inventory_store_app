@@ -149,7 +149,7 @@ class PosCubit extends Cubit<PosState> {
       return;
     }
     emit(state.copyWith(isLoadingRecentOrders: true, recentOrdersError: ''));
-    
+
     final result = await _posRepository.fetchRecentOrders(limit: 10);
     result.fold(
       (failure) {
@@ -162,10 +162,7 @@ class PosCubit extends Cubit<PosState> {
       },
       (orders) {
         emit(
-          state.copyWith(
-            isLoadingRecentOrders: false,
-            recentOrders: orders,
-          ),
+          state.copyWith(isLoadingRecentOrders: false, recentOrders: orders),
         );
       },
     );

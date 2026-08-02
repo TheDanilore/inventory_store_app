@@ -71,7 +71,10 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
       // Warehouses
       (futures[0] as Either<dynamic, dynamic>).fold(
-        (l) => developer.log('warehouses error: ${l.message}', name: 'InventoryEntryFormCubit'),
+        (l) => developer.log(
+          'warehouses error: ${l.message}',
+          name: 'InventoryEntryFormCubit',
+        ),
         (r) {
           warehouses = r as List<WarehouseModel>;
         },
@@ -79,7 +82,10 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
       // Suppliers
       (futures[1] as Either<dynamic, dynamic>).fold(
-        (l) => developer.log('suppliers error: ${l.message}', name: 'InventoryEntryFormCubit'),
+        (l) => developer.log(
+          'suppliers error: ${l.message}',
+          name: 'InventoryEntryFormCubit',
+        ),
         (r) {
           suppliers = r as List<SupplierEntity>;
         },
@@ -87,7 +93,10 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
       // Accounts
       (futures[2] as Either<dynamic, dynamic>).fold(
-        (l) => developer.log('accounts error: ${l.message}', name: 'InventoryEntryFormCubit'),
+        (l) => developer.log(
+          'accounts error: ${l.message}',
+          name: 'InventoryEntryFormCubit',
+        ),
         (r) {
           accounts =
               (r as List<FinancialAccountModel>)
@@ -123,7 +132,12 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
         await _loadDraft();
       }
     } catch (e, st) {
-      developer.log('init error', error: e, stackTrace: st, name: 'InventoryEntryFormCubit');
+      developer.log(
+        'init error',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntryFormCubit',
+      );
       emit(state.copyWith(errorMessage: 'Error cargando datos.'));
     } finally {
       emit(state.copyWith(isLoading: false));
@@ -280,7 +294,12 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       await clearDraft();
       emit(state.copyWith(isSaving: false, isSuccess: true));
     } catch (e, st) {
-      developer.log('saveEntry error', error: e, stackTrace: st, name: 'InventoryEntryFormCubit');
+      developer.log(
+        'saveEntry error',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntryFormCubit',
+      );
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
@@ -386,7 +405,12 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
           ),
         );
       } catch (e, st) {
-        developer.log('Error parsing draft JSON. Corrupted state found.', error: e, stackTrace: st, name: 'InventoryEntryFormCubit');
+        developer.log(
+          'Error parsing draft JSON. Corrupted state found.',
+          error: e,
+          stackTrace: st,
+          name: 'InventoryEntryFormCubit',
+        );
         await clearDraft();
       }
     }
@@ -473,7 +497,12 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
         ),
       );
     } catch (e, st) {
-      developer.log('Error loading purchase order', error: e, stackTrace: st, name: 'InventoryEntryFormCubit');
+      developer.log(
+        'Error loading purchase order',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntryFormCubit',
+      );
     }
   }
 }

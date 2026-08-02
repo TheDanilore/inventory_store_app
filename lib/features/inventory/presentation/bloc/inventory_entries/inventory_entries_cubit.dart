@@ -23,7 +23,12 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
       final whList = await getActiveWarehouses.call();
       warehouses.addAll(whList.map((w) => w.name).toList());
     } catch (e, st) {
-      developer.log('Error cargando almacenes', error: e, stackTrace: st, name: 'InventoryEntriesCubit');
+      developer.log(
+        'Error cargando almacenes',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntriesCubit',
+      );
     }
 
     emit(
@@ -93,7 +98,12 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
         ),
       );
     } catch (e, st) {
-      developer.log('Error loading inventory entries', error: e, stackTrace: st, name: 'InventoryEntriesCubit');
+      developer.log(
+        'Error loading inventory entries',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntriesCubit',
+      );
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||

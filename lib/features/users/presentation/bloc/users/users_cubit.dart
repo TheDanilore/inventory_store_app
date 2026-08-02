@@ -184,7 +184,7 @@ class UsersCubit extends Cubit<UsersState> {
         // Zero Egress: mutar el estado en RAM en lugar de redescargar toda la tabla
         final updatedUsers = List<UserEntity>.from(state.currentUsers);
         updatedUsers[userIdx] = user.copyWith(isActive: !currentStatus);
-        
+
         emit(
           UsersLoaded(
             users: updatedUsers,

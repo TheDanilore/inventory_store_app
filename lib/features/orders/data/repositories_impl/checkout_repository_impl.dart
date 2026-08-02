@@ -85,11 +85,16 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
     required List<CartItemEntity> itemsToBuy,
   }) async {
     try {
-      final itemsJson = itemsToBuy.map((item) => {
-        'product_id': item.productId,
-        'variant_id': item.variantId,
-        'quantity': item.quantity,
-      }).toList();
+      final itemsJson =
+          itemsToBuy
+              .map(
+                (item) => {
+                  'product_id': item.productId,
+                  'variant_id': item.variantId,
+                  'quantity': item.quantity,
+                },
+              )
+              .toList();
 
       final orderResp = await _supabase.rpc(
         'process_customer_checkout',

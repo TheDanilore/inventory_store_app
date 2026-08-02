@@ -152,7 +152,7 @@ class SuppliersCubit extends Cubit<SuppliersState> {
 
   Future<void> saveSupplier(SupplierEntity supplier) async {
     final currentState = state;
-    
+
     // We only process if we are currently displaying a loaded state or an error state from a previous attempt
     List<SupplierEntity> currentList = [];
     String query = '';
@@ -178,28 +178,32 @@ class SuppliersCubit extends Cubit<SuppliersState> {
       return; // Cannot save if not loaded
     }
 
-    emit(SupplierSaving(
-      currentSuppliers: currentList,
-      searchQuery: query,
-      currentPage: page,
-      totalCount: count,
-    ));
+    emit(
+      SupplierSaving(
+        currentSuppliers: currentList,
+        searchQuery: query,
+        currentPage: page,
+        totalCount: count,
+      ),
+    );
 
     final result = await saveSupplierUseCase(supplier);
 
     result.fold(
       (failure) {
-        emit(SupplierSaveError(
-          currentSuppliers: currentList,
-          searchQuery: query,
-          currentPage: page,
-          totalCount: count,
-          message: failure.message,
-        ));
+        emit(
+          SupplierSaveError(
+            currentSuppliers: currentList,
+            searchQuery: query,
+            currentPage: page,
+            totalCount: count,
+            message: failure.message,
+          ),
+        );
       },
       (savedSupplier) {
         List<SupplierEntity> updatedList = List.from(currentList);
-        
+
         final index = updatedList.indexWhere((s) => s.id == savedSupplier.id);
         if (index >= 0) {
           // Update existing
@@ -210,21 +214,28 @@ class SuppliersCubit extends Cubit<SuppliersState> {
           count++;
         }
 
-        emit(SupplierSaveSuccess(
-          currentSuppliers: updatedList,
-          searchQuery: query,
-          currentPage: page,
-          totalCount: count,
-          message: supplier.id.isEmpty ? 'Proveedor creado' : 'Proveedor actualizado',
-        ));
+        emit(
+          SupplierSaveSuccess(
+            currentSuppliers: updatedList,
+            searchQuery: query,
+            currentPage: page,
+            totalCount: count,
+            message:
+                supplier.id.isEmpty
+                    ? 'Proveedor creado'
+                    : 'Proveedor actualizado',
+          ),
+        );
 
         // Immediately transition back to loaded
-        emit(SuppliersLoaded(
-          suppliers: updatedList,
-          searchQuery: query,
-          currentPage: page,
-          totalCount: count,
-        ));
+        emit(
+          SuppliersLoaded(
+            suppliers: updatedList,
+            searchQuery: query,
+            currentPage: page,
+            totalCount: count,
+          ),
+        );
       },
     );
   }

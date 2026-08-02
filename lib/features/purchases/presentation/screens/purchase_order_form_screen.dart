@@ -1098,7 +1098,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                   controller: _documentNumberCtrl,
                   maxLength: 50,
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-\.\/\s]')),
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r'[a-zA-Z0-9\-\.\/\s]'),
+                    ),
                   ],
                   keyboardType: TextInputType.text,
                   textInputAction: TextInputAction.next,

@@ -19,20 +19,17 @@ class VariantPickerCubit extends Cubit<VariantPickerState> {
         _repository.loadStockByVariant(productId),
       ]);
 
-      final variantsRes = results[0] as dynamic; 
+      final variantsRes = results[0] as dynamic;
       final stockRes = results[1] as dynamic;
 
-      final variantsData = variantsRes.fold(
-        (l) {
-          developer.log(
-            'Error al descargar variantes desde Repositorio',
-            error: l.message,
-            name: 'VariantPickerCubit',
-          );
-          throw Exception(l.message);
-        },
-        (r) => r as List<Map<String, dynamic>>,
-      );
+      final variantsData = variantsRes.fold((l) {
+        developer.log(
+          'Error al descargar variantes desde Repositorio',
+          error: l.message,
+          name: 'VariantPickerCubit',
+        );
+        throw Exception(l.message);
+      }, (r) => r as List<Map<String, dynamic>>);
 
       final variants = <ProductVariantModel>[];
       for (final v in variantsData) {
@@ -48,22 +45,21 @@ class VariantPickerCubit extends Cubit<VariantPickerState> {
         }
       }
 
-      final stockByVariant = stockRes.fold(
-        (l) {
-          developer.log(
-            'Advertencia: No se pudo obtener el resumen de stock por variante',
-            error: l.message,
-            name: 'VariantPickerCubit',
-          );
-          return <String, int>{};
-        },
-        (r) => r as Map<String, int>,
-      );
+      final stockByVariant = stockRes.fold((l) {
+        developer.log(
+          'Advertencia: No se pudo obtener el resumen de stock por variante',
+          error: l.message,
+          name: 'VariantPickerCubit',
+        );
+        return <String, int>{};
+      }, (r) => r as Map<String, int>);
 
-      emit(VariantPickerLoaded(
-        variants: variants.map((v) => v.toEntity()).toList(),
-        stockByVariant: stockByVariant,
-      ));
+      emit(
+        VariantPickerLoaded(
+          variants: variants.map((v) => v.toEntity()).toList(),
+          stockByVariant: stockByVariant,
+        ),
+      );
     } catch (e, st) {
       developer.log(
         'Fallo crítico en loadData de VariantPickerCubit',
@@ -78,11 +74,13 @@ class VariantPickerCubit extends Cubit<VariantPickerState> {
           errMsg.toLowerCase().contains('network') ||
           errMsg.toLowerCase().contains('red');
 
-      emit(VariantPickerError(
-        isNetworkError
-            ? 'No se pudo contactar al servidor. Verifica tu conexión e intenta nuevamente.'
-            : 'Error al cargar variantes: $errMsg',
-      ));
+      emit(
+        VariantPickerError(
+          isNetworkError
+              ? 'No se pudo contactar al servidor. Verifica tu conexión e intenta nuevamente.'
+              : 'Error al cargar variantes: $errMsg',
+        ),
+      );
     }
   }
 }

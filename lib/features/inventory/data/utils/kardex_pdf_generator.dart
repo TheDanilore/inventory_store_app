@@ -65,7 +65,10 @@ class KardexPdfGenerator {
               data:
                   allMovements.map((m) {
                     return [
-                      DateFormat('dd/MM/yy HH:mm', 'es').format(m.date.toLocal()),
+                      DateFormat(
+                        'dd/MM/yy HH:mm',
+                        'es',
+                      ).format(m.date.toLocal()),
                       m.type,
                       m.description,
                       m.reference,

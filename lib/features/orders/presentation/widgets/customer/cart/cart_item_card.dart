@@ -32,10 +32,8 @@ class CartItemCard extends StatelessWidget {
   void _showDirectQuantityDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => _QuantityEditDialog(
-        item: item,
-        cartCubit: cartCubit,
-      ),
+      builder:
+          (context) => _QuantityEditDialog(item: item, cartCubit: cartCubit),
     );
   }
 
@@ -166,25 +164,29 @@ class CartItemCard extends StatelessWidget {
                             Navigator.pop(context); // cerrar loader
                           }
 
-                          res.fold((failure) {
-                            if (context.mounted) {
-                              AppSnackbar.show(
-                                context,
-                                message: 'Error al obtener variantes: ${failure.message}',
-                                type: SnackbarType.error,
-                              );
-                            }
-                          }, (product) {
-                            if (product != null && context.mounted) {
-                              CartVariantPickerSheet.show(
-                                context: context,
-                                cartCubit: cartCubit,
-                                product: product,
-                                existingCartItem: item,
-                                selectedVariantId: item.variantId,
-                              );
-                            }
-                          });
+                          res.fold(
+                            (failure) {
+                              if (context.mounted) {
+                                AppSnackbar.show(
+                                  context,
+                                  message:
+                                      'Error al obtener variantes: ${failure.message}',
+                                  type: SnackbarType.error,
+                                );
+                              }
+                            },
+                            (product) {
+                              if (product != null && context.mounted) {
+                                CartVariantPickerSheet.show(
+                                  context: context,
+                                  cartCubit: cartCubit,
+                                  product: product,
+                                  existingCartItem: item,
+                                  selectedVariantId: item.variantId,
+                                );
+                              }
+                            },
+                          );
                         },
                         child: MouseRegion(
                           cursor: SystemMouseCursors.click,
@@ -452,10 +454,7 @@ class _QuantityEditDialog extends StatefulWidget {
   final CartItemEntity item;
   final CartCubit cartCubit;
 
-  const _QuantityEditDialog({
-    required this.item,
-    required this.cartCubit,
-  });
+  const _QuantityEditDialog({required this.item, required this.cartCubit});
 
   @override
   State<_QuantityEditDialog> createState() => _QuantityEditDialogState();
@@ -480,9 +479,7 @@ class _QuantityEditDialogState extends State<_QuantityEditDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(
         children: [
           Container(
@@ -585,7 +582,10 @@ class _QuantityEditDialogState extends State<_QuantityEditDialog> {
                       'Cantidad ajustada al stock máximo disponible (${widget.item.availableStock})',
                   type: SnackbarType.warning,
                 );
-                widget.cartCubit.updateQuantity(widget.item.cartKey, widget.item.availableStock);
+                widget.cartCubit.updateQuantity(
+                  widget.item.cartKey,
+                  widget.item.availableStock,
+                );
               } else {
                 widget.cartCubit.updateQuantity(widget.item.cartKey, newQty);
               }

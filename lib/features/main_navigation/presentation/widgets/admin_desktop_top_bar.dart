@@ -44,9 +44,10 @@ class AdminDesktopTopBar extends StatelessWidget {
         children: [
           // ── Toggle Sidebar Button ─────────────────────────────────
           AdminAppBarIconButton(
-            icon: isSidebarCollapsed
-                ? Icons.menu_open_rounded
-                : Icons.menu_rounded,
+            icon:
+                isSidebarCollapsed
+                    ? Icons.menu_open_rounded
+                    : Icons.menu_rounded,
             tooltip: isSidebarCollapsed ? 'Expandir menú' : 'Colapsar menú',
             onTap: onToggleSidebar,
           ),
@@ -98,24 +99,25 @@ class AdminDesktopTopBar extends StatelessWidget {
             onTap: () {
               showDialog(
                 context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Row(
-                    children: [
-                      Icon(Icons.notifications_outlined, size: 20),
-                      SizedBox(width: 8),
-                      Text('Notificaciones'),
-                    ],
-                  ),
-                  content: const Text(
-                    'No tienes notificaciones pendientes.\n\nEste módulo estará disponible próximamente.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: const Text('Entendido'),
+                builder:
+                    (ctx) => AlertDialog(
+                      title: const Row(
+                        children: [
+                          Icon(Icons.notifications_outlined, size: 20),
+                          SizedBox(width: 8),
+                          Text('Notificaciones'),
+                        ],
+                      ),
+                      content: const Text(
+                        'No tienes notificaciones pendientes.\n\nEste módulo estará disponible próximamente.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Entendido'),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
               );
             },
           ),
@@ -141,46 +143,47 @@ class AdminDesktopTopBar extends StatelessWidget {
               if (value == 'business') context.go('/admin/business-info');
               if (value == 'logout') context.read<AuthCubit>().logout();
             },
-            itemBuilder: (ctx) => [
-              const PopupMenuItem(
-                value: 'profile',
-                child: Row(
-                  children: [
-                    Icon(Icons.person_outline_rounded, size: 18),
-                    SizedBox(width: 8),
-                    Text('Mi Perfil'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'business',
-                child: Row(
-                  children: [
-                    Icon(Icons.storefront_rounded, size: 18),
-                    SizedBox(width: 8),
-                    Text('Datos de Negocio'),
-                  ],
-                ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.logout_rounded,
-                      size: 18,
-                      color: AppColors.error,
+            itemBuilder:
+                (ctx) => [
+                  const PopupMenuItem(
+                    value: 'profile',
+                    child: Row(
+                      children: [
+                        Icon(Icons.person_outline_rounded, size: 18),
+                        SizedBox(width: 8),
+                        Text('Mi Perfil'),
+                      ],
                     ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Cerrar Sesión',
-                      style: TextStyle(color: AppColors.error),
+                  ),
+                  const PopupMenuItem(
+                    value: 'business',
+                    child: Row(
+                      children: [
+                        Icon(Icons.storefront_rounded, size: 18),
+                        SizedBox(width: 8),
+                        Text('Datos de Negocio'),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            ],
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.logout_rounded,
+                          size: 18,
+                          color: AppColors.error,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Cerrar Sesión',
+                          style: TextStyle(color: AppColors.error),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
             child: const AdminProfileAvatar(),
           ),
         ],

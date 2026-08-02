@@ -764,7 +764,8 @@ class _MovementCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         DateFormat(
-                          'dd/MM/yyyy HH:mm', 'es'
+                          'dd/MM/yyyy HH:mm',
+                          'es',
                         ).format(movement.createdAt.toLocal()),
                         style: const TextStyle(
                           fontSize: 11,

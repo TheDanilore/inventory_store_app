@@ -12,7 +12,12 @@ import 'package:inventory_store_app/features/financial/domain/entities/financial
 class RegisterPaymentModal extends StatelessWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity account;
-  final Future<void> Function(double amount, String? accountId, String? orderId, String? notes)
+  final Future<void> Function(
+    double amount,
+    String? accountId,
+    String? orderId,
+    String? notes,
+  )
   onSavePayment;
 
   const RegisterPaymentModal({
@@ -26,7 +31,12 @@ class RegisterPaymentModal extends StatelessWidget {
     BuildContext context, {
     required CustomerCreditEntity account,
     required VoidCallback onSaved,
-    required Future<void> Function(double amount, String? accountId, String? orderId, String? notes)
+    required Future<void> Function(
+      double amount,
+      String? accountId,
+      String? orderId,
+      String? notes,
+    )
     onSavePayment,
   }) {
     final isMobile = MediaQuery.of(context).size.width < 600;
@@ -59,7 +69,10 @@ class RegisterPaymentModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => GetIt.I<RegisterPaymentCubit>()..loadInitialData(account.profileId),
+      create:
+          (context) =>
+              GetIt.I<RegisterPaymentCubit>()
+                ..loadInitialData(account.profileId),
       child: _RegisterPaymentModalView(
         account: account,
         onSaved: onSaved,
@@ -72,7 +85,13 @@ class RegisterPaymentModal extends StatelessWidget {
 class _RegisterPaymentModalView extends StatefulWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity account;
-  final Future<void> Function(double amount, String? accountId, String? orderId, String? notes) onSavePayment;
+  final Future<void> Function(
+    double amount,
+    String? accountId,
+    String? orderId,
+    String? notes,
+  )
+  onSavePayment;
 
   const _RegisterPaymentModalView({
     required this.onSaved,
@@ -81,7 +100,8 @@ class _RegisterPaymentModalView extends StatefulWidget {
   });
 
   @override
-  State<_RegisterPaymentModalView> createState() => _RegisterPaymentModalViewState();
+  State<_RegisterPaymentModalView> createState() =>
+      _RegisterPaymentModalViewState();
 }
 
 class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
@@ -139,7 +159,10 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
             _amountCtrl.text.trim().isEmpty;
 
         return BlocListener<RegisterPaymentCubit, RegisterPaymentState>(
-          listenWhen: (previous, current) => previous.isSuccess != current.isSuccess || previous.errorMessage != current.errorMessage,
+          listenWhen:
+              (previous, current) =>
+                  previous.isSuccess != current.isSuccess ||
+                  previous.errorMessage != current.errorMessage,
           listener: (context, state) {
             if (state.isSuccess) {
               widget.onSaved();
@@ -158,22 +181,32 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
               cubit.clearErrorMessage();
             }
           },
-          child: _buildContent(context, state, cubit, isMobile, bottomInset, debt, hasDebt, isSubmitDisabled, cajaSinTurno),
+          child: _buildContent(
+            context,
+            state,
+            cubit,
+            isMobile,
+            bottomInset,
+            debt,
+            hasDebt,
+            isSubmitDisabled,
+            cajaSinTurno,
+          ),
         );
       },
     );
   }
 
   Widget _buildContent(
-    BuildContext context, 
-    RegisterPaymentState state, 
+    BuildContext context,
+    RegisterPaymentState state,
     RegisterPaymentCubit cubit,
-    bool isMobile, 
-    double bottomInset, 
-    double debt, 
-    bool hasDebt, 
+    bool isMobile,
+    double bottomInset,
+    double debt,
+    bool hasDebt,
     bool isSubmitDisabled,
-    bool cajaSinTurno
+    bool cajaSinTurno,
   ) {
     final mediaQuery = MediaQuery.of(context);
     final childContent = SingleChildScrollView(
@@ -391,7 +424,10 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
             controller: _amountCtrl,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             onChanged: (val) {
-              final maxDebt = state.selectedOrder != null ? _pendingOf(state.selectedOrder!) : debt;
+              final maxDebt =
+                  state.selectedOrder != null
+                      ? _pendingOf(state.selectedOrder!)
+                      : debt;
               cubit.validateAmount(val, maxDebt);
             },
             decoration: InputDecoration(
@@ -453,10 +489,7 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
             )
           else
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 4,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 border: Border.all(color: AppColors.border),
                 borderRadius: BorderRadius.circular(12),
@@ -622,13 +655,16 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
               ),
               const SizedBox(width: 12),
               ElevatedButton(
-                onPressed: isSubmitDisabled ? null : () {
-                  cubit.submitPayment(
-                    debt: debt, 
-                    onSavePayment: widget.onSavePayment, 
-                    notesText: _notesCtrl.text,
-                  );
-                },
+                onPressed:
+                    isSubmitDisabled
+                        ? null
+                        : () {
+                          cubit.submitPayment(
+                            debt: debt,
+                            onSavePayment: widget.onSavePayment,
+                            notesText: _notesCtrl.text,
+                          );
+                        },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.success,
                   disabledBackgroundColor: Colors.grey.shade300,

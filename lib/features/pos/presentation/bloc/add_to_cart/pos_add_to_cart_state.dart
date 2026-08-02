@@ -4,7 +4,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 
 abstract class PosAddToCartState extends Equatable {
   const PosAddToCartState();
-  
+
   @override
   List<Object?> get props => [];
 }
@@ -57,10 +57,19 @@ class PosAddToCartLoaded extends PosAddToCartState {
     return selectedVariant?.salePrice ?? 0;
   }
 
-  bool get canSell => selectedVariant != null && (!hasStockControl || currentStock > 0) && currentPrice > 0;
+  bool get canSell =>
+      selectedVariant != null &&
+      (!hasStockControl || currentStock > 0) &&
+      currentPrice > 0;
 
   @override
-  List<Object?> get props => [variants, stockByVariant, selectedVariant, quantity, productEntity];
+  List<Object?> get props => [
+    variants,
+    stockByVariant,
+    selectedVariant,
+    quantity,
+    productEntity,
+  ];
 }
 
 class PosAddToCartError extends PosAddToCartState {

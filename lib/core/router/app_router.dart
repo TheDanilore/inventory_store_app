@@ -148,18 +148,12 @@ class AppRouter {
           builder:
               (context, state, child) => MultiBlocProvider(
                 providers: [
-                  BlocProvider(
-                    create: (_) => sl<SidebarBadgeCubit>(),
-                  ),
+                  BlocProvider(create: (_) => sl<SidebarBadgeCubit>()),
                   BlocProvider(
                     create: (_) => sl<CartCubit>()..initCart(cartType: 'pos'),
                   ),
-                  BlocProvider(
-                    create: (_) => sl<PosCubit>(),
-                  ),
-                  BlocProvider(
-                    create: (_) => sl<CashShiftsCubit>(),
-                  ),
+                  BlocProvider(create: (_) => sl<PosCubit>()),
+                  BlocProvider(create: (_) => sl<CashShiftsCubit>()),
                 ],
                 child: child,
               ),
@@ -206,9 +200,7 @@ class AppRouter {
                     create:
                         (_) => sl<CartCubit>()..initCart(cartType: 'customer'),
                   ),
-                  BlocProvider(
-                    create: (_) => sl<WalletCubit>(),
-                  ),
+                  BlocProvider(create: (_) => sl<WalletCubit>()),
                 ],
                 child: CustomerLayout(
                   title: 'Danilore Store',

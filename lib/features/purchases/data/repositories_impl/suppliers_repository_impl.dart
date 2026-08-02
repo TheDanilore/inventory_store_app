@@ -19,7 +19,11 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
     String searchQuery = '',
   }) async {
     try {
-      var query = _supabase.from('suppliers').select('id, name, tax_id, contact_name, phone, email, address, is_active');
+      var query = _supabase
+          .from('suppliers')
+          .select(
+            'id, name, tax_id, contact_name, phone, email, address, is_active',
+          );
 
       final term = searchQuery.trim();
       if (term.isNotEmpty) {
@@ -44,32 +48,58 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
 
       return Right((suppliers: list, totalCount: totalCount));
     } on PostgrestException catch (e, st) {
-      developer.log('[SuppliersRepositoryImpl] fetchSuppliers PostgrestException: ${e.message}', name: 'SuppliersRepository', error: e, stackTrace: st);
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      developer.log(
+        '[SuppliersRepositoryImpl] fetchSuppliers PostgrestException: ${e.message}',
+        name: 'SuppliersRepository',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('[SuppliersRepositoryImpl] fetchSuppliers Error: $e', name: 'SuppliersRepository', error: e, stackTrace: st);
+      developer.log(
+        '[SuppliersRepositoryImpl] fetchSuppliers Error: $e',
+        name: 'SuppliersRepository',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: 'Error inesperado: $e'));
     }
   }
+
   @override
   Future<Either<Failure, List<SupplierEntity>>> getActiveSuppliers() async {
     try {
       final response = await _supabase
           .from('suppliers')
-          .select('id, name, tax_id, contact_name, phone, email, address, is_active')
+          .select(
+            'id, name, tax_id, contact_name, phone, email, address, is_active',
+          )
           .eq('is_active', true)
           .order('name');
-      
-      final list = (response as List)
-          .map((e) => SupplierModel.fromJson(e))
-          .toList();
-          
+
+      final list =
+          (response as List).map((e) => SupplierModel.fromJson(e)).toList();
+
       return Right(list);
     } on PostgrestException catch (e, st) {
-      developer.log('[SuppliersRepositoryImpl] getActiveSuppliers PostgrestException: ${e.message}', name: 'SuppliersRepository', error: e, stackTrace: st);
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      developer.log(
+        '[SuppliersRepositoryImpl] getActiveSuppliers PostgrestException: ${e.message}',
+        name: 'SuppliersRepository',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('[SuppliersRepositoryImpl] getActiveSuppliers Error: $e', name: 'SuppliersRepository', error: e, stackTrace: st);
+      developer.log(
+        '[SuppliersRepositoryImpl] getActiveSuppliers Error: $e',
+        name: 'SuppliersRepository',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: 'Error inesperado: $e'));
     }
   }
@@ -86,16 +116,30 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
           .eq('id', supplierId);
       return const Right(null);
     } on PostgrestException catch (e, st) {
-      developer.log('[SuppliersRepositoryImpl] toggleSupplierStatus PostgrestException: ${e.message}', name: 'SuppliersRepository', error: e, stackTrace: st);
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      developer.log(
+        '[SuppliersRepositoryImpl] toggleSupplierStatus PostgrestException: ${e.message}',
+        name: 'SuppliersRepository',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('[SuppliersRepositoryImpl] toggleSupplierStatus Error: $e', name: 'SuppliersRepository', error: e, stackTrace: st);
+      developer.log(
+        '[SuppliersRepositoryImpl] toggleSupplierStatus Error: $e',
+        name: 'SuppliersRepository',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: 'Error inesperado: $e'));
     }
   }
 
   @override
-  Future<Either<Failure, SupplierEntity>> createSupplier(SupplierEntity supplier) async {
+  Future<Either<Failure, SupplierEntity>> createSupplier(
+    SupplierEntity supplier,
+  ) async {
     try {
       final model = SupplierModel(
         id: '',
@@ -108,27 +152,48 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
         isActive: supplier.isActive,
       );
 
-      final response = await _supabase
-          .from('suppliers')
-          .insert(model.toJson())
-          .select('id, name, tax_id, contact_name, phone, email, address, is_active')
-          .single();
+      final response =
+          await _supabase
+              .from('suppliers')
+              .insert(model.toJson())
+              .select(
+                'id, name, tax_id, contact_name, phone, email, address, is_active',
+              )
+              .single();
 
       return Right(SupplierModel.fromJson(response));
     } on PostgrestException catch (e, st) {
-      developer.log('[SuppliersRepositoryImpl] createSupplier PostgrestException: ${e.message}', name: 'SuppliersRepository', error: e, stackTrace: st);
+      developer.log(
+        '[SuppliersRepositoryImpl] createSupplier PostgrestException: ${e.message}',
+        name: 'SuppliersRepository',
+        error: e,
+        stackTrace: st,
+      );
       if (e.code == '23505') {
-        return const Left(ValidationFailure(message: 'Ya existe un proveedor con ese número de RUC/ID fiscal.'));
+        return const Left(
+          ValidationFailure(
+            message: 'Ya existe un proveedor con ese número de RUC/ID fiscal.',
+          ),
+        );
       }
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('[SuppliersRepositoryImpl] createSupplier Error: $e', name: 'SuppliersRepository', error: e, stackTrace: st);
+      developer.log(
+        '[SuppliersRepositoryImpl] createSupplier Error: $e',
+        name: 'SuppliersRepository',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: 'Error inesperado: $e'));
     }
   }
 
   @override
-  Future<Either<Failure, SupplierEntity>> updateSupplier(SupplierEntity supplier) async {
+  Future<Either<Failure, SupplierEntity>> updateSupplier(
+    SupplierEntity supplier,
+  ) async {
     try {
       final model = SupplierModel(
         id: supplier.id,
@@ -141,22 +206,41 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
         isActive: supplier.isActive,
       );
 
-      final response = await _supabase
-          .from('suppliers')
-          .update(model.toJson())
-          .eq('id', supplier.id)
-          .select('id, name, tax_id, contact_name, phone, email, address, is_active')
-          .single();
+      final response =
+          await _supabase
+              .from('suppliers')
+              .update(model.toJson())
+              .eq('id', supplier.id)
+              .select(
+                'id, name, tax_id, contact_name, phone, email, address, is_active',
+              )
+              .single();
 
       return Right(SupplierModel.fromJson(response));
     } on PostgrestException catch (e, st) {
-      developer.log('[SuppliersRepositoryImpl] updateSupplier PostgrestException: ${e.message}', name: 'SuppliersRepository', error: e, stackTrace: st);
+      developer.log(
+        '[SuppliersRepositoryImpl] updateSupplier PostgrestException: ${e.message}',
+        name: 'SuppliersRepository',
+        error: e,
+        stackTrace: st,
+      );
       if (e.code == '23505') {
-        return const Left(ValidationFailure(message: 'Ya existe un proveedor con ese número de RUC/ID fiscal.'));
+        return const Left(
+          ValidationFailure(
+            message: 'Ya existe un proveedor con ese número de RUC/ID fiscal.',
+          ),
+        );
       }
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('[SuppliersRepositoryImpl] updateSupplier Error: $e', name: 'SuppliersRepository', error: e, stackTrace: st);
+      developer.log(
+        '[SuppliersRepositoryImpl] updateSupplier Error: $e',
+        name: 'SuppliersRepository',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: 'Error inesperado: $e'));
     }
   }

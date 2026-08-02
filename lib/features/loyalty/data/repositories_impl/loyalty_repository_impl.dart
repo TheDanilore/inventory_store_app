@@ -164,7 +164,9 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
     try {
       final response = await _supabase
           .from('wallet_movements')
-          .select('id, profile_id, movement_type, points, description, created_at')
+          .select(
+            'id, profile_id, movement_type, points, description, created_at',
+          )
           .eq('profile_id', profileId)
           .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);

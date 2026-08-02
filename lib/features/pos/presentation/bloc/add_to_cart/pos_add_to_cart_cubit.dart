@@ -15,39 +15,35 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
 
     try {
       // Parallelize network requests cleanly with sound static typing
-      final variantMapFuture = _repository.fetchVariantsByProductIds([product.id]);
+      final variantMapFuture = _repository.fetchVariantsByProductIds([
+        product.id,
+      ]);
       final stockFuture = _repository.loadStockByVariant(product.id);
 
       final variantMapRes = await variantMapFuture;
       final stockRes = await stockFuture;
 
-      final Map<String, List<ProductVariantEntity>> variantMap = variantMapRes.fold(
-        (l) {
-          developer.log(
-            'Error al descargar variantes para el POS desde Repositorio',
-            error: l.message,
-            name: 'PosAddToCartCubit',
-          );
-          throw Exception(l.message);
-        },
-        (r) => r,
-      );
+      final Map<String, List<ProductVariantEntity>> variantMap = variantMapRes
+          .fold((l) {
+            developer.log(
+              'Error al descargar variantes para el POS desde Repositorio',
+              error: l.message,
+              name: 'PosAddToCartCubit',
+            );
+            throw Exception(l.message);
+          }, (r) => r);
 
-      final List<ProductVariantEntity> variants = List<ProductVariantEntity>.from(
-        variantMap[product.id] ?? [],
-      );
+      final List<ProductVariantEntity> variants =
+          List<ProductVariantEntity>.from(variantMap[product.id] ?? []);
 
-      final Map<String, int> stockByVariant = stockRes.fold(
-        (l) {
-          developer.log(
-            'Advertencia: No se pudo cargar el stock del POS por variante',
-            error: l.message,
-            name: 'PosAddToCartCubit',
-          );
-          return <String, int>{};
-        },
-        (r) => r,
-      );
+      final Map<String, int> stockByVariant = stockRes.fold((l) {
+        developer.log(
+          'Advertencia: No se pudo cargar el stock del POS por variante',
+          error: l.message,
+          name: 'PosAddToCartCubit',
+        );
+        return <String, int>{};
+      }, (r) => r);
 
       ProductVariantEntity? selectedVariant;
       if (variants.isNotEmpty) {
@@ -57,12 +53,14 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
         );
       }
 
-      emit(PosAddToCartLoaded(
-        variants: variants,
-        stockByVariant: stockByVariant,
-        selectedVariant: selectedVariant,
-        productEntity: product,
-      ));
+      emit(
+        PosAddToCartLoaded(
+          variants: variants,
+          stockByVariant: stockByVariant,
+          selectedVariant: selectedVariant,
+          productEntity: product,
+        ),
+      );
     } catch (e, st) {
       developer.log(
         'Fallo crítico cargando datos del producto en POS',
@@ -77,23 +75,26 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
           errMsg.toLowerCase().contains('network') ||
           errMsg.toLowerCase().contains('red');
 
-      emit(PosAddToCartError(
-        isNetworkError
-            ? 'Error de red. Verifica tu conexión a internet e intenta nuevamente.'
-            : 'Error al cargar datos del producto para POS: $errMsg',
-      ));
+      emit(
+        PosAddToCartError(
+          isNetworkError
+              ? 'Error de red. Verifica tu conexión a internet e intenta nuevamente.'
+              : 'Error al cargar datos del producto para POS: $errMsg',
+        ),
+      );
     }
   }
 
   void updateQuantity(int newQuantity) {
     if (state is PosAddToCartLoaded) {
       final currentState = state as PosAddToCartLoaded;
-      
+
       final maxStock = currentState.currentStock;
-      final finalQuantity = (currentState.hasStockControl && newQuantity > maxStock)
-          ? maxStock
-          : newQuantity;
-          
+      final finalQuantity =
+          (currentState.hasStockControl && newQuantity > maxStock)
+              ? maxStock
+              : newQuantity;
+
       if (finalQuantity > 0) {
         emit(currentState.copyWith(quantity: finalQuantity));
       }
@@ -103,10 +104,12 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
   void selectVariant(ProductVariantEntity variant) {
     if (state is PosAddToCartLoaded) {
       final currentState = state as PosAddToCartLoaded;
-      emit(currentState.copyWith(
-        selectedVariant: variant,
-        quantity: 1, // Reset quantity when changing variant
-      ));
+      emit(
+        currentState.copyWith(
+          selectedVariant: variant,
+          quantity: 1, // Reset quantity when changing variant
+        ),
+      );
     }
   }
 }

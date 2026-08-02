@@ -948,7 +948,7 @@ class _DrawerFooter extends StatelessWidget {
                                 final authCubit = context.read<AuthCubit>();
                                 final messenger = ScaffoldMessenger.of(context);
                                 final navigator = Navigator.of(context);
-                                
+
                                 try {
                                   await authCubit.logout();
                                   if (navigator.mounted) {

@@ -12,7 +12,9 @@ abstract class LoyaltyRepository {
 
   Future<Either<Failure, int>> getWalletBalance(String authUserId);
 
-  Future<Either<Failure, Map<String, dynamic>>> getLoyaltyDashboardData(String profileId);
+  Future<Either<Failure, Map<String, dynamic>>> getLoyaltyDashboardData(
+    String profileId,
+  );
 
   Future<Either<Failure, DailyCheckinEntity?>> getTodayCheckin(
     String profileId,

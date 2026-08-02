@@ -64,10 +64,12 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
       id: _isEditing ? widget.supplierToEdit!.id : '',
       name: _nameCtrl.text.trim(),
       taxId: _taxIdCtrl.text.trim().isEmpty ? null : _taxIdCtrl.text.trim(),
-      contactName: _contactCtrl.text.trim().isEmpty ? null : _contactCtrl.text.trim(),
+      contactName:
+          _contactCtrl.text.trim().isEmpty ? null : _contactCtrl.text.trim(),
       phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
       email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
-      address: _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
+      address:
+          _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
       isActive: _isEditing ? widget.supplierToEdit!.isActive : true,
     );
 
@@ -149,7 +151,9 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
                       keyboardType: TextInputType.emailAddress,
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) return null;
-                        final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                        final regex = RegExp(
+                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                        );
                         if (!regex.hasMatch(val.trim())) {
                           return 'Correo inválido';
                         }
@@ -168,12 +172,23 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
               const SizedBox(height: 12),
 
               BlocConsumer<SuppliersCubit, SuppliersState>(
-                listenWhen: (previous, current) => current is SupplierSaveSuccess || current is SupplierSaveError,
+                listenWhen:
+                    (previous, current) =>
+                        current is SupplierSaveSuccess ||
+                        current is SupplierSaveError,
                 listener: (context, state) {
                   if (state is SupplierSaveError) {
-                    AppSnackbar.show(context, message: state.message, type: SnackbarType.error);
+                    AppSnackbar.show(
+                      context,
+                      message: state.message,
+                      type: SnackbarType.error,
+                    );
                   } else if (state is SupplierSaveSuccess) {
-                    AppSnackbar.show(context, message: state.message, type: SnackbarType.success);
+                    AppSnackbar.show(
+                      context,
+                      message: state.message,
+                      type: SnackbarType.success,
+                    );
                     widget.onSaved();
                     Navigator.pop(context);
                   }
@@ -200,7 +215,9 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
                               ),
                             )
                             : Text(
-                              _isEditing ? 'Guardar Cambios' : 'Crear Proveedor',
+                              _isEditing
+                                  ? 'Guardar Cambios'
+                                  : 'Crear Proveedor',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,

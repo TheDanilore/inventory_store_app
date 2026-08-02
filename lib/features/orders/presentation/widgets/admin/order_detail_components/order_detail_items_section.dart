@@ -41,7 +41,9 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
   @override
   void initState() {
     super.initState();
-    _quantityController = TextEditingController(text: widget.item.quantity.toString());
+    _quantityController = TextEditingController(
+      text: widget.item.quantity.toString(),
+    );
   }
 
   @override
@@ -73,8 +75,10 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
     final subtotal = widget.item.subtotal;
     final imageUrl = widget.item.displayImageUrl;
 
-    final bool canEditBatches = widget.onEditBatches != null && widget.usesBatches;
-    final bool hasBatchOverride = canEditBatches && widget.batchAssignments != null;
+    final bool canEditBatches =
+        widget.onEditBatches != null && widget.usesBatches;
+    final bool hasBatchOverride =
+        canEditBatches && widget.batchAssignments != null;
     final activeBatches =
         hasBatchOverride
             ? widget.batchAssignments!.where((b) => b.assigned > 0).toList()

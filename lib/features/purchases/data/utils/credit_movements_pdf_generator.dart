@@ -46,7 +46,10 @@ class CreditMovementsPdfGenerator {
                   allMovements.map((m) {
                     final dateStr =
                         m.createdAt != null
-                            ? DateFormat('dd/MM/yy HH:mm', 'es').format(m.createdAt!)
+                            ? DateFormat(
+                              'dd/MM/yy HH:mm',
+                              'es',
+                            ).format(m.createdAt!)
                             : '-';
                     final typeStr = m.isCharge ? 'CARGO' : 'ABONO';
                     final amtStr = '\$${m.amount.toStringAsFixed(2)}';

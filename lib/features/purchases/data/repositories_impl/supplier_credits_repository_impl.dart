@@ -112,7 +112,7 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
           .eq('id', creditId);
       return const Right(null);
     } catch (e, st) {
-       developer.log(
+      developer.log(
         '[SupplierCreditsRepositoryImpl] toggleAccountStatus error: $e',
         error: e,
         stackTrace: st,
@@ -142,20 +142,19 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
         // ── Creación Atómica ──────────────────────────────────────────────
         final response = await _supabase.rpc(
           'rpc_create_supplier_credit',
-          params: {
-            'p_supplier_id': supplierId,
-            'p_credit_limit': creditLimit,
-          },
+          params: {'p_supplier_id': supplierId, 'p_credit_limit': creditLimit},
         );
 
         final res = response as Map<String, dynamic>?;
         if (res?['success'] != true) {
-          throw Exception(res?['error']?.toString() ?? 'Error al crear crédito');
+          throw Exception(
+            res?['error']?.toString() ?? 'Error al crear crédito',
+          );
         }
       }
       return const Right(null);
     } catch (e, st) {
-       developer.log(
+      developer.log(
         '[SupplierCreditsRepositoryImpl] saveAccount error: $e',
         error: e,
         stackTrace: st,
@@ -335,9 +334,13 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
 
       return const Right(null);
     } on PostgrestException catch (e) {
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e) {
-      return Left(ServerFailure(message: 'Error inesperado al registrar el pago: $e'));
+      return Left(
+        ServerFailure(message: 'Error inesperado al registrar el pago: $e'),
+      );
     }
   }
 }

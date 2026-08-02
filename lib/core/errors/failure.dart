@@ -55,7 +55,8 @@ sealed class Failure {
       );
     }
     if (error is AuthException) {
-      if (error.statusCode == '401' || error.message.toLowerCase().contains('unauthorized')) {
+      if (error.statusCode == '401' ||
+          error.message.toLowerCase().contains('unauthorized')) {
         return const UnauthorizedFailure();
       }
       return ServerFailure(

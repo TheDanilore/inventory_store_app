@@ -17,21 +17,35 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
 
   @override
   Future<Either<Failure, Map<String, dynamic>?>> getPurchaseOrderById(
-      String poId) async {
+    String poId,
+  ) async {
     try {
-      final poResp = await _supabase
-          .from('purchase_orders')
-          .select('id, supplier_id, warehouse_id, status, total_amount, payment_method, payment_status, amount_paid, due_date, document_type, document_number, notes, created_at, updated_at, suppliers(name)')
-          .eq('id', poId)
-          .maybeSingle();
+      final poResp =
+          await _supabase
+              .from('purchase_orders')
+              .select(
+                'id, supplier_id, warehouse_id, status, total_amount, payment_method, payment_status, amount_paid, due_date, document_type, document_number, notes, created_at, updated_at, suppliers(name)',
+              )
+              .eq('id', poId)
+              .maybeSingle();
       return Right(poResp);
     } on PostgrestException catch (e, st) {
-      developer.log('[PurchaseOrdersRepositoryImpl] getPurchaseOrderById PostgrestException: $e',
-          error: e, stackTrace: st, name: 'PurchaseOrdersRepositoryImpl');
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] getPurchaseOrderById PostgrestException: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('[PurchaseOrdersRepositoryImpl] getPurchaseOrderById error: $e',
-          error: e, stackTrace: st, name: 'PurchaseOrdersRepositoryImpl');
+      developer.log(
+        '[PurchaseOrdersRepositoryImpl] getPurchaseOrderById error: $e',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrdersRepositoryImpl',
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -99,7 +113,9 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         stackTrace: st,
         name: 'PurchaseOrdersRepositoryImpl',
       );
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
       developer.log(
         '[PurchaseOrdersRepositoryImpl] fetchOrders error: $e',
@@ -404,7 +420,9 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         stackTrace: st,
         name: 'PurchaseOrdersRepositoryImpl',
       );
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
       developer.log(
         '[PurchaseOrdersRepositoryImpl] registerOrderPayment unexpected: $e',
@@ -412,7 +430,9 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         stackTrace: st,
         name: 'PurchaseOrdersRepositoryImpl',
       );
-      return Left(ServerFailure(message: 'Error inesperado al registrar el pago: $e'));
+      return Left(
+        ServerFailure(message: 'Error inesperado al registrar el pago: $e'),
+      );
     }
   }
 
@@ -454,7 +474,9 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         stackTrace: st,
         name: 'PurchaseOrdersRepositoryImpl',
       );
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
       developer.log(
         '[PurchaseOrdersRepositoryImpl] updateOrderPaymentMethod unexpected: $e',
@@ -462,7 +484,11 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         stackTrace: st,
         name: 'PurchaseOrdersRepositoryImpl',
       );
-      return Left(ServerFailure(message: 'Error inesperado al cambiar método de pago: $e'));
+      return Left(
+        ServerFailure(
+          message: 'Error inesperado al cambiar método de pago: $e',
+        ),
+      );
     }
   }
 

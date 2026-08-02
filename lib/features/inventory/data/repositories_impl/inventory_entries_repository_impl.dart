@@ -25,34 +25,52 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
     required DateTime? documentDate,
     required String notes,
   }) async {
-    final itemsJson = items.map((e) => {
-      'productId': e.productId,
-      'variantId': e.variantId,
-      'quantity': e.quantity,
-      'unitCost': e.unitCost,
-      'batchNumber': e.batchNumber,
-      'expiryDate': e.expiryDate?.toIso8601String(),
-    }).toList();
+    final itemsJson =
+        items
+            .map(
+              (e) => {
+                'productId': e.productId,
+                'variantId': e.variantId,
+                'quantity': e.quantity,
+                'unitCost': e.unitCost,
+                'batchNumber': e.batchNumber,
+                'expiryDate': e.expiryDate?.toIso8601String(),
+              },
+            )
+            .toList();
 
     try {
-      await _supabase.rpc('process_inventory_entry_rpc', params: {
-        'p_warehouse_id': warehouseId,
-        'p_supplier_id': supplierId,
-        'p_purchase_order_id': purchaseOrderId,
-        'p_payment_mode': paymentMode,
-        'p_account_id': accountId,
-        'p_active_shift_id': null, // Validation moved to server RPC
-        'p_document_type': documentType,
-        'p_document_number': documentNumber,
-        'p_document_date': documentDate?.toIso8601String().split('T').first,
-        'p_notes': notes,
-        'p_items': itemsJson,
-      });
+      await _supabase.rpc(
+        'process_inventory_entry_rpc',
+        params: {
+          'p_warehouse_id': warehouseId,
+          'p_supplier_id': supplierId,
+          'p_purchase_order_id': purchaseOrderId,
+          'p_payment_mode': paymentMode,
+          'p_account_id': accountId,
+          'p_active_shift_id': null, // Validation moved to server RPC
+          'p_document_type': documentType,
+          'p_document_number': documentNumber,
+          'p_document_date': documentDate?.toIso8601String().split('T').first,
+          'p_notes': notes,
+          'p_items': itemsJson,
+        },
+      );
     } on PostgrestException catch (e, st) {
-      developer.log('[InventoryEntriesRepo] createInventoryEntry error: ${e.message}', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
+      developer.log(
+        '[InventoryEntriesRepo] createInventoryEntry error: ${e.message}',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntriesRepositoryImpl',
+      );
       throw Exception(e.message);
     } catch (e, st) {
-      developer.log('[InventoryEntriesRepo] createInventoryEntry unexpected error', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
+      developer.log(
+        '[InventoryEntriesRepo] createInventoryEntry unexpected error',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntriesRepositoryImpl',
+      );
       rethrow;
     }
   }
@@ -61,7 +79,10 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
     SupabaseClient supabase,
     String purchaseOrderId,
   ) async {
-    developer.log('[syncPurchaseOrder] Starting sync for PO: $purchaseOrderId', name: 'InventoryEntriesRepositoryImpl');
+    developer.log(
+      '[syncPurchaseOrder] Starting sync for PO: $purchaseOrderId',
+      name: 'InventoryEntriesRepositoryImpl',
+    );
 
     // 0. Nunca recalcular el estado de una orden ya anulada.
     try {
@@ -79,7 +100,12 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         return;
       }
     } catch (e, st) {
-      developer.log('[syncPurchaseOrder] Could not check current status', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
+      developer.log(
+        '[syncPurchaseOrder] Could not check current status',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntriesRepositoryImpl',
+      );
     }
 
     // 1. Intentar primero con la RPC con SECURITY DEFINER (para ignorar RLS)
@@ -88,7 +114,10 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         'sync_purchase_order_reception_rpc',
         params: {'p_purchase_order_id': purchaseOrderId},
       );
-      developer.log('[syncPurchaseOrder] RPC Result: $rpcResult', name: 'InventoryEntriesRepositoryImpl');
+      developer.log(
+        '[syncPurchaseOrder] RPC Result: $rpcResult',
+        name: 'InventoryEntriesRepositoryImpl',
+      );
       if (rpcResult != null && rpcResult['success'] == true) {
         return;
       }
@@ -111,7 +140,12 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           .select('id, name')
           .eq('is_active', true);
     } catch (e, st) {
-      developer.log('getActiveWarehouses error', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
+      developer.log(
+        'getActiveWarehouses error',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntriesRepositoryImpl',
+      );
       rethrow;
     }
   }
@@ -124,7 +158,12 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           .eq('is_active', true)
           .order('name');
     } catch (e, st) {
-      developer.log('getActiveSuppliers error', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
+      developer.log(
+        'getActiveSuppliers error',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntriesRepositoryImpl',
+      );
       rethrow;
     }
   }
@@ -137,7 +176,12 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           .eq('is_active', true)
           .order('name');
     } catch (e, st) {
-      developer.log('getActiveAccounts error', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
+      developer.log(
+        'getActiveAccounts error',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntriesRepositoryImpl',
+      );
       rethrow;
     }
   }
@@ -195,7 +239,12 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
               .toList();
       return (data: data, count: resp.count);
     } catch (e, st) {
-      developer.log('getEntries error', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
+      developer.log(
+        'getEntries error',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntriesRepositoryImpl',
+      );
       rethrow;
     }
   }
@@ -204,8 +253,8 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
   Future<List<dynamic>> getEntryItems(String entryId) async {
     try {
       final resp = await _supabase
-        .from('inventory_entry_items')
-        .select('''
+          .from('inventory_entry_items')
+          .select('''
           quantity, unit_cost, batch_number, expiry_date, variant_id,
           products!inner(
             name, 
@@ -217,10 +266,15 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
             )
           )
         ''')
-        .eq('entry_id', entryId);
+          .eq('entry_id', entryId);
       return resp as List<dynamic>;
     } catch (e, st) {
-      developer.log('getEntryItems error', error: e, stackTrace: st, name: 'InventoryEntriesRepositoryImpl');
+      developer.log(
+        'getEntryItems error',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntriesRepositoryImpl',
+      );
       rethrow;
     }
   }

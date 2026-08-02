@@ -160,12 +160,15 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         );
       }
 
-      final shiftId = await _supabase.rpc('rpc_open_cash_shift', params: {
-        'p_account_id': accountId,
-        'p_opening_amount': openingBalance,
-        'p_opened_by': profileId,
-        'p_notes': notes,
-      });
+      final shiftId = await _supabase.rpc(
+        'rpc_open_cash_shift',
+        params: {
+          'p_account_id': accountId,
+          'p_opening_amount': openingBalance,
+          'p_opened_by': profileId,
+          'p_notes': notes,
+        },
+      );
 
       final inserted =
           await _supabase
@@ -186,14 +189,20 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
           ).toEntity();
       return right(shift);
     } on PostgrestException catch (e, st) {
-      developer.log('PostgrestException en openShift', error: e, stackTrace: st);
+      developer.log(
+        'PostgrestException en openShift',
+        error: e,
+        stackTrace: st,
+      );
       // Mapeo robusto por code SQLSTATE (definido en el RPC de BD).
       // Fallback a análisis de mensaje para retrocompatibilidad.
       final msg = _mapShiftError(e);
       return left(ServerFailure(message: msg));
     } catch (e, st) {
       developer.log('Error inesperado en openShift', error: e, stackTrace: st);
-      return left(const ServerFailure(message: 'Error inesperado al abrir el turno.'));
+      return left(
+        const ServerFailure(message: 'Error inesperado al abrir el turno.'),
+      );
     }
   }
 
@@ -213,21 +222,30 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         );
       }
 
-      await _supabase.rpc('rpc_close_cash_shift', params: {
-        'p_shift_id': shiftId,
-        'p_actual_amount': closingBalance,
-        'p_closed_by': profileId,
-        'p_notes': notes,
-      });
+      await _supabase.rpc(
+        'rpc_close_cash_shift',
+        params: {
+          'p_shift_id': shiftId,
+          'p_actual_amount': closingBalance,
+          'p_closed_by': profileId,
+          'p_notes': notes,
+        },
+      );
 
       return right(unit);
     } on PostgrestException catch (e, st) {
-      developer.log('PostgrestException en closeShift', error: e, stackTrace: st);
+      developer.log(
+        'PostgrestException en closeShift',
+        error: e,
+        stackTrace: st,
+      );
       final msg = _mapShiftError(e);
       return left(ServerFailure(message: msg));
     } catch (e, st) {
       developer.log('Error inesperado en closeShift', error: e, stackTrace: st);
-      return left(const ServerFailure(message: 'Error inesperado al cerrar el turno.'));
+      return left(
+        const ServerFailure(message: 'Error inesperado al cerrar el turno.'),
+      );
     }
   }
 
@@ -378,17 +396,24 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
   String _mapShiftError(PostgrestException e) {
     // Mapeo por código SQLSTATE personalizado (definido con USING ERRCODE en PL/pgSQL)
     switch (e.code) {
-      case 'P0001': return 'Esta caja ya tiene un turno abierto.';
-      case 'P0002': return 'Este turno de caja ya se encuentra cerrado.';
-      case 'P0003': return 'El turno de caja especificado no existe.';
-      case 'P0004': return 'Saldo insuficiente para abrir la caja.';
+      case 'P0001':
+        return 'Esta caja ya tiene un turno abierto.';
+      case 'P0002':
+        return 'Este turno de caja ya se encuentra cerrado.';
+      case 'P0003':
+        return 'El turno de caja especificado no existe.';
+      case 'P0004':
+        return 'Saldo insuficiente para abrir la caja.';
     }
     // Fallback: análisis del mensaje para retrocompatibilidad con RPCs
     // que aún no usan SQLSTATE codes.
     final msg = e.message.toLowerCase();
-    if (msg.contains('ya tiene un turno abierto')) return 'Esta caja ya tiene un turno abierto.';
-    if (msg.contains('ya se encuentra cerrado')) return 'Este turno de caja ya se encuentra cerrado.';
-    if (msg.contains('no existe')) return 'El turno de caja especificado no existe.';
+    if (msg.contains('ya tiene un turno abierto'))
+      return 'Esta caja ya tiene un turno abierto.';
+    if (msg.contains('ya se encuentra cerrado'))
+      return 'Este turno de caja ya se encuentra cerrado.';
+    if (msg.contains('no existe'))
+      return 'El turno de caja especificado no existe.';
     if (msg.contains('saldo insuficiente')) return e.message;
     return 'Error de base de datos al operar el turno: ${e.message}';
   }

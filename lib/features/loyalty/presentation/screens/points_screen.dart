@@ -84,7 +84,6 @@ class _PointsScreenState extends State<PointsScreen> {
         color: PointsDS.bg,
         child: BlocBuilder<PointsCubit, PointsState>(
           builder: (context, state) {
-
             if (!config.loyaltyGlobalEnabled ||
                 !config.loyaltyCustomerVisible) {
               return const Center(
@@ -159,7 +158,8 @@ class _PointsScreenState extends State<PointsScreen> {
               'points_to_soles_ratio',
               0.01,
             );
-            final hundredCoinsValue = (100 * pointsToSolesRatio).toStringAsFixed(2);
+            final hundredCoinsValue = (100 * pointsToSolesRatio)
+                .toStringAsFixed(2);
 
             return RefreshIndicator(
               color: AppColors.primary,
@@ -194,7 +194,9 @@ class _PointsScreenState extends State<PointsScreen> {
                             ),
                             const SizedBox(height: 20),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
                               child: PointsDailyCheckinCard(
                                 claimButtonKey: _claimButtonKey,
                                 currentStreak: state.currentStreak,
@@ -202,7 +204,8 @@ class _PointsScreenState extends State<PointsScreen> {
                                 nextCheckinReward: state.nextCheckinReward,
                                 isClaimingCheckin: state.isClaimingCheckin,
                                 hundredCoinsValue: hundredCoinsValue,
-                                claimMessage: 'Reclama tu bono diario de puntos',
+                                claimMessage:
+                                    'Reclama tu bono diario de puntos',
                                 streakPreviewLabel:
                                     'Días seguidos: ${state.currentStreak}',
                                 onClaim: () => _handleClaim(state),

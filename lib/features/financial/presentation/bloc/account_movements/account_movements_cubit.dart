@@ -68,7 +68,11 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
         ),
       );
     } catch (e, st) {
-      developer.log('AccountMovementsCubit.fetchMovements ERROR', error: e, stackTrace: st);
+      developer.log(
+        'AccountMovementsCubit.fetchMovements ERROR',
+        error: e,
+        stackTrace: st,
+      );
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
@@ -154,7 +158,11 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
       emit(const AccountMovementSaved());
       await fetchMovements(page: _currentPage);
     } catch (e, st) {
-      developer.log('AccountMovementsCubit.saveMovement ERROR', error: e, stackTrace: st);
+      developer.log(
+        'AccountMovementsCubit.saveMovement ERROR',
+        error: e,
+        stackTrace: st,
+      );
       emit(AccountMovementSaveError(e.toString()));
     }
   }
@@ -183,7 +191,11 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
       emit(const AccountMovementSaved());
       await fetchMovements(page: _currentPage);
     } catch (e, st) {
-      developer.log('AccountMovementsCubit.transferFunds ERROR', error: e, stackTrace: st);
+      developer.log(
+        'AccountMovementsCubit.transferFunds ERROR',
+        error: e,
+        stackTrace: st,
+      );
       emit(AccountMovementSaveError(e.toString()));
     }
   }

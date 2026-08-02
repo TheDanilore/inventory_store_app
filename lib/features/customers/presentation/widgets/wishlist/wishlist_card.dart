@@ -188,7 +188,8 @@ class WishlistCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Text(
                               DateFormat(
-                                'dd MMM yyyy', 'es'
+                                'dd MMM yyyy',
+                                'es',
                               ).format(entry.createdAt!.toLocal()),
                               style: const TextStyle(
                                 fontSize: 11,

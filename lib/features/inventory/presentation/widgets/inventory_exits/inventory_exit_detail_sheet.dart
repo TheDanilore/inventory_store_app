@@ -196,7 +196,10 @@ class _InventoryExitDetailSheetState extends State<InventoryExitDetailSheet> {
                                 ),
                                 Text(
                                   widget.exitData.createdAt != null
-                                      ? DateFormat('dd/MM/yyyy HH:mm', 'es').format(
+                                      ? DateFormat(
+                                        'dd/MM/yyyy HH:mm',
+                                        'es',
+                                      ).format(
                                         widget.exitData.createdAt!.toLocal(),
                                       )
                                       : '—',

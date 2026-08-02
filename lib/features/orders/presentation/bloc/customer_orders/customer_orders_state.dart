@@ -52,8 +52,6 @@ class CustomerOrdersState extends Equatable {
     );
   }
 
-
-
   bool isOrderProcessing(String orderId) {
     return false;
   }

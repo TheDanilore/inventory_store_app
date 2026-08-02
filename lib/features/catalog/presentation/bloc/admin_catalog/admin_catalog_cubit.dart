@@ -285,10 +285,13 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       );
       final resUnwrapped = result.fold((failure) => failure, (data) => data);
       if (resUnwrapped is! ({List<ProductEntity> products, int totalCount})) {
-        final failureMsg = resUnwrapped is Exception
-            ? resUnwrapped.toString()
-            : (resUnwrapped as dynamic).message ?? 'Error desconocido';
-        developer.log('AdminCatalogCubit: Error al cargar productos para PDF: $failureMsg');
+        final failureMsg =
+            resUnwrapped is Exception
+                ? resUnwrapped.toString()
+                : (resUnwrapped as dynamic).message ?? 'Error desconocido';
+        developer.log(
+          'AdminCatalogCubit: Error al cargar productos para PDF: $failureMsg',
+        );
         emit(
           state.copyWith(
             actionState: ViewState.error,
@@ -332,13 +335,13 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         return;
       }
 
-      final exportResult = await exportCatalogPdfUC(
-        products: filteredProducts,
-      );
+      final exportResult = await exportCatalogPdfUC(products: filteredProducts);
 
       exportResult.fold(
         (failure) {
-          developer.log('AdminCatalogCubit: Error en exportCatalogPdfUC: ${failure.message}');
+          developer.log(
+            'AdminCatalogCubit: Error en exportCatalogPdfUC: ${failure.message}',
+          );
           emit(
             state.copyWith(
               actionState: ViewState.error,
@@ -351,7 +354,11 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         },
       );
     } catch (e, st) {
-      developer.log('AdminCatalogCubit: Error inesperado en exportCatalogPdf', error: e, stackTrace: st);
+      developer.log(
+        'AdminCatalogCubit: Error inesperado en exportCatalogPdf',
+        error: e,
+        stackTrace: st,
+      );
       emit(
         state.copyWith(
           actionState: ViewState.error,

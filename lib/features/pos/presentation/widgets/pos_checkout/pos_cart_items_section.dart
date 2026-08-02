@@ -134,7 +134,8 @@ class PosCartItemRow extends StatelessWidget {
                 onPressed: () {
                   var newQty = int.tryParse(qtyCtrl.text.trim());
                   if (newQty != null && newQty > 0) {
-                    if (item.availableStock > 0 && newQty > item.availableStock) {
+                    if (item.availableStock > 0 &&
+                        newQty > item.availableStock) {
                       newQty = item.availableStock;
                     }
                     context.read<CartCubit>().updateQuantity(
@@ -166,9 +167,10 @@ class PosCartItemRow extends StatelessWidget {
     final bool isOutOfStock = item.availableStock <= 0;
 
     return Container(
-      color: isOutOfStock
-          ? AppColors.dangerLight.withValues(alpha: 0.2)
-          : Colors.transparent,
+      color:
+          isOutOfStock
+              ? AppColors.dangerLight.withValues(alpha: 0.2)
+              : Colors.transparent,
       padding: const EdgeInsets.all(12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,9 +229,10 @@ class PosCartItemRow extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
-                      color: isOutOfStock
-                          ? AppColors.textSecondary
-                          : AppColors.textPrimary,
+                      color:
+                          isOutOfStock
+                              ? AppColors.textSecondary
+                              : AppColors.textPrimary,
                       height: 1.2,
                     ),
                     maxLines: 2,
@@ -387,17 +390,21 @@ class PosCartItemRow extends StatelessWidget {
                           ),
                           Builder(
                             builder: (context) {
-                              final canIncrement = item.availableStock <= 0 ||
+                              final canIncrement =
+                                  item.availableStock <= 0 ||
                                   item.quantity < item.availableStock;
                               return InkWell(
-                                onTap: canIncrement
-                                    ? () {
-                                        context.read<CartCubit>().updateQuantity(
-                                          item.cartKey,
-                                          item.quantity + 1,
-                                        );
-                                      }
-                                    : null,
+                                onTap:
+                                    canIncrement
+                                        ? () {
+                                          context
+                                              .read<CartCubit>()
+                                              .updateQuantity(
+                                                item.cartKey,
+                                                item.quantity + 1,
+                                              );
+                                        }
+                                        : null,
                                 borderRadius: const BorderRadius.horizontal(
                                   right: Radius.circular(6),
                                 ),
@@ -407,9 +414,10 @@ class PosCartItemRow extends StatelessWidget {
                                   child: Icon(
                                     Icons.add_rounded,
                                     size: 14,
-                                    color: canIncrement
-                                        ? AppColors.textSecondary
-                                        : AppColors.textMuted,
+                                    color:
+                                        canIncrement
+                                            ? AppColors.textSecondary
+                                            : AppColors.textMuted,
                                   ),
                                 ),
                               );

@@ -241,7 +241,6 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
     );
   }
 
-
   @override
   List<Object?> get props => [
     suppliers,

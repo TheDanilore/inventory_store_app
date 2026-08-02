@@ -57,16 +57,28 @@ class UsersRepositoryImpl implements UsersRepository {
 
       return Right({'data': users, 'count': response.count});
     } on PostgrestException catch (e, st) {
-      developer.log('🔴 [UsersRepo] PostgrestException en getUsers (role=$role): $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      developer.log(
+        '🔴 [UsersRepo] PostgrestException en getUsers (role=$role): $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('🔴 [UsersRepo] Error en getUsers (role=$role): $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
+      developer.log(
+        '🔴 [UsersRepo] Error en getUsers (role=$role): $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
       if (e.toString().toLowerCase().contains('socketexception')) {
         return Left(ServerFailure(message: 'Sin conexión a internet.'));
       }
-      return Left(ServerFailure(message: 'Error al cargar usuarios: ${e.toString()}'));
+      return Left(
+        ServerFailure(message: 'Error al cargar usuarios: ${e.toString()}'),
+      );
     }
   }
 
@@ -101,12 +113,20 @@ class UsersRepositoryImpl implements UsersRepository {
 
       return Right(users);
     } on PostgrestException catch (e, st) {
-      developer.log('🔴 [UsersRepo] PostgrestException en getAllUsers (role=$role): $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
+      developer.log(
+        '🔴 [UsersRepo] PostgrestException en getAllUsers (role=$role): $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
       return Left(ServerFailure(message: e.message));
     } catch (e, st) {
-      developer.log('🔴 [UsersRepo] Excepción no controlada en getAllUsers: $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
+      developer.log(
+        '🔴 [UsersRepo] Excepción no controlada en getAllUsers: $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -124,12 +144,22 @@ class UsersRepositoryImpl implements UsersRepository {
 
       return Right(count);
     } on PostgrestException catch (e, st) {
-      developer.log('🔴 [UsersRepo] PostgrestException en getGlobalUsersCount (role=$role): $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      developer.log(
+        '🔴 [UsersRepo] PostgrestException en getGlobalUsersCount (role=$role): $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('🔴 [UsersRepo] Error en getGlobalUsersCount (role=$role): $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
+      developer.log(
+        '🔴 [UsersRepo] Error en getGlobalUsersCount (role=$role): $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
       return Left(
         ServerFailure(message: 'Error al cargar conteo de usuarios.'),
       );
@@ -151,12 +181,22 @@ class UsersRepositoryImpl implements UsersRepository {
 
       return Right(UserModel.fromJson(response));
     } on PostgrestException catch (e, st) {
-      developer.log('🔴 [UsersRepo] PostgrestException en getUserById (id=$id): $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      developer.log(
+        '🔴 [UsersRepo] PostgrestException en getUserById (id=$id): $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('🔴 [UsersRepo] Error en getUserById (id=$id): $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
+      developer.log(
+        '🔴 [UsersRepo] Error en getUserById (id=$id): $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
       return Left(
         ServerFailure(message: 'Error al cargar detalles del usuario.'),
       );
@@ -195,12 +235,22 @@ class UsersRepositoryImpl implements UsersRepository {
 
       return const Right(null);
     } on PostgrestException catch (e, st) {
-      developer.log('🔴 [UsersRepo] PostgrestException en createUser: $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      developer.log(
+        '🔴 [UsersRepo] PostgrestException en createUser: $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('🔴 [UsersRepo] Error en createUser: $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
+      developer.log(
+        '🔴 [UsersRepo] Error en createUser: $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
       if (e.toString().contains('already been registered')) {
         return Left(
           ServerFailure(
@@ -253,12 +303,22 @@ class UsersRepositoryImpl implements UsersRepository {
 
       return const Right(null);
     } on PostgrestException catch (e, st) {
-      developer.log('🔴 [UsersRepo] PostgrestException en updateUser (id=$id): $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      developer.log(
+        '🔴 [UsersRepo] PostgrestException en updateUser (id=$id): $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('🔴 [UsersRepo] Error en updateUser (id=$id): $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
+      developer.log(
+        '🔴 [UsersRepo] Error en updateUser (id=$id): $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
       return Left(ServerFailure(message: 'Error al actualizar usuario.'));
     }
   }
@@ -286,12 +346,22 @@ class UsersRepositoryImpl implements UsersRepository {
 
       return Right(List<Map<String, dynamic>>.from(res as List));
     } on PostgrestException catch (e, st) {
-      developer.log('🔴 [UsersRepo] PostgrestException en getRecentMovements (userId=$userId): $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      developer.log(
+        '🔴 [UsersRepo] PostgrestException en getRecentMovements (userId=$userId): $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('🔴 [UsersRepo] Error en getRecentMovements (userId=$userId): $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
+      developer.log(
+        '🔴 [UsersRepo] Error en getRecentMovements (userId=$userId): $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
       return Left(ServerFailure(message: 'Error al cargar historial.'));
     }
   }
@@ -314,12 +384,22 @@ class UsersRepositoryImpl implements UsersRepository {
       final int newBalance = (result as num?)?.toInt() ?? currentBalance;
       return Right(newBalance);
     } on PostgrestException catch (e, st) {
-      developer.log('🔴 [UsersRepo] PostgrestException en adjustPoints (userId=$userId): $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
-      return Left(ServerFailure(message: 'Error de base de datos: ${e.message}'));
+      developer.log(
+        '🔴 [UsersRepo] PostgrestException en adjustPoints (userId=$userId): $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('🔴 [UsersRepo] Error en adjustPoints (userId=$userId): $e',
-          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
+      developer.log(
+        '🔴 [UsersRepo] Error en adjustPoints (userId=$userId): $e',
+        error: e,
+        stackTrace: st,
+        name: 'UsersRepositoryImpl',
+      );
       return Left(ServerFailure(message: 'Error al actualizar saldo.'));
     }
   }

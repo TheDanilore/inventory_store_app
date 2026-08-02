@@ -50,13 +50,11 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
       return;
     }
 
-    final amount = double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
-    
+    final amount =
+        double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
+
     // We delegate the opening to the Cubit (backend check & insertion)
-    context.read<CashShiftsCubit>().openShift(
-      _selectedAccountId!,
-      amount,
-    );
+    context.read<CashShiftsCubit>().openShift(_selectedAccountId!, amount);
   }
 
   @override
@@ -190,7 +188,9 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
             SizedBox(
               width: double.infinity,
               child: BlocConsumer<CashShiftsCubit, CashShiftsState>(
-                listenWhen: (previous, current) => previous.isLoading && !current.isLoading,
+                listenWhen:
+                    (previous, current) =>
+                        previous.isLoading && !current.isLoading,
                 listener: (context, state) {
                   if (state.errorMessage.isNotEmpty) {
                     AppSnackbar.show(

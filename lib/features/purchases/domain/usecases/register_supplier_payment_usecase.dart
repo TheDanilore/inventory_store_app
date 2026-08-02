@@ -32,14 +32,13 @@ class RegisterSupplierPaymentUseCase
   RegisterSupplierPaymentUseCase(this.repository);
 
   @override
-  Future<Either<Failure, void>> call(RegisterSupplierPaymentParams params) async {
+  Future<Either<Failure, void>> call(
+    RegisterSupplierPaymentParams params,
+  ) async {
     // Optionally fetch admin profile ID if the repository needs it explicitly.
     final adminProfileIdRes = await repository.getAdminProfileId();
     String? adminProfileId;
-    adminProfileIdRes.fold(
-      (l) => null,
-      (r) => adminProfileId = r,
-    );
+    adminProfileIdRes.fold((l) => null, (r) => adminProfileId = r);
 
     return await repository.registerPayment(
       supplierId: params.supplierId,

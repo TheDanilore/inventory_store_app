@@ -158,7 +158,8 @@ class PosRepositoryImpl implements PosRepository {
         'pointsUsed': sale.pointsUsed,
         'pointsEarned': sale.pointsEarned,
         'accountId': sale.accountId,
-        'activeShiftId': null, // The backend RPC must validate and fetch the active shift
+        'activeShiftId':
+            null, // The backend RPC must validate and fetch the active shift
         'createdBy': null,
         'items':
             sale.items
@@ -239,6 +240,7 @@ class PosRepositoryImpl implements PosRepository {
       return left(Failure.from(e));
     }
   }
+
   @override
   Future<Either<Failure, List<OrderModel>>> fetchRecentOrders({
     int limit = 10,
@@ -250,14 +252,21 @@ class PosRepositoryImpl implements PosRepository {
           .order('created_at', ascending: false)
           .limit(limit);
 
-      final List<OrderModel> orders = (res as List)
-          .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      final List<OrderModel> orders =
+          (res as List)
+              .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
+              .toList();
 
       return Right(orders);
     } catch (e, st) {
-      developer.log('Error fetching recent POS orders', error: e, stackTrace: st);
-      return Left(ServerFailure(message: 'Error al cargar ventas recientes: $e'));
+      developer.log(
+        'Error fetching recent POS orders',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(
+        ServerFailure(message: 'Error al cargar ventas recientes: $e'),
+      );
     }
   }
 }

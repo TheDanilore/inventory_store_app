@@ -115,15 +115,14 @@ class _OrderDetailPointsSectionState extends State<OrderDetailPointsSection> {
               child: TextFormField(
                 controller: widget.pointsUsedCtrl,
                 decoration: InputDecoration(
-                  labelText: 'Monedas a aplicar (Max: ${widget.maxPointsAvailable})',
+                  labelText:
+                      'Monedas a aplicar (Max: ${widget.maxPointsAvailable})',
                   helperText:
                       'Solo se descuentan cuando la orden pase a COMPLETED.',
                   border: const OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 onChanged: _handleChanged,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) return 'Requerido';

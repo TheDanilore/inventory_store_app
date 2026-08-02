@@ -91,9 +91,13 @@ class PointsCubit extends Cubit<PointsState> {
       final yesterday = currentDay.subtract(const Duration(days: 1));
 
       // Checkin y Racha
-      final latestCheckin = dashboard['latest_checkin'] as Map<String, dynamic>?;
+      final latestCheckin =
+          dashboard['latest_checkin'] as Map<String, dynamic>?;
       final latestCheckinDateStr = latestCheckin?['checkin_date'] as String?;
-      final latestCheckinDate = latestCheckinDateStr != null ? DateTime.tryParse(latestCheckinDateStr) : null;
+      final latestCheckinDate =
+          latestCheckinDateStr != null
+              ? DateTime.tryParse(latestCheckinDateStr)
+              : null;
 
       final isStreakActive =
           latestCheckinDate != null &&
@@ -106,13 +110,23 @@ class PointsCubit extends Cubit<PointsState> {
       final nextCheckinReward = _rewardForStreakDay(nextStreakDay);
 
       // Minijuegos
-      final todayGames = (dashboard['today_games'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+      final todayGames =
+          (dashboard['today_games'] as Map?)?.cast<String, dynamic>() ??
+          <String, dynamic>{};
 
       // Movimientos
-      final movements = (dashboard['recent_movements'] as List<dynamic>? ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      final movements =
+          (dashboard['recent_movements'] as List<dynamic>? ?? [])
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
 
       final boxGame = movements.firstWhere(
-        (m) => m['movement_type'] == 'MINI_GAME_BOXES' && (m['created_at']?.toString().startsWith(now.toUtc().toIso8601String().substring(0, 10)) ?? false),
+        (m) =>
+            m['movement_type'] == 'MINI_GAME_BOXES' &&
+            (m['created_at']?.toString().startsWith(
+                  now.toUtc().toIso8601String().substring(0, 10),
+                ) ??
+                false),
         orElse: () => <String, dynamic>{},
       );
 
@@ -125,14 +139,21 @@ class PointsCubit extends Cubit<PointsState> {
           lastCheckinDate: latestCheckinDate,
           nextCheckinReward: nextCheckinReward,
           lastBoxesReward: boxGame['points'] as int?,
-          boxesPlaysToday: (todayGames['MINI_GAME_BOXES'] as num?)?.toInt() ?? 0,
-          memoramaPlaysToday: (todayGames['MINI_GAME_MEMORY'] as num?)?.toInt() ?? 0,
-          catcherPlaysToday: (todayGames['MINI_GAME_CATCHER'] as num?)?.toInt() ?? 0,
-          pinataPlaysToday: (todayGames['MINI_GAME_PINATA'] as num?)?.toInt() ?? 0,
-          superSaltoPlaysToday: (todayGames['MINI_GAME_JUMP'] as num?)?.toInt() ?? 0,
+          boxesPlaysToday:
+              (todayGames['MINI_GAME_BOXES'] as num?)?.toInt() ?? 0,
+          memoramaPlaysToday:
+              (todayGames['MINI_GAME_MEMORY'] as num?)?.toInt() ?? 0,
+          catcherPlaysToday:
+              (todayGames['MINI_GAME_CATCHER'] as num?)?.toInt() ?? 0,
+          pinataPlaysToday:
+              (todayGames['MINI_GAME_PINATA'] as num?)?.toInt() ?? 0,
+          superSaltoPlaysToday:
+              (todayGames['MINI_GAME_JUMP'] as num?)?.toInt() ?? 0,
           clawPlaysToday: (todayGames['MINI_GAME_CLAW'] as num?)?.toInt() ?? 0,
-          stackPlaysToday: (todayGames['MINI_GAME_STACK'] as num?)?.toInt() ?? 0,
-          dodgePlaysToday: (todayGames['MINI_GAME_DODGE'] as num?)?.toInt() ?? 0,
+          stackPlaysToday:
+              (todayGames['MINI_GAME_STACK'] as num?)?.toInt() ?? 0,
+          dodgePlaysToday:
+              (todayGames['MINI_GAME_DODGE'] as num?)?.toInt() ?? 0,
           miniGameBoxes: _buildMiniGameBoxes(config),
           miniGamePreviewBoxes: const [],
           boxesRoundReady: false,
@@ -196,7 +217,11 @@ class PointsCubit extends Cubit<PointsState> {
     } catch (e, st) {
       developer.log('Error en loadMoreMovements', error: e, stackTrace: st);
       if (!isClosed) {
-        emit(state.copyWith(loadMoreError: 'No se pudieron cargar más movimientos.'));
+        emit(
+          state.copyWith(
+            loadMoreError: 'No se pudieron cargar más movimientos.',
+          ),
+        );
       }
     } finally {
       if (!isClosed) emit(state.copyWith(isLoadingMore: false));
@@ -235,7 +260,7 @@ class PointsCubit extends Cubit<PointsState> {
           if (!isClosed) {
             emit(state.copyWith(errorMessage: failure.message));
           }
-        }, 
+        },
         (_) {
           if (isClosed) return;
           final newMovement = {
@@ -254,12 +279,17 @@ class PointsCubit extends Cubit<PointsState> {
               currentBalance: state.currentBalance + rewardForToday,
             ),
           );
-        }
+        },
       );
     } catch (e, st) {
       developer.log('Error claimDailyCheckin', error: e, stackTrace: st);
       if (!isClosed) {
-        emit(state.copyWith(errorMessage: 'Ocurrió un error inesperado al reclamar el check-in.'));
+        emit(
+          state.copyWith(
+            errorMessage:
+                'Ocurrió un error inesperado al reclamar el check-in.',
+          ),
+        );
       }
     } finally {
       if (!isClosed) emit(state.copyWith(isClaimingCheckin: false));
@@ -326,25 +356,28 @@ class PointsCubit extends Cubit<PointsState> {
           description: 'Juego de cajas del $todayDate',
         );
 
-        result.fold((l) {
-          if (!isClosed) {
-            emit(state.copyWith(errorMessage: l.message));
-          }
-        }, (_) {
-          if (!isClosed) {
-            final newMovement = {
-              'points': reward,
-              'description': 'Juego de cajas del $todayDate',
-              'created_at': now.toIso8601String(),
-            };
-            emit(
-              state.copyWith(
-                currentBalance: state.currentBalance + reward,
-                movements: [newMovement, ...state.movements],
-              ),
-            );
-          }
-        });
+        result.fold(
+          (l) {
+            if (!isClosed) {
+              emit(state.copyWith(errorMessage: l.message));
+            }
+          },
+          (_) {
+            if (!isClosed) {
+              final newMovement = {
+                'points': reward,
+                'description': 'Juego de cajas del $todayDate',
+                'created_at': now.toIso8601String(),
+              };
+              emit(
+                state.copyWith(
+                  currentBalance: state.currentBalance + reward,
+                  movements: [newMovement, ...state.movements],
+                ),
+              );
+            }
+          },
+        );
       }
 
       if (!isClosed) {
@@ -386,7 +419,7 @@ class PointsCubit extends Cubit<PointsState> {
           if (!isClosed) {
             emit(state.copyWith(errorMessage: failure.message));
           }
-        }, 
+        },
         (_) {
           if (!isClosed) {
             final newMovement = {
@@ -399,27 +432,55 @@ class PointsCubit extends Cubit<PointsState> {
               state.copyWith(
                 currentBalance: state.currentBalance + points,
                 movements: [newMovement, ...state.movements],
-                boxesPlaysToday: movementType == 'MINI_GAME_BOXES' ? state.boxesPlaysToday + 1 : state.boxesPlaysToday,
-                memoramaPlaysToday: movementType == 'MINI_GAME_MEMORY' ? state.memoramaPlaysToday + 1 : state.memoramaPlaysToday,
-                catcherPlaysToday: movementType == 'MINI_GAME_CATCHER' ? state.catcherPlaysToday + 1 : state.catcherPlaysToday,
-                pinataPlaysToday: movementType == 'MINI_GAME_PINATA' ? state.pinataPlaysToday + 1 : state.pinataPlaysToday,
-                superSaltoPlaysToday: movementType == 'MINI_GAME_JUMP' ? state.superSaltoPlaysToday + 1 : state.superSaltoPlaysToday,
-                clawPlaysToday: movementType == 'MINI_GAME_CLAW' ? state.clawPlaysToday + 1 : state.clawPlaysToday,
-                stackPlaysToday: movementType == 'MINI_GAME_STACK' ? state.stackPlaysToday + 1 : state.stackPlaysToday,
-                dodgePlaysToday: movementType == 'MINI_GAME_DODGE' ? state.dodgePlaysToday + 1 : state.dodgePlaysToday,
+                boxesPlaysToday:
+                    movementType == 'MINI_GAME_BOXES'
+                        ? state.boxesPlaysToday + 1
+                        : state.boxesPlaysToday,
+                memoramaPlaysToday:
+                    movementType == 'MINI_GAME_MEMORY'
+                        ? state.memoramaPlaysToday + 1
+                        : state.memoramaPlaysToday,
+                catcherPlaysToday:
+                    movementType == 'MINI_GAME_CATCHER'
+                        ? state.catcherPlaysToday + 1
+                        : state.catcherPlaysToday,
+                pinataPlaysToday:
+                    movementType == 'MINI_GAME_PINATA'
+                        ? state.pinataPlaysToday + 1
+                        : state.pinataPlaysToday,
+                superSaltoPlaysToday:
+                    movementType == 'MINI_GAME_JUMP'
+                        ? state.superSaltoPlaysToday + 1
+                        : state.superSaltoPlaysToday,
+                clawPlaysToday:
+                    movementType == 'MINI_GAME_CLAW'
+                        ? state.clawPlaysToday + 1
+                        : state.clawPlaysToday,
+                stackPlaysToday:
+                    movementType == 'MINI_GAME_STACK'
+                        ? state.stackPlaysToday + 1
+                        : state.stackPlaysToday,
+                dodgePlaysToday:
+                    movementType == 'MINI_GAME_DODGE'
+                        ? state.dodgePlaysToday + 1
+                        : state.dodgePlaysToday,
               ),
             );
           }
-        }
+        },
       );
     } catch (e, st) {
       developer.log('Error recordMiniGameResult', error: e, stackTrace: st);
       if (!isClosed) {
-        emit(state.copyWith(errorMessage: 'Ocurrió un error inesperado al guardar el resultado.'));
+        emit(
+          state.copyWith(
+            errorMessage:
+                'Ocurrió un error inesperado al guardar el resultado.',
+          ),
+        );
       }
     }
   }
-
 
   void _initWalletChannel(String authUserId) {
     if (_walletChannel != null) {
@@ -427,28 +488,30 @@ class PointsCubit extends Cubit<PointsState> {
       _walletChannel = null;
     }
 
-    _walletChannel = _supabase
-        .channel('public:profiles_wallet_$authUserId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.update,
-          schema: 'public',
-          table: 'profiles',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'auth_user_id',
-            value: authUserId,
-          ),
-          callback: (payload) {
-            final newRow = payload.newRecord;
-            if (newRow.isNotEmpty && !isClosed) {
-              final newBalance = (newRow['wallet_balance'] as num?)?.toInt() ?? 0;
-              if (state.currentBalance != newBalance) {
-                emit(state.copyWith(currentBalance: newBalance));
-              }
-            }
-          },
-        )
-        .subscribe();
+    _walletChannel =
+        _supabase
+            .channel('public:profiles_wallet_$authUserId')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.update,
+              schema: 'public',
+              table: 'profiles',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'auth_user_id',
+                value: authUserId,
+              ),
+              callback: (payload) {
+                final newRow = payload.newRecord;
+                if (newRow.isNotEmpty && !isClosed) {
+                  final newBalance =
+                      (newRow['wallet_balance'] as num?)?.toInt() ?? 0;
+                  if (state.currentBalance != newBalance) {
+                    emit(state.copyWith(currentBalance: newBalance));
+                  }
+                }
+              },
+            )
+            .subscribe();
   }
 
   @override

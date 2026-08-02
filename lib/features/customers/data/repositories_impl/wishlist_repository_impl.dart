@@ -33,17 +33,18 @@ class WishlistRepositoryImpl implements WishlistRepository {
     final rows = List<Map<String, dynamic>>.from(response);
 
     // Enriquecer con stock
-    final productIds = rows
-        .map((r) {
-          final p = r['products'];
-          if (p is Map) return p['id'] as String?;
-          if (p is List && p.isNotEmpty && p.first is Map) {
-            return (p.first as Map)['id'] as String?;
-          }
-          return null;
-        })
-        .whereType<String>()
-        .toList();
+    final productIds =
+        rows
+            .map((r) {
+              final p = r['products'];
+              if (p is Map) return p['id'] as String?;
+              if (p is List && p.isNotEmpty && p.first is Map) {
+                return (p.first as Map)['id'] as String?;
+              }
+              return null;
+            })
+            .whereType<String>()
+            .toList();
 
     Map<String, int> stockByProduct = {};
     if (productIds.isNotEmpty) {
@@ -67,11 +68,12 @@ class WishlistRepositoryImpl implements WishlistRepository {
       if (rawProducts == null) continue;
 
       try {
-        final productMap = rawProducts is Map
-            ? Map<String, dynamic>.from(rawProducts)
-            : (rawProducts is List && rawProducts.isNotEmpty
-                ? Map<String, dynamic>.from(rawProducts.first as Map)
-                : <String, dynamic>{});
+        final productMap =
+            rawProducts is Map
+                ? Map<String, dynamic>.from(rawProducts)
+                : (rawProducts is List && rawProducts.isNotEmpty
+                    ? Map<String, dynamic>.from(rawProducts.first as Map)
+                    : <String, dynamic>{});
         if (productMap.isEmpty) continue;
 
         final pid = productMap['id'] as String?;
@@ -81,7 +83,10 @@ class WishlistRepositoryImpl implements WishlistRepository {
           WishlistEntryEntity(
             wishlistId: row['id'] as String,
             createdAt: DateTime.tryParse(row['created_at']?.toString() ?? ''),
-            product: ProductModel.fromJson(productMap).copyWith(totalStock: stock).toEntity(),
+            product:
+                ProductModel.fromJson(
+                  productMap,
+                ).copyWith(totalStock: stock).toEntity(),
           ),
         );
       } catch (e) {

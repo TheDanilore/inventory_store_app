@@ -106,7 +106,7 @@ class WalletCubit extends Cubit<WalletState> {
 
   void _listenToWalletChanges(String userId) {
     if (_walletChannel != null) return; // Optimización: Ya está escuchando
-    
+
     _walletChannel =
         _supabase
             .channel('public:profiles_wallet_$userId')

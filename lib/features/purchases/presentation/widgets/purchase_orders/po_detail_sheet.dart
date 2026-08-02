@@ -182,7 +182,8 @@ class _PODetailSheetState extends State<PODetailSheet> {
           supplierId: supplierId,
           amount: result.amount,
           accountId: result.accountId,
-          shiftId: null, // El RPC de backend se encargará de resolver el shiftId de forma atómica
+          shiftId:
+              null, // El RPC de backend se encargará de resolver el shiftId de forma atómica
         ),
       );
     }
@@ -466,476 +467,487 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
       },
       child: Material(
         color: AppColors.background,
-      borderRadius:
-          widget.isDialog
-              ? BorderRadius.circular(20)
-              : const BorderRadius.vertical(top: Radius.circular(28)),
-      child: Container(
-        height:
-            widget.isDialog ? null : MediaQuery.of(context).size.height * 0.85,
-        constraints:
+        borderRadius:
             widget.isDialog
-                ? BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.85,
-                )
-                : null,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Drag Handle (solo móvil/bottomsheet) ──
-            if (!widget.isDialog) ...[
-              const SizedBox(height: 8),
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
+                ? BorderRadius.circular(20)
+                : const BorderRadius.vertical(top: Radius.circular(28)),
+        child: Container(
+          height:
+              widget.isDialog
+                  ? null
+                  : MediaQuery.of(context).size.height * 0.85,
+          constraints:
+              widget.isDialog
+                  ? BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.85,
+                  )
+                  : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Drag Handle (solo móvil/bottomsheet) ──
+              if (!widget.isDialog) ...[
+                const SizedBox(height: 8),
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            if (_isProcessingAction)
-              const LinearProgressIndicator(
-                color: AppColors.primary,
-                backgroundColor: AppColors.border,
-              ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.receipt_long_rounded,
-                    color: AppColors.primary,
-                    size: 22,
-                  ),
-                  const SizedBox(width: 8),
-                  Tooltip(
-                    message: 'Copiar ID completo (${widget.po.id})',
-                    child: InkWell(
-                      onTap: () {
-                        Clipboard.setData(ClipboardData(text: widget.po.id));
-                        AppSnackbar.show(
-                          context,
-                          message: 'ID de orden copiado: ${widget.po.id}',
-                          type: SnackbarType.info,
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 2,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Detalle de Orden $shortCode',
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
+                const SizedBox(height: 8),
+              ],
+              if (_isProcessingAction)
+                const LinearProgressIndicator(
+                  color: AppColors.primary,
+                  backgroundColor: AppColors.border,
+                ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.receipt_long_rounded,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: 'Copiar ID completo (${widget.po.id})',
+                      child: InkWell(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: widget.po.id));
+                          AppSnackbar.show(
+                            context,
+                            message: 'ID de orden copiado: ${widget.po.id}',
+                            type: SnackbarType.info,
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(6),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Detalle de Orden $shortCode',
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.copy_rounded,
-                              size: 15,
-                              color: AppColors.textSecondary,
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.copy_rounded,
+                                size: 15,
+                                color: AppColors.textSecondary,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  StatusPill(
-                    label: _statusLabel(_status),
-                    color: _statusColor(_status),
-                  ),
-                  const Spacer(),
-                ],
+                    const SizedBox(width: 8),
+                    StatusPill(
+                      label: _statusLabel(_status),
+                      color: _statusColor(_status),
+                    ),
+                    const Spacer(),
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 4),
+              const SizedBox(height: 4),
 
-            // ── Contenido scrolleable ──────────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Exportar PDF
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Tooltip(
-                          message: 'Exportar orden en PDF',
-                          child: TextButton.icon(
-                            onPressed:
-                                _isProcessingAction
-                                    ? null
-                                    : () {
+              // ── Contenido scrolleable ──────────────────────────────
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Exportar PDF
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Tooltip(
+                            message: 'Exportar orden en PDF',
+                            child: TextButton.icon(
+                              onPressed:
+                                  _isProcessingAction
+                                      ? null
+                                      : () {
+                                        AppSnackbar.show(
+                                          context,
+                                          message:
+                                              'Función de PDF próximamente',
+                                          type: SnackbarType.info,
+                                        );
+                                      },
+                              icon: const Icon(
+                                Icons.picture_as_pdf_rounded,
+                                size: 18,
+                                color: AppColors.primary,
+                              ),
+                              label: const Text(
+                                'Exportar PDF',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // ── Card Proveedor y Finanzas ──────────────────
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Label PROVEEDOR con contraste mejorado
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'PROVEEDOR',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textSecondary,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                                Tooltip(
+                                  message:
+                                      'Copiar ID completo (${widget.po.id})',
+                                  child: InkWell(
+                                    onTap: () {
+                                      Clipboard.setData(
+                                        ClipboardData(text: widget.po.id),
+                                      );
                                       AppSnackbar.show(
                                         context,
-                                        message: 'Función de PDF próximamente',
+                                        message:
+                                            'ID de orden copiado: ${widget.po.id}',
                                         type: SnackbarType.info,
                                       );
                                     },
-                            icon: const Icon(
-                              Icons.picture_as_pdf_rounded,
-                              size: 18,
-                              color: AppColors.primary,
-                            ),
-                            label: const Text(
-                              'Exportar PDF',
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // ── Card Proveedor y Finanzas ──────────────────
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Label PROVEEDOR con contraste mejorado
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'PROVEEDOR',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textSecondary,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              Tooltip(
-                                message: 'Copiar ID completo (${widget.po.id})',
-                                child: InkWell(
-                                  onTap: () {
-                                    Clipboard.setData(
-                                      ClipboardData(text: widget.po.id),
-                                    );
-                                    AppSnackbar.show(
-                                      context,
-                                      message:
-                                          'ID de orden copiado: ${widget.po.id}',
-                                      type: SnackbarType.info,
-                                    );
-                                  },
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(
-                                        alpha: 0.1,
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
                                       ),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          shortCode,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.primary,
-                                          ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.1,
                                         ),
-                                        const SizedBox(width: 4),
-                                        const Icon(
-                                          Icons.copy_rounded,
-                                          size: 13,
-                                          color: AppColors.primary,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.po.supplierName,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-
-                          const Divider(height: 24, color: AppColors.border),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'MÉTODO DE PAGO',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textSecondary,
-                                      letterSpacing: 0.3,
-                                    ),
-                                  ),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        _paymentMethod,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textPrimary,
-                                        ),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
-                                      if (_canEditPaymentMethod) ...[
-                                        const SizedBox(width: 4),
-                                        InkWell(
-                                          onTap:
-                                              _isProcessingAction
-                                                  ? null
-                                                  : _showEditPaymentMethodDialog,
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
-                                          child: const Padding(
-                                            padding: EdgeInsets.all(2.0),
-                                            child: Icon(
-                                              Icons.edit_rounded,
-                                              size: 16,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            shortCode,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
                                               color: AppColors.primary,
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  const Text(
-                                    'FECHA EMISIÓN',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textSecondary,
-                                      letterSpacing: 0.3,
+                                          const SizedBox(width: 4),
+                                          const Icon(
+                                            Icons.copy_rounded,
+                                            size: 13,
+                                            color: AppColors.primary,
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    DateFormat(
-                                      'dd/MM/yyyy HH:mm', 'es'
-                                    ).format(widget.po.createdAt.toLocal()),
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-
-                          // ── Card financiera con animación de conteo ──
-                          FinancialSummaryCard(
-                            columns: [
-                              FinancialColumn(
-                                label: 'TOTAL',
-                                amount: widget.po.totalAmount,
-                                amountColor:
-                                    _status == 'CANCELLED'
-                                        ? AppColors.textMuted
-                                        : AppColors.primary,
-                              ),
-                              FinancialColumn(
-                                label: 'PAGADO',
-                                amount: _amountPaid,
-                                amountColor: AppColors.success,
-                              ),
-                              FinancialColumn(
-                                label: 'DEUDA',
-                                amount: _status == 'CANCELLED' ? 0.0 : _pending,
-                                amountColor:
-                                    (_status != 'CANCELLED' && _pending > 0)
-                                        ? AppColors.danger
-                                        : AppColors.textSecondary,
-                                alignment: CrossAxisAlignment.end,
-                              ),
-                            ],
-                          ),
-                          if (_status != 'CANCELLED' && _pending > 0) ...[
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                icon: const Icon(
-                                  Icons.payments_rounded,
-                                  size: 18,
-                                  color: AppColors.success,
-                                ),
-                                label: Text(
-                                  'Registrar Pago / Abono (S/ ${_pending.toStringAsFixed(2)})',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.success,
-                                  ),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(
-                                    color: AppColors.success,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                onPressed:
-                                    _isProcessingAction
-                                        ? null
-                                        : _showPaymentDialog,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // ── Lista de Items ─────────────────────────────
-                    const Text(
-                      'Productos Solicitados',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    if (_isLoadingItems)
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: 3,
-                        itemBuilder:
-                            (_, _) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: AppShimmer(
-                                width: double.infinity,
-                                height: 76,
-                                borderRadius: 12,
-                              ),
-                            ),
-                      )
-                    else if (_items == null || _items!.isEmpty)
-                      const Text(
-                        'No hay productos en esta orden.',
-                        style: TextStyle(color: AppColors.textMuted),
-                      )
-                    else
-                      ...List.generate(_items!.length, (index) {
-                        final item = _items![index];
-                        final isFullyReceived = item.fullyReceived;
-                        final progress =
-                            item.quantityOrdered > 0
-                                ? item.quantityReceived / item.quantityOrdered
-                                : 0.0;
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: ProductItemCard(
-                            imageUrl: item.imageUrl,
-                            productName: item.productName ?? '—',
-                            variantLabel: item.variantAttrs,
-                            // Progress bar de recepción (Mejora #4)
-                            progressWidget: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: LinearProgressIndicator(
-                                    value: progress.clamp(0.0, 1.0),
-                                    backgroundColor: AppColors.border,
-                                    color:
-                                        isFullyReceived
-                                            ? AppColors.success
-                                            : AppColors.warning,
-                                    minHeight: 4,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  'Recibido: ${item.quantityReceived.toInt()} / ${item.quantityOrdered.toInt()}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                        isFullyReceived
-                                            ? AppColors.success
-                                            : AppColors.warning,
                                   ),
                                 ),
                               ],
                             ),
-                            trailing: ItemPriceTrailing(
-                              text: 'S/ ${item.subtotal.toStringAsFixed(2)}',
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.po.supplierName,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
-                            animationDelay: Duration(milliseconds: 60 * index),
-                          ),
-                        );
-                      }),
 
-                    const SizedBox(height: 16),
-                  ],
+                            const Divider(height: 24, color: AppColors.border),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'MÉTODO DE PAGO',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.textSecondary,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          _paymentMethod,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        if (_canEditPaymentMethod) ...[
+                                          const SizedBox(width: 4),
+                                          InkWell(
+                                            onTap:
+                                                _isProcessingAction
+                                                    ? null
+                                                    : _showEditPaymentMethodDialog,
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                            child: const Padding(
+                                              padding: EdgeInsets.all(2.0),
+                                              child: Icon(
+                                                Icons.edit_rounded,
+                                                size: 16,
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Text(
+                                      'FECHA EMISIÓN',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.textSecondary,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                    Text(
+                                      DateFormat(
+                                        'dd/MM/yyyy HH:mm',
+                                        'es',
+                                      ).format(widget.po.createdAt.toLocal()),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            // ── Card financiera con animación de conteo ──
+                            FinancialSummaryCard(
+                              columns: [
+                                FinancialColumn(
+                                  label: 'TOTAL',
+                                  amount: widget.po.totalAmount,
+                                  amountColor:
+                                      _status == 'CANCELLED'
+                                          ? AppColors.textMuted
+                                          : AppColors.primary,
+                                ),
+                                FinancialColumn(
+                                  label: 'PAGADO',
+                                  amount: _amountPaid,
+                                  amountColor: AppColors.success,
+                                ),
+                                FinancialColumn(
+                                  label: 'DEUDA',
+                                  amount:
+                                      _status == 'CANCELLED' ? 0.0 : _pending,
+                                  amountColor:
+                                      (_status != 'CANCELLED' && _pending > 0)
+                                          ? AppColors.danger
+                                          : AppColors.textSecondary,
+                                  alignment: CrossAxisAlignment.end,
+                                ),
+                              ],
+                            ),
+                            if (_status != 'CANCELLED' && _pending > 0) ...[
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(
+                                    Icons.payments_rounded,
+                                    size: 18,
+                                    color: AppColors.success,
+                                  ),
+                                  label: Text(
+                                    'Registrar Pago / Abono (S/ ${_pending.toStringAsFixed(2)})',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.success,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(
+                                      color: AppColors.success,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed:
+                                      _isProcessingAction
+                                          ? null
+                                          : _showPaymentDialog,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ── Lista de Items ─────────────────────────────
+                      const Text(
+                        'Productos Solicitados',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      if (_isLoadingItems)
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: 3,
+                          itemBuilder:
+                              (_, _) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: AppShimmer(
+                                  width: double.infinity,
+                                  height: 76,
+                                  borderRadius: 12,
+                                ),
+                              ),
+                        )
+                      else if (_items == null || _items!.isEmpty)
+                        const Text(
+                          'No hay productos en esta orden.',
+                          style: TextStyle(color: AppColors.textMuted),
+                        )
+                      else
+                        ...List.generate(_items!.length, (index) {
+                          final item = _items![index];
+                          final isFullyReceived = item.fullyReceived;
+                          final progress =
+                              item.quantityOrdered > 0
+                                  ? item.quantityReceived / item.quantityOrdered
+                                  : 0.0;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: ProductItemCard(
+                              imageUrl: item.imageUrl,
+                              productName: item.productName ?? '—',
+                              variantLabel: item.variantAttrs,
+                              // Progress bar de recepción (Mejora #4)
+                              progressWidget: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: progress.clamp(0.0, 1.0),
+                                      backgroundColor: AppColors.border,
+                                      color:
+                                          isFullyReceived
+                                              ? AppColors.success
+                                              : AppColors.warning,
+                                      minHeight: 4,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Recibido: ${item.quantityReceived.toInt()} / ${item.quantityOrdered.toInt()}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color:
+                                          isFullyReceived
+                                              ? AppColors.success
+                                              : AppColors.warning,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              trailing: ItemPriceTrailing(
+                                text: 'S/ ${item.subtotal.toStringAsFixed(2)}',
+                              ),
+                              animationDelay: Duration(
+                                milliseconds: 60 * index,
+                              ),
+                            ),
+                          );
+                        }),
+
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            // Sticky Footer
-            _StickyFooter(
-              status: _status,
-              isProcessing: _isProcessingAction,
-              onReceive: widget.onReceive,
-              onMarkSent: () => _handleUpdateStatus('SENT'),
-              onSendWhatsApp: _sendWhatsAppMessage,
-              onCancel: _confirmCancelOrder,
-            ),
-          ],
+              // Sticky Footer
+              _StickyFooter(
+                status: _status,
+                isProcessing: _isProcessingAction,
+                onReceive: widget.onReceive,
+                onMarkSent: () => _handleUpdateStatus('SENT'),
+                onSendWhatsApp: _sendWhatsAppMessage,
+                onCancel: _confirmCancelOrder,
+              ),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 }
@@ -1139,7 +1151,9 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
   void initState() {
     super.initState();
     _selectedAccountId = widget.accounts.first.id;
-    _amountCtrl = TextEditingController(text: widget.pending.toStringAsFixed(2));
+    _amountCtrl = TextEditingController(
+      text: widget.pending.toStringAsFixed(2),
+    );
   }
 
   @override
@@ -1183,9 +1197,7 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: const Row(
         children: [
           Icon(Icons.payments_rounded, color: AppColors.success),
@@ -1219,10 +1231,7 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
               const SizedBox(height: 16),
               const Text(
                 'Cuenta Origen (Caja / Banco):',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
@@ -1237,15 +1246,16 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
                     vertical: 10,
                   ),
                 ),
-                items: widget.accounts.map((acc) {
-                  return DropdownMenuItem<String>(
-                    value: acc.id,
-                    child: Text(
-                      '${acc.name} (Saldo: S/ ${acc.balance.toStringAsFixed(2)})',
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  );
-                }).toList(),
+                items:
+                    widget.accounts.map((acc) {
+                      return DropdownMenuItem<String>(
+                        value: acc.id,
+                        child: Text(
+                          '${acc.name} (Saldo: S/ ${acc.balance.toStringAsFixed(2)})',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      );
+                    }).toList(),
                 onChanged: (val) {
                   if (val != null) {
                     setState(() => _selectedAccountId = val);
@@ -1255,15 +1265,14 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
               const SizedBox(height: 16),
               const Text(
                 'Monto a pagar (S/):',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}$')),
                 ],

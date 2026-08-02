@@ -399,7 +399,9 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
 
   Future<void> submitOrder() async {
     final currentState = state;
-    if (currentState is! PurchaseOrderFormLoaded || !currentState.isValid || currentState.isSaving) {
+    if (currentState is! PurchaseOrderFormLoaded ||
+        !currentState.isValid ||
+        currentState.isSaving) {
       return;
     }
 

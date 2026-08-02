@@ -47,7 +47,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final orders = data.map((json) => OrderModel.fromJson(json)).toList();
       return Right(orders);
     } catch (e, st) {
-      developer.log('Error en getCustomerOrders', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error en getCustomerOrders',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(ServerFailure(message: 'Error fetching orders: $e'));
     }
   }
@@ -68,7 +73,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final orders = data.map((json) => OrderModel.fromJson(json)).toList();
       return Right(orders);
     } catch (e, st) {
-      developer.log('Error en getPendingOrdersByCustomer', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error en getPendingOrdersByCustomer',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(ServerFailure(message: 'Error fetching pending orders: $e'));
     }
   }
@@ -149,7 +159,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
       return Right((orders: orders, total: totalRecords));
     } catch (e, st) {
-      developer.log('Error en getFilteredOrders', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error en getFilteredOrders',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       final errStr = e.toString().toLowerCase();
       if (e is SocketException ||
           errStr.contains('socketexception') ||
@@ -191,12 +206,20 @@ class OrdersRepositoryImpl implements OrdersRepository {
               .maybeSingle();
 
       if (data == null) {
-        developer.log('getOrderById data == null para id: $orderId', name: 'OrdersRepo');
+        developer.log(
+          'getOrderById data == null para id: $orderId',
+          name: 'OrdersRepo',
+        );
         return const Left(ServerFailure(message: 'Pedido no encontrado.'));
       }
       return Right(OrderModel.fromJson(data));
     } catch (e, st) {
-      developer.log('Error en getOrderById', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error en getOrderById',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(ServerFailure(message: 'Error fetching order: $e'));
     }
   }
@@ -218,7 +241,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final items = data.map((json) => OrderItemModel.fromJson(json)).toList();
       return Right(items);
     } catch (e, st) {
-      developer.log('Error en getOrderItems', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error en getOrderItems',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(ServerFailure(message: 'Error fetching order items: $e'));
     }
   }
@@ -264,14 +292,24 @@ class OrdersRepositoryImpl implements OrdersRepository {
         return const Right(null);
       }
     } on PostgrestException catch (e, st) {
-      developer.log('PostgrestException en updateOrderStatus', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'PostgrestException en updateOrderStatus',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(
         ServerFailure(
           message: 'Error de base de datos al actualizar el estado.',
         ),
       );
     } catch (e, st) {
-      developer.log('Error inesperado en updateOrderStatus', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error inesperado en updateOrderStatus',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(
         ServerFailure(message: 'Error inesperado al actualizar el estado.'),
       );
@@ -392,16 +430,22 @@ class OrdersRepositoryImpl implements OrdersRepository {
           .eq('id', orderId);
 
       // [OPTIMIZACIÓN DATA EGRESS] Elimina N peticiones simultáneas, las agrupa en 1.
-      final upsertPayload = items.map((item) => {
-        'id': item.id,
-        'order_id': orderId,
-        'product_id': item.productId,
-        'variant_id': item.variantId,
-        'quantity': item.quantity,
-        'unit_cost': item.unitCost,
-        'applied_price': item.appliedPrice,
-        'net_profit': (item.appliedPrice - item.unitCost) * item.quantity,
-      }).toList();
+      final upsertPayload =
+          items
+              .map(
+                (item) => {
+                  'id': item.id,
+                  'order_id': orderId,
+                  'product_id': item.productId,
+                  'variant_id': item.variantId,
+                  'quantity': item.quantity,
+                  'unit_cost': item.unitCost,
+                  'applied_price': item.appliedPrice,
+                  'net_profit':
+                      (item.appliedPrice - item.unitCost) * item.quantity,
+                },
+              )
+              .toList();
 
       if (upsertPayload.isNotEmpty) {
         await _supabase.from('order_items').upsert(upsertPayload);
@@ -409,10 +453,24 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
       return const Right(null);
     } on PostgrestException catch (e, st) {
-      developer.log('PostgrestException en saveOrderChanges', error: e, stackTrace: st, name: 'OrdersRepo');
-      return Left(ServerFailure(message: 'Error de base de datos al guardar: ${e.message}'));
+      developer.log(
+        'PostgrestException en saveOrderChanges',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
+      return Left(
+        ServerFailure(
+          message: 'Error de base de datos al guardar: ${e.message}',
+        ),
+      );
     } catch (e, st) {
-      developer.log('Error en saveOrderChanges', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error en saveOrderChanges',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(ServerFailure(message: 'Error al guardar: $e'));
     }
   }
@@ -436,14 +494,19 @@ class OrdersRepositoryImpl implements OrdersRepository {
       );
       return const Right(null);
     } catch (e, st) {
-      developer.log('Error en processReturn', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error en processReturn',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(ServerFailure(message: 'Error al registrar devolución: $e'));
     }
   }
 
   // ─── CÓDIGO ZOMBIE ELIMINADO ──────────────────────────────────────────────
-  // Los métodos _zombiePlaceholder(), cancelOrder() antiguo, revertFinancialMovement() y 
-  // revertLoyaltyPoints() han sido eliminados. Toda la lógica de stock, crédito, finanzas 
+  // Los métodos _zombiePlaceholder(), cancelOrder() antiguo, revertFinancialMovement() y
+  // revertLoyaltyPoints() han sido eliminados. Toda la lógica de stock, crédito, finanzas
   // y wallet está ahora atomizada en los RPCs de la base de datos:
   //   • rpc_complete_order  → completa el pedido de forma atómica
   //   • rpc_cancel_order    → cancela y revierte todos los efectos
@@ -468,15 +531,25 @@ class OrdersRepositoryImpl implements OrdersRepository {
       await _supabase.rpc('rpc_cancel_order', params: {'payload': payload});
       return const Right(null);
     } on PostgrestException catch (e, st) {
-      developer.log('PostgrestException en cancelOrder', error: e, stackTrace: st, name: 'OrdersRepo');
-      return Left(ServerFailure(message: 'Error de BD al cancelar orden: ${e.message}'));
+      developer.log(
+        'PostgrestException en cancelOrder',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
+      return Left(
+        ServerFailure(message: 'Error de BD al cancelar orden: ${e.message}'),
+      );
     } catch (e, st) {
-      developer.log('Error inesperado en cancelOrder', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error inesperado en cancelOrder',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(ServerFailure(message: 'Error al cancelar orden: $e'));
     }
   }
-
-
 
   /// Recupera los ítems de un pedido para la generación de tickets PDF
   /// trayendo estrictamente los datos necesarios (Directiva 3: Columnas específicas y !inner).
@@ -501,8 +574,15 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
       return Right(List<Map<String, dynamic>>.from(resp));
     } catch (e, st) {
-      developer.log('Error en fetchOrderItemsForPdf', error: e, stackTrace: st, name: 'OrdersRepo');
-      return Left(ServerFailure(message: 'Error al obtener ítems para PDF: $e'));
+      developer.log(
+        'Error en fetchOrderItemsForPdf',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
+      return Left(
+        ServerFailure(message: 'Error al obtener ítems para PDF: $e'),
+      );
     }
   }
 
@@ -525,7 +605,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
       _cachedFinancialAccounts = accounts;
       return Right(accounts);
     } catch (e, st) {
-      developer.log('Error en getFinancialAccounts', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error en getFinancialAccounts',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(
         ServerFailure(message: 'Error fetching financial accounts: $e'),
       );
@@ -545,7 +630,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
               .maybeSingle();
       return Right(response);
     } catch (e, st) {
-      developer.log('Error en getProfileById', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error en getProfileById',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(ServerFailure(message: 'Error fetching profile: $e'));
     }
   }
@@ -564,7 +654,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
           .limit(20);
       return Right(List<Map<String, dynamic>>.from(response));
     } catch (e, st) {
-      developer.log('Error en searchCustomers', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error en searchCustomers',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(ServerFailure(message: 'Error searching customers: $e'));
     }
   }
@@ -576,7 +671,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
       // We return null since the RPC register_financial_movement will handle it.
       return const Right(null);
     } catch (e, st) {
-      developer.log('Error en checkActiveCashShift', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error en checkActiveCashShift',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(
         ServerFailure(message: 'Error checking active cash shift: $e'),
       );
@@ -617,7 +717,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
         );
       }
     } catch (e, st) {
-      developer.log('Error en registerCreditPayment', error: e, stackTrace: st, name: 'OrdersRepo');
+      developer.log(
+        'Error en registerCreditPayment',
+        error: e,
+        stackTrace: st,
+        name: 'OrdersRepo',
+      );
       return Left(
         ServerFailure(message: 'Error al registrar pago en base de datos: $e'),
       );
@@ -642,7 +747,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
           controller.add(Right(response.count));
         }
       } catch (e, st) {
-        developer.log('Error fetching count', error: e, stackTrace: st, name: 'OrdersRepo');
+        developer.log(
+          'Error fetching count',
+          error: e,
+          stackTrace: st,
+          name: 'OrdersRepo',
+        );
         if (!controller.isClosed) {
           controller.add(
             Left(ServerFailure(message: 'Error fetching count: $e')),

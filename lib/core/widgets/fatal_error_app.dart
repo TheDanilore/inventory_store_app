@@ -4,11 +4,7 @@ class FatalErrorApp extends StatelessWidget {
   final String error;
   final String? stackTrace;
 
-  const FatalErrorApp({
-    super.key,
-    required this.error,
-    this.stackTrace,
-  });
+  const FatalErrorApp({super.key, required this.error, this.stackTrace});
 
   @override
   Widget build(BuildContext context) {
@@ -42,10 +38,7 @@ class FatalErrorApp extends StatelessWidget {
                 const Text(
                   'La aplicación no pudo inicializar el entorno local o la base de datos. Por favor, contacte a soporte técnico.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
                 ),
                 const SizedBox(height: 32),
                 Expanded(

@@ -37,9 +37,9 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
     try {
       final posCubit = context.read<PosCubit>();
       final config = context.read<AppConfigCubit>();
-      
+
       final detailsRes = await posCubit.fetchOrderDetailsForTicket(orderId);
-      
+
       await detailsRes.fold(
         (failure) async {
           if (mounted) {
@@ -52,14 +52,14 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
         },
         (result) async {
           await OrderPdfGenerator.printTicket(
-            result.order, 
+            result.order,
             items: result.items,
             businessName: config.businessName,
             taxId: config.businessTaxId,
             address: config.businessAddress,
             phone: config.businessPhone,
           );
-        }
+        },
       );
     } catch (e) {
       if (mounted) {
@@ -159,16 +159,26 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline_rounded, color: Colors.red, size: 48),
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: Colors.red,
+                    size: 48,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'Error al cargar las ventas:\n${state.recentOrdersError}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
-                    onPressed: () => context.read<PosCubit>().fetchRecentOrders(forceRefresh: true),
+                    onPressed:
+                        () => context.read<PosCubit>().fetchRecentOrders(
+                          forceRefresh: true,
+                        ),
                     icon: const Icon(Icons.refresh_rounded),
                     label: const Text('Reintentar'),
                   ),
@@ -193,15 +203,22 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
           separatorBuilder: (_, _) => const Divider(height: 1),
           itemBuilder: (context, index) {
             final order = state.recentOrders[index];
-            final clientName = order.customerName.isNotEmpty ? order.customerName : 'Cliente General';
+            final clientName =
+                order.customerName.isNotEmpty
+                    ? order.customerName
+                    : 'Cliente General';
             final total = order.totalAmount;
-            final dateStr = order.createdAt != null 
-                ? '${order.createdAt!.day.toString().padLeft(2, '0')}/${order.createdAt!.month.toString().padLeft(2, '0')}/${order.createdAt!.year}'
-                : '';
+            final dateStr =
+                order.createdAt != null
+                    ? '${order.createdAt!.day.toString().padLeft(2, '0')}/${order.createdAt!.month.toString().padLeft(2, '0')}/${order.createdAt!.year}'
+                    : '';
 
             return ListTile(
               dense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 4,
+              ),
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(

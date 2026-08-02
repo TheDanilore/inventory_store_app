@@ -53,12 +53,9 @@ class CartCubit extends Cubit<CartState> {
     // Actually, in Clean Architecture, we could pass the profile ID if known,
     // but we can let the caller trigger sync, or do a quick check here.
     final userRes = await _getCurrentUser(const NoParams());
-    userRes.fold(
-      (_) => null,
-      (user) async {
-        await syncCloudCart(profileId: user.id);
-      },
-    );
+    userRes.fold((_) => null, (user) async {
+      await syncCloudCart(profileId: user.id);
+    });
   }
 
   Future<void> syncCloudCart({String? profileId}) async {
@@ -108,13 +105,21 @@ class CartCubit extends Cubit<CartState> {
       final existing = newItems[item.cartKey]!;
       final newQty = existing.quantity + item.quantity;
       if (newQty > existing.availableStock) {
-        emit(state.copyWith(errorMessage: 'Stock insuficiente para esta cantidad.'));
+        emit(
+          state.copyWith(
+            errorMessage: 'Stock insuficiente para esta cantidad.',
+          ),
+        );
         return;
       }
       newItems[item.cartKey] = existing.copyWith(quantity: newQty);
     } else {
       if (item.quantity > item.availableStock) {
-        emit(state.copyWith(errorMessage: 'Stock insuficiente para esta cantidad.'));
+        emit(
+          state.copyWith(
+            errorMessage: 'Stock insuficiente para esta cantidad.',
+          ),
+        );
         return;
       }
       newItems[item.cartKey] = item;
@@ -132,7 +137,11 @@ class CartCubit extends Cubit<CartState> {
       } else {
         final existing = newItems[cartKey]!;
         if (qty > existing.availableStock) {
-          emit(state.copyWith(errorMessage: 'Stock insuficiente para esta cantidad.'));
+          emit(
+            state.copyWith(
+              errorMessage: 'Stock insuficiente para esta cantidad.',
+            ),
+          );
           return;
         }
         newItems[cartKey] = existing.copyWith(quantity: qty);

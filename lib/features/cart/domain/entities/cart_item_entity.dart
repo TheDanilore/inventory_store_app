@@ -58,7 +58,7 @@ class CartItemEntity {
   }) {
     final selVar = selectedVariant;
     final unitPrice = selVar?.salePrice ?? productEntity.displaySalePrice;
-    
+
     if (unitPrice == null || unitPrice <= 0) {
       throw Exception('Producto sin precio de venta válido configurado.');
     }
@@ -96,7 +96,8 @@ class CartItemEntity {
       unitCost > 0 ? ((unitPrice - unitCost) / unitCost) * 100 : 0;
 
   /// Indica si hay stock suficiente para la cantidad seleccionada.
-  bool get hasEnoughStock => availableStock == unlimitedStock || availableStock >= quantity;
+  bool get hasEnoughStock =>
+      availableStock == unlimitedStock || availableStock >= quantity;
 
   /// Clave estática para construir el [cartKey] de forma consistente.
   static String buildKey(String productId, String? variantId) {
@@ -156,14 +157,14 @@ class CartItemEntity {
 
   @override
   int get hashCode => Object.hash(
-        cartKey,
-        quantity,
-        unitPrice,
-        unitCost,
-        availableStock,
-        isSelected,
-        variantId,
-      );
+    cartKey,
+    quantity,
+    unitPrice,
+    unitCost,
+    availableStock,
+    isSelected,
+    variantId,
+  );
 
   @override
   String toString() =>

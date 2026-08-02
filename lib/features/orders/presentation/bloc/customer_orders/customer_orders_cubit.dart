@@ -31,25 +31,33 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
       pid = res.fold((l) => null, (r) => r);
     }
     if (pid == null) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'Usuario no autenticado'));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Usuario no autenticado',
+        ),
+      );
       return;
     }
-    if (state.isLoading && state.profileId == pid && state.orders.isNotEmpty) return;
+    if (state.isLoading && state.profileId == pid && state.orders.isNotEmpty)
+      return;
     if (state.orders.isNotEmpty && state.profileId == pid) {
       return;
     }
-    emit(
-      state.copyWith(profileId: pid, isLoading: true, errorMessage: ''),
-    );
+    emit(state.copyWith(profileId: pid, isLoading: true, errorMessage: ''));
     _itemsCache.clear();
     await _loadData(pid);
   }
 
-  List<OrderEntity> _applyFilters(List<OrderEntity> orders, String status, String query) {
+  List<OrderEntity> _applyFilters(
+    List<OrderEntity> orders,
+    String status,
+    String query,
+  ) {
     return orders.where((order) {
       final matchesStatus = status == 'ALL' || order.status == status;
-      final matchesSearch = query.isEmpty ||
-          order.id.toLowerCase().contains(query.toLowerCase());
+      final matchesSearch =
+          query.isEmpty || order.id.toLowerCase().contains(query.toLowerCase());
       return matchesStatus && matchesSearch;
     }).toList();
   }
@@ -72,7 +80,9 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
 
   final Map<String, List<OrderItemEntity>> _itemsCache = {};
 
-  Future<Either<Failure, List<OrderItemEntity>>> fetchOrderItems(String orderId) async {
+  Future<Either<Failure, List<OrderItemEntity>>> fetchOrderItems(
+    String orderId,
+  ) async {
     if (_itemsCache.containsKey(orderId)) {
       return Right(_itemsCache[orderId]!);
     }
@@ -81,7 +91,7 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
       (failure) {
         developer.log('Error fetching order items', error: failure.message);
         return Left(failure);
-      }, 
+      },
       (items) {
         // Simple FIFO cache eviction policy to prevent memory leaks
         if (_itemsCache.length >= 20) {
@@ -89,23 +99,27 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
         }
         _itemsCache[orderId] = items;
         return Right(items);
-      }
+      },
     );
   }
 
   Future<void> _loadData(String profileId) async {
-    final result = await getCustomerOrdersUc(
-      profileId,
-      limit: _limit,
-    );
+    final result = await getCustomerOrdersUc(profileId, limit: _limit);
 
     result.fold(
       (failure) {
-        developer.log('Error en _loadData CustomerOrders', error: failure.message);
+        developer.log(
+          'Error en _loadData CustomerOrders',
+          error: failure.message,
+        );
         emit(state.copyWith(isLoading: false, errorMessage: failure.message));
       },
       (orders) {
-        final newFiltered = _applyFilters(orders, state.statusFilter, state.searchQuery);
+        final newFiltered = _applyFilters(
+          orders,
+          state.statusFilter,
+          state.searchQuery,
+        );
         emit(
           state.copyWith(
             isLoading: false,
@@ -123,19 +137,28 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
     if (state.profileId == null) return;
     emit(state.copyWith(isBackgroundLoading: true));
 
-    final result = await getCustomerOrdersUc(
-      state.profileId!,
-      limit: _limit,
-    );
+    final result = await getCustomerOrdersUc(state.profileId!, limit: _limit);
 
     result.fold(
       (failure) {
-        developer.log('Error en refresh CustomerOrders', error: failure.message);
-        emit(state.copyWith(isBackgroundLoading: false, errorMessage: failure.message));
-      }, 
+        developer.log(
+          'Error en refresh CustomerOrders',
+          error: failure.message,
+        );
+        emit(
+          state.copyWith(
+            isBackgroundLoading: false,
+            errorMessage: failure.message,
+          ),
+        );
+      },
       (orders) {
         _itemsCache.clear();
-        final newFiltered = _applyFilters(orders, state.statusFilter, state.searchQuery);
+        final newFiltered = _applyFilters(
+          orders,
+          state.statusFilter,
+          state.searchQuery,
+        );
         emit(
           state.copyWith(
             isBackgroundLoading: false,
@@ -149,7 +172,10 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
   }
 
   Future<void> loadMore() async {
-    if (state.profileId == null || state.isLoadingMore || !state.hasMore || state.orders.isEmpty) {
+    if (state.profileId == null ||
+        state.isLoadingMore ||
+        !state.hasMore ||
+        state.orders.isEmpty) {
       return;
     }
 
@@ -164,12 +190,21 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
 
     result.fold(
       (failure) {
-        developer.log('Error en loadMore CustomerOrders', error: failure.message);
-        emit(state.copyWith(isLoadingMore: false, errorMessage: failure.message));
+        developer.log(
+          'Error en loadMore CustomerOrders',
+          error: failure.message,
+        );
+        emit(
+          state.copyWith(isLoadingMore: false, errorMessage: failure.message),
+        );
       },
       (newOrders) {
         final combinedOrders = [...state.orders, ...newOrders];
-        final newFiltered = _applyFilters(combinedOrders, state.statusFilter, state.searchQuery);
+        final newFiltered = _applyFilters(
+          combinedOrders,
+          state.statusFilter,
+          state.searchQuery,
+        );
         emit(
           state.copyWith(
             isLoadingMore: false,

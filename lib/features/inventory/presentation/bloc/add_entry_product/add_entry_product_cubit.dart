@@ -23,8 +23,18 @@ class AddEntryProductCubit extends Cubit<AddEntryProductState> {
     );
   }
 
-  Future<void> loadVariantsAndBatches(String productId, bool usesBatches, String? warehouseId) async {
-    emit(state.copyWithNullError(isLoadingVariants: true, availableVariants: [], availableBatches: []));
+  Future<void> loadVariantsAndBatches(
+    String productId,
+    bool usesBatches,
+    String? warehouseId,
+  ) async {
+    emit(
+      state.copyWithNullError(
+        isLoadingVariants: true,
+        availableVariants: [],
+        availableBatches: [],
+      ),
+    );
 
     final res = await _repository.loadActiveVariants(productId);
     res.fold(
@@ -33,24 +43,30 @@ class AddEntryProductCubit extends Cubit<AddEntryProductState> {
         emit(state.copyWith(isLoadingVariants: false, errorMessage: l.message));
       },
       (r) async {
-        final parsedVariants = r.map((v) => ProductVariantModel.fromJson(v)).toList();
+        final parsedVariants =
+            r.map((v) => ProductVariantModel.fromJson(v)).toList();
         parsedVariants.sort((a, b) => a.label.compareTo(b.label));
 
         List<Map<String, dynamic>> batches = [];
         if (parsedVariants.length == 1 && usesBatches && warehouseId != null) {
-          final batchesRes = await _repository.getBatchesForVariant(parsedVariants.first.id, warehouseId);
+          final batchesRes = await _repository.getBatchesForVariant(
+            parsedVariants.first.id,
+            warehouseId,
+          );
           batchesRes.fold(
             (bl) => emit(state.copyWith(errorMessage: bl.message)),
             (br) => batches = br,
           );
         }
 
-        emit(state.copyWithNullError(
-          isLoadingVariants: false,
-          availableVariants: parsedVariants,
-          availableBatches: batches,
-        ));
-      }
+        emit(
+          state.copyWithNullError(
+            isLoadingVariants: false,
+            availableVariants: parsedVariants,
+            availableBatches: batches,
+          ),
+        );
+      },
     );
   }
 
@@ -58,8 +74,12 @@ class AddEntryProductCubit extends Cubit<AddEntryProductState> {
     emit(state.copyWithNullError(isLoadingBatches: true));
     final res = await _repository.getBatchesForVariant(variantId, warehouseId);
     res.fold(
-      (l) => emit(state.copyWith(isLoadingBatches: false, errorMessage: l.message)),
-      (r) => emit(state.copyWithNullError(isLoadingBatches: false, availableBatches: r)),
+      (l) => emit(
+        state.copyWith(isLoadingBatches: false, errorMessage: l.message),
+      ),
+      (r) => emit(
+        state.copyWithNullError(isLoadingBatches: false, availableBatches: r),
+      ),
     );
   }
 }

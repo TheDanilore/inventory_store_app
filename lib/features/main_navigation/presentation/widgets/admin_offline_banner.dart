@@ -17,39 +17,40 @@ class AdminOfflineBanner extends StatelessWidget {
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutCubic,
           alignment: Alignment.topCenter,
-          child: isOnline
-              ? const SizedBox(width: double.infinity, height: 0)
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      color: AppColors.error,
-                      padding: const EdgeInsets.symmetric(vertical: 7),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.wifi_off_rounded,
-                            color: Colors.white,
-                            size: 14,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'Sin conexión a internet',
-                            style: TextStyle(
+          child:
+              isOnline
+                  ? const SizedBox(width: double.infinity, height: 0)
+                  : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        color: AppColors.error,
+                        padding: const EdgeInsets.symmetric(vertical: 7),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.wifi_off_rounded,
                               color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.2,
+                              size: 14,
                             ),
-                          ),
-                        ],
+                            SizedBox(width: 6),
+                            Text(
+                              'Sin conexión a internet',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const OfflineGamesSuggestion(),
-                  ],
-                ),
+                      const OfflineGamesSuggestion(),
+                    ],
+                  ),
         );
       },
     );

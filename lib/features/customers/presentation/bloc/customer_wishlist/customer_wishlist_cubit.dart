@@ -104,4 +104,3 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
     }
   }
 }
-

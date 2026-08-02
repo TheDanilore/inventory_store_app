@@ -115,11 +115,12 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     final items = cartCubit.state.items.values.toList();
     if (items.isEmpty) return;
 
-    final variantIds = items
-        .where((i) => i.variantId != null && i.variantId!.isNotEmpty)
-        .map((i) => i.variantId!)
-        .toSet()
-        .toList();
+    final variantIds =
+        items
+            .where((i) => i.variantId != null && i.variantId!.isNotEmpty)
+            .map((i) => i.variantId!)
+            .toSet()
+            .toList();
 
     if (variantIds.isEmpty) return;
 
@@ -160,13 +161,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       );
       return;
     }
-    final hasNoStockItem =
-        cartCubit.state.items.values.any((i) => i.availableStock <= 0);
+    final hasNoStockItem = cartCubit.state.items.values.any(
+      (i) => i.availableStock <= 0,
+    );
     if (!isDraft && hasNoStockItem) {
       AppSnackbar.show(
         context,
-        message:
-            'Hay productos sin stock en la tienda/almacén seleccionado.',
+        message: 'Hay productos sin stock en la tienda/almacén seleccionado.',
         type: SnackbarType.error,
       );
       return;
@@ -185,9 +186,11 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         (a) => a['id'] == posCubit.state.selectedAccountId,
         orElse: () => {},
       );
-      
+
       // Validación estandarizada por booleano, sin Strings quemados (Zero-Trust fallback)
-      final requiresShift = accountData['is_cash_register'] == true || accountData['requires_shift'] == true;
+      final requiresShift =
+          accountData['is_cash_register'] == true ||
+          accountData['requires_shift'] == true;
       if (requiresShift && posCubit.state.activeShift == null) {
         AppSnackbar.show(
           context,
@@ -364,23 +367,31 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
 
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Vaciar Caja', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('¿Estás seguro de que deseas eliminar todos los productos de la caja actual?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text(
+              'Vaciar Caja',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: const Text(
+              '¿Estás seguro de que deseas eliminar todos los productos de la caja actual?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                onPressed: () => Navigator.pop(context, true),
+                icon: const Icon(Icons.delete_outline, size: 18),
+                label: const Text('Vaciar Todo'),
+              ),
+            ],
           ),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.pop(context, true),
-            icon: const Icon(Icons.delete_outline, size: 18),
-            label: const Text('Vaciar Todo'),
-          ),
-        ],
-      ),
     );
 
     if (confirm == true) {
@@ -459,7 +470,11 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                         },
                       );
                     } catch (e, st) {
-                      developer.log('Error generando comprobante', error: e, stackTrace: st);
+                      developer.log(
+                        'Error generando comprobante',
+                        error: e,
+                        stackTrace: st,
+                      );
                       if (dialogContext.mounted) {
                         AppSnackbar.show(
                           dialogContext,
@@ -518,20 +533,39 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                       8,
                                     ),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         PosSectionLabel('Productos en caja'),
                                         BlocBuilder<CartCubit, CartState>(
                                           builder: (context, cartState) {
-                                            if (cartState.items.isEmpty) return const SizedBox.shrink();
+                                            if (cartState.items.isEmpty)
+                                              return const SizedBox.shrink();
                                             return TextButton.icon(
                                               onPressed: _onClearCart,
-                                              icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
-                                              label: const Text('Vaciar Todo', style: TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.bold)),
+                                              icon: const Icon(
+                                                Icons.delete_outline,
+                                                color: AppColors.error,
+                                                size: 20,
+                                              ),
+                                              label: const Text(
+                                                'Vaciar Todo',
+                                                style: TextStyle(
+                                                  color: AppColors.error,
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
                                               style: TextButton.styleFrom(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 8,
+                                                    ),
                                                 minimumSize: Size.zero,
-                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                tapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
                                               ),
                                             );
                                           },
@@ -583,20 +617,38 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     PosSectionLabel('Productos en caja'),
                                     BlocBuilder<CartCubit, CartState>(
                                       builder: (context, cartState) {
-                                        if (cartState.items.isEmpty) return const SizedBox.shrink();
+                                        if (cartState.items.isEmpty)
+                                          return const SizedBox.shrink();
                                         return TextButton.icon(
                                           onPressed: _onClearCart,
-                                          icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
-                                          label: const Text('Vaciar Todo', style: TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.bold)),
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            color: AppColors.error,
+                                            size: 20,
+                                          ),
+                                          label: const Text(
+                                            'Vaciar Todo',
+                                            style: TextStyle(
+                                              color: AppColors.error,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
                                           style: TextButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
                                             minimumSize: Size.zero,
-                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            tapTargetSize:
+                                                MaterialTapTargetSize
+                                                    .shrinkWrap,
                                           ),
                                         );
                                       },
@@ -696,13 +748,14 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       children: [
         PosSectionLabel('Cliente'),
         BlocBuilder<PosCubit, PosState>(
-          buildWhen: (prev, curr) =>
-              prev.paymentMethod != curr.paymentMethod ||
-              prev.isLoading != curr.isLoading ||
-              prev.clientMatches != curr.clientMatches ||
-              prev.selectedClientId != curr.selectedClientId ||
-              prev.saldoActualCliente != curr.saldoActualCliente ||
-              prev.creditInfo != curr.creditInfo,
+          buildWhen:
+              (prev, curr) =>
+                  prev.paymentMethod != curr.paymentMethod ||
+                  prev.isLoading != curr.isLoading ||
+                  prev.clientMatches != curr.clientMatches ||
+                  prev.selectedClientId != curr.selectedClientId ||
+                  prev.saldoActualCliente != curr.saldoActualCliente ||
+                  prev.creditInfo != curr.creditInfo,
           builder: (context, posState) {
             final isCredito = posState.paymentMethod == 'CRÉDITO';
             return AdminSaleClientSection(
@@ -726,11 +779,12 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
           },
         ),
         BlocBuilder<PosCubit, PosState>(
-          buildWhen: (prev, curr) =>
-              prev.paymentMethod != curr.paymentMethod ||
-              prev.selectedClientId != curr.selectedClientId ||
-              prev.saldoActualCliente != curr.saldoActualCliente ||
-              prev.puntosAUsar != curr.puntosAUsar,
+          buildWhen:
+              (prev, curr) =>
+                  prev.paymentMethod != curr.paymentMethod ||
+                  prev.selectedClientId != curr.selectedClientId ||
+                  prev.saldoActualCliente != curr.saldoActualCliente ||
+                  prev.puntosAUsar != curr.puntosAUsar,
           builder: (context, posState) {
             final cartCubit = context.watch<CartCubit>();
             final isCredito = posState.paymentMethod == 'CRÉDITO';

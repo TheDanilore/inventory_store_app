@@ -156,8 +156,10 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
               slivers: [
                 BlocBuilder<CustomerWishlistCubit, CustomerWishlistState>(
                   buildWhen: (previous, current) {
-                    if (previous.runtimeType != current.runtimeType) return true;
-                    if (previous is CustomerWishlistLoaded && current is CustomerWishlistLoaded) {
+                    if (previous.runtimeType != current.runtimeType)
+                      return true;
+                    if (previous is CustomerWishlistLoaded &&
+                        current is CustomerWishlistLoaded) {
                       return previous.items.length != current.items.length;
                     }
                     return false;
@@ -191,8 +193,10 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
 
                 BlocBuilder<CustomerWishlistCubit, CustomerWishlistState>(
                   buildWhen: (previous, current) {
-                    if (previous.runtimeType != current.runtimeType) return true;
-                    if (previous is CustomerWishlistLoaded && current is CustomerWishlistLoaded) {
+                    if (previous.runtimeType != current.runtimeType)
+                      return true;
+                    if (previous is CustomerWishlistLoaded &&
+                        current is CustomerWishlistLoaded) {
                       return previous.hasReachedMax != current.hasReachedMax;
                     }
                     return false;

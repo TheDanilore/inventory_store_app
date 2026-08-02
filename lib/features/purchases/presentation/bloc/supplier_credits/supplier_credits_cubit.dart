@@ -199,57 +199,71 @@ class SupplierCreditsCubit extends Cubit<SupplierCreditsState> {
       return;
     }
 
-    emit(SupplierCreditSaving(
-      currentAccounts: currentList,
-      searchQuery: query,
-      withDebtOnly: withDebt,
-      currentPage: page,
-      totalCount: count,
-      stats: stats,
-    ));
+    emit(
+      SupplierCreditSaving(
+        currentAccounts: currentList,
+        searchQuery: query,
+        withDebtOnly: withDebt,
+        currentPage: page,
+        totalCount: count,
+        stats: stats,
+      ),
+    );
 
     final result = await registerSupplierPaymentUseCase(params);
 
     result.fold(
       (failure) {
-        emit(SupplierCreditSaveError(
-          currentAccounts: currentList,
-          searchQuery: query,
-          withDebtOnly: withDebt,
-          currentPage: page,
-          totalCount: count,
-          stats: stats,
-          message: failure.message,
-        ));
+        emit(
+          SupplierCreditSaveError(
+            currentAccounts: currentList,
+            searchQuery: query,
+            withDebtOnly: withDebt,
+            currentPage: page,
+            totalCount: count,
+            stats: stats,
+            message: failure.message,
+          ),
+        );
       },
       (_) {
         List<SupplierCreditEntity> updatedList = List.from(currentList);
-        final index = updatedList.indexWhere((s) => s.creditId == params.creditId);
-        
+        final index = updatedList.indexWhere(
+          (s) => s.creditId == params.creditId,
+        );
+
         if (index >= 0) {
           final old = updatedList[index];
-          final newDebt = (old.currentDebt - params.amount).clamp(0.0, double.infinity);
+          final newDebt = (old.currentDebt - params.amount).clamp(
+            0.0,
+            double.infinity,
+          );
           updatedList[index] = old.copyWith(currentDebt: newDebt);
         }
 
-        emit(SupplierCreditSaveSuccess(
-          currentAccounts: updatedList,
-          searchQuery: query,
-          withDebtOnly: withDebt,
-          currentPage: page,
-          totalCount: count,
-          stats: stats,
-          message: 'Pago de S/ ${params.amount.toStringAsFixed(2)} registrado exitosamente.',
-        ));
+        emit(
+          SupplierCreditSaveSuccess(
+            currentAccounts: updatedList,
+            searchQuery: query,
+            withDebtOnly: withDebt,
+            currentPage: page,
+            totalCount: count,
+            stats: stats,
+            message:
+                'Pago de S/ ${params.amount.toStringAsFixed(2)} registrado exitosamente.',
+          ),
+        );
 
-        emit(SupplierCreditsLoaded(
-          accounts: updatedList,
-          searchQuery: query,
-          withDebtOnly: withDebt,
-          currentPage: page,
-          totalCount: count,
-          stats: stats,
-        ));
+        emit(
+          SupplierCreditsLoaded(
+            accounts: updatedList,
+            searchQuery: query,
+            withDebtOnly: withDebt,
+            currentPage: page,
+            totalCount: count,
+            stats: stats,
+          ),
+        );
       },
     );
   }

@@ -55,11 +55,11 @@ class AddExitProductState extends Equatable {
 
   @override
   List<Object?> get props => [
-        isLoadingVariants,
-        isLoadingBatches,
-        errorMessage,
-        searchResults,
-        availableVariants,
-        availableBatches,
-      ];
+    isLoadingVariants,
+    isLoadingBatches,
+    errorMessage,
+    searchResults,
+    availableVariants,
+    availableBatches,
+  ];
 }

@@ -131,12 +131,15 @@ class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
     required List<dynamic> items,
   }) async {
     try {
-      await _supabase.rpc('process_inventory_exit_rpc', params: {
-        'p_warehouse_id': warehouseId,
-        'p_reason': reason,
-        'p_notes': notes,
-        'p_items': items,
-      });
+      await _supabase.rpc(
+        'process_inventory_exit_rpc',
+        params: {
+          'p_warehouse_id': warehouseId,
+          'p_reason': reason,
+          'p_notes': notes,
+          'p_items': items,
+        },
+      );
     } on PostgrestException catch (e) {
       if (e.message.toLowerCase().contains('stock insuficiente')) {
         throw Exception(e.message);

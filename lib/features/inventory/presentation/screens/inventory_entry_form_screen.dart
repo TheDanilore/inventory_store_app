@@ -271,15 +271,16 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             _documentNumberCtrl.text = state.documentNumber!;
           }
         },
-        buildWhen: (prev, curr) =>
-            prev.isLoading != curr.isLoading ||
-            prev.isSaving != curr.isSaving ||
-            prev.selectedWarehouseId != curr.selectedWarehouseId ||
-            prev.selectedSupplierId != curr.selectedSupplierId ||
-            prev.paymentMode != curr.paymentMode ||
-            prev.documentType != curr.documentType ||
-            prev.documentDate != curr.documentDate ||
-            prev.selectedAccountId != curr.selectedAccountId,
+        buildWhen:
+            (prev, curr) =>
+                prev.isLoading != curr.isLoading ||
+                prev.isSaving != curr.isSaving ||
+                prev.selectedWarehouseId != curr.selectedWarehouseId ||
+                prev.selectedSupplierId != curr.selectedSupplierId ||
+                prev.paymentMode != curr.paymentMode ||
+                prev.documentType != curr.documentType ||
+                prev.documentDate != curr.documentDate ||
+                prev.selectedAccountId != curr.selectedAccountId,
         builder: (context, state) {
           final cubit = context.read<InventoryEntryFormCubit>();
           if (cubit.state.isLoading) {
@@ -765,160 +766,169 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     InventoryEntryFormCubit cubit,
   ) {
     return _SectionCard(
-      child: BlocSelector<InventoryEntryFormCubit, InventoryEntryFormState, List<InventoryEntryItemEntity>>(
+      child: BlocSelector<
+        InventoryEntryFormCubit,
+        InventoryEntryFormState,
+        List<InventoryEntryItemEntity>
+      >(
         selector: (state) => state.items,
         builder: (context, items) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: _SectionTitle(
-                  icon: Icons.inventory_2_rounded,
-                  title: 'Productos a Ingresar',
-                ),
-              ),
-              const SizedBox(width: 8),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  TextButton.icon(
-                    onPressed: () => _showAddProductSheet(context),
-                    icon: const Icon(
-                      Icons.add_circle_outline_rounded,
-                      size: 18,
-                    ),
-                    label: const Text('Agregar'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
+                  const Expanded(
+                    child: _SectionTitle(
+                      icon: Icons.inventory_2_rounded,
+                      title: 'Productos a Ingresar',
                     ),
                   ),
-                  if (items.isNotEmpty &&
-                      widget.purchaseOrderId == null)
-                    PopupMenuButton<String>(
-                      tooltip: 'Más opciones',
-                      icon: const Icon(
-                        Icons.more_vert_rounded,
-                        color: AppColors.textSecondary,
+                  const SizedBox(width: 8),
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _showAddProductSheet(context),
+                        icon: const Icon(
+                          Icons.add_circle_outline_rounded,
+                          size: 18,
+                        ),
+                        label: const Text('Agregar'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                        ),
                       ),
-                      onSelected: (value) {
-                        if (value == 'clear') _handleClearDraft();
-                      },
-                      itemBuilder:
-                          (_) => [
-                            const PopupMenuItem(
-                              value: 'clear',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.delete_sweep_rounded,
-                                    color: AppColors.danger,
-                                    size: 18,
+                      if (items.isNotEmpty && widget.purchaseOrderId == null)
+                        PopupMenuButton<String>(
+                          tooltip: 'Más opciones',
+                          icon: const Icon(
+                            Icons.more_vert_rounded,
+                            color: AppColors.textSecondary,
+                          ),
+                          onSelected: (value) {
+                            if (value == 'clear') _handleClearDraft();
+                          },
+                          itemBuilder:
+                              (_) => [
+                                const PopupMenuItem(
+                                  value: 'clear',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.delete_sweep_rounded,
+                                        color: AppColors.danger,
+                                        size: 18,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Descartar todo',
+                                        style: TextStyle(
+                                          color: AppColors.danger,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Descartar todo',
-                                    style: TextStyle(color: AppColors.danger),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                    ),
+                                ),
+                              ],
+                        ),
+                    ],
+                  ),
                 ],
               ),
+              const SizedBox(height: 16),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+                child:
+                    items.isEmpty
+                        ? Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 28,
+                            horizontal: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.move_to_inbox_rounded,
+                                size: 52,
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.25,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              const Text(
+                                'Sin productos a ingresar',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Agrega los productos que vas a registrar en tu inventario',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 18),
+                              OutlinedButton.icon(
+                                onPressed: () => _showAddProductSheet(context),
+                                icon: const Icon(Icons.add_rounded, size: 18),
+                                label: const Text('Agregar primer producto'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                  side: const BorderSide(
+                                    color: AppColors.primary,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                        : ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: items.length,
+                          itemBuilder: (context, index) {
+                            return POFormItemTile(
+                              item: items[index],
+                              onUpdateQuantity: (newQty) {
+                                cubit.updateItemQuantity(index, newQty);
+                              },
+                              onUpdateCost: (newCost) {
+                                cubit.updateItemCost(index, newCost);
+                              },
+                              onRemove: () => cubit.removeItem(index),
+                            );
+                          },
+                        ),
+              ),
+              if (items.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                POFormSummaryCard(items: items),
+              ],
             ],
-          ),
-          const SizedBox(height: 16),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-            child:
-                items.isEmpty
-                    ? Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 28,
-                        horizontal: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.move_to_inbox_rounded,
-                            size: 52,
-                            color: AppColors.primary.withValues(alpha: 0.25),
-                          ),
-                          const SizedBox(height: 14),
-                          const Text(
-                            'Sin productos a ingresar',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'Agrega los productos que vas a registrar en tu inventario',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 13,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 18),
-                          OutlinedButton.icon(
-                            onPressed: () => _showAddProductSheet(context),
-                            icon: const Icon(Icons.add_rounded, size: 18),
-                            label: const Text('Agregar primer producto'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                              side: const BorderSide(color: AppColors.primary),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                    : ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        return POFormItemTile(
-                          item: items[index],
-                          onUpdateQuantity: (newQty) {
-                            cubit.updateItemQuantity(index, newQty);
-                          },
-                          onUpdateCost: (newCost) {
-                            cubit.updateItemCost(index, newCost);
-                          },
-                          onRemove: () => cubit.removeItem(index),
-                        );
-                      },
-                    ),
-          ),
-          if (items.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            POFormSummaryCard(items: items),
-          ],
-        ],
-      );
-    },
-  ),
-);
+          );
+        },
+      ),
+    );
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -956,7 +966,10 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                     icon: const Icon(Icons.check_circle_outline_rounded),
                     label: const Text(
                       'Confirmar Ingreso',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),

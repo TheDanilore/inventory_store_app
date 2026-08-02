@@ -142,7 +142,9 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
   Future<void> _handleExit() async {
     final cubit = context.read<ProductFormCubit>();
     final state = cubit.state;
-    if (!cubit.hasUnsavedChanges && !state.isSaving && !state.isInitializingData) {
+    if (!cubit.hasUnsavedChanges &&
+        !state.isSaving &&
+        !state.isInitializingData) {
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       } else {
@@ -216,7 +218,11 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
       child: BlocBuilder<ProductFormCubit, ProductFormState>(
         builder: (context, state) {
           final cubit = context.read<ProductFormCubit>();
-          final canPopNow = _allowExplicitPop || (!cubit.hasUnsavedChanges && !state.isSaving && !state.isInitializingData);
+          final canPopNow =
+              _allowExplicitPop ||
+              (!cubit.hasUnsavedChanges &&
+                  !state.isSaving &&
+                  !state.isInitializingData);
           return PopScope(
             canPop: canPopNow,
             onPopInvokedWithResult: (didPop, result) async {

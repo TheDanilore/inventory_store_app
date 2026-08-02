@@ -68,18 +68,29 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     try {
       // 1. Fetch main order first
       final orderResult = await getOrderDetailsUc(orderId);
-      
+
       await orderResult.fold<Future<void>>(
         (failure) async {
-          developer.log('Error al cargar orden ($orderId)', error: failure.message, name: 'OrderDetailCubit');
-          emit(state.copyWith(isLoading: false, hasError: true, errorMessage: failure.message));
+          developer.log(
+            'Error al cargar orden ($orderId)',
+            error: failure.message,
+            name: 'OrderDetailCubit',
+          );
+          emit(
+            state.copyWith(
+              isLoading: false,
+              hasError: true,
+              errorMessage: failure.message,
+            ),
+          );
         },
         (details) async {
           // 2. Extract customer ID and execute secondary queries in parallel
           final customerId = details.order.customerId;
-          final profileFuture = (customerId != null && customerId.isNotEmpty)
-              ? getProfileByIdUc(customerId)
-              : Future.value(null);
+          final profileFuture =
+              (customerId != null && customerId.isNotEmpty)
+                  ? getProfileByIdUc(customerId)
+                  : Future.value(null);
 
           final secondaryResults = await Future.wait([
             getFinancialAccountsUc(),
@@ -89,18 +100,23 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
           final accountsResult = secondaryResults[0] as dynamic;
           final profileResult = secondaryResults[1] as dynamic;
 
-          final accountsData = accountsResult.fold(
-            (l) {
-              developer.log('Error en accounts', error: l.message, name: 'OrderDetailCubit');
-              return <Map<String, dynamic>>[];
-            },
-            (r) => r as List<Map<String, dynamic>>,
-          );
+          final accountsData = accountsResult.fold((l) {
+            developer.log(
+              'Error en accounts',
+              error: l.message,
+              name: 'OrderDetailCubit',
+            );
+            return <Map<String, dynamic>>[];
+          }, (r) => r as List<Map<String, dynamic>>);
 
           List<Map<String, dynamic>> profilesData = [];
           if (profileResult != null) {
             profileResult.fold(
-              (l) => developer.log('Error en profile', error: l.message, name: 'OrderDetailCubit'),
+              (l) => developer.log(
+                'Error en profile',
+                error: l.message,
+                name: 'OrderDetailCubit',
+              ),
               (r) {
                 if (r != null) profilesData = [r as Map<String, dynamic>];
               },
@@ -124,20 +140,32 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
         },
       );
     } catch (e, st) {
-      developer.log('Error fatal en fetchData', error: e, stackTrace: st, name: 'OrderDetailCubit');
-      emit(state.copyWith(isLoading: false, hasError: true, errorMessage: 'Error inesperado al cargar la orden.'));
+      developer.log(
+        'Error fatal en fetchData',
+        error: e,
+        stackTrace: st,
+        name: 'OrderDetailCubit',
+      );
+      emit(
+        state.copyWith(
+          isLoading: false,
+          hasError: true,
+          errorMessage: 'Error inesperado al cargar la orden.',
+        ),
+      );
     }
   }
 
   Future<String?> getActiveCashShift() async {
     final result = await checkActiveCashShiftUc();
-    return result.fold(
-      (l) {
-        developer.log('Error comprobando turno activo', error: l.message, name: 'OrderDetailCubit');
-        return null;
-      },
-      (r) => r,
-    );
+    return result.fold((l) {
+      developer.log(
+        'Error comprobando turno activo',
+        error: l.message,
+        name: 'OrderDetailCubit',
+      );
+      return null;
+    }, (r) => r);
   }
 
   void selectCustomer(String? customerId, double ratio, double earnRate) {
@@ -154,13 +182,14 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
   Future<List<Map<String, dynamic>>> searchCustomers(String query) async {
     if (query.trim().isEmpty) return [];
     final result = await searchCustomersUc(query);
-    return result.fold(
-      (l) {
-        developer.log('Error searching customers', error: l.message, name: 'OrderDetailCubit');
-        return [];
-      },
-      (r) => r,
-    );
+    return result.fold((l) {
+      developer.log(
+        'Error searching customers',
+        error: l.message,
+        name: 'OrderDetailCubit',
+      );
+      return [];
+    }, (r) => r);
   }
 
   void updatePaymentMethod(String method, double ratio, double earnRate) {
@@ -360,16 +389,22 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
 
     return result.fold(
       (failure) {
-        developer.log('Error al procesar devolución', error: failure.message, name: 'OrderDetailCubit');
+        developer.log(
+          'Error al procesar devolución',
+          error: failure.message,
+          name: 'OrderDetailCubit',
+        );
         emit(state.copyWith(isReturning: false, errorMessage: failure.message));
         return false;
       },
       (_) {
-        emit(state.copyWith(
-          isReturning: false,
-          currentStatus: 'RETURNED',
-          wasModified: true,
-        ));
+        emit(
+          state.copyWith(
+            isReturning: false,
+            currentStatus: 'RETURNED',
+            wasModified: true,
+          ),
+        );
         return true;
       },
     );

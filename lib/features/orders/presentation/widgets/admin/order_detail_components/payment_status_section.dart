@@ -119,7 +119,7 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
 
     try {
       final cubit = context.read<OrderDetailCubit>();
-      
+
       // Validar turno de caja si es necesario
       String? shiftId;
       if (_selectedAccount!['type'] == 'CAJA') {
@@ -127,7 +127,8 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
         if (shiftId == null && mounted) {
           AppSnackbar.show(
             context,
-            message: 'La caja no tiene un turno abierto. Abre el turno primero.',
+            message:
+                'La caja no tiene un turno abierto. Abre el turno primero.',
             type: SnackbarType.error,
           );
           setState(() => _isRegistering = false);
@@ -151,7 +152,8 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
           setState(() => _selectedQuickAmount = null);
           AppSnackbar.show(
             context,
-            message: 'Abono de S/ ${amount.toStringAsFixed(2)} registrado con éxito.',
+            message:
+                'Abono de S/ ${amount.toStringAsFixed(2)} registrado con éxito.',
             type: SnackbarType.success,
           );
           widget.onPaymentRegistered();
@@ -358,7 +360,8 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                     return 'Requerido';
                   }
                   final amount = double.tryParse(value.trim());
-                  final pendingOrderAmount = widget.totalAmount - widget.amountPaid;
+                  final pendingOrderAmount =
+                      widget.totalAmount - widget.amountPaid;
                   if (amount == null) return 'Número inválido';
                   if (amount <= 0) return 'Debe ser mayor a 0';
                   if (amount > pendingOrderAmount) {
@@ -366,10 +369,16 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                   }
                   return null;
                 },
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Monto a abonar (S/)',
-                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                  hintStyle: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontSize: 13,
+                  ),
                   prefixIcon: Icon(
                     Icons.attach_money_rounded,
                     color: Colors.grey.shade500,

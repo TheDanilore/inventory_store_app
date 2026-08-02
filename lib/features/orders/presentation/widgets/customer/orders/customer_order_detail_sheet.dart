@@ -24,17 +24,24 @@ class CustomerOrderDetailSheet extends StatelessWidget {
     if (width >= 600) {
       showDialog(
         context: context,
-        builder: (ctx) => Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520, maxHeight: 700),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(32),
-              child: CustomerOrderDetailSheet(order: order, items: items),
+        builder:
+            (ctx) => Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 24,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 520,
+                  maxHeight: 700,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(32),
+                  child: CustomerOrderDetailSheet(order: order, items: items),
+                ),
+              ),
             ),
-          ),
-        ),
       );
     } else {
       showModalBottomSheet(
@@ -55,7 +62,10 @@ class CustomerOrderDetailSheet extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: isTablet ? BorderRadius.circular(32) : const BorderRadius.vertical(top: Radius.circular(32)),
+        borderRadius:
+            isTablet
+                ? BorderRadius.circular(32)
+                : const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

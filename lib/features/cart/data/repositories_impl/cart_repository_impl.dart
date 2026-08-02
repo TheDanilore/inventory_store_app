@@ -33,7 +33,12 @@ class CartRepositoryImpl implements CartRepository {
       }
       return right({});
     } catch (e, st) {
-      developer.log('Error en loadLocalCart', error: e, stackTrace: st, name: 'CartRepo');
+      developer.log(
+        'Error en loadLocalCart',
+        error: e,
+        stackTrace: st,
+        name: 'CartRepo',
+      );
       return left(Failure.from(e));
     }
   }
@@ -79,7 +84,12 @@ class CartRepositoryImpl implements CartRepository {
       await prefs.setString(_getCartKey(cartType), encodedMap);
       return right(unit);
     } catch (e, st) {
-      developer.log('Error en saveLocalCart', error: e, stackTrace: st, name: 'CartRepo');
+      developer.log(
+        'Error en saveLocalCart',
+        error: e,
+        stackTrace: st,
+        name: 'CartRepo',
+      );
       return left(Failure.from(e));
     }
   }
@@ -91,7 +101,12 @@ class CartRepositoryImpl implements CartRepository {
       await prefs.remove(_getCartKey(cartType));
       return right(unit);
     } catch (e, st) {
-      developer.log('Error en clearLocalCart', error: e, stackTrace: st, name: 'CartRepo');
+      developer.log(
+        'Error en clearLocalCart',
+        error: e,
+        stackTrace: st,
+        name: 'CartRepo',
+      );
       return left(Failure.from(e));
     }
   }
@@ -99,19 +114,21 @@ class CartRepositoryImpl implements CartRepository {
   /// Traduce el auth_user_id (Supabase Auth UUID) o el profiles.id real al FK destino.
   Future<String?> _getProfileId(String identifier) async {
     // Búsqueda resiliente: valida si es auth_user_id o directamente profiles.id
-    final profile = await _supabase
-        .from('profiles')
-        .select('id')
-        .or('auth_user_id.eq.$identifier,id.eq.$identifier')
-        .maybeSingle();
+    final profile =
+        await _supabase
+            .from('profiles')
+            .select('id')
+            .or('auth_user_id.eq.$identifier,id.eq.$identifier')
+            .maybeSingle();
     if (profile != null) return profile['id'] as String?;
 
     // Respaldo defensivo si RLS restringe profiles pero el identifier ya es el FK en shopping_carts
-    final cart = await _supabase
-        .from('shopping_carts')
-        .select('profile_id')
-        .eq('profile_id', identifier)
-        .maybeSingle();
+    final cart =
+        await _supabase
+            .from('shopping_carts')
+            .select('profile_id')
+            .eq('profile_id', identifier)
+            .maybeSingle();
     return cart?['profile_id'] as String?;
   }
 
@@ -125,22 +142,23 @@ class CartRepositoryImpl implements CartRepository {
       if (cartType == 'pos') {
         return right(localItems);
       }
-      
-      // 1. Sincronización atómica mediante RPC (Reemplaza 5 llamadas HTTP)
-      final itemsToInsert = localItems.values.map((item) {
-        final vid = item.variantId;
-        return {
-          'product_id': item.productId,
-          'variant_id': (vid == null || vid.isEmpty) ? null : vid,
-          'quantity': item.quantity.toString(),
-          'is_selected': item.isSelected.toString(),
-        };
-      }).toList();
 
-      final responseRpc = await _supabase.rpc('sync_cloud_cart_rpc', params: {
-        'p_auth_user_id': profileId,
-        'p_items': itemsToInsert,
-      });
+      // 1. Sincronización atómica mediante RPC (Reemplaza 5 llamadas HTTP)
+      final itemsToInsert =
+          localItems.values.map((item) {
+            final vid = item.variantId;
+            return {
+              'product_id': item.productId,
+              'variant_id': (vid == null || vid.isEmpty) ? null : vid,
+              'quantity': item.quantity.toString(),
+              'is_selected': item.isSelected.toString(),
+            };
+          }).toList();
+
+      final responseRpc = await _supabase.rpc(
+        'sync_cloud_cart_rpc',
+        params: {'p_auth_user_id': profileId, 'p_items': itemsToInsert},
+      );
 
       final String cartId = responseRpc.toString();
 
@@ -208,7 +226,12 @@ class CartRepositoryImpl implements CartRepository {
               Map<String, dynamic>.from(variantJson as Map),
             );
           } catch (e, st) {
-            developer.log('Error parseando variante en syncCloudCart', error: e, stackTrace: st, name: 'CartRepo');
+            developer.log(
+              'Error parseando variante en syncCloudCart',
+              error: e,
+              stackTrace: st,
+              name: 'CartRepo',
+            );
           }
         }
 
@@ -228,8 +251,11 @@ class CartRepositoryImpl implements CartRepository {
           for (final b in batches) {
             if (b is Map) {
               final bVarId = b['variant_id'] as String?;
-              if (finalVariantId == null || bVarId == null || bVarId == finalVariantId) {
-                calculatedStock += (b['available_quantity'] as num?)?.toInt() ?? 0;
+              if (finalVariantId == null ||
+                  bVarId == null ||
+                  bVarId == finalVariantId) {
+                calculatedStock +=
+                    (b['available_quantity'] as num?)?.toInt() ?? 0;
               }
             }
           }
@@ -237,7 +263,10 @@ class CartRepositoryImpl implements CartRepository {
         if (calculatedStock <= 0 && product.totalStock > 0) {
           calculatedStock = product.totalStock;
         }
-        final finalStock = (calculatedStock == 0 && !product.stockControl) ? 999 : calculatedStock;
+        final finalStock =
+            (calculatedStock == 0 && !product.stockControl)
+                ? 999
+                : calculatedStock;
 
         final entity = CartItemEntity(
           productId: product.id,
@@ -255,7 +284,8 @@ class CartRepositoryImpl implements CartRepository {
                   ? variant.images.first.imageUrl
                   : product.primaryImageUrl,
           sku: variant?.sku,
-          availableStock: finalStock, // Reemplazo de hardcode legacy por stock verificado
+          availableStock:
+              finalStock, // Reemplazo de hardcode legacy por stock verificado
           cartKey: cartKey,
           usesBatches: product.usesBatches,
           isSelected: isSelected,
@@ -266,7 +296,12 @@ class CartRepositoryImpl implements CartRepository {
 
       return right(cloudItems);
     } catch (e, st) {
-      developer.log('Error en syncCloudCart', error: e, stackTrace: st, name: 'CartRepo');
+      developer.log(
+        'Error en syncCloudCart',
+        error: e,
+        stackTrace: st,
+        name: 'CartRepo',
+      );
       return left(Failure.from(e));
     }
   }
@@ -283,9 +318,10 @@ class CartRepositoryImpl implements CartRepository {
 
       // 1. Intento de limpieza atómica mediante RPC optimizado (1 sola llamada de red)
       try {
-        await _supabase.rpc('clear_cloud_cart_rpc', params: {
-          'p_user_id': profileId,
-        });
+        await _supabase.rpc(
+          'clear_cloud_cart_rpc',
+          params: {'p_user_id': profileId},
+        );
         return right(unit);
       } catch (rpcError) {
         developer.log(
@@ -300,11 +336,12 @@ class CartRepositoryImpl implements CartRepository {
       if (realProfileId == null) {
         return left(const NotFoundFailure(message: 'Perfil no encontrado.'));
       }
-      final existing = await _supabase
-          .from('shopping_carts')
-          .select('id')
-          .eq('profile_id', realProfileId)
-          .maybeSingle();
+      final existing =
+          await _supabase
+              .from('shopping_carts')
+              .select('id')
+              .eq('profile_id', realProfileId)
+              .maybeSingle();
 
       if (existing == null) {
         // No existe carrito en BD, no es necesario crearlo solo para vaciarlo
@@ -314,7 +351,12 @@ class CartRepositoryImpl implements CartRepository {
       await _supabase.from('cart_items').delete().eq('cart_id', cartId);
       return right(unit);
     } catch (e, st) {
-      developer.log('Error en clearCloudCart', error: e, stackTrace: st, name: 'CartRepo');
+      developer.log(
+        'Error en clearCloudCart',
+        error: e,
+        stackTrace: st,
+        name: 'CartRepo',
+      );
       return left(Failure.from(e));
     }
   }

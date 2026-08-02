@@ -88,7 +88,10 @@ class CatalogPdfGenerator {
     }
 
     final doc = pw.Document();
-    final generatedAt = DateFormat('dd/MM/yyyy HH:mm', 'es').format(DateTime.now());
+    final generatedAt = DateFormat(
+      'dd/MM/yyyy HH:mm',
+      'es',
+    ).format(DateTime.now());
 
     // Descarga de imágenes en lotes pequeños (máximo 5 a la vez) para no saturar sockets
     final Map<String, Uint8List?> productImages = {};
@@ -191,10 +194,7 @@ class CatalogPdfGenerator {
                     child: pw.ClipRRect(
                       horizontalRadius: 6,
                       verticalRadius: 6,
-                      child: pw.Image(
-                        imageProvider,
-                        fit: pw.BoxFit.cover,
-                      ),
+                      child: pw.Image(imageProvider, fit: pw.BoxFit.cover),
                     ),
                   )
                   : pw.Container(
@@ -303,10 +303,13 @@ class CatalogPdfGenerator {
                 // Filas de variantes
                 ...variants.map((variant) {
                   var stock = stockByVariant[variant.id] ?? 0;
-                  if (stock == 0 && variants.length == 1 && product.totalStock > 0) {
+                  if (stock == 0 &&
+                      variants.length == 1 &&
+                      product.totalStock > 0) {
                     stock = product.totalStock;
                   }
-                  final price = variant.salePrice ?? product.displaySalePrice ?? 0.0;
+                  final price =
+                      variant.salePrice ?? product.displaySalePrice ?? 0.0;
                   return pw.TableRow(
                     children: [
                       pw.Padding(
@@ -354,17 +357,12 @@ class CatalogPdfGenerator {
       variantsByProduct: variantsByProduct,
       stockByVariant: stockByVariant,
     );
-    final fileName = 'Catalogo_${DateFormat('yyyyMMdd', 'es').format(DateTime.now())}.pdf';
+    final fileName =
+        'Catalogo_${DateFormat('yyyyMMdd', 'es').format(DateTime.now())}.pdf';
     if (kIsWeb || Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      await Printing.layoutPdf(
-        onLayout: (_) async => bytes,
-        name: fileName,
-      );
+      await Printing.layoutPdf(onLayout: (_) async => bytes, name: fileName);
     } else {
-      await Printing.sharePdf(
-        bytes: bytes,
-        filename: fileName,
-      );
+      await Printing.sharePdf(bytes: bytes, filename: fileName);
     }
   }
 }

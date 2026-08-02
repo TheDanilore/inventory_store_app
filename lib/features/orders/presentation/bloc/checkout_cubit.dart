@@ -226,7 +226,11 @@ class CheckoutCubit extends Cubit<CheckoutState> {
             puntosUsados: usedPoints,
           );
         } catch (e, st) {
-          developer.log('Error enviando WhatsApp (Orden creada exitosamente)', error: e, stackTrace: st);
+          developer.log(
+            'Error enviando WhatsApp (Orden creada exitosamente)',
+            error: e,
+            stackTrace: st,
+          );
         }
 
         // 6. Emitir éxito con payload tipado

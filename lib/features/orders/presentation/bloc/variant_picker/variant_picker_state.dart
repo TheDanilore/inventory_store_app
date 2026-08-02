@@ -3,7 +3,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_var
 
 abstract class VariantPickerState extends Equatable {
   const VariantPickerState();
-  
+
   @override
   List<Object?> get props => [];
 }

@@ -23,7 +23,10 @@ class InventoryExitsPdfGenerator {
     final italicFont = await PdfGoogleFonts.notoSansItalic();
 
     final doc = pw.Document();
-    final generatedAt = DateFormat('dd/MM/yyyy HH:mm', 'es').format(DateTime.now());
+    final generatedAt = DateFormat(
+      'dd/MM/yyyy HH:mm',
+      'es',
+    ).format(DateTime.now());
 
     double totalGeneralCost = exits.fold(
       0.0,
@@ -161,7 +164,8 @@ class InventoryExitsPdfGenerator {
                           child: pw.Text(
                             exit.createdAt != null
                                 ? DateFormat(
-                                  'dd/MM/yy HH:mm', 'es'
+                                  'dd/MM/yy HH:mm',
+                                  'es',
                                 ).format(exit.createdAt!.toLocal())
                                 : '',
                             style: const pw.TextStyle(fontSize: 9),

@@ -135,8 +135,10 @@ class PurchaseOrderActionLoading extends PurchaseOrdersState {}
 class PurchaseOrderActionSuccess extends PurchaseOrdersState {
   final String message;
   final String orderId;
+
   /// Nuevo monto abonado (para mutación de caché de pago).
   final double? newAmountPaid;
+
   /// Nuevo método de pago (para mutación de caché de método).
   final String? newPaymentMethod;
 
@@ -148,7 +150,12 @@ class PurchaseOrderActionSuccess extends PurchaseOrdersState {
   });
 
   @override
-  List<Object?> get props => [message, orderId, newAmountPaid, newPaymentMethod];
+  List<Object?> get props => [
+    message,
+    orderId,
+    newAmountPaid,
+    newPaymentMethod,
+  ];
 }
 
 class PurchaseOrderActionError extends PurchaseOrdersState {

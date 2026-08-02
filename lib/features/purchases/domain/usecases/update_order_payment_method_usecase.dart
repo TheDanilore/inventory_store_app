@@ -25,7 +25,9 @@ class UpdateOrderPaymentMethodUseCase {
 
   UpdateOrderPaymentMethodUseCase(this.repository);
 
-  Future<Either<Failure, void>> call(UpdateOrderPaymentMethodParams params) async {
+  Future<Either<Failure, void>> call(
+    UpdateOrderPaymentMethodParams params,
+  ) async {
     return repository.updateOrderPaymentMethod(
       orderId: params.orderId,
       supplierId: params.supplierId,

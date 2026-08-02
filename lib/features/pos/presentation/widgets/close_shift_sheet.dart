@@ -50,9 +50,9 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-    
+
     final actual = double.parse(_actualCtrl.text.replaceAll(',', '.'));
-    
+
     context.read<CashShiftsCubit>().closeShift(
       widget.shift.id,
       actual,
@@ -263,7 +263,9 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
             SizedBox(
               width: double.infinity,
               child: BlocConsumer<CashShiftsCubit, CashShiftsState>(
-                listenWhen: (previous, current) => previous.isLoading && !current.isLoading,
+                listenWhen:
+                    (previous, current) =>
+                        previous.isLoading && !current.isLoading,
                 listener: (context, state) {
                   if (state.errorMessage.isNotEmpty) {
                     AppSnackbar.show(

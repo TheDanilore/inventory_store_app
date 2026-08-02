@@ -54,16 +54,30 @@ abstract class ProductsRepository {
   Future<Either<Failure, void>> deleteAttributeValue(String valueId);
 
   // Búsqueda para el UI
-  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributes(String term);
-  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributeValues(String attributeId, String term);
-  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttribute(String name);
-  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttributeValue(String attributeId, String value);
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributes(
+    String term,
+  );
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributeValues(
+    String attributeId,
+    String term,
+  );
+  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttribute(
+    String name,
+  );
+  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttributeValue(
+    String attributeId,
+    String value,
+  );
   Future<Either<Failure, List<AttributeEntity>>> getAttributes();
 
   // Búsqueda Optimizada para Entradas
-  Future<Either<Failure, List<Map<String, dynamic>>>> searchProductsForEntry(String term);
-  Future<Either<Failure, List<Map<String, dynamic>>>> getBatchesForVariant(String variantId, String warehouseId);
-
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchProductsForEntry(
+    String term,
+  );
+  Future<Either<Failure, List<Map<String, dynamic>>>> getBatchesForVariant(
+    String variantId,
+    String warehouseId,
+  );
 
   // Imágenes
   Future<Either<Failure, List<ProductImageEntity>>> getProductImages(
@@ -158,9 +172,7 @@ abstract class ProductsRepository {
   Future<Either<Failure, void>> clearCache();
 
   // Guardado Atómico (RPC)
-  Future<Either<Failure, void>> saveProductComplete(
-    SaveProductPayload payload,
-  );
+  Future<Either<Failure, void>> saveProductComplete(SaveProductPayload payload);
 }
 
 class SaveProductPayload {

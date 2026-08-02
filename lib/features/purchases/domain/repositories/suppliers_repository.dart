@@ -17,7 +17,11 @@ abstract class SuppliersRepository {
     bool currentStatus,
   );
 
-  Future<Either<Failure, SupplierEntity>> createSupplier(SupplierEntity supplier);
-  
-  Future<Either<Failure, SupplierEntity>> updateSupplier(SupplierEntity supplier);
+  Future<Either<Failure, SupplierEntity>> createSupplier(
+    SupplierEntity supplier,
+  );
+
+  Future<Either<Failure, SupplierEntity>> updateSupplier(
+    SupplierEntity supplier,
+  );
 }

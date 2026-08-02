@@ -53,16 +53,24 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
       try {
         final isAttrMode = widget.mode == AttributeSearchMode.attribute;
         final repository = sl<ProductsRepository>();
-        
-        final result = isAttrMode 
-            ? await repository.searchAttributes(term)
-            : await repository.searchAttributeValues(widget.parentAttributeId!, term);
+
+        final result =
+            isAttrMode
+                ? await repository.searchAttributes(term)
+                : await repository.searchAttributeValues(
+                  widget.parentAttributeId!,
+                  term,
+                );
 
         result.fold(
           (failure) {
             developer.log('Error searching attributes', error: failure.message);
             if (mounted) {
-              AppSnackbar.show(context, message: 'Error de red al buscar', type: SnackbarType.error);
+              AppSnackbar.show(
+                context,
+                message: 'Error de red al buscar',
+                type: SnackbarType.error,
+              );
               setState(() => _isLoading = false);
             }
           },
@@ -74,13 +82,21 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
                 _isLoading = false;
               });
             }
-          }
+          },
         );
       } catch (e, st) {
-        developer.log('Critical Error searching attributes', error: e, stackTrace: st);
+        developer.log(
+          'Critical Error searching attributes',
+          error: e,
+          stackTrace: st,
+        );
         if (mounted) {
-           AppSnackbar.show(context, message: 'Ocurrió un error inesperado', type: SnackbarType.error);
-           setState(() => _isLoading = false);
+          AppSnackbar.show(
+            context,
+            message: 'Ocurrió un error inesperado',
+            type: SnackbarType.error,
+          );
+          setState(() => _isLoading = false);
         }
       }
     });
@@ -99,30 +115,41 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
         result.fold(
           (failure) {
             if (mounted) {
-              AppSnackbar.show(context, message: failure.message, type: SnackbarType.error);
+              AppSnackbar.show(
+                context,
+                message: failure.message,
+                type: SnackbarType.error,
+              );
               setState(() => _isLoading = false);
             }
           },
           (data) {
             if (mounted) Navigator.pop(context, data);
-          }
+          },
         );
       } else {
         if (widget.parentAttributeId == null) {
           throw Exception('No se puede crear un valor sin un atributo padre.');
         }
 
-        final result = await repository.getOrCreateAttributeValue(widget.parentAttributeId!, term);
+        final result = await repository.getOrCreateAttributeValue(
+          widget.parentAttributeId!,
+          term,
+        );
         result.fold(
           (failure) {
             if (mounted) {
-              AppSnackbar.show(context, message: failure.message, type: SnackbarType.error);
+              AppSnackbar.show(
+                context,
+                message: failure.message,
+                type: SnackbarType.error,
+              );
               setState(() => _isLoading = false);
             }
           },
           (data) {
             if (mounted) Navigator.pop(context, data);
-          }
+          },
         );
       }
     } catch (e, st) {

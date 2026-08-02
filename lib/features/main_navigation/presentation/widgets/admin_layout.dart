@@ -79,7 +79,12 @@ class _AdminLayoutState extends State<AdminLayout> {
         });
       }
     } catch (e, st) {
-      developer.log('Error loading sidebar state', error: e, stackTrace: st, name: 'AdminLayout');
+      developer.log(
+        'Error loading sidebar state',
+        error: e,
+        stackTrace: st,
+        name: 'AdminLayout',
+      );
       if (mounted) {
         setState(() => _isInitialized = true);
       }
@@ -104,7 +109,12 @@ class _AdminLayoutState extends State<AdminLayout> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_sidebarCollapsedKey, newValue);
     } catch (e, st) {
-      developer.log('Error saving sidebar state', error: e, stackTrace: st, name: 'AdminLayout');
+      developer.log(
+        'Error saving sidebar state',
+        error: e,
+        stackTrace: st,
+        name: 'AdminLayout',
+      );
     }
   }
 
@@ -260,8 +270,8 @@ class _AdminLayoutState extends State<AdminLayout> {
               bottom: false,
               child: Column(
                 children: [
-                  const AdminOfflineBanner(), 
-                  Expanded(child: widget.body)
+                  const AdminOfflineBanner(),
+                  Expanded(child: widget.body),
                 ],
               ),
             ),
@@ -290,7 +300,8 @@ class _AdminLayoutState extends State<AdminLayout> {
 
     // Si tiene más de 2 segmentos (ej. /admin/customers/form), vamos al padre (/admin/customers)
     if (pathSegments.length > 2 && pathSegments.first == 'admin') {
-      final parentPath = '/${pathSegments.sublist(0, pathSegments.length - 1).join('/')}';
+      final parentPath =
+          '/${pathSegments.sublist(0, pathSegments.length - 1).join('/')}';
       context.go(parentPath);
       return;
     }
@@ -300,11 +311,14 @@ class _AdminLayoutState extends State<AdminLayout> {
   }
 
   static const _breadcrumbMap = <String, String>{
-    '/admin/purchase-orders/form': 'Inicio  ›  Órdenes de Compra  ›  Nueva Orden',
+    '/admin/purchase-orders/form':
+        'Inicio  ›  Órdenes de Compra  ›  Nueva Orden',
     '/admin/purchase-orders': 'Inicio  ›  Órdenes de Compra',
-    '/admin/inventory-entries/form': 'Inicio  ›  Entradas de Inventario  ›  Nueva Entrada',
+    '/admin/inventory-entries/form':
+        'Inicio  ›  Entradas de Inventario  ›  Nueva Entrada',
     '/admin/inventory-entries': 'Inicio  ›  Entradas de Inventario',
-    '/admin/inventory-exits/form': 'Inicio  ›  Salidas de Inventario  ›  Nueva Salida',
+    '/admin/inventory-exits/form':
+        'Inicio  ›  Salidas de Inventario  ›  Nueva Salida',
     '/admin/inventory-exits': 'Inicio  ›  Salidas de Inventario',
     '/admin/products/form': 'Inicio  ›  Productos  ›  Formulario',
     '/admin/products': 'Inicio  ›  Productos',
@@ -312,7 +326,8 @@ class _AdminLayoutState extends State<AdminLayout> {
     '/admin/catalog': 'Inicio  ›  Catálogo',
     '/admin/users/form': 'Inicio  ›  Usuarios  ›  Formulario Usuario',
     '/admin/users': 'Inicio  ›  Usuarios',
-    '/admin/customer-credit-movements': 'Inicio  ›  Créditos Clientes  ›  Movimientos',
+    '/admin/customer-credit-movements':
+        'Inicio  ›  Créditos Clientes  ›  Movimientos',
     '/admin/customer-credits': 'Inicio  ›  Créditos Clientes',
     '/admin/customers/customer-detail': 'Inicio  ›  Clientes  ›  Detalle',
     '/admin/customers': 'Inicio  ›  Clientes',
@@ -346,7 +361,12 @@ class _AdminLayoutState extends State<AdminLayout> {
       }
       return 'Panel de Administración ERP';
     } catch (e, st) {
-      developer.log('Error al construir breadcrumb', error: e, stackTrace: st, name: 'AdminLayout');
+      developer.log(
+        'Error al construir breadcrumb',
+        error: e,
+        stackTrace: st,
+        name: 'AdminLayout',
+      );
       return 'Panel de Administración ERP';
     }
   }

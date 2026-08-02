@@ -8,16 +8,16 @@ class RegisterPaymentState {
   final bool isSuccess;
   final String? errorMessage;
   final String? loadingError;
-  
+
   // Data
   final List<OrderEntity> pendingOrders;
   final List<FinancialAccountEntity> accounts;
-  
+
   // Selections
   final OrderEntity? selectedOrder;
   final FinancialAccountEntity? selectedAccount;
   final CashShiftEntity? activeShift;
-  
+
   // Form
   final String amount;
   final String? amountError;
@@ -65,16 +65,25 @@ class RegisterPaymentState {
       isLoading: isLoading ?? this.isLoading,
       isSaving: isSaving ?? this.isSaving,
       isSuccess: isSuccess ?? this.isSuccess,
-      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
-      loadingError: clearLoadingError ? null : (loadingError ?? this.loadingError),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      loadingError:
+          clearLoadingError ? null : (loadingError ?? this.loadingError),
       pendingOrders: pendingOrders ?? this.pendingOrders,
       accounts: accounts ?? this.accounts,
-      selectedOrder: clearSelectedOrder ? null : (selectedOrder ?? this.selectedOrder),
-      selectedAccount: clearSelectedAccount ? null : (selectedAccount ?? this.selectedAccount),
+      selectedOrder:
+          clearSelectedOrder ? null : (selectedOrder ?? this.selectedOrder),
+      selectedAccount:
+          clearSelectedAccount
+              ? null
+              : (selectedAccount ?? this.selectedAccount),
       activeShift: clearActiveShift ? null : (activeShift ?? this.activeShift),
       amount: amount ?? this.amount,
       amountError: clearAmountError ? null : (amountError ?? this.amountError),
-      selectedQuickChip: clearSelectedQuickChip ? null : (selectedQuickChip ?? this.selectedQuickChip),
+      selectedQuickChip:
+          clearSelectedQuickChip
+              ? null
+              : (selectedQuickChip ?? this.selectedQuickChip),
     );
   }
 }

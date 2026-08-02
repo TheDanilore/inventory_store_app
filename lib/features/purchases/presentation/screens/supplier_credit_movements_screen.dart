@@ -161,15 +161,10 @@ class _SupplierCreditMovementsScreenState
               }
 
               return PopupMenuButton<String>(
-                icon: const Icon(
-                  Icons.more_vert,
-                  color: AppColors.textPrimary,
-                ),
+                icon: const Icon(Icons.more_vert, color: AppColors.textPrimary),
                 onSelected: (value) {
                   if (value == 'export') {
-                    context
-                        .read<SupplierCreditMovementsCubit>()
-                        .exportToPdf();
+                    context.read<SupplierCreditMovementsCubit>().exportToPdf();
                   } else if (value == 'filter') {
                     _showFilterSheet(context, currentFilter);
                   }

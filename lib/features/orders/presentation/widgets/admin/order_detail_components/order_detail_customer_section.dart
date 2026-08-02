@@ -214,10 +214,10 @@ class _CustomerSearchSheetState extends State<_CustomerSearchSheet> {
       });
       return;
     }
-    
+
     final results = await widget.onSearch(q);
     if (!mounted) return;
-    
+
     setState(() {
       _filteredProfiles = results;
     });

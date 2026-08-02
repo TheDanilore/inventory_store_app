@@ -276,7 +276,11 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     _syncState();
   }
 
-  void updateIngredientRow(int index, IngredientRowModel updated, {bool syncState = false}) {
+  void updateIngredientRow(
+    int index,
+    IngredientRowModel updated, {
+    bool syncState = false,
+  }) {
     final rows = List.of(_ingredientRows);
     rows[index] = updated;
     _ingredientRows = rows;
@@ -476,7 +480,11 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     }
   }
 
-  void updateVariantDraft(int index, VariantDraftFormModel updated, {bool syncState = false}) {
+  void updateVariantDraft(
+    int index,
+    VariantDraftFormModel updated, {
+    bool syncState = false,
+  }) {
     final list = List.of(_variantDrafts);
     list[index] = updated;
     _variantDrafts = list;
@@ -507,7 +515,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       return;
     }
 
-    // La unicidad de los SKU está protegida 100% atómicamente a nivel de 
+    // La unicidad de los SKU está protegida 100% atómicamente a nivel de
     // base de datos (PostgreSQL UNIQUE constraint). Si un SKU está duplicado,
     // el RPC fallará limpiamente y _parseNetworkError lo mapeará al usuario.
 
@@ -660,7 +668,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       return e.message ?? 'La operación tardó demasiado. Intenta de nuevo.';
     }
     final s = e.toString().toLowerCase();
-    if (s.contains('23505') || s.contains('unique_violation') || s.contains('ya existe')) {
+    if (s.contains('23505') ||
+        s.contains('unique_violation') ||
+        s.contains('ya existe')) {
       return 'El código o SKU ingresado ya existe en la base de datos.';
     }
     if (s.contains('socketexception') ||
@@ -690,7 +700,11 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         return bytesOriginales;
       });
     } catch (e, st) {
-      developer.log('Error crítico comprimiendo imagen', error: e, stackTrace: st);
+      developer.log(
+        'Error crítico comprimiendo imagen',
+        error: e,
+        stackTrace: st,
+      );
     }
     return bytesOriginales;
   }

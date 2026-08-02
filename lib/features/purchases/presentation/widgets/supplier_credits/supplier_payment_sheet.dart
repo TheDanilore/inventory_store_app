@@ -188,7 +188,6 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
     setState(() => _errorMessage = null);
   }
 
-
   void _savePayment() {
     if (_errorMessage != null || _amountCtrl.text.isEmpty) return;
 
@@ -234,9 +233,10 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
       accountId: _selectedAccount?.id,
       orderId: _selectedOrderId,
       notes: notesText,
-      shiftId: _selectedAccount?.type == 'CAJA' && _activeShift != null
-                ? _activeShift!['id'] as String?
-                : null,
+      shiftId:
+          _selectedAccount?.type == 'CAJA' && _activeShift != null
+              ? _activeShift!['id'] as String?
+              : null,
     );
 
     context.read<SupplierCreditsCubit>().registerPayment(params);
@@ -708,52 +708,63 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
             ),
           ),
           const SizedBox(height: 20),
-            BlocConsumer<SupplierCreditsCubit, SupplierCreditsState>(
-              listenWhen: (previous, current) => current is SupplierCreditSaveSuccess || current is SupplierCreditSaveError,
-              listener: (context, state) {
-                if (state is SupplierCreditSaveError) {
-                  AppSnackbar.show(context, message: state.message, type: SnackbarType.error);
-                } else if (state is SupplierCreditSaveSuccess) {
-                  AppSnackbar.show(context, message: state.message, type: SnackbarType.success);
-                  widget.onPaymentSaved();
-                  Navigator.pop(context);
-                }
-              },
-              builder: (context, state) {
-                final isSaving = state is SupplierCreditSaving;
-                return ElevatedButton(
-                  onPressed: (isButtonEnabled && !isSaving) ? _savePayment : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.teal,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: Colors.grey.shade300,
-                    disabledForegroundColor: Colors.grey.shade500,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child:
-                      isSaving
-                          ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                          : const Text(
-                            'Confirmar abono',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+          BlocConsumer<SupplierCreditsCubit, SupplierCreditsState>(
+            listenWhen:
+                (previous, current) =>
+                    current is SupplierCreditSaveSuccess ||
+                    current is SupplierCreditSaveError,
+            listener: (context, state) {
+              if (state is SupplierCreditSaveError) {
+                AppSnackbar.show(
+                  context,
+                  message: state.message,
+                  type: SnackbarType.error,
                 );
-              },
-            ),
+              } else if (state is SupplierCreditSaveSuccess) {
+                AppSnackbar.show(
+                  context,
+                  message: state.message,
+                  type: SnackbarType.success,
+                );
+                widget.onPaymentSaved();
+                Navigator.pop(context);
+              }
+            },
+            builder: (context, state) {
+              final isSaving = state is SupplierCreditSaving;
+              return ElevatedButton(
+                onPressed: (isButtonEnabled && !isSaving) ? _savePayment : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.teal,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey.shade300,
+                  disabledForegroundColor: Colors.grey.shade500,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child:
+                    isSaving
+                        ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                        : const Text(
+                          'Confirmar abono',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+              );
+            },
+          ),
         ],
       ),
     );

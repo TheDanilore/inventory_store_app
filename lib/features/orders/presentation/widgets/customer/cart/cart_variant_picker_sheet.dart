@@ -63,7 +63,10 @@ class CartVariantPickerSheet extends StatefulWidget {
                   maxHeight: 620,
                 ),
                 child: BlocProvider<VariantPickerCubit>(
-                  create: (_) => VariantPickerCubit(sl<ProductsRepository>())..loadData(product.id),
+                  create:
+                      (_) =>
+                          VariantPickerCubit(sl<ProductsRepository>())
+                            ..loadData(product.id),
                   child: CartVariantPickerSheet(
                     cartCubit: cartCubit,
                     product: product,
@@ -82,17 +85,21 @@ class CartVariantPickerSheet extends StatefulWidget {
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (context) => BlocProvider<VariantPickerCubit>(
-          create: (_) => VariantPickerCubit(sl<ProductsRepository>())..loadData(product.id),
-          child: CartVariantPickerSheet(
-            cartCubit: cartCubit,
-            product: product,
-            existingCartItem: existingCartItem,
-            initialQuantity: initialQuantity,
-            onVariantSelected: onVariantSelected,
-            selectedVariantId: selectedVariantId,
-          ),
-        ),
+        builder:
+            (context) => BlocProvider<VariantPickerCubit>(
+              create:
+                  (_) =>
+                      VariantPickerCubit(sl<ProductsRepository>())
+                        ..loadData(product.id),
+              child: CartVariantPickerSheet(
+                cartCubit: cartCubit,
+                product: product,
+                existingCartItem: existingCartItem,
+                initialQuantity: initialQuantity,
+                onVariantSelected: onVariantSelected,
+                selectedVariantId: selectedVariantId,
+              ),
+            ),
       );
     }
   }
@@ -111,9 +118,10 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
             height: 220,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: widget.isDialog
-                  ? BorderRadius.circular(20)
-                  : const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius:
+                  widget.isDialog
+                      ? BorderRadius.circular(20)
+                      : const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: const Center(
               child: CircularProgressIndicator(
@@ -128,20 +136,28 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: widget.isDialog
-                  ? BorderRadius.circular(20)
-                  : const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius:
+                  widget.isDialog
+                      ? BorderRadius.circular(20)
+                      : const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: AppEmptyState(
-              icon: state.message.toLowerCase().contains('conexión') || state.message.toLowerCase().contains('red')
-                  ? Icons.wifi_off_rounded
-                  : Icons.error_outline_rounded,
-              title: state.message.toLowerCase().contains('conexión') || state.message.toLowerCase().contains('red')
-                  ? 'Error de conexión'
-                  : 'Inconveniente al obtener datos',
+              icon:
+                  state.message.toLowerCase().contains('conexión') ||
+                          state.message.toLowerCase().contains('red')
+                      ? Icons.wifi_off_rounded
+                      : Icons.error_outline_rounded,
+              title:
+                  state.message.toLowerCase().contains('conexión') ||
+                          state.message.toLowerCase().contains('red')
+                      ? 'Error de conexión'
+                      : 'Inconveniente al obtener datos',
               message: state.message,
               action: ElevatedButton.icon(
-                onPressed: () => context.read<VariantPickerCubit>().loadData(widget.product.id),
+                onPressed:
+                    () => context.read<VariantPickerCubit>().loadData(
+                      widget.product.id,
+                    ),
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Reintentar'),
               ),
@@ -154,9 +170,10 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: widget.isDialog
-                  ? BorderRadius.circular(20)
-                  : const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius:
+                  widget.isDialog
+                      ? BorderRadius.circular(20)
+                      : const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: SafeArea(
               child: Column(
@@ -191,9 +208,10 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: widget.isDialog
-                ? BorderRadius.circular(20)
-                : const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius:
+                widget.isDialog
+                    ? BorderRadius.circular(20)
+                    : const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: SafeArea(
             child: Column(
@@ -201,99 +219,104 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (!widget.isDialog) ...[
-              const SizedBox(height: 12),
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  'Selecciona una variación',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ] else ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Selecciona una variación',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            widget.product.name,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.close_rounded,
-                        color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(height: 16),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      'Selecciona una variación',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
                       ),
-                      tooltip: 'Cerrar',
                     ),
-                  ],
+                  ),
+                ] else ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Selecciona una variación',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                widget.product.name,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: AppColors.textSecondary,
+                          ),
+                          tooltip: 'Cerrar',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                ],
+                const SizedBox(height: 12),
+                Flexible(
+                  child: GridView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
+                    shrinkWrap: true,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 0.75,
+                        ),
+                    itemCount: variants.length,
+                    itemBuilder: (context, index) {
+                      return _buildVariantOption(
+                        context,
+                        variants[index],
+                        stockByVariant,
+                      );
+                    },
+                  ),
                 ),
-              ),
-              const Divider(height: 1),
-            ],
-            const SizedBox(height: 12),
-            Flexible(
-              child: GridView.builder(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 8,
-                ),
-                shrinkWrap: true,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.75,
-                ),
-                itemCount: variants.length,
-                itemBuilder: (context, index) {
-                  return _buildVariantOption(context, variants[index], stockByVariant);
-                },
-              ),
+                const SizedBox(height: 20),
+              ],
             ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
+          ),
+        );
       },
     );
   }
@@ -407,17 +430,21 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
                               ? CachedNetworkImage(
                                 imageUrl: variant.images.first.imageUrl,
                                 fit: BoxFit.cover,
-                                placeholder: (context, url) => const _ImgFallback(),
+                                placeholder:
+                                    (context, url) => const _ImgFallback(),
                                 errorWidget:
-                                    (context, url, error) => const _ImgFallback(),
+                                    (context, url, error) =>
+                                        const _ImgFallback(),
                               )
                               : widget.product.images.isNotEmpty
                               ? CachedNetworkImage(
                                 imageUrl: widget.product.images.first.imageUrl,
                                 fit: BoxFit.cover,
-                                placeholder: (context, url) => const _ImgFallback(),
+                                placeholder:
+                                    (context, url) => const _ImgFallback(),
                                 errorWidget:
-                                    (context, url, error) => const _ImgFallback(),
+                                    (context, url, error) =>
+                                        const _ImgFallback(),
                               )
                               : const _ImgFallback(),
                     ),
@@ -500,7 +527,6 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
       ),
     );
   }
-
 }
 
 class _ImgFallback extends StatelessWidget {

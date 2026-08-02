@@ -65,7 +65,7 @@ class CustomerLayout extends StatelessWidget {
           selector: (s) => (s.hasBalance, s.isLoading, s.balance),
           builder: (context, walletData) {
             final (hasBalance, isLoading, balance) = walletData;
-            
+
             if (!hasBalance && !isLoading) {
               return const SizedBox.shrink();
             }
@@ -206,7 +206,9 @@ class CustomerLayout extends StatelessWidget {
         selector: (s) => s.businessInfo?.businessName ?? '',
         builder: (context, businessName) {
           final displayTitle =
-              (useBusinessName && businessName.isNotEmpty && businessName != 'Cargando...')
+              (useBusinessName &&
+                      businessName.isNotEmpty &&
+                      businessName != 'Cargando...')
                   ? businessName
                   : title;
           return Text(
@@ -263,9 +265,7 @@ class CustomerLayout extends StatelessWidget {
                           return Positioned(
                             right: 4,
                             top: 4,
-                            child: _AnimatedCartBadge(
-                              itemCount: itemCount,
-                            ),
+                            child: _AnimatedCartBadge(itemCount: itemCount),
                           );
                         },
                       ),

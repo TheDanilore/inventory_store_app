@@ -250,21 +250,29 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
       (_) {
         // Zero Egress: mutar amount_paid y payment_status en la lista RAM
         if (previousState is PurchaseOrdersLoaded) {
-          final updatedOrders = previousState.orders.map((o) {
-            if (o is PurchaseOrderModel && o.id == params.orderId) {
-              final newPaid = o.amountPaid + params.amount;
-              final newStatus = newPaid >= o.totalAmount ? 'PAID' : 'PARTIAL';
-              return o.copyWith(amountPaid: newPaid, paymentStatus: newStatus);
-            }
-            return o;
-          }).toList();
-          
-          emit(PurchaseOrderActionSuccess(
-            message: 'Pago de S/ ${params.amount.toStringAsFixed(2)} registrado correctamente.',
-            orderId: params.orderId,
-            newAmountPaid: params.amount,
-          ));
-          
+          final updatedOrders =
+              previousState.orders.map((o) {
+                if (o is PurchaseOrderModel && o.id == params.orderId) {
+                  final newPaid = o.amountPaid + params.amount;
+                  final newStatus =
+                      newPaid >= o.totalAmount ? 'PAID' : 'PARTIAL';
+                  return o.copyWith(
+                    amountPaid: newPaid,
+                    paymentStatus: newStatus,
+                  );
+                }
+                return o;
+              }).toList();
+
+          emit(
+            PurchaseOrderActionSuccess(
+              message:
+                  'Pago de S/ ${params.amount.toStringAsFixed(2)} registrado correctamente.',
+              orderId: params.orderId,
+              newAmountPaid: params.amount,
+            ),
+          );
+
           // Re-emitir el estado principal para restaurar la lista en pantalla
           emit(previousState.copyWith(orders: updatedOrders));
         }
@@ -290,13 +298,14 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
       (_) {
         // Zero Egress: mutar payment_method en la lista RAM
         if (previousState is PurchaseOrdersLoaded) {
-          final updatedOrders = previousState.orders.map((o) {
-            if (o is PurchaseOrderModel && o.id == params.orderId) {
-              return o.copyWith(paymentMethod: params.newMethod);
-            }
-            return o;
-          }).toList();
-          
+          final updatedOrders =
+              previousState.orders.map((o) {
+                if (o is PurchaseOrderModel && o.id == params.orderId) {
+                  return o.copyWith(paymentMethod: params.newMethod);
+                }
+                return o;
+              }).toList();
+
           emit(
             PurchaseOrderActionSuccess(
               message: 'Método de pago actualizado a ${params.newMethod}.',
@@ -304,7 +313,7 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
               newPaymentMethod: params.newMethod,
             ),
           );
-          
+
           // Re-emitir el estado principal para restaurar la lista en pantalla
           emit(previousState.copyWith(orders: updatedOrders));
         }

@@ -31,9 +31,10 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   double _quantity = 1;
   final _costCtrl = TextEditingController();
   final _batchCtrl = TextEditingController();
-  final _batchSearchCtrl = TextEditingController(); // Controlador extraído para no forzar rebuilds de Autocomplete
+  final _batchSearchCtrl =
+      TextEditingController(); // Controlador extraído para no forzar rebuilds de Autocomplete
   DateTime? _expiryDate;
-  
+
   final _searchDebouncer = _Debouncer(milliseconds: 500);
 
   late final AddEntryProductCubit _cubit;
@@ -239,7 +240,11 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       child: BlocConsumer<AddEntryProductCubit, AddEntryProductState>(
         listener: (context, state) {
           if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
-            AppSnackbar.show(context, message: state.errorMessage!, type: SnackbarType.error);
+            AppSnackbar.show(
+              context,
+              message: state.errorMessage!,
+              type: SnackbarType.error,
+            );
           }
         },
         builder: (context, state) {
@@ -319,24 +324,28 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                               if (textEditingValue.text.isEmpty) {
                                 return const Iterable<ProductModel>.empty();
                               }
-                              return _searchDebouncer.run<Iterable<ProductModel>>(() async {
-                                final res = await _repository.searchProductsForEntry(
-                                  textEditingValue.text,
-                                );
-                                return res.fold(
-                                  (l) {
-                                    developer.log('Error de red al buscar', error: l.message);
-                                    if (mounted) {
-                                      AppSnackbar.show(
-                                        context,
-                                        message: 'Error de red al buscar productos. Revisa tu conexión.',
-                                        type: SnackbarType.error,
-                                      );
-                                    }
-                                    return const Iterable<ProductModel>.empty();
-                                  },
-                                  (r) => r.map((p) => ProductModel.fromJson(p)),
-                                );
+                              return _searchDebouncer.run<
+                                Iterable<ProductModel>
+                              >(() async {
+                                final res = await _repository
+                                    .searchProductsForEntry(
+                                      textEditingValue.text,
+                                    );
+                                return res.fold((l) {
+                                  developer.log(
+                                    'Error de red al buscar',
+                                    error: l.message,
+                                  );
+                                  if (mounted) {
+                                    AppSnackbar.show(
+                                      context,
+                                      message:
+                                          'Error de red al buscar productos. Revisa tu conexión.',
+                                      type: SnackbarType.error,
+                                    );
+                                  }
+                                  return const Iterable<ProductModel>.empty();
+                                }, (r) => r.map((p) => ProductModel.fromJson(p)));
                               }, const Iterable<ProductModel>.empty());
                             },
                             onSelected: _onProductChanged,
@@ -658,13 +667,16 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                                 onFieldSubmitted,
                               ) {
                                 if (textEditingController != _batchSearchCtrl) {
-                                   textEditingController.text = _batchSearchCtrl.text;
-                                   textEditingController.addListener(() {
-                                     _batchSearchCtrl.text = textEditingController.text;
-                                     _batchCtrl.text = textEditingController.text;
-                                   });
+                                  textEditingController.text =
+                                      _batchSearchCtrl.text;
+                                  textEditingController.addListener(() {
+                                    _batchSearchCtrl.text =
+                                        textEditingController.text;
+                                    _batchCtrl.text =
+                                        textEditingController.text;
+                                  });
                                 }
-                                
+
                                 return TextField(
                                   controller: textEditingController,
                                   focusNode: focusNode,
@@ -1207,15 +1219,15 @@ class _Debouncer {
   final int milliseconds;
   Timer? _timer;
   Completer? _completer;
-  
+
   _Debouncer({required this.milliseconds});
-  
+
   Future<T> run<T>(Future<T> Function() action, T fallbackValue) {
     if (_timer?.isActive ?? false) {
       _timer!.cancel();
       _completer?.complete(fallbackValue);
     }
-    
+
     _completer = Completer<T>();
     _timer = Timer(Duration(milliseconds: milliseconds), () async {
       try {
@@ -1226,14 +1238,14 @@ class _Debouncer {
         if (!_completer!.isCompleted) _completer!.complete(fallbackValue);
       }
     });
-    
+
     return _completer!.future as Future<T>;
   }
-  
+
   void dispose() {
     _timer?.cancel();
     if (_completer != null && !_completer!.isCompleted) {
-       _completer!.completeError('disposed');
+      _completer!.completeError('disposed');
     }
   }
 }

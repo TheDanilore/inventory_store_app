@@ -111,7 +111,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
             message: '¡Productos de la orden añadidos al carrito!',
             type: SnackbarType.success,
           );
-        }
+        },
       );
     } catch (e) {
       if (mounted) {
@@ -144,7 +144,10 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
             },
             child: BlocConsumer<CustomerOrdersCubit, CustomerOrdersState>(
               listener: (context, state) {
-                if (state.errorMessage.isNotEmpty && state.orders.isNotEmpty && !state.isLoadingMore && !state.isBackgroundLoading) {
+                if (state.errorMessage.isNotEmpty &&
+                    state.orders.isNotEmpty &&
+                    !state.isLoadingMore &&
+                    !state.isBackgroundLoading) {
                   AppSnackbar.show(
                     context,
                     message: state.errorMessage,

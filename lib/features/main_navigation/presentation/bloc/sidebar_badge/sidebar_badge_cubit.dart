@@ -10,7 +10,8 @@ class SidebarBadgeCubit extends Cubit<SidebarBadgeState> {
   final WatchPendingOrdersCountUc watchPendingOrdersCountUc;
   StreamSubscription? _subscription;
 
-  SidebarBadgeCubit(this.watchPendingOrdersCountUc) : super(SidebarBadgeLoading()) {
+  SidebarBadgeCubit(this.watchPendingOrdersCountUc)
+    : super(SidebarBadgeLoading()) {
     _initSubscription();
   }
 

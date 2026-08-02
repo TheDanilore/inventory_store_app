@@ -66,18 +66,27 @@ class AdminSaleClientSection extends StatelessWidget {
               ),
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre, teléfono o documento…',
-                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                hintStyle: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 13,
+                ),
                 prefixIcon: const Icon(
                   Icons.search_rounded,
                   color: AppColors.textMuted,
                   size: 18,
                 ),
-                suffixIcon: (controller.text.isNotEmpty || selectedClientId != null) && onClearClient != null
-                    ? IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 16, color: AppColors.textMuted),
-                        onPressed: onClearClient,
-                      )
-                    : null,
+                suffixIcon:
+                    (controller.text.isNotEmpty || selectedClientId != null) &&
+                            onClearClient != null
+                        ? IconButton(
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            size: 16,
+                            color: AppColors.textMuted,
+                          ),
+                          onPressed: onClearClient,
+                        )
+                        : null,
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -185,35 +194,40 @@ class _SelectedClientBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final changeButton = onClearClient != null
-        ? InkWell(
-            onTap: onClearClient,
-            borderRadius: BorderRadius.circular(6),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.swap_horiz_rounded, size: 14, color: AppColors.textSecondary),
-                  SizedBox(width: 4),
-                  Text(
-                    'Cambiar',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
+    final changeButton =
+        onClearClient != null
+            ? InkWell(
+              onTap: onClearClient,
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.swap_horiz_rounded,
+                      size: 14,
                       color: AppColors.textSecondary,
                     ),
-                  ),
-                ],
+                    SizedBox(width: 4),
+                    Text(
+                      'Cambiar',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          )
-        : null;
+            )
+            : null;
 
     if (isCredito && creditInfo != null) {
       final isActive = creditInfo!['is_active'] == true;

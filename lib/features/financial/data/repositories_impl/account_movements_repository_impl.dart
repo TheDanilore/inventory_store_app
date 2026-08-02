@@ -62,25 +62,31 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
     required MovementFilters filters,
   }) async {
     try {
-      final res = await _supabase.rpc('get_movement_totals_rpc', params: {
-        'p_filter_type': filters.filterType,
-        'p_account_id': filters.filterAccountId,
-        'p_search_text': filters.searchText.trim(),
-        'p_date_from': filters.dateFrom?.toIso8601String(),
-        'p_date_to': filters.dateTo?.toIso8601String(),
-      });
+      final res = await _supabase.rpc(
+        'get_movement_totals_rpc',
+        params: {
+          'p_filter_type': filters.filterType,
+          'p_account_id': filters.filterAccountId,
+          'p_search_text': filters.searchText.trim(),
+          'p_date_from': filters.dateFrom?.toIso8601String(),
+          'p_date_to': filters.dateTo?.toIso8601String(),
+        },
+      );
 
       return MovementTotals(
         totalIncome: (res['totalIncome'] as num).toDouble(),
         totalExpense: (res['totalExpense'] as num).toDouble(),
       );
     } catch (e, st) {
-      developer.log('getMovementTotals error', error: e, stackTrace: st, name: 'AccountMovementsRepositoryImpl');
+      developer.log(
+        'getMovementTotals error',
+        error: e,
+        stackTrace: st,
+        name: 'AccountMovementsRepositoryImpl',
+      );
       return const MovementTotals(totalIncome: 0, totalExpense: 0);
     }
   }
-
-
 
   @override
   Future<void> registerManualMovement({
@@ -91,17 +97,25 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
     required String description,
   }) async {
     try {
-      await _supabase.rpc('register_financial_movement', params: {
-        'p_account_id': accountId,
-        'p_movement_type': movementType,
-        'p_amount': amount,
-        'p_description': description,
-        'p_reference_type': 'manual',
-        'p_reference_id': null,
-        'p_created_by': profileId,
-      });
+      await _supabase.rpc(
+        'register_financial_movement',
+        params: {
+          'p_account_id': accountId,
+          'p_movement_type': movementType,
+          'p_amount': amount,
+          'p_description': description,
+          'p_reference_type': 'manual',
+          'p_reference_id': null,
+          'p_created_by': profileId,
+        },
+      );
     } catch (e, st) {
-      developer.log('registerManualMovement error', error: e, stackTrace: st, name: 'AccountMovementsRepositoryImpl');
+      developer.log(
+        'registerManualMovement error',
+        error: e,
+        stackTrace: st,
+        name: 'AccountMovementsRepositoryImpl',
+      );
       rethrow;
     }
   }
@@ -115,15 +129,23 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
     required String description,
   }) async {
     try {
-      await _supabase.rpc('transfer_funds_rpc', params: {
-        'p_source_account_id': sourceAccountId,
-        'p_dest_account_id': destAccountId,
-        'p_amount': amount,
-        'p_description': description.trim(),
-        'p_created_by': profileId,
-      });
+      await _supabase.rpc(
+        'transfer_funds_rpc',
+        params: {
+          'p_source_account_id': sourceAccountId,
+          'p_dest_account_id': destAccountId,
+          'p_amount': amount,
+          'p_description': description.trim(),
+          'p_created_by': profileId,
+        },
+      );
     } catch (e, st) {
-      developer.log('transferFunds error', error: e, stackTrace: st, name: 'AccountMovementsRepositoryImpl');
+      developer.log(
+        'transferFunds error',
+        error: e,
+        stackTrace: st,
+        name: 'AccountMovementsRepositoryImpl',
+      );
       rethrow;
     }
   }
