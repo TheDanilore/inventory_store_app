@@ -9,6 +9,8 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/invento
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
+import 'dart:async';
+import 'dart:developer' as developer;
 import 'package:inventory_store_app/features/inventory/presentation/bloc/add_exit_product/add_exit_product_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/add_exit_product/add_exit_product_state.dart';
 
@@ -32,6 +34,8 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
   double _quantity = 1;
   String? _quantityError;
 
+  final _searchDebouncer = _Debouncer(milliseconds: 500);
+
   @override
   void initState() {
     super.initState();
@@ -41,6 +45,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
 
   @override
   void dispose() {
+    _searchDebouncer.dispose();
     _cubit.close();
     super.dispose();
   }
@@ -118,7 +123,8 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () {
-                  final newQty = double.tryParse(qtyCtrl.text.trim());
+                  final sanitizedQty = qtyCtrl.text.trim().replaceAll(',', '.');
+                  final newQty = double.tryParse(sanitizedQty);
                   if (newQty != null && newQty > 0) {
                     setState(() {
                       if (newQty > _maxAvailable) {
@@ -288,19 +294,29 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                               if (textEditingValue.text.isEmpty) {
                                 return const Iterable<ProductModel>.empty();
                               }
-                              try {
+                              return _searchDebouncer.run<
+                                Iterable<ProductModel>
+                              >(() async {
                                 final res = await _repository
                                     .searchProductsForEntry(
                                       textEditingValue.text,
                                     );
-                                return res.fold(
-                                  (l) => const Iterable<ProductModel>.empty(),
-                                  (r) => r.map((p) => ProductModel.fromJson(p)),
-                                );
-                              } catch (e) {
-                                debugPrint('Error en autocomplete: $e');
-                                return const Iterable<ProductModel>.empty();
-                              }
+                                return res.fold((l) {
+                                  developer.log(
+                                    'Error de red al buscar',
+                                    error: l.message,
+                                  );
+                                  if (mounted) {
+                                    AppSnackbar.show(
+                                      context,
+                                      message:
+                                          'Error de red al buscar productos. Revisa tu conexión.',
+                                      type: SnackbarType.error,
+                                    );
+                                  }
+                                  return const Iterable<ProductModel>.empty();
+                                }, (r) => r.map((p) => ProductModel.fromJson(p)));
+                              }, const Iterable<ProductModel>.empty());
                             },
                             onSelected: (val) {
                               HapticFeedback.lightImpact();
@@ -887,5 +903,40 @@ class _ProductThumbnail extends StatelessWidget {
                 ),
       ),
     );
+  }
+}
+
+class _Debouncer {
+  final int milliseconds;
+  Timer? _timer;
+  Completer? _completer;
+
+  _Debouncer({required this.milliseconds});
+
+  Future<T> run<T>(Future<T> Function() action, T fallbackValue) {
+    if (_timer?.isActive ?? false) {
+      _timer!.cancel();
+      _completer?.complete(fallbackValue);
+    }
+
+    _completer = Completer<T>();
+    _timer = Timer(Duration(milliseconds: milliseconds), () async {
+      try {
+        final result = await action();
+        if (!_completer!.isCompleted) _completer!.complete(result);
+      } catch (e, st) {
+        developer.log('Debouncer error', error: e, stackTrace: st);
+        if (!_completer!.isCompleted) _completer!.complete(fallbackValue);
+      }
+    });
+
+    return _completer!.future as Future<T>;
+  }
+
+  void dispose() {
+    _timer?.cancel();
+    if (_completer != null && !_completer!.isCompleted) {
+      _completer!.completeError('disposed');
+    }
   }
 }
