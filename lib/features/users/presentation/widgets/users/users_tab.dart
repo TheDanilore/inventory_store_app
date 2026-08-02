@@ -13,6 +13,8 @@ class UsersTab extends StatefulWidget {
   final String searchQuery;
   final bool onlyActive;
   final ScrollController? scrollController;
+  final TabController tabController;
+  final int tabIndex;
 
   const UsersTab({
     super.key,
@@ -20,24 +22,28 @@ class UsersTab extends StatefulWidget {
     required this.searchQuery,
     required this.onlyActive,
     this.scrollController,
+    required this.tabController,
+    required this.tabIndex,
   });
 
   @override
   State<UsersTab> createState() => _UsersTabState();
 }
 
-class _UsersTabState extends State<UsersTab> {
+class _UsersTabState extends State<UsersTab> with AutomaticKeepAliveClientMixin {
+  bool _hasFetched = false;
+
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
     super.initState();
-    // Fetch initial data for this tab
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<UsersCubit>().fetchUsers(
-        searchQuery: widget.searchQuery,
-        onlyActive: widget.onlyActive,
-        page: 0,
-      );
-    });
+    widget.tabController.addListener(_onTabChanged);
+    // Fetch initial data if this is the active tab
+    if (widget.tabController.index == widget.tabIndex) {
+      _fetchData();
+    }
   }
 
   @override
@@ -45,12 +51,35 @@ class _UsersTabState extends State<UsersTab> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.searchQuery != widget.searchQuery ||
         oldWidget.onlyActive != widget.onlyActive) {
-      context.read<UsersCubit>().fetchUsers(
-        searchQuery: widget.searchQuery,
-        onlyActive: widget.onlyActive,
-        page: 0,
-      );
+      // Solo actualiza si es el tab activo para evitar Phantom Fetches (Múltiples peticiones por debounce)
+      if (widget.tabController.index == widget.tabIndex) {
+        _fetchData();
+      } else {
+        // Marcamos que necesita fetch para cuando vuelva a ser visible
+        _hasFetched = false;
+      }
     }
+  }
+
+  void _onTabChanged() {
+    if (widget.tabController.index == widget.tabIndex && !_hasFetched) {
+      _fetchData();
+    }
+  }
+
+  void _fetchData() {
+    _hasFetched = true;
+    context.read<UsersCubit>().fetchUsers(
+      searchQuery: widget.searchQuery,
+      onlyActive: widget.onlyActive,
+      page: 0,
+    );
+  }
+
+  @override
+  void dispose() {
+    widget.tabController.removeListener(_onTabChanged);
+    super.dispose();
   }
 
   void _showUserDetail(BuildContext context, String userId) {
@@ -78,6 +107,7 @@ class _UsersTabState extends State<UsersTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return BlocBuilder<UsersCubit, UsersState>(
       builder: (context, state) {
         if (state is UsersInitial ||

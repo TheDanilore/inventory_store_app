@@ -21,13 +21,12 @@ class UsersCubit extends Cubit<UsersState> {
 
   Future<void> init(String role) async {
     _currentRole = role;
-    await fetchCounts();
-    await fetchUsers();
+    // Removed fetchCounts and fetchUsers from here.
+    // fetchUsers will be called by UsersTab.
   }
 
   void setRole(String role) {
     _currentRole = role;
-    fetchUsers(page: 0); // Reset page on role change
   }
 
   Future<void> fetchCounts() async {
@@ -123,11 +122,9 @@ class UsersCubit extends Cubit<UsersState> {
           ),
         );
       },
-      (users) async {
-        // Need to update the count for the CURRENT role to calculate totalPages correctly
-        final countRes = await _getCounts(role: _currentRole);
-        int newTotal = state.totalCount;
-        countRes.fold((l) => null, (r) => newTotal = r);
+      (result) async {
+        final List<UserEntity> users = result['data'] as List<UserEntity>;
+        final int newTotal = result['count'] as int;
 
         emit(
           UsersLoaded(

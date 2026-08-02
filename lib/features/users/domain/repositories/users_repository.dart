@@ -3,7 +3,7 @@ import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
 
 abstract class UsersRepository {
-  Future<Either<Failure, List<UserEntity>>> getUsers({
+  Future<Either<Failure, Map<String, dynamic>>> getUsers({
     required String role,
     required String searchQuery,
     required bool onlyActive,

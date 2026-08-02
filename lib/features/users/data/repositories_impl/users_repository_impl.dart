@@ -14,7 +14,7 @@ class UsersRepositoryImpl implements UsersRepository {
   UsersRepositoryImpl(this._supabase);
 
   @override
-  Future<Either<Failure, List<UserEntity>>> getUsers({
+  Future<Either<Failure, Map<String, dynamic>>> getUsers({
     required String role,
     required String searchQuery,
     required bool onlyActive,
@@ -47,14 +47,15 @@ class UsersRepositoryImpl implements UsersRepository {
 
       final response = await query
           .order('created_at', ascending: false)
-          .range(start, end);
+          .range(start, end)
+          .count(CountOption.exact);
 
       final List<UserEntity> users =
-          (response as List)
+          (response.data as List)
               .map((json) => UserModel.fromJson(json as Map<String, dynamic>))
               .toList();
 
-      return Right(users);
+      return Right({'data': users, 'count': response.count});
     } on PostgrestException catch (e, st) {
       developer.log('🔴 [UsersRepo] PostgrestException en getUsers (role=$role): $e',
           error: e, stackTrace: st, name: 'UsersRepositoryImpl');

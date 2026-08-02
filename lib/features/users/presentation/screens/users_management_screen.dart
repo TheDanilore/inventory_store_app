@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as import_developer;
+import 'package:supabase_flutter/supabase_flutter.dart' as import_supabase;
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -61,8 +63,6 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
   }
 
   void _onSearchChanged(String value) {
-    // Actualiza el sufijo (icono X) de forma inmediata
-    setState(() {});
     // Retrasa 500ms la propagación real de la query a los tabs
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
@@ -97,7 +97,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(width: 16),
-                  Expanded(child: Text('Generando CSV...')),
+                  Expanded(child: Text('Generando CSV desde servidor...')),
                 ],
               ),
             ),
@@ -105,16 +105,34 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
     }
 
     try {
-      // Lee el estado del cubit del tab activo (customer/admin/employee)
-      final state = _countsCubit.state;
-      final users = state.currentUsers;
+      final role = _tabController.index == 0
+          ? AppRoles.customer
+          : _tabController.index == 1
+          ? AppRoles.admin
+          : AppRoles.employee;
 
-      if (users.isEmpty) {
+      // Consulta directa para exportar TODO sin paginación (Cuidado con tablas gigantes, ideal usar Edge Function)
+      final supabase = sl<import_supabase.SupabaseClient>();
+      
+      var query = supabase.from('profiles_with_email').select().eq('role', role);
+      if (_onlyActive) {
+        query = query.eq('is_active', true);
+      }
+      final term = _debouncedQuery;
+      if (term.isNotEmpty) {
+        query = query.or(
+          'full_name.ilike.%$term%,phone.ilike.%$term%,document_number.ilike.%$term%,email.ilike.%$term%',
+        );
+      }
+
+      final List<dynamic> response = await query.order('created_at', ascending: false);
+
+      if (response.isEmpty) {
         if (mounted) Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'No hay usuarios cargados en este tab para exportar.',
+              'No hay usuarios encontrados para exportar.',
             ),
           ),
         );
@@ -135,20 +153,29 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
         'ID,Nombre Completo,Correo,Rol,Teléfono,Tipo Doc.,N° Doc.,Saldo Puntos,Estado,Fecha Registro',
       );
 
-      for (final user in users) {
+      for (final json in response) {
+        final Map<String, dynamic> user = json as Map<String, dynamic>;
+        
+        final createdAtStr = user['created_at'] as String?;
+        String formattedDate = '';
+        if (createdAtStr != null) {
+          final date = DateTime.tryParse(createdAtStr);
+          if (date != null) {
+            formattedDate = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+          }
+        }
+
         final row = [
-          _escapeCsv(user.id),
-          _escapeCsv(user.fullName),
-          _escapeCsv(user.email ?? ''),
-          _escapeCsv(roleLabels[user.role] ?? user.role),
-          _escapeCsv(user.phone ?? ''),
-          _escapeCsv(user.documentType),
-          _escapeCsv(user.documentNumber ?? ''),
-          user.walletBalance.toString(),
-          user.isActive ? 'Activo' : 'Inactivo',
-          user.createdAt != null
-              ? '${user.createdAt!.day.toString().padLeft(2, '0')}/${user.createdAt!.month.toString().padLeft(2, '0')}/${user.createdAt!.year}'
-              : '',
+          _escapeCsv(user['id']?.toString() ?? ''),
+          _escapeCsv(user['full_name']?.toString() ?? ''),
+          _escapeCsv(user['email']?.toString() ?? ''),
+          _escapeCsv(roleLabels[user['role']] ?? user['role']?.toString() ?? ''),
+          _escapeCsv(user['phone']?.toString() ?? ''),
+          _escapeCsv(user['document_type']?.toString() ?? ''),
+          _escapeCsv(user['document_number']?.toString() ?? ''),
+          user['wallet_balance']?.toString() ?? '0',
+          (user['is_active'] == true) ? 'Activo' : 'Inactivo',
+          formattedDate,
         ];
         buffer.writeln(row.join(','));
       }
@@ -172,15 +199,15 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '✅ Exportado: $fileName.csv (${users.length} registros)',
+              '✅ Exportado: $fileName.csv (${response.length} registros)',
             ),
             backgroundColor: Colors.green.shade600,
             duration: const Duration(seconds: 4),
           ),
         );
       }
-    } catch (e) {
-      debugPrint('🔴 [CSV Export] Error al exportar: $e');
+    } catch (e, st) {
+      import_developer.log('🔴 [CSV Export] Error al exportar: $e', error: e, stackTrace: st, name: 'UsersManagementScreen');
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -247,8 +274,10 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                               Icons.search_rounded,
                               color: Colors.grey.shade400,
                             ),
-                            suffixIcon:
-                                _searchCtrl.text.isNotEmpty
+                            suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                              valueListenable: _searchCtrl,
+                              builder: (context, value, child) {
+                                return value.text.isNotEmpty
                                     ? IconButton(
                                       icon: const Icon(
                                         Icons.clear_rounded,
@@ -256,7 +285,9 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                                       ),
                                       onPressed: _clearSearch,
                                     )
-                                    : null,
+                                    : const SizedBox.shrink();
+                              },
+                            ),
                             filled: true,
                             fillColor: Colors.grey.shade50,
                             contentPadding: const EdgeInsets.symmetric(
@@ -428,6 +459,8 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                       searchQuery: _debouncedQuery,
                       onlyActive: _onlyActive,
                       scrollController: _scrollController,
+                      tabController: _tabController,
+                      tabIndex: 0,
                     ),
                   ),
                   BlocProvider(
@@ -438,6 +471,8 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                       searchQuery: _debouncedQuery,
                       onlyActive: _onlyActive,
                       scrollController: _scrollController,
+                      tabController: _tabController,
+                      tabIndex: 1,
                     ),
                   ),
                   BlocProvider(
@@ -448,6 +483,8 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                       searchQuery: _debouncedQuery,
                       onlyActive: _onlyActive,
                       scrollController: _scrollController,
+                      tabController: _tabController,
+                      tabIndex: 2,
                     ),
                   ),
                 ],
