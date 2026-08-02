@@ -83,9 +83,10 @@ class ProductsRepositoryImpl implements ProductsRepository {
     bool sortByPriceAsc = true,
   }) async {
     try {
-      String variantSelect = forCustomer
-          ? 'product_variants(id, product_id, sku, sale_price, is_active, product_images(*))'
-          : 'product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, product_images(*))';
+      String variantSelect =
+          forCustomer
+              ? 'product_variants(id, product_id, sku, sale_price, is_active, product_images(*))'
+              : 'product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, product_images(*))';
       String selectString =
           'id, name, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), warehouse_stock_batches(id, product_id, variant_id, available_quantity), $variantSelect';
 
@@ -271,11 +272,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
-  Future<Either<Failure, Map<String, dynamic>>> getActiveProductsAndVariants() async {
+  Future<Either<Failure, Map<String, dynamic>>>
+  getActiveProductsAndVariants() async {
     try {
       final response = await _supabase
           .from('products')
-          .select('id, name, is_active, product_variants(id, product_id, sku, sale_price, is_active)')
+          .select(
+            'id, name, is_active, product_variants(id, product_id, sku, sale_price, is_active)',
+          )
           .eq('is_active', true)
           .eq('product_variants.is_active', true);
 
@@ -287,7 +291,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
         products.add({
           'id': product['id'],
           'name': product['name'],
-          'is_active': product['is_active']
+          'is_active': product['is_active'],
         });
         variants.addAll(pVariants.map((v) => Map<String, dynamic>.from(v)));
       }
@@ -378,7 +382,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
   // --- BÚSQUEDA PARA UI (ATRIBUTOS) ---
   @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributes(String term) async {
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributes(
+    String term,
+  ) async {
     try {
       var query = _supabase.from('attributes').select('id, name');
       if (term.trim().isNotEmpty) {
@@ -392,9 +398,15 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributeValues(String attributeId, String term) async {
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributeValues(
+    String attributeId,
+    String term,
+  ) async {
     try {
-      var query = _supabase.from('attribute_values').select('id, value').eq('attribute_id', attributeId);
+      var query = _supabase
+          .from('attribute_values')
+          .select('id, value')
+          .eq('attribute_id', attributeId);
       if (term.trim().isNotEmpty) {
         query = query.ilike('value', '%${term.trim()}%');
       }
@@ -406,17 +418,29 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
-  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttribute(String name) async {
+  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttribute(
+    String name,
+  ) async {
     try {
       // Uso de un RPC o query atómico sería ideal, pero simulamos un upsert atómico:
       // Supabase no tiene 'ON CONFLICT DO NOTHING RETURNING id' directo en insert simple si no hay un constraint unique definido en 'name',
-      // pero asumiendo que 'name' es unique, podemos intentar insertar y si falla buscar, 
+      // pero asumiendo que 'name' es unique, podemos intentar insertar y si falla buscar,
       // o usar el método seguro de Supabase upsert (onConflict).
       // Para no romper la DB si 'name' no es un constraint real, hacemos el select primero por ahora o preferiblemente upsert.
-      final exist = await _supabase.from('attributes').select('id, name').ilike('name', name.trim()).maybeSingle();
+      final exist =
+          await _supabase
+              .from('attributes')
+              .select('id, name')
+              .ilike('name', name.trim())
+              .maybeSingle();
       if (exist != null) return right(exist);
 
-      final res = await _supabase.from('attributes').insert({'name': name.trim()}).select('id, name').single();
+      final res =
+          await _supabase
+              .from('attributes')
+              .insert({'name': name.trim()})
+              .select('id, name')
+              .single();
       return right(res);
     } catch (e, st) {
       return _handleError(e, st);
@@ -424,19 +448,26 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
-  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttributeValue(String attributeId, String value) async {
+  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttributeValue(
+    String attributeId,
+    String value,
+  ) async {
     try {
-      final exist = await _supabase.from('attribute_values')
-          .select('id, value')
-          .eq('attribute_id', attributeId)
-          .ilike('value', value.trim())
-          .maybeSingle();
+      final exist =
+          await _supabase
+              .from('attribute_values')
+              .select('id, value')
+              .eq('attribute_id', attributeId)
+              .ilike('value', value.trim())
+              .maybeSingle();
       if (exist != null) return right(exist);
 
-      final res = await _supabase.from('attribute_values')
-          .insert({'attribute_id': attributeId, 'value': value.trim()})
-          .select('id, value')
-          .single();
+      final res =
+          await _supabase
+              .from('attribute_values')
+              .insert({'attribute_id': attributeId, 'value': value.trim()})
+              .select('id, value')
+              .single();
       return right(res);
     } catch (e, st) {
       return _handleError(e, st);
@@ -810,7 +841,6 @@ class ProductsRepositoryImpl implements ProductsRepository {
               'id, available_quantity, variant_id, warehouse_id, batch_number, expiry_date, warehouses(name)',
             )
             .eq('product_id', productId)
-            .gt('available_quantity', 0)
             .order('expiry_date', ascending: true, nullsFirst: false),
         _supabase
             .from('product_images')
@@ -849,22 +879,20 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
       for (final row in rawStocks) {
         final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
-        if (stock > 0) {
-          validBatches.add(Map<String, dynamic>.from(row as Map));
-          final wId = row['warehouse_id']?.toString() ?? 'unknown';
-          final vId = row['variant_id']?.toString() ?? 'none';
-          final key = '${wId}_$vId';
-          if (aggregatedStocks.containsKey(key)) {
-            aggregatedStocks[key]!['available_quantity'] =
-                (aggregatedStocks[key]!['available_quantity'] as int) + stock;
-          } else {
-            aggregatedStocks[key] = {
-              'warehouse_id': row['warehouse_id'],
-              'variant_id': row['variant_id'],
-              'warehouses': row['warehouses'],
-              'available_quantity': stock,
-            };
-          }
+        validBatches.add(Map<String, dynamic>.from(row as Map));
+        final wId = row['warehouse_id']?.toString() ?? 'unknown';
+        final vId = row['variant_id']?.toString() ?? 'none';
+        final key = '${wId}_$vId';
+        if (aggregatedStocks.containsKey(key)) {
+          aggregatedStocks[key]!['available_quantity'] =
+              (aggregatedStocks[key]!['available_quantity'] as int) + stock;
+        } else {
+          aggregatedStocks[key] = {
+            'warehouse_id': row['warehouse_id'],
+            'variant_id': row['variant_id'],
+            'warehouses': row['warehouses'],
+            'available_quantity': stock,
+          };
         }
       }
 
@@ -1037,58 +1065,73 @@ class ProductsRepositoryImpl implements ProductsRepository {
   ) async {
     final List<String> uploadedPaths = [];
     try {
-      final imageUploadFutures = payload.images.asMap().entries.map((entry) async {
-        final i = entry.key;
-        final item = entry.value;
-        final isMain = (i == 0);
-        
-        if (item.existingId != null) {
-          return {
-            'id': item.existingId,
-            'image_url': item.existingUrl,
-            'display_order': i,
-            'is_main': isMain,
-          };
-        } else if (item.newBytes != null) {
-           final fileName = '${DateTime.now().millisecondsSinceEpoch}_p$i.jpg';
-           final path = 'productos/$fileName';
-           await _supabase.storage.from('products').uploadBinary(path, item.newBytes!);
-           uploadedPaths.add(path);
-           final publicUrl = _supabase.storage.from('products').getPublicUrl(path);
-           return {
-              'image_url': publicUrl,
-              'display_order': i,
-              'is_main': isMain,
-           };
-        }
-        return null;
-      }).toList();
+      final imageUploadFutures =
+          payload.images.asMap().entries.map((entry) async {
+            final i = entry.key;
+            final item = entry.value;
+            final isMain = (i == 0);
 
-      final variantFutures = payload.variants.asMap().entries.map((entry) async {
-        final i = entry.key;
-        final draft = entry.value;
-        String? newImageUrl;
-        if (draft.newImageBytes != null) {
-           final fileName = '${DateTime.now().millisecondsSinceEpoch}_v$i.jpg';
-           final path = 'variantes/$fileName';
-           await _supabase.storage.from('products').uploadBinary(path, draft.newImageBytes!);
-           uploadedPaths.add(path);
-           newImageUrl = _supabase.storage.from('products').getPublicUrl(path);
-        }
-        return {
-          'id': draft.id,
-          'sku': draft.sku,
-          'unit_cost': draft.unitCost,
-          'sale_price': draft.salePrice ?? payload.baseSalePrice,
-          'wholesale_price': draft.wholesalePrice ?? payload.baseWholesalePrice,
-          'wholesale_min_quantity': draft.wholesaleMinQuantity ?? payload.baseWholesaleMinQuantity,
-          'reorder_point': draft.reorderPoint ?? 3,
-          'is_active': draft.isActive,
-          'clear_images': draft.clearImages,
-          'new_image_url': newImageUrl,
-          'attribute_value_ids': draft.attributeValueIds,
-        };
-      }).toList();
+            if (item.existingId != null) {
+              return {
+                'id': item.existingId,
+                'image_url': item.existingUrl,
+                'display_order': i,
+                'is_main': isMain,
+              };
+            } else if (item.newBytes != null) {
+              final fileName =
+                  '${DateTime.now().millisecondsSinceEpoch}_p$i.jpg';
+              final path = 'productos/$fileName';
+              await _supabase.storage
+                  .from('products')
+                  .uploadBinary(path, item.newBytes!);
+              uploadedPaths.add(path);
+              final publicUrl = _supabase.storage
+                  .from('products')
+                  .getPublicUrl(path);
+              return {
+                'image_url': publicUrl,
+                'display_order': i,
+                'is_main': isMain,
+              };
+            }
+            return null;
+          }).toList();
+
+      final variantFutures =
+          payload.variants.asMap().entries.map((entry) async {
+            final i = entry.key;
+            final draft = entry.value;
+            String? newImageUrl;
+            if (draft.newImageBytes != null) {
+              final fileName =
+                  '${DateTime.now().millisecondsSinceEpoch}_v$i.jpg';
+              final path = 'variantes/$fileName';
+              await _supabase.storage
+                  .from('products')
+                  .uploadBinary(path, draft.newImageBytes!);
+              uploadedPaths.add(path);
+              newImageUrl = _supabase.storage
+                  .from('products')
+                  .getPublicUrl(path);
+            }
+            return {
+              'id': draft.id,
+              'sku': draft.sku,
+              'unit_cost': draft.unitCost,
+              'sale_price': draft.salePrice ?? payload.baseSalePrice,
+              'wholesale_price':
+                  draft.wholesalePrice ?? payload.baseWholesalePrice,
+              'wholesale_min_quantity':
+                  draft.wholesaleMinQuantity ??
+                  payload.baseWholesaleMinQuantity,
+              'reorder_point': draft.reorderPoint ?? 3,
+              'is_active': draft.isActive,
+              'clear_images': draft.clearImages,
+              'new_image_url': newImageUrl,
+              'attribute_value_ids': draft.attributeValueIds,
+            };
+          }).toList();
 
       final imagesResults = await Future.wait(imageUploadFutures);
       final variantsResults = await Future.wait(variantFutures);
@@ -1107,11 +1150,18 @@ class ProductsRepositoryImpl implements ProductsRepository {
         });
       }
 
-      final ingredientsJson = payload.ingredientsEnabled ? payload.ingredients.map((ing) => {
-        'ingredient_id': ing.ingredientId,
-        'concentration': ing.concentration,
-        'unit': ing.unit,
-      }).toList() : [];
+      final ingredientsJson =
+          payload.ingredientsEnabled
+              ? payload.ingredients
+                  .map(
+                    (ing) => {
+                      'ingredient_id': ing.ingredientId,
+                      'concentration': ing.concentration,
+                      'unit': ing.unit,
+                    },
+                  )
+                  .toList()
+              : [];
 
       final jsonPayload = {
         'is_updating': payload.isUpdating,
@@ -1150,8 +1200,11 @@ class ProductsRepositoryImpl implements ProductsRepository {
       return _handleError(e, st);
     }
   }
+
   @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> searchProductsForEntry(String term) async {
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchProductsForEntry(
+    String term,
+  ) async {
     try {
       final res = await _supabase
           .from('products')
@@ -1167,7 +1220,10 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> getBatchesForVariant(String variantId, String warehouseId) async {
+  Future<Either<Failure, List<Map<String, dynamic>>>> getBatchesForVariant(
+    String variantId,
+    String warehouseId,
+  ) async {
     try {
       final response = await _supabase
           .from('warehouse_stock_batches')

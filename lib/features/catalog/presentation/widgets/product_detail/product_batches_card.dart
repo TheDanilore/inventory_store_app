@@ -77,7 +77,7 @@ class ProductBatchesCard extends StatelessWidget {
                       )
                     else if (filteredBatches.isEmpty)
                       const Text(
-                        'No hay lotes con stock para esta variante.',
+                        'No hay lotes registrados para esta variante.',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textMuted,
@@ -111,7 +111,12 @@ class ProductBatchesCard extends StatelessWidget {
                         IconData statusIcon =
                             Icons.check_circle_outline_rounded;
 
-                        if (expDate != null) {
+                        if (stock <= 0 && daysRemaining >= 0) {
+                          statusColor = AppColors.slate;
+                          statusBg = AppColors.slate.withValues(alpha: 0.15);
+                          statusLabel = 'Sin stock';
+                          statusIcon = Icons.remove_circle_outline_rounded;
+                        } else if (expDate != null) {
                           if (daysRemaining < 0) {
                             statusColor = AppColors.danger;
                             statusBg = AppColors.dangerLight;
@@ -245,27 +250,38 @@ class ProductBatchesCard extends StatelessWidget {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.1,
-                                  ),
+                                  color:
+                                      stock <= 0
+                                          ? AppColors.slate.withValues(
+                                            alpha: 0.1,
+                                          )
+                                          : AppColors.primary.withValues(
+                                            alpha: 0.1,
+                                          ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Column(
                                   children: [
                                     Text(
                                       '$stock',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w900,
-                                        color: AppColors.primary,
+                                        color:
+                                            stock <= 0
+                                                ? AppColors.slate
+                                                : AppColors.primary,
                                       ),
                                     ),
-                                    const Text(
+                                    Text(
                                       'unds',
                                       style: TextStyle(
                                         fontSize: 9,
                                         fontWeight: FontWeight.w600,
-                                        color: AppColors.primary,
+                                        color:
+                                            stock <= 0
+                                                ? AppColors.slate
+                                                : AppColors.primary,
                                       ),
                                     ),
                                   ],
