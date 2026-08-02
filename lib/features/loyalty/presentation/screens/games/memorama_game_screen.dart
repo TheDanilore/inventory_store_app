@@ -448,75 +448,115 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
   }
 
   Widget _buildIntroScreen() {
-    return Center(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: Container(
-            margin: const EdgeInsets.all(24),
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.2),
-                width: 1.5,
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.black.withValues(alpha: 0.7),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF1E293B), // Slate 800
+                    Color(0xFF0F172A), // Slate 900
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    blurRadius: 30,
+                    spreadRadius: 8,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 30,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.grid_view_rounded,
-                  size: 80,
-                  color: Colors.amber,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Memorama',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 36,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFC107).withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFFFFC107).withValues(alpha: 0.4),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFC107).withValues(alpha: 0.25),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.grid_view_rounded,
+                      size: 44,
+                      color: Color(0xFFFFC107),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Encuentra las 8 parejas en 30 segundos. ¡Sé veloz y gana monedas!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    height: 1.5,
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w500,
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Memorama',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 32),
-                AppPrimaryButton(
-                  label: 'JUGAR AHORA',
-                  backgroundColor: Colors.amber,
-                  foregroundColor: AppColors.primaryDark,
-                  onPressed: _startGame,
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(foregroundColor: Colors.white54),
-                  child: const Text(
-                    'Volver',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Encuentra las 8 parejas en 30 segundos.\n¡Sé veloz y gana monedas!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 28),
+                  AppPrimaryButton(
+                    label: 'JUGAR AHORA',
+                    backgroundColor: const Color(0xFFFFC107),
+                    foregroundColor: AppColors.primaryDark,
+                    onPressed: _startGame,
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white60,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                    ),
+                    child: const Text(
+                      'Volver',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -526,121 +566,252 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
 
   Widget _buildGameOverScreen() {
     final completed = _cards.every((c) => c.state == _CardMatchState.matched);
-    return Center(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: Container(
-            margin: const EdgeInsets.all(24),
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.2),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 30,
-                  spreadRadius: 5,
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.black.withValues(alpha: 0.75),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF1E293B),
+                    Color(0xFF0F172A),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  completed ? '🏆' : '⏳',
-                  style: const TextStyle(fontSize: 80),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  width: 1.5,
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  completed ? '¡Victoria!' : '¡Tiempo Agotado!',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    blurRadius: 35,
+                    spreadRadius: 8,
+                    offset: const Offset(0, 12),
                   ),
-                ),
-                const SizedBox(height: 16),
-                if (_score > 0)
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
+                    width: 90,
+                    height: 90,
                     decoration: BoxDecoration(
-                      color: Colors.amber.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.amber.shade300),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('🪙', style: TextStyle(fontSize: 24)),
-                        const SizedBox(width: 8),
-                        Text(
-                          '+$_score obtenidas',
-                          style: const TextStyle(
-                            color: Colors.amber,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                          ),
+                      color: completed
+                          ? const Color(0xFFFFC107).withValues(alpha: 0.15)
+                          : const Color(0xFFFF5722).withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: completed
+                            ? const Color(0xFFFFC107).withValues(alpha: 0.4)
+                            : const Color(0xFFFF5722).withValues(alpha: 0.4),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: completed
+                              ? const Color(0xFFFFC107).withValues(alpha: 0.25)
+                              : const Color(0xFFFF5722).withValues(alpha: 0.25),
+                          blurRadius: 20,
+                          spreadRadius: 2,
                         ),
                       ],
                     ),
-                  )
-                else
-                  const Text(
-                    'No ganaste monedas esta vez 😢',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                    child: Icon(
+                      completed
+                          ? Icons.emoji_events_rounded
+                          : Icons.hourglass_empty_rounded,
+                      size: 46,
+                      color: completed
+                          ? const Color(0xFFFFC107)
+                          : const Color(0xFFFF7043),
                     ),
                   ),
-                const SizedBox(height: 32),
-                if (_isSaving)
-                  const AppLoading()
-                else
-                  Builder(
-                    builder: (context) {
-                      final limit =
-                          context
-                              .read<AppConfigCubit>()
-                              .getDouble('memorama_daily_limit', 1)
-                              .round();
-                      final played =
-                          context.read<PointsCubit>().state.memoramaPlaysToday;
-                      final canPlayAgain =
-                          widget.profileId == 'offline' ||
-                          (limit - (played + 1) > 0);
-
-                      return Column(
+                  const SizedBox(height: 20),
+                  Text(
+                    completed ? '¡Victoria!' : '¡Tiempo Agotado!',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  if (_score > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFF332A15),
+                            Color(0xFF423214),
+                          ],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: const Color(0xFFFFC107),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFFC107).withValues(alpha: 0.18),
+                            blurRadius: 15,
+                          ),
+                        ],
+                      ),
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (_score > 0) ...[
-                            if (canPlayAgain) ...[
-                              AppPrimaryButton(
-                                label: 'Reclamar y Jugar de Nuevo',
-                                backgroundColor: Colors.amber,
-                                foregroundColor: AppColors.primaryDark,
-                                onPressed: _claimAndRestart,
-                              ),
-                              const SizedBox(height: 12),
+                          const Icon(
+                            Icons.monetization_on_rounded,
+                            color: Color(0xFFFFD700),
+                            size: 26,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            '+$_score obtenidas',
+                            style: const TextStyle(
+                              color: Color(0xFFFFD700),
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.1),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            color: Colors.white60,
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'No ganaste monedas esta vez',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 30),
+                  if (_isSaving)
+                    const AppLoading()
+                  else
+                    Builder(
+                      builder: (context) {
+                        final limit =
+                            context
+                                .read<AppConfigCubit>()
+                                .getDouble('memorama_daily_limit', 1)
+                                .round();
+                        final played =
+                            context.read<PointsCubit>().state.memoramaPlaysToday;
+                        final canPlayAgain =
+                            widget.profileId == 'offline' ||
+                            (limit - (played + 1) > 0);
+
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_score > 0) ...[
+                              if (canPlayAgain) ...[
+                                AppPrimaryButton(
+                                  label: 'Reclamar y Jugar de Nuevo',
+                                  backgroundColor: const Color(0xFFFFC107),
+                                  foregroundColor: AppColors.primaryDark,
+                                  onPressed: _claimAndRestart,
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton(
+                                    onPressed: _claimRewardAndExit,
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
+                                      side: const BorderSide(
+                                        color: Colors.white70,
+                                        width: 2,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Reclamar y Salir',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ] else ...[
+                                AppPrimaryButton(
+                                  label: 'Reclamar y Salir',
+                                  backgroundColor: const Color(0xFFFFC107),
+                                  foregroundColor: AppColors.primaryDark,
+                                  onPressed: _claimRewardAndExit,
+                                ),
+                              ],
+                            ] else ...[
+                              if (canPlayAgain) ...[
+                                AppPrimaryButton(
+                                  label: 'Volver a Intentar',
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: AppColors.primaryDark,
+                                  onPressed: _startGame,
+                                ),
+                                const SizedBox(height: 12),
+                              ],
                               SizedBox(
                                 width: double.infinity,
                                 child: OutlinedButton(
-                                  onPressed: _claimRewardAndExit,
+                                  onPressed: () => Navigator.pop(context, 0),
                                   style: OutlinedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 16,
                                     ),
                                     side: const BorderSide(
-                                      color: Colors.white,
+                                      color: Colors.white54,
                                       width: 2,
                                     ),
                                     shape: RoundedRectangleBorder(
@@ -648,65 +819,22 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                                     ),
                                   ),
                                   child: const Text(
-                                    'Reclamar y Salir',
+                                    'Salir',
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: Colors.white54,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
                                     ),
                                   ),
                                 ),
                               ),
-                            ] else ...[
-                              AppPrimaryButton(
-                                label: 'Reclamar y Salir',
-                                backgroundColor: Colors.amber,
-                                foregroundColor: AppColors.primaryDark,
-                                onPressed: _claimRewardAndExit,
-                              ),
                             ],
-                          ] else ...[
-                            if (canPlayAgain) ...[
-                              AppPrimaryButton(
-                                label: 'Volver a Intentar',
-                                backgroundColor: Colors.white,
-                                foregroundColor: AppColors.primaryDark,
-                                onPressed: _startGame,
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton(
-                                onPressed: () => Navigator.pop(context, 0),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  side: const BorderSide(
-                                    color: Colors.white54,
-                                    width: 2,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Salir',
-                                  style: TextStyle(
-                                    color: Colors.white54,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
                           ],
-                        ],
-                      );
-                    },
-                  ),
-              ],
+                        );
+                      },
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -720,48 +848,49 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
     Color color, {
     required String value,
   }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.2),
-              width: 1.5,
-            ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B).withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: color.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: Row(
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: color, size: 22),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: color.withValues(alpha: 0.8),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
+              Text(
+                label,
+                style: TextStyle(
+                  color: color.withValues(alpha: 0.85),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
