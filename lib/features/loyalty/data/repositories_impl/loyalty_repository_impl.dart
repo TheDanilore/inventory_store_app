@@ -80,9 +80,10 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
     String profileId,
   ) async {
     try {
+      final authUserId = _supabase.auth.currentUser?.id ?? profileId;
       final response = await _supabase.rpc(
         'get_loyalty_dashboard',
-        params: {'p_profile_id': profileId},
+        params: {'p_auth_user_id': authUserId},
       );
       return right(response as Map<String, dynamic>);
     } catch (e, st) {
@@ -192,8 +193,95 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
         params: {'p_profile_id': profileId, 'p_action_by': actionByProfileId},
       );
       return right(null);
-    } catch (e, st) {
-      return _handleError(e, st);
+    } catch (e) {
+      developer.log(
+        'RPC claim_daily_checkin falló ($e). Ejecutando respaldo resiliente en Dart...',
+      );
+      try {
+        final todayStr = DateTime.now()
+            .toUtc()
+            .toIso8601String()
+            .substring(0, 10);
+
+        // 1. Validar si ya existe el check-in de hoy
+        final existing = await _supabase
+            .from('daily_checkins')
+            .select('id')
+            .eq('profile_id', profileId)
+            .eq('checkin_date', todayStr)
+            .maybeSingle();
+        if (existing != null) {
+          return left(Failure.from('Ya realizaste tu check-in hoy.'));
+        }
+
+        // 2. Consultar la racha de ayer
+        final yesterdayStr = DateTime.now()
+            .toUtc()
+            .subtract(const Duration(days: 1))
+            .toIso8601String()
+            .substring(0, 10);
+        final yesterdayCheckin = await _supabase
+            .from('daily_checkins')
+            .select('streak_day')
+            .eq('profile_id', profileId)
+            .eq('checkin_date', yesterdayStr)
+            .maybeSingle();
+        final streakDay =
+            (yesterdayCheckin != null && yesterdayCheckin['streak_day'] != null)
+                ? (yesterdayCheckin['streak_day'] as num).toInt() + 1
+                : 1;
+
+        // 3. Obtener configuración
+        final settings = await _supabase
+            .from('app_settings')
+            .select('key, value')
+            .inFilter('key', ['checkin_reward', 'checkin_streak_step']);
+        int baseReward = 20;
+        int streakStep = 10;
+        for (final row in settings) {
+          if (row['key'] == 'checkin_reward') {
+            baseReward = int.tryParse(row['value'].toString()) ?? 20;
+          } else if (row['key'] == 'checkin_streak_step') {
+            streakStep = int.tryParse(row['value'].toString()) ?? 10;
+          }
+        }
+        final points = baseReward + ((streakDay - 1) * streakStep);
+
+        // 4. Insertar check-in incluyendo points_received
+        await _supabase.from('daily_checkins').insert({
+          'profile_id': profileId,
+          'checkin_date': todayStr,
+          'streak_day': streakDay,
+          'points_received': points,
+        });
+
+        // 5. Insertar movimiento en billeteras
+        await _supabase.from('wallet_movements').insert({
+          'profile_id': profileId,
+          'movement_type': 'CHECKIN',
+          'points': points,
+          'description': 'Check-in diario del $todayStr',
+        });
+
+        // 6. Actualizar balance en profiles
+        final profile = await _supabase
+            .from('profiles')
+            .select('wallet_balance')
+            .eq('id', profileId)
+            .maybeSingle();
+        final currentBalance =
+            (profile != null && profile['wallet_balance'] != null)
+                ? (profile['wallet_balance'] as num).toInt()
+                : 0;
+        await _supabase
+            .from('profiles')
+            .update({'wallet_balance': currentBalance + points})
+            .eq('id', profileId);
+
+        return right(null);
+      } catch (fallbackE, fallbackSt) {
+        return _handleError(fallbackE, fallbackSt);
+      }
     }
   }
 

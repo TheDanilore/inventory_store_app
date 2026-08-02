@@ -151,6 +151,7 @@ class CartItemCard extends StatelessWidget {
                           showDialog(
                             context: context,
                             barrierDismissible: false,
+                            useRootNavigator: true,
                             builder:
                                 (_) => const Center(
                                   child: CircularProgressIndicator(),
@@ -161,7 +162,10 @@ class CartItemCard extends StatelessWidget {
                           final res = await useCase(item.productId);
 
                           if (context.mounted) {
-                            Navigator.pop(context); // cerrar loader
+                            Navigator.of(
+                              context,
+                              rootNavigator: true,
+                            ).pop(); // cerrar loader de forma segura en el root navigator
                           }
 
                           res.fold(

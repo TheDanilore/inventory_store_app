@@ -143,7 +143,7 @@ class CartRepositoryImpl implements CartRepository {
         return right(localItems);
       }
 
-      // 1. Sincronización atómica mediante RPC (Reemplaza 5 llamadas HTTP)
+      // 1. Sincronización atómica mediante RPC o respaldo resiliente
       final itemsToInsert =
           localItems.values.map((item) {
             final vid = item.variantId;
@@ -155,12 +155,60 @@ class CartRepositoryImpl implements CartRepository {
             };
           }).toList();
 
-      final responseRpc = await _supabase.rpc(
-        'sync_cloud_cart_rpc',
-        params: {'p_auth_user_id': profileId, 'p_items': itemsToInsert},
-      );
+      String? cartId;
+      try {
+        // El RPC espera p_auth_user_id de Supabase Auth, no el profiles.id
+        final authUserId = _supabase.auth.currentUser?.id ?? profileId;
+        final responseRpc = await _supabase.rpc(
+          'sync_cloud_cart_rpc',
+          params: {'p_auth_user_id': authUserId, 'p_items': itemsToInsert},
+        );
+        cartId = responseRpc.toString();
+      } catch (rpcError) {
+        developer.log(
+          'RPC sync_cloud_cart_rpc falló ($rpcError). Usando respaldo resiliente.',
+          error: rpcError,
+          name: 'CartRepo',
+        );
 
-      final String cartId = responseRpc.toString();
+        // Respaldo resiliente si el RPC falla (ej. Perfil no encontrado al usar profiles.id)
+        final realProfileId = await _getProfileId(profileId);
+        if (realProfileId == null) {
+          return left(
+            const NotFoundFailure(
+              message: 'Perfil no encontrado para el usuario dado.',
+            ),
+          );
+        }
+
+        final existing =
+            await _supabase
+                .from('shopping_carts')
+                .select('id')
+                .eq('profile_id', realProfileId)
+                .maybeSingle();
+
+        if (existing != null) {
+          cartId = existing['id'] as String;
+        } else {
+          final newCart =
+              await _supabase
+                  .from('shopping_carts')
+                  .insert({'profile_id': realProfileId})
+                  .select('id')
+                  .single();
+          cartId = newCart['id'] as String;
+        }
+
+        await _supabase.from('cart_items').delete().eq('cart_id', cartId);
+        if (itemsToInsert.isNotEmpty) {
+          final itemsWithCart =
+              itemsToInsert
+                  .map((item) => {...item, 'cart_id': cartId})
+                  .toList();
+          await _supabase.from('cart_items').insert(itemsWithCart);
+        }
+      }
 
       // 2. Descargamos la nube optimizando Data Egress: seleccionando campos mínimos e incluyendo lotes de stock
       final itemsResponse = await _supabase

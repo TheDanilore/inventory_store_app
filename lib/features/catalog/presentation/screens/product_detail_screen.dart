@@ -708,7 +708,7 @@ class _ProductDetailScreenContentState
                           if (context.canPop()) {
                             context.pop();
                           } else {
-                            context.go('/');
+                            context.go(isAdmin ? '/admin' : '/');
                           }
                         },
                       ),
@@ -914,7 +914,7 @@ class _ProductDetailScreenContentState
                   if (context.canPop()) {
                     context.pop();
                   } else {
-                    context.go('/');
+                    context.go(isAdmin ? '/admin' : '/');
                   }
                 },
               ),

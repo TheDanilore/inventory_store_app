@@ -229,9 +229,7 @@ BEGIN
         END IF;
     END IF;
 
-    -- 3. Reversión de deuda en créditos del proveedor, basada en evidencia real
-    --    del ledger (un CHARGE ligado a esta orden), no en el texto libre de
-    --    payment_method.
+    -- 3. Reversión de deuda en créditos del proveedor, basada en evidencia real del ledger
     SELECT scm.supplier_credit_id
       INTO v_credit_id
       FROM public.supplier_credit_movements scm
@@ -322,8 +320,8 @@ BEGIN
     v_points := v_base_reward + ((v_new_streak - 1) * v_streak_step);
 
     -- 5. Insertar Check-in
-    INSERT INTO public.daily_checkins (profile_id, checkin_date, streak_day)
-    VALUES (p_profile_id, v_today, v_new_streak);
+    INSERT INTO public.daily_checkins (profile_id, checkin_date, streak_day, points_received)
+    VALUES (p_profile_id, v_today, v_new_streak, v_points);
 
     -- 6. Insertar Movimiento en la Billetera (Auditoría)
     INSERT INTO public.wallet_movements (profile_id, movement_type, points, description)
