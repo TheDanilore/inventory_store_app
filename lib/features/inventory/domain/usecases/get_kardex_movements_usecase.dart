@@ -8,8 +8,8 @@ class GetKardexMovementsUseCase {
 
   GetKardexMovementsUseCase(this.repository);
 
-  /// Returns entities — for domain logic (e.g. PDF export)
-  Future<List<KardexMovementEntity>> call({
+  /// Returns entities and total count
+  Future<({List<KardexMovementEntity> movements, int totalCount})> call({
     DateTime? startDate,
     DateTime? endDate,
     String typeFilter = 'ALL',
@@ -24,20 +24,6 @@ class GetKardexMovementsUseCase {
       searchText: searchText,
       page: page,
       pageSize: pageSize,
-    );
-  }
-
-  Future<int> count({
-    DateTime? startDate,
-    DateTime? endDate,
-    String typeFilter = 'ALL',
-    String searchText = '',
-  }) {
-    return repository.getKardexMovementsCount(
-      startDate: startDate,
-      endDate: endDate,
-      typeFilter: typeFilter,
-      searchText: searchText,
     );
   }
 }

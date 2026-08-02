@@ -47,7 +47,7 @@ class KardexRepositoryImpl implements KardexRepository {
   }
 
   @override
-  Future<List<KardexMovementEntity>> getKardexMovements({
+  Future<({List<KardexMovementEntity> movements, int totalCount})> getKardexMovements({
     DateTime? startDate,
     DateTime? endDate,
     String typeFilter = 'ALL',
@@ -80,37 +80,17 @@ class KardexRepositoryImpl implements KardexRepository {
 
     final response = await query
         .order('created_at', ascending: false)
-        .range(start, end);
+        .range(start, end)
+        .count(CountOption.exact);
 
-    return (response as List)
+    final dataList = response.data as List;
+    final count = response.count;
+
+    final movements = dataList
         .map((row) => KardexMovementModel.fromSupabaseRow(row).toEntity())
         .toList();
-  }
 
-  @override
-  Future<int> getKardexMovementsCount({
-    DateTime? startDate,
-    DateTime? endDate,
-    String typeFilter = 'ALL',
-    String searchText = '',
-  }) async {
-    var query = _supabase.from('inventory_movements').select('''
-      id,
-      product_variants!inner(
-        products!inner(name)
-      )
-    ''');
-
-    query = _buildBaseQuery(
-      query,
-      startDate: startDate,
-      endDate: endDate,
-      typeFilter: typeFilter,
-      searchText: searchText,
-    );
-
-    final response = await query.count(CountOption.exact);
-    return response.count;
+    return (movements: movements, totalCount: count);
   }
 
   @override

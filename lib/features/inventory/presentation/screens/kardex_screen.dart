@@ -143,35 +143,11 @@ class _KardexScreenState extends State<KardexScreen> {
     );
   }
 
-  Widget _buildFilterChip(KardexLoaded state, String label, String value) {
-    final isSelected = state.typeFilter == value;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        child: FilterChip(
-          label: Text(label),
-          selected: isSelected,
-          onSelected: (_) => context.read<KardexCubit>().setTypeFilter(value),
-          selectedColor: AppColors.primary.withValues(alpha: 0.15),
-          checkmarkColor: AppColors.primary,
-          backgroundColor: AppColors.surface,
-          side: BorderSide(
-            color: isSelected ? Colors.transparent : Colors.grey.shade300,
-          ),
-          labelStyle: TextStyle(
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            fontSize: 12,
-            color: isSelected ? AppColors.primary : AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<KardexCubit, KardexState>(
+    return BlocListener<KardexCubit, KardexState>(
       listener: (context, state) {
         if (state is KardexError) {
           AppSnackbar.show(
@@ -181,37 +157,17 @@ class _KardexScreenState extends State<KardexScreen> {
           );
         }
       },
-      builder: (context, state) {
-        // Obtenemos los datos si existen, de lo contrario usamos un estado por defecto vacío
-        final loadedState = state is KardexLoaded ? state : null;
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isTablet = constraints.maxWidth >= 800;
 
-        final currentState =
-            loadedState ??
-            const KardexLoaded(
-              movements: [],
-              typeFilter: 'ALL',
-              searchText: '',
-              currentPage: 0,
-              totalCount: 0,
-              totalPages: 1,
-              isExporting: false,
-            );
-
-        // Controlamos si está cargando de manera explícita
-        final isLoading = state is KardexInitial || state is KardexLoading;
-        final isError = state is KardexError;
-
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final isTablet = constraints.maxWidth >= 800;
-
-            return AdminLayout(
-              title: 'Kardex',
-              showBackButton: true,
-              body: Column(
-                children: [
-                  // Acciones principales en Tablet
-                  if (isTablet)
+          return AdminLayout(
+            title: 'Kardex',
+            showBackButton: true,
+            body: Column(
+              children: [
+                // Acciones principales en Tablet
+                if (isTablet)
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Row(
@@ -304,29 +260,31 @@ class _KardexScreenState extends State<KardexScreen> {
                                           ),
                                         ),
                                         const SizedBox(width: 12),
-                                        DateFilterCalendar(
-                                          dateRange:
-                                              currentState.startDate != null &&
-                                                      currentState.endDate !=
-                                                          null
-                                                  ? DateTimeRange(
-                                                    start:
-                                                        currentState.startDate!,
-                                                    end: currentState.endDate!,
-                                                  )
-                                                  : null,
-                                          onDateRangeSelected: (picked) {
-                                            context
-                                                .read<KardexCubit>()
-                                                .setDateRange(
-                                                  picked.start,
-                                                  picked.end,
-                                                );
-                                          },
-                                          onClear: () {
-                                            context
-                                                .read<KardexCubit>()
-                                                .setDateRange(null, null);
+                                        BlocBuilder<KardexCubit, KardexState>(
+                                          builder: (context, state) {
+                                            final startDate = state is KardexLoaded ? state.startDate : null;
+                                            final endDate = state is KardexLoaded ? state.endDate : null;
+                                            return DateFilterCalendar(
+                                              dateRange: startDate != null && endDate != null
+                                                      ? DateTimeRange(
+                                                        start: startDate,
+                                                        end: endDate,
+                                                      )
+                                                      : null,
+                                              onDateRangeSelected: (picked) {
+                                                context
+                                                    .read<KardexCubit>()
+                                                    .setDateRange(
+                                                      picked.start,
+                                                      picked.end,
+                                                    );
+                                              },
+                                              onClear: () {
+                                                context
+                                                    .read<KardexCubit>()
+                                                    .setDateRange(null, null);
+                                              },
+                                            );
                                           },
                                         ),
                                       ],
@@ -334,34 +292,46 @@ class _KardexScreenState extends State<KardexScreen> {
                                     const SizedBox(height: 12),
                                     SingleChildScrollView(
                                       scrollDirection: Axis.horizontal,
-                                      child: Row(
-                                        children: [
-                                          _buildFilterChip(
-                                            currentState,
-                                            'Todos',
-                                            'ALL',
-                                          ),
-                                          _buildFilterChip(
-                                            currentState,
-                                            'Ingresos',
-                                            'ENTRY',
-                                          ),
-                                          _buildFilterChip(
-                                            currentState,
-                                            'Salidas',
-                                            'EXIT',
-                                          ),
-                                          _buildFilterChip(
-                                            currentState,
-                                            'Ventas',
-                                            'SALE',
-                                          ),
-                                          _buildFilterChip(
-                                            currentState,
-                                            'Devoluciones',
-                                            'RETURN',
-                                          ),
-                                        ],
+                                      child: BlocBuilder<KardexCubit, KardexState>(
+                                        builder: (context, state) {
+                                          final typeFilter = state is KardexLoaded ? state.typeFilter : 'ALL';
+                                          
+                                          Widget buildChip(String label, String value) {
+                                            final isSelected = typeFilter == value;
+                                            return Padding(
+                                              padding: const EdgeInsets.only(right: 8),
+                                              child: AnimatedContainer(
+                                                duration: const Duration(milliseconds: 200),
+                                                child: FilterChip(
+                                                  label: Text(label),
+                                                  selected: isSelected,
+                                                  onSelected: (_) => context.read<KardexCubit>().setTypeFilter(value),
+                                                  selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                                                  checkmarkColor: AppColors.primary,
+                                                  backgroundColor: AppColors.surface,
+                                                  side: BorderSide(
+                                                    color: isSelected ? Colors.transparent : Colors.grey.shade300,
+                                                  ),
+                                                  labelStyle: TextStyle(
+                                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                                    fontSize: 12,
+                                                    color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }
+
+                                          return Row(
+                                            children: [
+                                              buildChip('Todos', 'ALL'),
+                                              buildChip('Ingresos', 'ENTRY'),
+                                              buildChip('Salidas', 'EXIT'),
+                                              buildChip('Ventas', 'SALE'),
+                                              buildChip('Devoluciones', 'RETURN'),
+                                            ],
+                                          );
+                                        },
                                       ),
                                     ),
                                   ],
@@ -370,112 +340,111 @@ class _KardexScreenState extends State<KardexScreen> {
                             ),
                           ),
 
-                          // --- CONTEO ---
-                          if (!isLoading &&
-                              !isError &&
-                              currentState.movements.isNotEmpty)
-                            SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  12,
-                                  16,
-                                  12,
-                                ),
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    '${currentState.totalCount} movimientos encontrados',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade700,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
+                          // --- LISTADO REFACTORIZADO ---
+                          SliverToBoxAdapter(
+                            child: BlocBuilder<KardexCubit, KardexState>(
+                              builder: (context, state) {
+                                final isError = state is KardexError;
+                                final isLoading = state is KardexInitial || state is KardexLoading;
+                                final loadedState = state is KardexLoaded ? state : null;
+                                final movements = loadedState?.movements ?? [];
+                                final totalCount = loadedState?.totalCount ?? 0;
 
-                          // --- LISTADO ---
-                          if (isError)
-                            SliverFillRemaining(
-                              child: Center(
-                                child: Text(
-                                  'Error al cargar la información',
-                                  style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            )
-                          else if (isLoading && currentState.movements.isEmpty)
-                            const SliverFillRemaining(child: KardexSkeleton())
-                          else if (currentState.movements.isEmpty)
-                            const SliverFillRemaining(
-                              child: AppEmptyState(
-                                icon: Icons.history,
-                                title: 'No hay movimientos',
-                                message:
-                                    'Aún no se han registrado ingresos o salidas de inventario con estos filtros.',
-                              ),
-                            )
-                          else
-                            SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  16,
-                                ),
-                                child: ListView.builder(
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  shrinkWrap: true,
-                                  itemCount: currentState.movements.length,
-                                  itemBuilder: (context, index) {
-                                    return KardexCard(
-                                      item: currentState.movements[index],
-                                      isLast:
-                                          index ==
-                                          currentState.movements.length - 1,
-                                    );
-                                  },
-                                ),
-                              ),
+                                if (isError) {
+                                  return Padding(
+                                    padding: const EdgeInsets.all(32.0),
+                                    child: Center(
+                                      child: Text(
+                                        'Error al cargar la información',
+                                        style: TextStyle(color: AppColors.textSecondary),
+                                      ),
+                                    ),
+                                  );
+                                } else if (isLoading && movements.isEmpty) {
+                                  return const KardexSkeleton();
+                                } else if (movements.isEmpty) {
+                                  return const AppEmptyState(
+                                    icon: Icons.history,
+                                    title: 'No hay movimientos',
+                                    message: 'Aún no se han registrado ingresos o salidas de inventario con estos filtros.',
+                                  );
+                                }
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (!isLoading)
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                                        child: Text(
+                                          '$totalCount movimientos encontrados',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade700,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                      child: ListView.builder(
+                                        physics: const NeverScrollableScrollPhysics(),
+                                        shrinkWrap: true,
+                                        itemCount: movements.length,
+                                        itemBuilder: (context, index) {
+                                          return KardexCard(
+                                            item: movements[index],
+                                            isLast: index == movements.length - 1,
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
+                          ),
                         ],
                       ),
                     ),
                   ),
                 ],
               ),
-              bottomNavigationBar:
-                  currentState.totalPages > 1 && !isLoading && !isError
-                      ? Container(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, -4),
-                            ),
-                          ],
+              bottomNavigationBar: BlocBuilder<KardexCubit, KardexState>(
+                builder: (context, state) {
+                  final loadedState = state is KardexLoaded ? state : null;
+                  final totalPages = loadedState?.totalPages ?? 1;
+                  final currentPage = loadedState?.currentPage ?? 0;
+                  final isLoading = state is KardexInitial || state is KardexLoading;
+                  final isError = state is KardexError;
+
+                  if (totalPages <= 1 || isLoading || isError) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return Container(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, -4),
                         ),
-                        child: SafeArea(
-                          top: false,
-                          child: AdminPageBlocks(
-                            currentPage: currentState.currentPage,
-                            totalPages: currentState.totalPages,
-                            onPageChanged:
-                                (page) => context
-                                    .read<KardexCubit>()
-                                    .changePage(page),
-                          ),
-                        ),
-                      )
-                      : null,
+                      ],
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: AdminPageBlocks(
+                        currentPage: currentPage,
+                        totalPages: totalPages,
+                        onPageChanged: (page) => context.read<KardexCubit>().changePage(page),
+                      ),
+                    ),
+                  );
+                },
+              ),
               floatingActionButton:
                   !isTablet
                       ? FloatingActionButton.extended(
@@ -504,8 +473,7 @@ class _KardexScreenState extends State<KardexScreen> {
                       : null,
             );
           },
-        );
-      },
+        ),
     );
   }
 }
@@ -572,14 +540,18 @@ class _SearchField extends StatelessWidget {
             size: 20,
             color: AppColors.textSecondary,
           ),
-          suffixIcon:
-              controller.text.isNotEmpty
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, child) {
+              return value.text.isNotEmpty
                   ? IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 18),
-                    color: AppColors.textSecondary,
-                    onPressed: onClear,
-                  )
-                  : null,
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      color: AppColors.textSecondary,
+                      onPressed: onClear,
+                    )
+                  : const SizedBox.shrink();
+            },
+          ),
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(

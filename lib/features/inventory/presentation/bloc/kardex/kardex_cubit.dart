@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'dart:developer' as developer;
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_kardex_movements_usecase.dart';
@@ -35,16 +37,7 @@ class KardexCubit extends Cubit<KardexState> {
 
       emit(KardexLoading());
 
-      final count = await getKardexMovements.count(
-        startDate: currentStartDate,
-        endDate: currentEndDate,
-        typeFilter: currentTypeFilter,
-        searchText: currentSearchText,
-      );
-
-      final totalPages = (count / pageSize).ceil();
-
-      final movements = await getKardexMovements.call(
+      final result = await getKardexMovements.call(
         startDate: currentStartDate,
         endDate: currentEndDate,
         typeFilter: currentTypeFilter,
@@ -52,6 +45,10 @@ class KardexCubit extends Cubit<KardexState> {
         page: currentPage,
         pageSize: pageSize,
       );
+
+      final count = result.totalCount;
+      final movements = result.movements;
+      final totalPages = count > 0 ? (count / pageSize).ceil() : 1;
 
       emit(
         KardexLoaded(
@@ -66,12 +63,9 @@ class KardexCubit extends Cubit<KardexState> {
           isExporting: false,
         ),
       );
-    } catch (e) {
-      debugPrint('Error loading kardex: $e');
-      final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') ||
-          errStr.contains('clientexception') ||
-          errStr.contains('failed host lookup')) {
+    } catch (e, st) {
+      developer.log('Error loading kardex', error: e, stackTrace: st);
+      if (e is SocketException || e is TimeoutException) {
         emit(const KardexError('Sin conexión a internet.'));
       } else {
         emit(const KardexError('Error al cargar kardex.'));
@@ -130,13 +124,10 @@ class KardexCubit extends Cubit<KardexState> {
         searchText: currentState.searchText,
       );
       emit(currentState.copyWith(isExporting: false));
-    } catch (e) {
-      debugPrint('Error exporting PDF: $e');
-      final errStr = e.toString().toLowerCase();
+    } catch (e, st) {
+      developer.log('Error exporting PDF', error: e, stackTrace: st);
       emit(currentState.copyWith(isExporting: false));
-      if (errStr.contains('socketexception') ||
-          errStr.contains('clientexception') ||
-          errStr.contains('failed host lookup')) {
+      if (e is SocketException || e is TimeoutException) {
         emit(const KardexError('Sin conexión a internet al exportar PDF.'));
       } else {
         emit(const KardexError('Error al exportar PDF.'));
