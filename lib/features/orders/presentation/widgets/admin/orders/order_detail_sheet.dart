@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
@@ -76,6 +77,10 @@ class _OrderDetailSheetContent extends StatefulWidget {
 }
 
 class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
+  static const String _accountTypeCaja = 'CAJA';
+  static const String _accountTypeCredito = 'CREDITO';
+  static const String _paymentStatusPaid = 'PAID';
+
   final TextEditingController _pointsUsedCtrl = TextEditingController();
   final TextEditingController _manualNameCtrl = TextEditingController();
   bool _isEditing = false;
@@ -95,7 +100,33 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
     super.dispose();
   }
 
-  void _handlePop([bool result = false]) {
+  Future<void> _handlePop([bool result = false]) async {
+    if (_isEditing && !result) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('¿Salir sin guardar?'),
+          content: const Text('Tienes cambios sin guardar. ¿Estás seguro de que deseas salir?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Salir'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+    }
+
+    if (!mounted) return;
     if (widget.isEmbedded) {
       widget.onPop?.call(result);
     } else {
@@ -133,7 +164,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
         message: 'Cambios guardados correctamente',
         type: SnackbarType.success,
       );
-      _handlePop(true);
+      await _handlePop(true);
     } else {
       AppSnackbar.show(
         context,
@@ -154,7 +185,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
         message: 'Devolución procesada con éxito',
         type: SnackbarType.success,
       );
-      _handlePop(true);
+      await _handlePop(true);
     } else {
       AppSnackbar.show(
         context,
@@ -214,7 +245,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
       (a) => a['name'] == method,
       orElse: () => <String, dynamic>{},
     );
-    final isCashAccount = selectedAccount['type'] == 'CAJA';
+    final isCashAccount = selectedAccount['type'] == _accountTypeCaja;
 
     if (isCashAccount) {
       final shiftId = await cubit.getActiveCashShift();
@@ -228,7 +259,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
         );
 
         final cashAccounts =
-            state.accounts.where((a) => a['type'] == 'CAJA').toList();
+            state.accounts.where((a) => a['type'] == _accountTypeCaja).toList();
         final opened = await OpenShiftSheet.show(
           context,
           accounts: cashAccounts.isNotEmpty ? cashAccounts : state.accounts,
@@ -240,7 +271,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
 
     if (!mounted) return;
     cubit.updatePaymentMethod(method, ratio, rate);
-    if (selectedAccount['type'] == 'CREDITO') {
+    if (selectedAccount['type'] == _accountTypeCredito) {
       _pointsUsedCtrl.text = '0';
     }
   }
@@ -256,7 +287,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
         final name = (profile['full_name'] as String?)?.trim();
         if (name != null && name.isNotEmpty) return name;
       } catch (e, st) {
-        debugPrint('🔴 [OrderDetailSheet] Error parseando cliente: $e\n$st');
+        developer.log('Error parseando cliente', error: e, stackTrace: st, name: 'OrderDetailSheet');
       }
     }
     if (order != null &&
@@ -278,10 +309,10 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
       buildWhen:
           (p, c) =>
               p.isLoading != c.isLoading ||
-              p.hasError != c.hasError ||
-              p.order != c.order,
+              p.hasError != c.hasError,
       builder: (context, rootState) {
-        if (rootState.order == null) return const SizedBox.shrink();
+        // We use widget.order as fallback for the initial render, before state.order is populated.
+        final displayOrder = rootState.order ?? widget.order;
 
         Widget child = Container(
           height:
@@ -382,16 +413,14 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                               const SizedBox(height: 16),
 
                               // STATUS
-                              BlocSelector<
-                                OrderDetailCubit,
-                                OrderDetailState,
-                                String
-                              >(
-                                selector: (state) => state.currentStatus,
-                                builder: (context, currentStatus) {
+                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                buildWhen: (p, c) =>
+                                    p.currentStatus != c.currentStatus ||
+                                    p.order != c.order,
+                                builder: (context, state) {
                                   return OrderDetailStatusSection(
-                                    originalStatus: rootState.order!.status,
-                                    currentStatus: currentStatus,
+                                    originalStatus: state.order?.status ?? displayOrder.status,
+                                    currentStatus: state.currentStatus,
                                     isEditing: _isEditing,
                                     onChanged: (val) {
                                       if (val != null) {
@@ -480,23 +509,27 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                               const SizedBox(height: 16),
 
                               // PAYMENT STATUS
-                              if (rootState.order!.paymentStatus != 'PAID')
-                                BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                  buildWhen:
-                                      (p, c) =>
-                                          p.paymentMethod != c.paymentMethod ||
-                                          p.accounts != c.accounts ||
-                                          p.selectedCustomerId !=
-                                              c.selectedCustomerId ||
-                                          p.pointsEarned != c.pointsEarned ||
-                                          p.creditInfo != c.creditInfo,
-                                  builder: (context, state) {
-                                    return PaymentStatusSection(
-                                      orderId: rootState.order!.id,
-                                      paymentStatus:
-                                          rootState.order!.paymentStatus,
-                                      totalAmount: rootState.order!.totalAmount,
-                                      amountPaid: rootState.order!.amountPaid,
+                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                buildWhen:
+                                    (p, c) =>
+                                        p.order != c.order ||
+                                        p.paymentMethod != c.paymentMethod ||
+                                        p.accounts != c.accounts ||
+                                        p.selectedCustomerId !=
+                                            c.selectedCustomerId ||
+                                        p.pointsEarned != c.pointsEarned ||
+                                        p.creditInfo != c.creditInfo,
+                                builder: (context, state) {
+                                  final order = state.order ?? displayOrder;
+                                  if (order.paymentStatus == _paymentStatusPaid) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  return PaymentStatusSection(
+                                    orderId: order.id,
+                                    paymentStatus: order.paymentStatus,
+                                    totalAmount: order.totalAmount,
+                                    amountPaid: order.amountPaid,
                                       paymentMethod: state.paymentMethod,
                                       creditInfo: state.creditInfo,
                                       accounts: state.accounts,
@@ -633,7 +666,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                   final isCreditMethod = state.accounts.any(
                                     (a) =>
                                         a['name'] == state.paymentMethod &&
-                                        a['type'] == 'CREDITO',
+                                        a['type'] == _accountTypeCredito,
                                   );
                                   final maxPtsUser =
                                       state.selectedCustomerId != null
@@ -685,20 +718,21 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                               // AUDIT SECTION
                               BlocBuilder<OrderDetailCubit, OrderDetailState>(
                                 buildWhen:
-                                    (p, c) => p.updaterName != c.updaterName,
+                                    (p, c) => p.updaterName != c.updaterName || p.order != c.order,
                                 builder: (context, state) {
                                   return OrderDetailAuditSection(
-                                    order: rootState.order!,
+                                    order: state.order ?? displayOrder,
                                     updaterName: state.updaterName,
                                   );
                                 },
                               ),
                               const SizedBox(height: 16),
 
-                              // TOTAL SUMMARY SECTION
+                                // TOTAL SUMMARY SECTION
                               BlocBuilder<OrderDetailCubit, OrderDetailState>(
                                 buildWhen:
                                     (p, c) =>
+                                        p.order != c.order ||
                                         p.items != c.items ||
                                         p.pointsUsed != c.pointsUsed ||
                                         p.pointsEarned != c.pointsEarned ||
@@ -708,17 +742,16 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                     0.0,
                                     (sum, i) => sum + i.subtotal,
                                   );
+                                  final order = state.order ?? displayOrder;
                                   return OrderDetailTotalSummarySection(
                                     subtotal: subtotal,
                                     pointsUsed: state.pointsUsed,
                                     pointsEarned: state.pointsEarned,
                                     pointsToSolesRatio: pointsToSolesRatio,
-                                    discountAmount:
-                                        rootState.order!.discountAmount,
+                                    discountAmount: order.discountAmount,
                                     isCompleted:
                                         state.isCompleted &&
-                                        rootState.order!.paymentStatus ==
-                                            'PAID',
+                                        order.paymentStatus == _paymentStatusPaid,
                                     isLoyaltyEnabled:
                                         config.loyaltyGlobalEnabled,
                                   );
@@ -733,6 +766,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                   BlocBuilder<OrderDetailCubit, OrderDetailState>(
                     buildWhen:
                         (p, c) =>
+                            p.order != c.order ||
                             p.items != c.items ||
                             p.pointsUsed != c.pointsUsed ||
                             p.isSaving != c.isSaving ||
@@ -748,10 +782,12 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                       final maxDiscount = subtotal * 0.5;
                       final appliedDiscount =
                           rawDiscount > maxDiscount ? maxDiscount : rawDiscount;
+                      
+                      final order = state.order ?? displayOrder;
                       final totalFinal =
                           subtotal -
                           appliedDiscount -
-                          rootState.order!.discountAmount;
+                          order.discountAmount;
                       final actualTotal = totalFinal < 0 ? 0.0 : totalFinal;
 
                       return Container(
@@ -880,7 +916,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                 flex: 5,
                                 child: TextButton(
                                   onPressed:
-                                      () => _handlePop(state.wasModified),
+                                      () async => await _handlePop(state.wasModified),
                                   style: TextButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 16,
@@ -910,10 +946,10 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
 
         return PopScope(
           canPop: false,
-          onPopInvokedWithResult: (didPop, dynamic result) {
+          onPopInvokedWithResult: (didPop, dynamic result) async {
             if (didPop) return;
             final state = context.read<OrderDetailCubit>().state;
-            _handlePop(state.wasModified);
+            await _handlePop(state.wasModified);
           },
           child: child,
         );
