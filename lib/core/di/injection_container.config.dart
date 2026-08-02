@@ -478,6 +478,8 @@ import '../../features/users/domain/repositories/users_repository.dart'
     as _i476;
 import '../../features/users/domain/usecases/create_user_usecase.dart' as _i12;
 import '../../features/users/domain/usecases/delete_user_usecase.dart' as _i496;
+import '../../features/users/domain/usecases/export_users_csv_usecase.dart'
+    as _i400;
 import '../../features/users/domain/usecases/get_global_users_count_usecase.dart'
     as _i962;
 import '../../features/users/domain/usecases/get_user_by_id_usecase.dart'
@@ -863,6 +865,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i496.DeleteUserUseCase>(
       () => _i496.DeleteUserUseCase(gh<_i476.UsersRepository>()),
+    );
+    gh.factory<_i400.ExportUsersCsvUseCase>(
+      () => _i400.ExportUsersCsvUseCase(gh<_i476.UsersRepository>()),
     );
     gh.factory<_i962.GetGlobalUsersCountUseCase>(
       () => _i962.GetGlobalUsersCountUseCase(gh<_i476.UsersRepository>()),

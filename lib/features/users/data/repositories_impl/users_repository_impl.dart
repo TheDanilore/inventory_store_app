@@ -71,6 +71,47 @@ class UsersRepositoryImpl implements UsersRepository {
   }
 
   @override
+  Future<Either<Failure, List<UserEntity>>> getAllUsers({
+    required String role,
+    required String searchQuery,
+    required bool onlyActive,
+  }) async {
+    try {
+      var query = _supabase.from('profiles_with_email').select();
+
+      query = query.eq('role', role);
+
+      if (onlyActive) {
+        query = query.eq('is_active', true);
+      }
+
+      final term = searchQuery.trim();
+      if (term.isNotEmpty) {
+        query = query.or(
+          'full_name.ilike.%$term%,phone.ilike.%$term%,document_number.ilike.%$term%,email.ilike.%$term%',
+        );
+      }
+
+      final response = await query.order('created_at', ascending: false);
+
+      final List<UserEntity> users =
+          (response as List)
+              .map((json) => UserModel.fromJson(json as Map<String, dynamic>))
+              .toList();
+
+      return Right(users);
+    } on PostgrestException catch (e, st) {
+      developer.log('🔴 [UsersRepo] PostgrestException en getAllUsers (role=$role): $e',
+          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
+      return Left(ServerFailure(message: e.message));
+    } catch (e, st) {
+      developer.log('🔴 [UsersRepo] Excepción no controlada en getAllUsers: $e',
+          error: e, stackTrace: st, name: 'UsersRepositoryImpl');
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, int>> getGlobalUsersCount({
     required String role,
   }) async {

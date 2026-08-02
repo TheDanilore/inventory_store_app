@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as import_developer;
-import 'package:supabase_flutter/supabase_flutter.dart' as import_supabase;
+import 'package:inventory_store_app/features/users/domain/usecases/export_users_csv_usecase.dart' as import_export;
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -111,101 +111,67 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
           ? AppRoles.admin
           : AppRoles.employee;
 
-      // Consulta directa para exportar TODO sin paginación (Cuidado con tablas gigantes, ideal usar Edge Function)
-      final supabase = sl<import_supabase.SupabaseClient>();
+      final useCase = sl<import_export.ExportUsersCsvUseCase>();
       
-      var query = supabase.from('profiles_with_email').select().eq('role', role);
-      if (_onlyActive) {
-        query = query.eq('is_active', true);
-      }
-      final term = _debouncedQuery;
-      if (term.isNotEmpty) {
-        query = query.or(
-          'full_name.ilike.%$term%,phone.ilike.%$term%,document_number.ilike.%$term%,email.ilike.%$term%',
-        );
-      }
-
-      final List<dynamic> response = await query.order('created_at', ascending: false);
-
-      if (response.isEmpty) {
-        if (mounted) Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No hay usuarios encontrados para exportar.',
-            ),
-          ),
-        );
-        return;
-      }
-
-      // Construye el CSV con encabezados y filas
-      final roleLabels = {
-        'customer': 'Cliente',
-        'admin': 'Administrador',
-        'employee': 'Empleado',
-      };
-
-      final buffer = StringBuffer();
-      // BOM UTF-8 para compatibilidad con Excel en Windows
-      buffer.write('\uFEFF');
-      buffer.writeln(
-        'ID,Nombre Completo,Correo,Rol,Teléfono,Tipo Doc.,N° Doc.,Saldo Puntos,Estado,Fecha Registro',
+      final result = await useCase(
+        role: role,
+        searchQuery: _debouncedQuery,
+        onlyActive: _onlyActive,
       );
 
-      for (final json in response) {
-        final Map<String, dynamic> user = json as Map<String, dynamic>;
-        
-        final createdAtStr = user['created_at'] as String?;
-        String formattedDate = '';
-        if (createdAtStr != null) {
-          final date = DateTime.tryParse(createdAtStr);
-          if (date != null) {
-            formattedDate = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+      if (!mounted) return;
+
+      result.fold(
+        (failure) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al exportar: ${failure.message}'),
+              backgroundColor: Colors.red.shade600,
+            ),
+          );
+        },
+        (csvString) async {
+          if (csvString.isEmpty) {
+            Navigator.of(context).pop();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'No hay usuarios encontrados para exportar.',
+                ),
+              ),
+            );
+            return;
           }
-        }
 
-        final row = [
-          _escapeCsv(user['id']?.toString() ?? ''),
-          _escapeCsv(user['full_name']?.toString() ?? ''),
-          _escapeCsv(user['email']?.toString() ?? ''),
-          _escapeCsv(roleLabels[user['role']] ?? user['role']?.toString() ?? ''),
-          _escapeCsv(user['phone']?.toString() ?? ''),
-          _escapeCsv(user['document_type']?.toString() ?? ''),
-          _escapeCsv(user['document_number']?.toString() ?? ''),
-          user['wallet_balance']?.toString() ?? '0',
-          (user['is_active'] == true) ? 'Activo' : 'Inactivo',
-          formattedDate,
-        ];
-        buffer.writeln(row.join(','));
-      }
+          final bytes = utf8.encode(csvString);
+          final tabLabel = _tabController.index == 0
+              ? 'clientes'
+              : _tabController.index == 1
+              ? 'admins'
+              : 'empleados';
+          final fileName = 'usuarios_${tabLabel}_${DateTime.now().millisecondsSinceEpoch}';
 
-      final bytes = utf8.encode(buffer.toString());
-      final tabLabel = _tabController.index == 0
-          ? 'clientes'
-          : _tabController.index == 1
-          ? 'admins'
-          : 'empleados';
-      final fileName = 'usuarios_${tabLabel}_${DateTime.now().millisecondsSinceEpoch}';
+          await FileSaver.instance.saveFile(
+            name: '$fileName.csv',
+            bytes: bytes,
+            mimeType: MimeType.csv,
+          );
 
-      await FileSaver.instance.saveFile(
-        name: '$fileName.csv',
-        bytes: bytes,
-        mimeType: MimeType.csv,
+          if (mounted) {
+            Navigator.of(context).pop();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '✅ Exportado: $fileName.csv',
+                ),
+                backgroundColor: Colors.green.shade600,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+        },
       );
-
-      if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '✅ Exportado: $fileName.csv (${response.length} registros)',
-            ),
-            backgroundColor: Colors.green.shade600,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
     } catch (e, st) {
       import_developer.log('🔴 [CSV Export] Error al exportar: $e', error: e, stackTrace: st, name: 'UsersManagementScreen');
       if (mounted) {
@@ -220,14 +186,6 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
     } finally {
       if (mounted) setState(() => _isExporting = false);
     }
-  }
-
-  /// Escapa un campo CSV (comillas dobles y comas)
-  String _escapeCsv(String value) {
-    if (value.contains(',') || value.contains('"') || value.contains('\n')) {
-      return '"${value.replaceAll('"', '""')}"';
-    }
-    return value;
   }
 
   @override

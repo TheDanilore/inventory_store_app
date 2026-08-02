@@ -11,6 +11,12 @@ abstract class UsersRepository {
     required int pageSize,
   });
 
+  Future<Either<Failure, List<UserEntity>>> getAllUsers({
+    required String role,
+    required String searchQuery,
+    required bool onlyActive,
+  });
+
   Future<Either<Failure, int>> getGlobalUsersCount({required String role});
 
   Future<Either<Failure, UserEntity>> getUserById(String id);
