@@ -200,6 +200,8 @@ import '../../features/financial/domain/repositories/account_movements_repositor
     as _i561;
 import '../../features/financial/domain/repositories/financial_accounts_repository.dart'
     as _i662;
+import '../../features/financial/domain/usecases/get_account_movement_totals_usecase.dart'
+    as _i970;
 import '../../features/financial/domain/usecases/get_account_movements_usecase.dart'
     as _i811;
 import '../../features/financial/domain/usecases/get_financial_accounts_usecase.dart'
@@ -1164,6 +1166,11 @@ extension GetItInjectableX on _i174.GetIt {
             gh<_i955.RegisterSupplierPaymentUseCase>(),
       ),
     );
+    gh.factory<_i970.GetAccountMovementTotalsUseCase>(
+      () => _i970.GetAccountMovementTotalsUseCase(
+        gh<_i561.AccountMovementsRepository>(),
+      ),
+    );
     gh.factory<_i811.GetAccountMovementsUseCase>(
       () => _i811.GetAccountMovementsUseCase(
         gh<_i561.AccountMovementsRepository>(),
@@ -1192,14 +1199,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i601.UpdateCustomerLocationUseCase>(),
         gh<_i601.DeleteCustomerLocationUseCase>(),
         gh<_i601.SetDefaultCustomerLocationUseCase>(),
-      ),
-    );
-    gh.factory<_i218.AccountMovementsCubit>(
-      () => _i218.AccountMovementsCubit(
-        getMovements: gh<_i811.GetAccountMovementsUseCase>(),
-        saveMovement: gh<_i625.SaveAccountMovementUseCase>(),
-        transferFunds: gh<_i862.TransferFundsUseCase>(),
-        getCurrentUser: gh<_i813.GetCurrentUserUseCase>(),
       ),
     );
     gh.factory<_i1068.KardexCubit>(
@@ -1485,6 +1484,15 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i927.GetCurrentProfileIdUseCase>(
       () => _i927.GetCurrentProfileIdUseCase(gh<_i813.GetCurrentUserUseCase>()),
+    );
+    gh.factory<_i218.AccountMovementsCubit>(
+      () => _i218.AccountMovementsCubit(
+        getMovements: gh<_i811.GetAccountMovementsUseCase>(),
+        saveMovement: gh<_i625.SaveAccountMovementUseCase>(),
+        transferFunds: gh<_i862.TransferFundsUseCase>(),
+        getCurrentUser: gh<_i813.GetCurrentUserUseCase>(),
+        getTotals: gh<_i970.GetAccountMovementTotalsUseCase>(),
+      ),
     );
     gh.factory<_i789.PointsCubit>(
       () => _i789.PointsCubit(

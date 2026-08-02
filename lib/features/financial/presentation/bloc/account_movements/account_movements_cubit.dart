@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/auth/domain/usecases/get_current_user_uc.dart';
@@ -7,7 +6,9 @@ import 'package:inventory_store_app/features/financial/domain/repositories/accou
 import 'package:inventory_store_app/features/financial/domain/usecases/get_account_movements_usecase.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/save_account_movement_usecase.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/transfer_funds_usecase.dart';
+import 'package:inventory_store_app/features/financial/domain/usecases/get_account_movement_totals_usecase.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements/account_movements_state.dart';
+import 'dart:developer' as developer;
 
 @injectable
 class AccountMovementsCubit extends Cubit<AccountMovementsState> {
@@ -15,6 +16,7 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
   final SaveAccountMovementUseCase _saveMovement;
   final TransferFundsUseCase _transferFunds;
   final GetCurrentUserUseCase _getCurrentUser;
+  final GetAccountMovementTotalsUseCase _getTotals;
 
   static const int _pageSize = 15;
   int _currentPage = 0;
@@ -26,10 +28,12 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
     required SaveAccountMovementUseCase saveMovement,
     required TransferFundsUseCase transferFunds,
     required GetCurrentUserUseCase getCurrentUser,
+    required GetAccountMovementTotalsUseCase getTotals,
   }) : _getMovements = getMovements,
        _saveMovement = saveMovement,
        _transferFunds = transferFunds,
        _getCurrentUser = getCurrentUser,
+       _getTotals = getTotals,
        super(const AccountMovementsInitial());
 
   MovementFilters get filters => _filters;
@@ -50,26 +54,21 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
         _totalPages = page + 1;
       }
 
-      // Calculamos totales con los mismos filtros activos
-      double totalIncome = 0;
-      double totalExpense = 0;
-      for (final m in movements) {
-        if (m.movementType == 'INCOME') totalIncome += m.amount;
-        if (m.movementType == 'EXPENSE') totalExpense += m.amount;
-      }
+      // Calculamos totales con los mismos filtros activos desde la BD
+      final totals = await _getTotals(filters: _filters);
 
       emit(
         AccountMovementsLoaded(
           movements: movements,
           currentPage: _currentPage,
           totalPages: _totalPages,
-          totalIncome: totalIncome,
-          totalExpense: totalExpense,
+          totalIncome: totals.totalIncome,
+          totalExpense: totals.totalExpense,
           filters: _filters,
         ),
       );
-    } catch (e) {
-      debugPrint('AccountMovementsCubit.fetchMovements ERROR: $e');
+    } catch (e, st) {
+      developer.log('AccountMovementsCubit.fetchMovements ERROR', error: e, stackTrace: st);
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
@@ -154,7 +153,8 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
       );
       emit(const AccountMovementSaved());
       await fetchMovements(page: _currentPage);
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('AccountMovementsCubit.saveMovement ERROR', error: e, stackTrace: st);
       emit(AccountMovementSaveError(e.toString()));
     }
   }
@@ -182,7 +182,8 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
       );
       emit(const AccountMovementSaved());
       await fetchMovements(page: _currentPage);
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('AccountMovementsCubit.transferFunds ERROR', error: e, stackTrace: st);
       emit(AccountMovementSaveError(e.toString()));
     }
   }
