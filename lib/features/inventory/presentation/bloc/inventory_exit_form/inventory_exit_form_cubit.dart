@@ -1,9 +1,10 @@
 import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
@@ -76,10 +77,7 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
       emit(state.copyWith(isLoading: false));
     } catch (e, st) {
       debugPrint('Error loading form data: $e\n$st');
-      final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') ||
-          errStr.contains('clientexception') ||
-          errStr.contains('failed host lookup')) {
+      if (e is SocketException || e is TimeoutException) {
         emit(
           state.copyWith(
             errorMessage: 'Sin conexión a internet.',
@@ -89,7 +87,7 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
       } else {
         emit(
           state.copyWith(
-            errorMessage: 'Error cargando datos.',
+            errorMessage: 'Error cargando datos: ${e.toString()}',
             isLoading: false,
           ),
         );
@@ -100,13 +98,13 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
   void selectWarehouse(String? id) {
     if (id != null && id != state.selectedWarehouseId) {
       emit(state.copyWith(selectedWarehouseId: id, items: []));
-      _saveDraft();
+      unawaited(_saveDraft());
     }
   }
 
   void selectReason(String reason) {
     emit(state.copyWith(selectedReason: reason));
-    _saveDraft();
+    unawaited(_saveDraft());
   }
 
   void addItem(ExitItemUI newItem) {
@@ -123,14 +121,14 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
       newItems.add(newItem);
     }
     emit(state.copyWith(items: newItems));
-    _saveDraft();
+    unawaited(_saveDraft());
   }
 
   void removeItem(int index) {
     final newItems = List<ExitItemUI>.from(state.items);
     newItems.removeAt(index);
     emit(state.copyWith(items: newItems));
-    _saveDraft();
+    unawaited(_saveDraft());
   }
 
   void updateQuantity(int index, double newQuantity) {
@@ -138,7 +136,7 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
       final newItems = List<ExitItemUI>.from(state.items);
       newItems[index].quantity = newQuantity;
       emit(state.copyWith(items: newItems));
-      _saveDraft();
+      unawaited(_saveDraft());
     }
   }
 
@@ -175,10 +173,7 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
       emit(state.copyWith(isSaving: false, isSuccess: true));
     } catch (e, st) {
       debugPrint('Error saving exit: $e\n$st');
-      final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') ||
-          errStr.contains('clientexception') ||
-          errStr.contains('failed host lookup')) {
+      if (e is SocketException || e is TimeoutException) {
         emit(
           state.copyWith(
             errorMessage: 'Sin conexión a internet.',
@@ -186,9 +181,10 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
           ),
         );
       } else {
+        // Here we can directly get the exception message since the repository handles it
         emit(
           state.copyWith(
-            errorMessage: 'Error registrando salida: $e',
+            errorMessage: e.toString().replaceAll('Exception: ', ''),
             isSaving: false,
           ),
         );

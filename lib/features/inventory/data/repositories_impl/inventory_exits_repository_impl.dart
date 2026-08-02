@@ -83,7 +83,7 @@ class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
     final results = await Future.wait([
       _supabase
           .from('products')
-          .select('*, product_images(*)')
+          .select('id, name, uses_batches, product_images(image_url, is_main)')
           .eq('is_active', true)
           .eq('stock_control', true)
           .neq('product_type', 'service')
@@ -92,7 +92,7 @@ class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
           .from('product_variants')
           .select('''
             id, product_id, sku, sale_price, unit_cost, is_active,
-            product_images(*),
+            product_images(image_url, is_main, variant_id),
             variant_attribute_values(
               attribute_values(id, value, attributes(id, name))
             )
@@ -137,10 +137,12 @@ class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
         'p_notes': notes,
         'p_items': items,
       });
-    } catch (e) {
-      if (e.toString().contains('Stock insuficiente')) {
-        throw Exception(e.toString().replaceAll('Exception: ', ''));
+    } on PostgrestException catch (e) {
+      if (e.message.toLowerCase().contains('stock insuficiente')) {
+        throw Exception(e.message);
       }
+      rethrow;
+    } catch (e) {
       rethrow;
     }
   }

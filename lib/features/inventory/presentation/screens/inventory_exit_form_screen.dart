@@ -62,7 +62,6 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
 
     if (newItem != null) {
       cubit.addItem(newItem);
-      setState(() {}); // Forzar refresco de la UI
     }
   }
 
@@ -134,7 +133,6 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                   if (newQty != null && newQty > 0) {
                     final qty = newQty > maxAvailable ? maxAvailable : newQty;
                     cubit.updateQuantity(index, qty);
-                    setState(() {}); // FORZAR REFRESCO DE LA UI
                   }
                   Navigator.pop(dialogContext);
                 },
@@ -179,7 +177,6 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     if (confirm == true) {
       context.read<InventoryExitFormCubit>().clearDraft();
       _notesCtrl.clear();
-      setState(() {}); // Forzar refresco de la UI
       AppSnackbar.show(
         context,
         message: 'Borrador descartado',
@@ -211,6 +208,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     // Modal de Confirmación Estricta (CONFIRMAR)
     final confirmCtrl = TextEditingController();
     bool isConfirmed = false;
+    final formKey = GlobalKey<FormState>();
 
     await showDialog(
       context: context,
@@ -236,36 +234,45 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                 ),
               ],
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Estás a punto de confirmar una pérdida valorizada de S/ ${cubit.state.totalLossCost.toStringAsFixed(2)}. Esto impactará directamente el inventario físico.',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Para autorizar, escribe la palabra CONFIRMAR:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: confirmCtrl,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
-                    hintText: 'CONFIRMAR',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Estás a punto de confirmar una pérdida valorizada de S/ ${cubit.state.totalLossCost.toStringAsFixed(2)}. Esto impactará directamente el inventario físico.',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
                     ),
-                    filled: true,
-                    fillColor: AppColors.background,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Para autorizar, escribe la palabra CONFIRMAR:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: confirmCtrl,
+                    textCapitalization: TextCapitalization.characters,
+                    validator: (value) {
+                      if (value == null || value.trim() != 'CONFIRMAR') {
+                        return 'Debes escribir CONFIRMAR correctamente';
+                      }
+                      return null;
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'CONFIRMAR',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.background,
+                    ),
+                  ),
+                ],
+              ),
             ),
             actions: [
               TextButton(
@@ -280,15 +287,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                   backgroundColor: AppColors.danger,
                 ),
                 onPressed: () {
-                  if (confirmCtrl.text.trim() == 'CONFIRMAR') {
+                  if (formKey.currentState?.validate() ?? false) {
                     isConfirmed = true;
                     Navigator.pop(ctx);
-                  } else {
-                    AppSnackbar.show(
-                      ctx,
-                      message: 'Debes escribir CONFIRMAR correctamente',
-                      type: SnackbarType.error,
-                    );
                   }
                 },
                 child: const Text(
@@ -899,14 +900,12 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     item.quantity < maxAvailable
                         ? () {
                           cubit.updateQuantity(index, item.quantity + 1);
-                          setState(() {}); // Forzar refresco
                         }
                         : null,
                 onRemove:
                     item.quantity > 1
                         ? () {
                           cubit.updateQuantity(index, item.quantity - 1);
-                          setState(() {}); // Forzar refresco
                         }
                         : null,
                 onTapValue:
@@ -932,7 +931,6 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                 ),
                 onPressed: () {
                   cubit.removeItem(index);
-                  setState(() {}); // Forzar refresco
                 },
                 tooltip: 'Eliminar ítem',
               ),
