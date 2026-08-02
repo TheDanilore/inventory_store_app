@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_entity.dart';
 
 abstract class InventoryEntriesState extends Equatable {
   const InventoryEntriesState();
@@ -14,7 +14,7 @@ class InventoryEntriesInitial extends InventoryEntriesState {}
 class InventoryEntriesLoading extends InventoryEntriesState {}
 
 class InventoryEntriesLoaded extends InventoryEntriesState {
-  final List<InventoryEntryModel> entries;
+  final List<InventoryEntryEntity> entries;
   final String searchQuery;
   final String warehouseFilter;
   final DateTimeRange? dateRange;
@@ -35,7 +35,7 @@ class InventoryEntriesLoaded extends InventoryEntriesState {
   });
 
   InventoryEntriesLoaded copyWith({
-    List<InventoryEntryModel>? entries,
+    List<InventoryEntryEntity>? entries,
     String? searchQuery,
     String? warehouseFilter,
     DateTimeRange? dateRange,

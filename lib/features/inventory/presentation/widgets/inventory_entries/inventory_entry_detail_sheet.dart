@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_item_model.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
@@ -8,7 +8,7 @@ import 'package:inventory_store_app/core/widgets/detail_sheet_header.dart';
 import 'package:inventory_store_app/core/widgets/product_item_card.dart';
 
 class InventoryEntryDetailSheet extends StatefulWidget {
-  final InventoryEntryModel entry;
+  final InventoryEntryEntity entry;
   final Future<List<InventoryEntryItemModel>> Function() loadItems;
 
   final bool isBottomSheet;

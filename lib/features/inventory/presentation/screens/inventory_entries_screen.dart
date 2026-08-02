@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_item_model.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_entry_items_usecase.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_entity.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entries/inventory_entries_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entries/inventory_entries_state.dart';
@@ -28,7 +28,7 @@ class InventoryEntriesScreen extends StatefulWidget {
 class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   final _searchCtrl = TextEditingController();
   bool _hasDraft = false;
-  InventoryEntryModel? _selectedEntry; // State for Master-Detail
+  InventoryEntryEntity? _selectedEntry; // State for Master-Detail
 
   @override
   void initState() {
@@ -124,7 +124,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
   void _onEntryTapped(
     BuildContext context,
-    InventoryEntryModel entry,
+    InventoryEntryEntity entry,
     bool isTablet,
   ) {
     if (isTablet) {
@@ -595,7 +595,7 @@ class _StickyFilterDelegate extends SliverPersistentHeaderDelegate {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _EntryCard extends StatelessWidget {
-  final InventoryEntryModel entry;
+  final InventoryEntryEntity entry;
   final VoidCallback onTap;
   final bool isSelected;
   const _EntryCard({

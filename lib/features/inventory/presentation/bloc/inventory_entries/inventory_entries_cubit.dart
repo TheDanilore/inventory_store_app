@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_model.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_warehouses_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_inventory_entries_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entries/inventory_entries_state.dart';
+import 'dart:developer' as developer;
 
 @injectable
 class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
@@ -22,8 +22,8 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
     try {
       final whList = await getActiveWarehouses.call();
       warehouses.addAll(whList.map((w) => w.name).toList());
-    } catch (e) {
-      debugPrint('Error cargando almacenes: $e');
+    } catch (e, st) {
+      developer.log('Error cargando almacenes', error: e, stackTrace: st, name: 'InventoryEntriesCubit');
     }
 
     emit(
@@ -76,9 +76,7 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
         endDate: currentDateRange?.end,
       );
 
-      final dataList = response.data;
-      final entries =
-          dataList.map((e) => InventoryEntryModel.fromEntity(e)).toList();
+      final entries = response.data;
       final totalRecords = response.count;
       final totalPages = (totalRecords / pageSize).ceil();
 
@@ -94,8 +92,8 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
           totalPages: totalPages == 0 ? 1 : totalPages,
         ),
       );
-    } catch (e) {
-      debugPrint('Error loading inventory entries: $e');
+    } catch (e, st) {
+      developer.log('Error loading inventory entries', error: e, stackTrace: st, name: 'InventoryEntriesCubit');
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
@@ -104,8 +102,6 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
       } else {
         emit(const InventoryEntriesError('Error al cargar entradas.'));
       }
-      // Revertir a Loaded vacío si no había estado cargado válido
-      emit(currentState);
     }
   }
 
