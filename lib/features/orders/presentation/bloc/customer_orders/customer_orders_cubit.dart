@@ -39,8 +39,9 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
       );
       return;
     }
-    if (state.isLoading && state.profileId == pid && state.orders.isNotEmpty)
+    if (state.isLoading && state.profileId == pid && state.orders.isNotEmpty) {
       return;
+    }
     if (state.orders.isNotEmpty && state.profileId == pid) {
       return;
     }

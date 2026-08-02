@@ -539,8 +539,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                         PosSectionLabel('Productos en caja'),
                                         BlocBuilder<CartCubit, CartState>(
                                           builder: (context, cartState) {
-                                            if (cartState.items.isEmpty)
+                                            if (cartState.items.isEmpty) {
                                               return const SizedBox.shrink();
+                                            }
                                             return TextButton.icon(
                                               onPressed: _onClearCart,
                                               icon: const Icon(
@@ -623,8 +624,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                     PosSectionLabel('Productos en caja'),
                                     BlocBuilder<CartCubit, CartState>(
                                       builder: (context, cartState) {
-                                        if (cartState.items.isEmpty)
+                                        if (cartState.items.isEmpty) {
                                           return const SizedBox.shrink();
+                                        }
                                         return TextButton.icon(
                                           onPressed: _onClearCart,
                                           icon: const Icon(

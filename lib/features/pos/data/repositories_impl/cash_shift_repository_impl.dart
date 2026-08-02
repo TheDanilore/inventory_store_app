@@ -408,12 +408,15 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
     // Fallback: análisis del mensaje para retrocompatibilidad con RPCs
     // que aún no usan SQLSTATE codes.
     final msg = e.message.toLowerCase();
-    if (msg.contains('ya tiene un turno abierto'))
+    if (msg.contains('ya tiene un turno abierto')) {
       return 'Esta caja ya tiene un turno abierto.';
-    if (msg.contains('ya se encuentra cerrado'))
+    }
+    if (msg.contains('ya se encuentra cerrado')) {
       return 'Este turno de caja ya se encuentra cerrado.';
-    if (msg.contains('no existe'))
+    }
+    if (msg.contains('no existe')) {
       return 'El turno de caja especificado no existe.';
+    }
     if (msg.contains('saldo insuficiente')) return e.message;
     return 'Error de base de datos al operar el turno: ${e.message}';
   }
