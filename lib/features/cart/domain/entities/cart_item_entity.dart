@@ -1,3 +1,6 @@
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
+
 /// Entidad de un ítem en el carrito del POS.
 ///
 /// Objeto de negocio inmutable. No depende de Supabase ni de JSON.
@@ -20,6 +23,9 @@ class CartItemEntity {
   final bool usesBatches;
   final bool isSelected;
 
+  /// Constante para representar inventario ilimitado de forma segura (sin magic numbers)
+  static const int unlimitedStock = -1;
+
   const CartItemEntity({
     required this.productId,
     required this.productName,
@@ -38,6 +44,45 @@ class CartItemEntity {
     this.isSelected = true,
   });
 
+  // ── Factorías de Negocio ───────────────────────────────────────────────────
+
+  /// Construye un CartItemEntity asumiendo validaciones fuertes de negocio.
+  /// Protege a la UI de decidir fallbacks, asumiendo precio y variantes.
+  factory CartItemEntity.fromPosSelection({
+    required ProductEntity productEntity,
+    required ProductVariantEntity? selectedVariant,
+    required int quantity,
+    required int stock,
+    required bool hasStockControl,
+    String? imageUrl,
+  }) {
+    final selVar = selectedVariant;
+    final unitPrice = selVar?.salePrice ?? productEntity.displaySalePrice;
+    
+    if (unitPrice == null || unitPrice <= 0) {
+      throw Exception('Producto sin precio de venta válido configurado.');
+    }
+
+    final cartKey = selVar?.id ?? productEntity.id;
+
+    return CartItemEntity(
+      productId: productEntity.id,
+      productName: productEntity.name,
+      cartKey: cartKey,
+      quantity: quantity,
+      unitPrice: unitPrice,
+      unitCost: selVar?.unitCost ?? productEntity.defaultVariant?.unitCost ?? 0,
+      availableStock: hasStockControl ? stock : unlimitedStock,
+      usesBatches: productEntity.usesBatches,
+      variantId: selVar?.id,
+      variantLabel: selVar?.label,
+      wholesalePrice: selVar?.wholesalePrice,
+      imageUrl: imageUrl,
+      sku: selVar?.sku ?? productEntity.defaultVariant?.sku,
+      isSelected: true,
+    );
+  }
+
   // ── Lógica de negocio pura ─────────────────────────────────────────────────
 
   /// Subtotal de este ítem (precio × cantidad).
@@ -51,7 +96,7 @@ class CartItemEntity {
       unitCost > 0 ? ((unitPrice - unitCost) / unitCost) * 100 : 0;
 
   /// Indica si hay stock suficiente para la cantidad seleccionada.
-  bool get hasEnoughStock => availableStock >= quantity;
+  bool get hasEnoughStock => availableStock == unlimitedStock || availableStock >= quantity;
 
   /// Clave estática para construir el [cartKey] de forma consistente.
   static String buildKey(String productId, String? variantId) {

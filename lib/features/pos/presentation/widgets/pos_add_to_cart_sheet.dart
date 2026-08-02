@@ -11,6 +11,10 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/add_to_cart/pos_add_to_cart_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/add_to_cart/pos_add_to_cart_state.dart';
+
 /// Bottom sheet para agregar un producto al carrito del POS.
 /// Carga variantes con el join relacional correcto (sin JSONB obsoleto).
 class PosAddToCartSheet extends StatefulWidget {
@@ -31,8 +35,13 @@ class PosAddToCartSheet extends StatefulWidget {
       await showDialog<void>(
         context: context,
         builder:
-            (ctx) => BlocProvider.value(
-              value: cartCubit,
+            (ctx) => MultiBlocProvider(
+              providers: [
+                BlocProvider.value(value: cartCubit),
+                BlocProvider(
+                  create: (_) => PosAddToCartCubit(sl<ProductsRepository>())..loadData(product),
+                ),
+              ],
               child: Dialog(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
@@ -54,8 +63,13 @@ class PosAddToCartSheet extends StatefulWidget {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:
-            (_) => BlocProvider.value(
-              value: cartCubit,
+            (_) => MultiBlocProvider(
+              providers: [
+                BlocProvider.value(value: cartCubit),
+                BlocProvider(
+                  create: (_) => PosAddToCartCubit(sl<ProductsRepository>())..loadData(product),
+                ),
+              ],
               child: Padding(
                 padding: EdgeInsets.only(
                   bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -72,70 +86,6 @@ class PosAddToCartSheet extends StatefulWidget {
 }
 
 class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
-  final _repo = sl<ProductsRepository>();
-  bool _isLoading = true;
-  List<ProductVariantEntity> _variants = [];
-  final Map<String, int> _stockByVariant = {};
-  ProductVariantEntity? _selectedVariant;
-  int _quantity = 1;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchProductData();
-  }
-
-  Future<void> _fetchProductData() async {
-    try {
-      // Usa fetchVariantsByProductIds del repositorio que ya tiene el join
-      // correcto: variant_attribute_values → attribute_values → attributes
-      final variantMapRes = await _repo.fetchVariantsByProductIds([
-        widget.productEntity.id,
-      ]);
-      final variantMap = variantMapRes.fold(
-        (l) => <String, List<ProductVariantEntity>>{},
-        (r) => r,
-      );
-      _variants = variantMap[widget.productEntity.id] ?? [];
-
-      if (_variants.isNotEmpty) {
-        final variantIds = _variants.map((v) => v.id).toList();
-        final stockMapRes = await _repo.fetchVariantStockByVariantIds(
-          variantIds,
-        );
-        final stockMap = stockMapRes.fold((l) => <String, int>{}, (r) => r);
-        _stockByVariant.addAll(stockMap);
-      }
-
-      if (_variants.isNotEmpty) {
-        _selectedVariant = _variants.firstWhere(
-          (v) => (_stockByVariant[v.id] ?? 0) > 0,
-          orElse: () => _variants.first,
-        );
-      }
-    } catch (e) {
-      debugPrint('PosAddToCartSheet: Error cargando variantes: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  bool get _hasStockControl => widget.productEntity.stockControl;
-
-  int get _currentStock {
-    if (_variants.isEmpty) return widget.productEntity.totalStock;
-    if (_selectedVariant == null) return 0;
-    return _stockByVariant[_selectedVariant!.id] ?? 0;
-  }
-
-  double get _currentPrice {
-    if (_variants.isEmpty) return 0;
-    return _selectedVariant?.salePrice ?? 0;
-  }
-
-  bool get _canSell =>
-      _selectedVariant != null && (!_hasStockControl || _currentStock > 0);
-
   Future<void> _showQuantityDialog(
     BuildContext context,
     int current,
@@ -163,7 +113,7 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                 ),
                 contentPadding: const EdgeInsets.symmetric(vertical: 20),
                 helperText:
-                    _hasStockControl
+                    widget.productEntity.stockControl
                         ? 'Stock máximo disponible: $maxStock'
                         : 'Stock libre (Sin límite)',
                 helperStyle: const TextStyle(
@@ -187,12 +137,7 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                 onPressed: () {
                   final newQty = int.tryParse(qtyCtrl.text.trim());
                   if (newQty != null && newQty > 0) {
-                    setState(() {
-                      _quantity =
-                          _hasStockControl && newQty > maxStock
-                              ? maxStock
-                              : newQty;
-                    });
+                    context.read<PosAddToCartCubit>().updateQuantity(newQty);
                   }
                   Navigator.pop(ctx);
                 },
@@ -208,15 +153,40 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const _LoadingSheet();
-    }
+    return BlocBuilder<PosAddToCartCubit, PosAddToCartState>(
+      builder: (context, state) {
+        if (state is PosAddToCartInitial || state is PosAddToCartLoading) {
+          return const _LoadingSheet();
+        }
 
-    final stock = _currentStock;
-    final String? imageUrl =
-        _selectedVariant?.images.isNotEmpty == true
-            ? _selectedVariant!.images.first.imageUrl
-            : widget.productEntity.primaryImageUrl;
+        if (state is PosAddToCartError) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: widget.isDialogMode
+                  ? BorderRadius.circular(20)
+                  : const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: AppEmptyState(
+              icon: Icons.wifi_off_rounded,
+              title: 'Error de red',
+              message: state.message,
+              action: ElevatedButton.icon(
+                onPressed: () => context.read<PosAddToCartCubit>().loadData(widget.productEntity),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Reintentar'),
+              ),
+            ),
+          );
+        }
+
+        final loadedState = state as PosAddToCartLoaded;
+        final stock = loadedState.currentStock;
+        final String? imageUrl =
+            loadedState.selectedVariant?.images.isNotEmpty == true
+                ? loadedState.selectedVariant!.images.first.imageUrl
+                : widget.productEntity.primaryImageUrl;
 
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -318,7 +288,7 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'S/ ${_currentPrice.toStringAsFixed(2)}',
+                      'S/ ${loadedState.currentPrice.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
@@ -327,7 +297,7 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                     ),
                     const SizedBox(height: 4),
                     _StockBadge(
-                      hasStockControl: _hasStockControl,
+                      hasStockControl: loadedState.hasStockControl,
                       stock: stock,
                     ),
                   ],
@@ -337,7 +307,7 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
           ),
 
           // Variantes
-          if (_variants.isNotEmpty) ...[
+          if (loadedState.variants.isNotEmpty) ...[
             const SizedBox(height: 20),
             const Text(
               'Variante',
@@ -357,17 +327,17 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<ProductVariantEntity>(
-                  value: _selectedVariant,
+                  value: loadedState.selectedVariant,
                   isExpanded: true,
                   icon: const Icon(
                     Icons.keyboard_arrow_down_rounded,
                     color: AppColors.textSecondary,
                   ),
                   items:
-                      _variants.map((v) {
-                        final vStock = _stockByVariant[v.id] ?? 0;
+                      loadedState.variants.map((v) {
+                        final vStock = loadedState.stockByVariant[v.id] ?? 0;
                         final stockLabel =
-                            _hasStockControl
+                            loadedState.hasStockControl
                                 ? '($vStock en stock)'
                                 : '(Stock Libre)';
                         return DropdownMenuItem(
@@ -382,10 +352,9 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                         );
                       }).toList(),
                   onChanged: (val) {
-                    setState(() {
-                      _selectedVariant = val;
-                      _quantity = 1;
-                    });
+                    if (val != null) {
+                      context.read<PosAddToCartCubit>().selectVariant(val);
+                    }
                   },
                 ),
               ),
@@ -414,8 +383,8 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
               children: [
                 _QtyButton(
                   icon: Icons.remove_rounded,
-                  enabled: _quantity > 1,
-                  onTap: () => setState(() => _quantity--),
+                  enabled: loadedState.quantity > 1,
+                  onTap: () => context.read<PosAddToCartCubit>().updateQuantity(loadedState.quantity - 1),
                 ),
                 Expanded(
                   child: Material(
@@ -423,11 +392,11 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(8),
                       onTap:
-                          () => _showQuantityDialog(context, _quantity, stock),
+                          () => _showQuantityDialog(context, loadedState.quantity, stock),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Text(
-                          '$_quantity',
+                          '${loadedState.quantity}',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 22,
@@ -441,8 +410,8 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                 ),
                 _QtyButton(
                   icon: Icons.add_rounded,
-                  enabled: !_hasStockControl || _quantity < stock,
-                  onTap: () => setState(() => _quantity++),
+                  enabled: !loadedState.hasStockControl || loadedState.quantity < stock,
+                  onTap: () => context.read<PosAddToCartCubit>().updateQuantity(loadedState.quantity + 1),
                 ),
               ],
             ),
@@ -452,38 +421,40 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
           // Botón agregar al POS
           GestureDetector(
             onTap:
-                _canSell
+                loadedState.canSell
                     ? () {
                       // Solo vibrar si no es web para evitar MissingPluginException
                       if (!kIsWeb) {
                         Vibration.vibrate(duration: 50, amplitude: 128);
                       }
+                      
+                      final selVar = loadedState.selectedVariant;
+                      if (selVar == null && loadedState.variants.isNotEmpty) return;
 
-                      final cartKey = _selectedVariant!.id;
-                      context.read<CartCubit>().addItem(
-                        CartItemEntity(
-                          productId: widget.productEntity.id,
-                          productName: widget.productEntity.name,
-                          cartKey: cartKey,
-                          quantity: _quantity,
-                          unitPrice: _selectedVariant!.salePrice ?? 0,
-                          unitCost: _selectedVariant!.unitCost ?? 0,
-                          availableStock: _hasStockControl ? stock : 999999,
-                          usesBatches: widget.productEntity.usesBatches,
-                          variantId: _selectedVariant!.id,
-                          variantLabel: _selectedVariant!.label,
-                          wholesalePrice: _selectedVariant!.wholesalePrice,
+                      try {
+                        final cartItem = CartItemEntity.fromPosSelection(
+                          productEntity: widget.productEntity,
+                          selectedVariant: selVar,
+                          quantity: loadedState.quantity,
+                          stock: stock,
+                          hasStockControl: loadedState.hasStockControl,
                           imageUrl: imageUrl,
-                          sku: _selectedVariant?.sku,
-                          isSelected: true,
-                        ),
-                      );
-                      Navigator.pop(context);
-                      AppSnackbar.show(
-                        context,
-                        message: 'Producto agregado a la caja',
-                        type: SnackbarType.success,
-                      );
+                        );
+                        
+                        context.read<CartCubit>().addItem(cartItem);
+                        Navigator.pop(context);
+                        AppSnackbar.show(
+                          context,
+                          message: 'Producto agregado a la caja',
+                          type: SnackbarType.success,
+                        );
+                      } catch (e) {
+                        AppSnackbar.show(
+                          context,
+                          message: e.toString().replaceAll('Exception: ', ''),
+                          type: SnackbarType.error,
+                        );
+                      }
                     }
                     : null,
             child: AnimatedContainer(
@@ -491,17 +462,17 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
                 gradient:
-                    _canSell
+                    loadedState.canSell
                         ? const LinearGradient(
                           colors: [Color(0xFF0D9488), Color(0xFF0F766E)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         )
                         : null,
-                color: !_canSell ? const Color(0xFFE2E8F0) : null,
+                color: !loadedState.canSell ? const Color(0xFFE2E8F0) : null,
                 borderRadius: BorderRadius.circular(AppColors.radius),
                 boxShadow:
-                    _canSell
+                    loadedState.canSell
                         ? [
                           BoxShadow(
                             color: AppColors.teal.withValues(alpha: 0.35),
@@ -516,20 +487,20 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                 children: [
                   Icon(
                     Icons.shopping_cart_checkout_rounded,
-                    color: _canSell ? Colors.white : AppColors.textMuted,
+                    color: loadedState.canSell ? Colors.white : AppColors.textMuted,
                     size: 20,
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    _canSell
-                        ? 'Agregar · S/ ${(_currentPrice * _quantity).toStringAsFixed(2)}'
-                        : (_selectedVariant == null
+                    loadedState.canSell
+                        ? 'Agregar · S/ ${(loadedState.currentPrice * loadedState.quantity).toStringAsFixed(2)}'
+                        : (loadedState.selectedVariant == null && loadedState.variants.isNotEmpty
                             ? 'Sin variante activa'
                             : 'Sin stock disponible'),
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      color: _canSell ? Colors.white : AppColors.textMuted,
+                      color: loadedState.canSell ? Colors.white : AppColors.textMuted,
                     ),
                   ),
                 ],
@@ -538,6 +509,8 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
           ),
         ],
       ),
+    );
+      },
     );
   }
 }
