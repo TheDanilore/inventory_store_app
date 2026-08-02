@@ -8,7 +8,8 @@ import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.d
     as auth_state;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
+import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_state.dart';
 
 // ---------------------------------------------------------------------------
 // Modelo de datos para los ítems del drawer
@@ -53,64 +54,9 @@ class _DrawerSubItem {
 // Widget principal
 // ---------------------------------------------------------------------------
 
-class AppDrawer extends StatefulWidget {
+class AppDrawer extends StatelessWidget {
   final bool isAdmin;
   const AppDrawer({super.key, this.isAdmin = false});
-
-  @override
-  State<AppDrawer> createState() => _AppDrawerState();
-}
-
-class _AppDrawerState extends State<AppDrawer> {
-  // Rastreo de qué grupos expandibles están abiertos (por título)
-  final Set<String> _expanded = {};
-  // ValueNotifier: solo el badge de "Pedidos" se reconstruye cuando cambia el count.
-  // No se usa setState global para un dato que afecta un único widget del drawer.
-  final ValueNotifier<int?> _pendingNotifier = ValueNotifier<int?>(null);
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.isAdmin) {
-      _fetchPendingCount();
-    }
-  }
-
-  @override
-  void dispose() {
-    _pendingNotifier.dispose();
-    super.dispose();
-  }
-
-  Future<void> _fetchPendingCount() async {
-    try {
-      // select('id') con .count() minimiza el egress: solo transfiere
-      // el header HTTP con el count exacto, sin descargar filas.
-      final response = await Supabase.instance.client
-          .from('orders')
-          .select('id')
-          .eq('status', 'PENDING')
-          .count(CountOption.exact);
-      if (mounted) {
-        _pendingNotifier.value = response.count;
-      }
-    } catch (e, st) {
-      debugPrint('🔴 [AppDrawer] Error al obtener pedidos pendientes: $e\n$st');
-      // null = sin dato disponible. El badge no aparece en lugar de
-      // mostrar 0 falsamente cuando la query falló.
-      if (mounted) _pendingNotifier.value = null;
-    }
-  }
-
-  void _toggle(String title) {
-    setState(() {
-      if (_expanded.contains(title)) {
-        _expanded.remove(title);
-      } else {
-        _expanded.add(title);
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -125,7 +71,7 @@ class _AppDrawerState extends State<AppDrawer> {
           // ─────────────────────────────────────────
           // HEADER
           // ─────────────────────────────────────────
-          _DrawerHeader(isAdmin: widget.isAdmin),
+          _DrawerHeader(isAdmin: isAdmin),
 
           // ─────────────────────────────────────────
           // CUERPO (scrollable)
@@ -140,10 +86,10 @@ class _AppDrawerState extends State<AppDrawer> {
                   _DrawerItem(
                     icon: Icons.grid_view_rounded,
                     title: 'Catálogo',
-                    routePath: widget.isAdmin ? '/admin' : '/',
+                    routePath: isAdmin ? '/admin' : '/',
                     onTap: () {
                       Navigator.pop(context);
-                      if (widget.isAdmin) {
+                      if (isAdmin) {
                         context.go('/admin');
                       } else {
                         context.go('/');
@@ -163,7 +109,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
                 ),
-                if (!widget.isAdmin)
+                if (!isAdmin)
                   _buildItem(
                     context,
                     _DrawerItem(
@@ -178,26 +124,30 @@ class _AppDrawerState extends State<AppDrawer> {
                   ),
 
                 // ── GESTIÓN COMERCIAL ──────────────────────────────
-                if (widget.isAdmin) ...[
+                if (isAdmin) ...[
                   const _SectionDivider(),
                   _buildSectionTitle('GESTIÓN COMERCIAL'),
 
-                  // Pedidos (con badge dinámico)
-                  // ValueListenableBuilder: solo este tile se reconstruye
-                  // cuando cambia _pendingNotifier. El resto del drawer permanece intacto.
-                  ValueListenableBuilder<int?>(
-                    valueListenable: _pendingNotifier,
-                    builder: (ctx, count, _) {
+                  // Pedidos (con badge dinámico consumido directamente desde el Cubit)
+                  BlocBuilder<SidebarBadgeCubit, SidebarBadgeState>(
+                    builder: (ctx, state) {
+                      Widget? badge;
+                      if (state is SidebarBadgeLoaded && state.count > 0) {
+                        badge = _buildBadge(state.count);
+                      } else if (state is SidebarBadgeError) {
+                        badge = const Icon(
+                          Icons.warning_rounded,
+                          color: AppColors.error,
+                          size: 14,
+                        );
+                      }
                       return _buildItem(
                         context,
                         _DrawerItem(
                           icon: Icons.receipt_long_rounded,
                           title: 'Pedidos',
                           routePath: '/admin/orders',
-                          trailing:
-                              count != null && count > 0
-                                  ? _buildBadge(count)
-                                  : null,
+                          trailing: badge,
                           onTap: () {
                             Navigator.pop(context);
                             context.go('/admin/orders');
@@ -208,8 +158,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   ),
 
                   // ── Compras (con sub-ítems) ─────────────────────────
-                  _buildExpandableItem(
-                    context,
+                  _ExpandableDrawerGroup(
                     _DrawerItem(
                       icon: Icons.shopping_bag_outlined,
                       title: 'Compras',
@@ -256,8 +205,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   ),
 
                   // ── Inventario (con sub-ítems) ─────────────────────────
-                  _buildExpandableItem(
-                    context,
+                  _ExpandableDrawerGroup(
                     _DrawerItem(
                       icon: Icons.inventory_2_outlined,
                       title: 'Inventario',
@@ -304,8 +252,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   ),
 
                   // ── Clientes y Créditos (con sub-ítems) ─────────────────
-                  _buildExpandableItem(
-                    context,
+                  _ExpandableDrawerGroup(
                     _DrawerItem(
                       icon: Icons.people_outline_rounded,
                       title: 'Clientes y Créditos',
@@ -449,7 +396,7 @@ class _AppDrawerState extends State<AppDrawer> {
           // PIE (perfil siempre visible)
           // ─────────────────────────────────────────
           const Divider(height: 1),
-          _DrawerFooter(isAdmin: widget.isAdmin),
+          _DrawerFooter(isAdmin: isAdmin),
         ],
       ),
     );
@@ -461,10 +408,8 @@ class _AppDrawerState extends State<AppDrawer> {
 
   Widget _buildItem(BuildContext context, _DrawerItem item) {
     final currentPath = GoRouterState.of(context).uri.path;
-    final active =
-        (item.routePath == '/admin' || item.routePath == '/')
-            ? currentPath == item.routePath
-            : currentPath.startsWith(item.routePath);
+    final active = _isItemActive(item.routePath, currentPath);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       child: Container(
@@ -517,15 +462,52 @@ class _AppDrawerState extends State<AppDrawer> {
     );
   }
 
-  Widget _buildExpandableItem(BuildContext context, _DrawerItem item) {
-    // Si algún sub-ítem es la pantalla activa, auto-expandir el grupo
+  bool _isItemActive(String routePath, String currentPath) {
+    if (routePath.isEmpty) return false;
+    if (currentPath == routePath) return true;
+    if (routePath != '/admin' &&
+        routePath != '/' &&
+        currentPath.startsWith('$routePath/')) {
+      return true;
+    }
+    return false;
+  }
+}
+
+class _ExpandableDrawerGroup extends StatefulWidget {
+  final _DrawerItem item;
+
+  const _ExpandableDrawerGroup(this.item);
+
+  @override
+  State<_ExpandableDrawerGroup> createState() => _ExpandableDrawerGroupState();
+}
+
+class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
+  bool _isManuallyExpanded = false;
+
+  bool _isItemActive(String routePath, String currentPath) {
+    if (routePath.isEmpty) return false;
+    if (currentPath == routePath) return true;
+    if (routePath != '/admin' &&
+        routePath != '/' &&
+        currentPath.startsWith('$routePath/')) {
+      return true;
+    }
+    return false;
+  }
+
+  void _toggle() {
+    setState(() => _isManuallyExpanded = !_isManuallyExpanded);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentPath = GoRouterState.of(context).uri.path;
-    final hasActiveChild = item.children.any(
-      (sub) =>
-          currentPath == sub.routePath ||
-          currentPath.startsWith('${sub.routePath}/'),
+    final hasActiveChild = widget.item.children.any(
+      (sub) => _isItemActive(sub.routePath, currentPath),
     );
-    final isOpen = _expanded.contains(item.title) || hasActiveChild;
+    final isOpen = _isManuallyExpanded || hasActiveChild;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -534,9 +516,13 @@ class _AppDrawerState extends State<AppDrawer> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
           child: ListTile(
-            leading: Icon(item.icon, color: AppColors.textSecondary, size: 22),
+            leading: Icon(
+              widget.item.icon,
+              color: AppColors.textSecondary,
+              size: 22,
+            ),
             title: Text(
-              item.title,
+              widget.item.title,
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 15,
@@ -557,7 +543,7 @@ class _AppDrawerState extends State<AppDrawer> {
             ),
             splashColor: AppColors.primary.withValues(alpha: 0.1),
             hoverColor: AppColors.primaryLight,
-            onTap: () => _toggle(item.title),
+            onTap: _toggle,
             dense: true,
           ),
         ),
@@ -568,49 +554,52 @@ class _AppDrawerState extends State<AppDrawer> {
           crossFadeState:
               isOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           firstChild: const SizedBox.shrink(),
-          secondChild: _SubItemsPanel(items: item.children, isOpen: isOpen),
+          secondChild: _SubItemsPanel(
+            items: widget.item.children,
+            isOpen: isOpen,
+          ),
           sizeCurve: Curves.easeInOut,
         ),
       ],
     );
   }
+}
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Utilidades de UI
-  // ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// Utilidades de UI
+// ─────────────────────────────────────────────────────────────────────────
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 6),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: AppColors.textMuted,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.4,
-        ),
+Widget _buildSectionTitle(String title) {
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(24, 12, 24, 6),
+    child: Text(
+      title,
+      style: const TextStyle(
+        color: AppColors.textMuted,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.4,
       ),
-    );
-  }
+    ),
+  );
+}
 
-  Widget _buildBadge(int count) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.error,
-        borderRadius: BorderRadius.circular(999),
+Widget _buildBadge(int count) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: AppColors.error,
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Text(
+      count > 99 ? '99+' : '$count',
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
       ),
-      child: Text(
-        count > 99 ? '99+' : '$count',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -758,16 +747,15 @@ class _DrawerHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          BlocSelector<AppConfigCubit, AppConfigState, ({
-            String businessName,
-            String businessAddress,
-          })>(
+          BlocSelector<
+            AppConfigCubit,
+            AppConfigState,
+            ({String businessName, String businessAddress})
+          >(
             selector:
                 (state) => (
-                  businessName:
-                      state.businessInfo?.businessName ?? 'Mi Tienda',
-                  businessAddress:
-                      state.businessInfo?.address ?? '',
+                  businessName: state.businessInfo?.businessName ?? 'Mi Tienda',
+                  businessAddress: state.businessInfo?.address ?? '',
                 ),
             builder: (context, data) {
               return Column(
@@ -868,8 +856,11 @@ class _DrawerFooter extends StatelessWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: BlocSelector<AuthCubit, auth_state.AuthState,
-              ({String? avatarUrl, String fullName})>(
+          child: BlocSelector<
+            AuthCubit,
+            auth_state.AuthState,
+            ({String? avatarUrl, String fullName})
+          >(
             selector:
                 (state) => (
                   avatarUrl: state.currentUser?.avatarUrl,
