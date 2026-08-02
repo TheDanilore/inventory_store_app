@@ -1226,7 +1226,7 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
               ),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
-                value: _selectedAccountId,
+                initialValue: _selectedAccountId,
                 isExpanded: true,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(

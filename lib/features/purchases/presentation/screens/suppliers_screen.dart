@@ -37,16 +37,18 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   }
 
   void _openSupplierModal(BuildContext context, [SupplierEntity? supplier]) {
+    final cubit = context.read<SuppliersCubit>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (_) => SupplierFormModal(
-            supplierToEdit: supplier,
-            onSaved:
-                () =>
-                    context.read<SuppliersCubit>().loadSuppliers(refresh: true),
+          (_) => BlocProvider.value(
+            value: cubit,
+            child: SupplierFormModal(
+              supplierToEdit: supplier,
+              onSaved: () {}, // Zero Egress: la actualización ocurre in-memory de forma instantnea
+            ),
           ),
     );
   }

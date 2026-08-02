@@ -147,6 +147,14 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
                       label: 'Correo electrónico',
                       icon: Icons.email_rounded,
                       keyboardType: TextInputType.emailAddress,
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return null;
+                        final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                        if (!regex.hasMatch(val.trim())) {
+                          return 'Correo inválido';
+                        }
+                        return null;
+                      },
                     ),
                   ),
                 ],
