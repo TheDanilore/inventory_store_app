@@ -155,6 +155,13 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 BlocBuilder<CustomerWishlistCubit, CustomerWishlistState>(
+                  buildWhen: (previous, current) {
+                    if (previous.runtimeType != current.runtimeType) return true;
+                    if (previous is CustomerWishlistLoaded && current is CustomerWishlistLoaded) {
+                      return previous.items.length != current.items.length;
+                    }
+                    return false;
+                  },
                   builder: (context, state) {
                     if (state is CustomerWishlistLoaded) {
                       return SliverToBoxAdapter(
@@ -177,11 +184,19 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   sliver:
                       BlocBuilder<CustomerWishlistCubit, CustomerWishlistState>(
+                        buildWhen: (previous, current) => previous != current,
                         builder: (context, state) => _buildBody(state),
                       ),
                 ),
 
                 BlocBuilder<CustomerWishlistCubit, CustomerWishlistState>(
+                  buildWhen: (previous, current) {
+                    if (previous.runtimeType != current.runtimeType) return true;
+                    if (previous is CustomerWishlistLoaded && current is CustomerWishlistLoaded) {
+                      return previous.hasReachedMax != current.hasReachedMax;
+                    }
+                    return false;
+                  },
                   builder: (context, state) {
                     if (state is CustomerWishlistLoaded &&
                         !state.hasReachedMax) {

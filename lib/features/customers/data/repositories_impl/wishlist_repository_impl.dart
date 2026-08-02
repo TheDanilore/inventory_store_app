@@ -20,9 +20,11 @@ class WishlistRepositoryImpl implements WishlistRepository {
         .from('wishlist')
         .select('''
           id, profile_id, product_id, created_at,
-          products(id, name, unit_cost, sale_price, description,
-                   wholesale_price, wholesale_min_quantity, is_active,
-                   product_images(*))
+          products(
+            id, name, description, is_active, uses_batches, stock_control,
+            product_images(id, product_id, image_url, is_main, display_order),
+            product_variants(id, product_id, sale_price, unit_cost, wholesale_price, wholesale_min_quantity, is_active, sku)
+          )
         ''')
         .eq('profile_id', profileId)
         .order('created_at', ascending: false)
@@ -31,13 +33,17 @@ class WishlistRepositoryImpl implements WishlistRepository {
     final rows = List<Map<String, dynamic>>.from(response);
 
     // Enriquecer con stock
-    final productIds =
-        rows
-            .map(
-              (r) => (r['products'] as Map<String, dynamic>?)?['id'] as String?,
-            )
-            .whereType<String>()
-            .toList();
+    final productIds = rows
+        .map((r) {
+          final p = r['products'];
+          if (p is Map) return p['id'] as String?;
+          if (p is List && p.isNotEmpty && p.first is Map) {
+            return (p.first as Map)['id'] as String?;
+          }
+          return null;
+        })
+        .whereType<String>()
+        .toList();
 
     Map<String, int> stockByProduct = {};
     if (productIds.isNotEmpty) {
@@ -55,20 +61,35 @@ class WishlistRepositoryImpl implements WishlistRepository {
       }
     }
 
-    return rows.map((row) {
-      final productJson = Map<String, dynamic>.from(row['products'] as Map);
-      final pid = productJson['id'] as String?;
-      final stock = pid == null ? 0 : (stockByProduct[pid] ?? 0);
+    final result = <WishlistEntryEntity>[];
+    for (final row in rows) {
+      final rawProducts = row['products'];
+      if (rawProducts == null) continue;
 
-      return WishlistEntryEntity(
-        wishlistId: row['id'] as String,
-        createdAt: DateTime.tryParse(row['created_at']?.toString() ?? ''),
-        product:
-            ProductModel.fromJson(
-              productJson,
-            ).copyWith(totalStock: stock).toEntity(),
-      );
-    }).toList();
+      try {
+        final productMap = rawProducts is Map
+            ? Map<String, dynamic>.from(rawProducts)
+            : (rawProducts is List && rawProducts.isNotEmpty
+                ? Map<String, dynamic>.from(rawProducts.first as Map)
+                : <String, dynamic>{});
+        if (productMap.isEmpty) continue;
+
+        final pid = productMap['id'] as String?;
+        final stock = pid == null ? 0 : (stockByProduct[pid] ?? 0);
+
+        result.add(
+          WishlistEntryEntity(
+            wishlistId: row['id'] as String,
+            createdAt: DateTime.tryParse(row['created_at']?.toString() ?? ''),
+            product: ProductModel.fromJson(productMap).copyWith(totalStock: stock).toEntity(),
+          ),
+        );
+      } catch (e) {
+        // Tolerancia a fallos: ignorar ítem corrupto sin colapsar la lista general
+        continue;
+      }
+    }
+    return result;
   }
 
   @override

@@ -1,5 +1,7 @@
+import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_current_profile_id_usecase.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/wishlist_ucs.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/wishlist_entry_entity.dart';
@@ -12,6 +14,7 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
   final RemoveFromWishlistUseCase _removeFromWishlistUseCase;
 
   static const int _limit = 15;
+  bool _isFetching = false;
 
   CustomerWishlistCubit(
     this._getCurrentProfileIdUseCase,
@@ -20,6 +23,8 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
   ) : super(CustomerWishlistInitial());
 
   Future<void> fetchWishlist({bool reset = false}) async {
+    if (_isFetching) return;
+
     final profileIdResult = await _getCurrentProfileIdUseCase();
     final profileId = profileIdResult.fold((l) => null, (r) => r);
 
@@ -34,6 +39,8 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
       currentItems = currentState.items;
       if (!reset && currentState.hasReachedMax) return;
     }
+
+    _isFetching = true;
 
     if (reset) {
       currentItems = [];
@@ -53,8 +60,16 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
           hasReachedMax: fetched.length < _limit,
         ),
       );
-    } catch (e) {
-      emit(CustomerWishlistError('No se pudo cargar la lista de deseos: $e'));
+    } catch (e, st) {
+      developer.log(
+        'Error al obtener la lista de deseos',
+        error: e,
+        stackTrace: st,
+        name: 'WishlistCubit',
+      );
+      emit(CustomerWishlistError(Failure.from(e).message));
+    } finally {
+      _isFetching = false;
     }
   }
 
@@ -76,10 +91,17 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
                 .where((i) => i.wishlistId != entry.wishlistId)
                 .toList();
         emit(currentState.copyWith(items: updated));
-      } catch (e) {
-        emit(CustomerWishlistError(e.toString()));
+      } catch (e, st) {
+        developer.log(
+          'Error al eliminar ítem de lista de deseos',
+          error: e,
+          stackTrace: st,
+          name: 'WishlistCubit',
+        );
+        emit(CustomerWishlistError(Failure.from(e).message));
         emit(currentState);
       }
     }
   }
 }
+
