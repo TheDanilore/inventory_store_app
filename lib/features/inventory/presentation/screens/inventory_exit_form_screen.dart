@@ -52,8 +52,6 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       backgroundColor: Colors.transparent,
       builder:
           (_) => AddExitProductSheet(
-            allProducts: cubit.state.allProducts,
-            variantsByProduct: cubit.state.variantsByProduct,
             warehouseId: cubit.state.selectedWarehouseId!,
           ),
     );
@@ -755,7 +753,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     ? const SizedBox.shrink()
                     : Padding(
                       padding: const EdgeInsets.only(top: 16),
-                      child: _ExitFormSummaryCard(state: state),
+                      child: const _ExitFormSummaryCard(),
                     ),
           ),
         ],
@@ -1145,80 +1143,87 @@ class _HorizontalStepper extends StatelessWidget {
 }
 
 class _ExitFormSummaryCard extends StatelessWidget {
-  final InventoryExitFormState state;
-
-  const _ExitFormSummaryCard({required this.state});
+  const _ExitFormSummaryCard();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E2D),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Resumen de Salida (Pérdida)',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
+    return BlocBuilder<InventoryExitFormCubit, InventoryExitFormState>(
+      buildWhen:
+          (previous, current) =>
+              previous.totalLossCost != current.totalLossCost ||
+              previous.items.length != current.items.length ||
+              previous.totalUnits != current.totalUnits,
+      builder: (context, state) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E2D),
+            borderRadius: BorderRadius.circular(16),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'S/ ${state.totalLossCost.toStringAsFixed(2)}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Divider(color: Colors.white24, height: 1),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Productos/Variantes',
-                    style: TextStyle(color: Colors.white54, fontSize: 11),
-                  ),
-                  Text(
-                    '${state.items.length}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+              const Text(
+                'Resumen de Salida (Pérdida)',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
               ),
-              Container(width: 1, height: 30, color: Colors.white24),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 8),
+              Text(
+                'S/ ${state.totalLossCost.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Divider(color: Colors.white24, height: 1),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Unidades Totales',
-                    style: TextStyle(color: Colors.white54, fontSize: 11),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Productos/Variantes',
+                        style: TextStyle(color: Colors.white54, fontSize: 11),
+                      ),
+                      Text(
+                        '${state.items.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    '${state.totalUnits}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Container(width: 1, height: 30, color: Colors.white24),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Unidades Totales',
+                        style: TextStyle(color: Colors.white54, fontSize: 11),
+                      ),
+                      Text(
+                        '${state.totalUnits}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

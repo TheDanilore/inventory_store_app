@@ -50,8 +50,6 @@ class InventoryExitFormState extends Equatable {
   final bool isSuccess;
 
   final List<WarehouseModel> warehouses;
-  final List<ProductModel> allProducts;
-  final Map<String, List<ProductVariantModel>> variantsByProduct;
 
   final String? selectedWarehouseId;
   final String selectedReason;
@@ -63,8 +61,6 @@ class InventoryExitFormState extends Equatable {
     this.errorMessage = '',
     this.isSuccess = false,
     this.warehouses = const [],
-    this.allProducts = const [],
-    this.variantsByProduct = const {},
     this.selectedWarehouseId,
     this.selectedReason = 'AJUSTE',
     this.items = const [],
@@ -81,8 +77,6 @@ class InventoryExitFormState extends Equatable {
     String? errorMessage,
     bool? isSuccess,
     List<WarehouseModel>? warehouses,
-    List<ProductModel>? allProducts,
-    Map<String, List<ProductVariantModel>>? variantsByProduct,
     String? selectedWarehouseId,
     String? selectedReason,
     List<ExitItemUI>? items,
@@ -93,8 +87,6 @@ class InventoryExitFormState extends Equatable {
       errorMessage: errorMessage ?? this.errorMessage,
       isSuccess: isSuccess ?? this.isSuccess,
       warehouses: warehouses ?? this.warehouses,
-      allProducts: allProducts ?? this.allProducts,
-      variantsByProduct: variantsByProduct ?? this.variantsByProduct,
       selectedWarehouseId: selectedWarehouseId ?? this.selectedWarehouseId,
       selectedReason: selectedReason ?? this.selectedReason,
       items: items ?? this.items,
@@ -108,8 +100,6 @@ class InventoryExitFormState extends Equatable {
     errorMessage,
     isSuccess,
     warehouses,
-    allProducts,
-    variantsByProduct,
     selectedWarehouseId,
     selectedReason,
     items,

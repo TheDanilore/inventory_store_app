@@ -1522,6 +1522,12 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i90.UpdateUserUseCase>(),
       ),
     );
+    gh.factory<_i401.InventoryExitFormCubit>(
+      () => _i401.InventoryExitFormCubit(
+        getActiveWarehousesUseCase: gh<_i160.GetActiveWarehousesExitsUseCase>(),
+        createInventoryExitUseCase: gh<_i738.CreateInventoryExitUseCase>(),
+      ),
+    );
     gh.factory<_i1028.WalletCubit>(
       () => _i1028.WalletCubit(
         getWalletBalanceUC: gh<_i631.GetWalletBalanceUC>(),
@@ -1569,14 +1575,6 @@ extension GetItInjectableX on _i174.GetIt {
         createAttributeValueUC: gh<_i382.CreateAttributeValueUC>(),
         updateAttributeValueUC: gh<_i382.UpdateAttributeValueUC>(),
         deleteAttributeValueUC: gh<_i382.DeleteAttributeValueUC>(),
-      ),
-    );
-    gh.factory<_i401.InventoryExitFormCubit>(
-      () => _i401.InventoryExitFormCubit(
-        getActiveWarehousesUseCase: gh<_i160.GetActiveWarehousesExitsUseCase>(),
-        getActiveProductsAndVariantsUseCase:
-            gh<_i753.GetActiveProductsAndVariantsUseCase>(),
-        createInventoryExitUseCase: gh<_i738.CreateInventoryExitUseCase>(),
       ),
     );
     gh.factory<_i1039.ProductDetailCubit>(

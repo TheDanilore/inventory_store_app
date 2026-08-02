@@ -13,16 +13,9 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/add_exi
 import 'package:inventory_store_app/features/inventory/presentation/bloc/add_exit_product/add_exit_product_state.dart';
 
 class AddExitProductSheet extends StatefulWidget {
-  final List<ProductModel> allProducts;
-  final Map<String, List<ProductVariantModel>> variantsByProduct;
   final String warehouseId;
 
-  const AddExitProductSheet({
-    super.key,
-    required this.allProducts,
-    required this.variantsByProduct,
-    required this.warehouseId,
-  });
+  const AddExitProductSheet({super.key, required this.warehouseId});
 
   @override
   State<AddExitProductSheet> createState() => _AddExitProductSheetState();

@@ -1,29 +1,22 @@
-import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/inventory/data/services/inventory_exit_draft_service.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_warehouses_exits_usecase.dart';
-import 'package:inventory_store_app/features/catalog/domain/usecases/get_active_products_and_variants_uc.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/create_inventory_exit_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form/inventory_exit_form_state.dart';
 
 @injectable
 class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
   final GetActiveWarehousesExitsUseCase getActiveWarehousesUseCase;
-  final GetActiveProductsAndVariantsUseCase getActiveProductsAndVariantsUseCase;
   final CreateInventoryExitUseCase createInventoryExitUseCase;
-  
-  static const _draftKey = 'inventory_exit_draft';
+  final InventoryExitDraftService _draftService = InventoryExitDraftService();
 
   InventoryExitFormCubit({
     required this.getActiveWarehousesUseCase,
-    required this.getActiveProductsAndVariantsUseCase,
     required this.createInventoryExitUseCase,
   }) : super(const InventoryExitFormState());
 
@@ -31,13 +24,7 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
     emit(state.copyWith(isLoading: true, errorMessage: '', isSuccess: false));
 
     try {
-      final futures = await Future.wait([
-        getActiveWarehousesUseCase.call(),
-        getActiveProductsAndVariantsUseCase.call()
-      ]);
-
-      final warehousesData = futures[0] as List<WarehouseModel>;
-      final productsData = futures[1] as Map<String, dynamic>;
+      final warehousesData = await getActiveWarehousesUseCase.call();
 
       final warehouses =
           warehousesData
@@ -46,37 +33,17 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
       String? initialWarehouseId =
           warehouses.isNotEmpty ? warehouses.first.id : null;
 
-      final allProducts =
-          (productsData['products'] as List)
-              .map((p) => ProductModel.fromJson(p))
-              .toList();
-
-      final variants =
-          (productsData['variants'] as List)
-              .map(
-                (v) =>
-                    ProductVariantModel.fromJson(Map<String, dynamic>.from(v)),
-              )
-              .toList();
-
-      final variantsByProduct = <String, List<ProductVariantModel>>{};
-      for (final v in variants) {
-        variantsByProduct.putIfAbsent(v.productId, () => []).add(v);
-      }
-
       emit(
         state.copyWith(
           warehouses: warehouses,
           selectedWarehouseId: initialWarehouseId,
-          allProducts: allProducts,
-          variantsByProduct: variantsByProduct,
         ),
       );
 
       await _loadDraft();
       emit(state.copyWith(isLoading: false));
     } catch (e, st) {
-      debugPrint('Error loading form data: $e\n$st');
+      developer.log('Error loading form data', error: e, stackTrace: st);
       if (e is SocketException || e is TimeoutException) {
         emit(
           state.copyWith(
@@ -172,7 +139,7 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
 
       emit(state.copyWith(isSaving: false, isSuccess: true));
     } catch (e, st) {
-      debugPrint('Error saving exit: $e\n$st');
+      developer.log('Error saving exit', error: e, stackTrace: st);
       if (e is SocketException || e is TimeoutException) {
         emit(
           state.copyWith(
@@ -194,29 +161,23 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
 
   Future<void> clearDraft() async {
     emit(state.copyWith(items: [], errorMessage: ''));
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_draftKey);
+    await _draftService.clearDraft();
   }
 
   Future<void> _saveDraft() async {
-    final prefs = await SharedPreferences.getInstance();
     final itemsJson = state.items.map((e) => e.toJson()).toList();
-
     final draftData = {
       'warehouseId': state.selectedWarehouseId,
       'reason': state.selectedReason,
       'items': itemsJson,
     };
-
-    await prefs.setString(_draftKey, jsonEncode(draftData));
+    await _draftService.saveDraft(draftData);
   }
 
   Future<void> _loadDraft() async {
-    final prefs = await SharedPreferences.getInstance();
-    final draftStr = prefs.getString(_draftKey);
-    if (draftStr != null) {
+    final draftData = await _draftService.loadDraft();
+    if (draftData != null) {
       try {
-        final draftData = jsonDecode(draftStr) as Map<String, dynamic>;
         final itemsJson = draftData['items'] as List<dynamic>? ?? [];
 
         final draftItems =
@@ -240,8 +201,8 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
             items: draftItems,
           ),
         );
-      } catch (e) {
-        debugPrint('Error loading draft: $e');
+      } catch (e, st) {
+        developer.log('Error loading draft', error: e, stackTrace: st);
         await clearDraft();
       }
     }
