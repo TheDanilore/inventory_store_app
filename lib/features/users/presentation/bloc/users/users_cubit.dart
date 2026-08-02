@@ -5,6 +5,7 @@ import 'package:inventory_store_app/features/users/domain/usecases/get_global_us
 import 'package:inventory_store_app/features/users/domain/usecases/get_users_usecase.dart';
 import 'package:inventory_store_app/features/users/domain/usecases/update_user_usecase.dart';
 import 'package:inventory_store_app/features/users/presentation/bloc/users/users_state.dart';
+import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
 
 @injectable
 class UsersCubit extends Cubit<UsersState> {
@@ -183,8 +184,22 @@ class UsersCubit extends Cubit<UsersState> {
         );
       },
       (r) {
-        // Fetch users again to ensure state is in sync
-        fetchUsers();
+        // Zero Egress: mutar el estado en RAM en lugar de redescargar toda la tabla
+        final updatedUsers = List<UserEntity>.from(state.currentUsers);
+        updatedUsers[userIdx] = user.copyWith(isActive: !currentStatus);
+        
+        emit(
+          UsersLoaded(
+            users: updatedUsers,
+            searchQuery: state.searchQuery,
+            onlyActive: state.onlyActive,
+            currentPage: state.currentPage,
+            totalCount: state.totalCount,
+            customerTotal: state.customerTotal,
+            adminTotal: state.adminTotal,
+            employeeTotal: state.employeeTotal,
+          ),
+        );
       },
     );
   }

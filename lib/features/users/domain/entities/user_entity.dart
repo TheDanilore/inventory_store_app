@@ -38,4 +38,30 @@ class UserEntity extends Equatable {
     createdAt,
     walletBalance,
   ];
+
+  UserEntity copyWith({
+    String? id,
+    String? email,
+    String? fullName,
+    String? role,
+    String? phone,
+    String? documentType,
+    String? documentNumber,
+    bool? isActive,
+    DateTime? createdAt,
+    int? walletBalance,
+  }) {
+    return UserEntity(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      fullName: fullName ?? this.fullName,
+      role: role ?? this.role,
+      phone: phone ?? this.phone,
+      documentType: documentType ?? this.documentType,
+      documentNumber: documentNumber ?? this.documentNumber,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      walletBalance: walletBalance ?? this.walletBalance,
+    );
+  }
 }

@@ -23,6 +23,7 @@ class UserFormCubit extends Cubit<UserFormState> {
     String? documentNumber,
     required bool isActive,
   }) async {
+    if (state is UserFormLoading) return;
     emit(const UserFormLoading());
 
     if (id == null) {
