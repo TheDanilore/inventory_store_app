@@ -77,10 +77,18 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
     final profileIdResult = await _getCurrentProfileIdUseCase();
     final profileId = profileIdResult.fold((l) => null, (r) => r);
 
-    if (profileId == null) return;
+    if (profileId == null) {
+      emit(const CustomerWishlistError('Usuario no autenticado para realizar esta acción'));
+      return;
+    }
 
     final currentState = state;
     if (currentState is CustomerWishlistLoaded) {
+      if (currentState.removingIds.contains(entry.wishlistId)) return;
+
+      final newRemovingIds = Set<String>.from(currentState.removingIds)..add(entry.wishlistId);
+      emit(currentState.copyWith(removingIds: newRemovingIds));
+
       try {
         await _removeFromWishlistUseCase(
           profileId: profileId,
@@ -90,16 +98,18 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
             currentState.items
                 .where((i) => i.wishlistId != entry.wishlistId)
                 .toList();
-        emit(currentState.copyWith(items: updated));
+        final afterRemovingIds = Set<String>.from(newRemovingIds)..remove(entry.wishlistId);
+        emit(currentState.copyWith(items: updated, removingIds: afterRemovingIds));
       } catch (e, st) {
         developer.log(
-          'Error al eliminar ítem de lista de deseos',
+          'Error crítico al eliminar ítem de lista de deseos',
           error: e,
           stackTrace: st,
           name: 'WishlistCubit',
         );
+        final afterRemovingIds = Set<String>.from(newRemovingIds)..remove(entry.wishlistId);
         emit(CustomerWishlistError(Failure.from(e).message));
-        emit(currentState);
+        emit(currentState.copyWith(removingIds: afterRemovingIds));
       }
     }
   }

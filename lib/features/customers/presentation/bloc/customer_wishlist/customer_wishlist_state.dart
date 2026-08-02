@@ -15,24 +15,28 @@ class CustomerWishlistLoading extends CustomerWishlistState {}
 class CustomerWishlistLoaded extends CustomerWishlistState {
   final List<WishlistEntryEntity> items;
   final bool hasReachedMax;
+  final Set<String> removingIds;
 
   const CustomerWishlistLoaded({
     required this.items,
     required this.hasReachedMax,
+    this.removingIds = const {},
   });
 
   CustomerWishlistLoaded copyWith({
     List<WishlistEntryEntity>? items,
     bool? hasReachedMax,
+    Set<String>? removingIds,
   }) {
     return CustomerWishlistLoaded(
       items: items ?? this.items,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
+      removingIds: removingIds ?? this.removingIds,
     );
   }
 
   @override
-  List<Object?> get props => [items, hasReachedMax];
+  List<Object?> get props => [items, hasReachedMax, removingIds];
 }
 
 class CustomerWishlistError extends CustomerWishlistState {

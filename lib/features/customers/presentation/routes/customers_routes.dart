@@ -14,7 +14,7 @@ import 'package:inventory_store_app/features/customers/presentation/screens/cust
 import 'package:inventory_store_app/features/auth/presentation/screens/profile_screen.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
-import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders/orders_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/admin/orders_screen.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -111,37 +111,17 @@ class CustomersRoutes {
     ),
     GoRoute(
       path: '/wishlist',
-      builder:
-          (context, state) => MultiBlocProvider(
-            providers: [
-              BlocProvider(
-                create: (_) => sl<CartCubit>()..initCart(cartType: 'customer'),
-              ),
-            ],
-            child: WishlistScreen(
-              onAddToCart: (ctx, product) {
-                context.read<CartCubit>().addItem(
-                  CartItemEntity(
-                    productId: product.id,
-                    productName: product.name,
-                    cartKey: CartItemEntity.buildKey(product.id, null),
-                    quantity: 1,
-                    unitPrice: product.displaySalePrice ?? 0.0,
-                    unitCost: product.defaultVariant?.unitCost ?? 0.0,
-                    availableStock: product.totalStock,
-                    usesBatches: product.usesBatches,
-                    imageUrl: product.primaryImageUrl,
-                  ),
-                );
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  SnackBar(
-                    content: Text('${product.name} agregado al carrito'),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              },
+      builder: (context, state) {
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (_) => sl<CartCubit>()..initCart(cartType: 'customer'),
             ),
-          ),
+            BlocProvider(create: (_) => sl<WalletCubit>()),
+          ],
+          child: const WishlistScreen(),
+        );
+      },
     ),
   ];
 

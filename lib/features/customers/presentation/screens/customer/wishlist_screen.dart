@@ -9,28 +9,25 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_wishlist/customer_wishlist_state.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/wishlist/wishlist_card.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/wishlist_entry_entity.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 
 class WishlistScreen extends StatelessWidget {
-  final void Function(BuildContext context, ProductEntity product)? onAddToCart;
-
-  const WishlistScreen({super.key, this.onAddToCart});
+  const WishlistScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<CustomerWishlistCubit>(),
-      child: _WishlistScreenContent(onAddToCart: onAddToCart),
+      child: const _WishlistScreenContent(),
     );
   }
 }
 
 class _WishlistScreenContent extends StatefulWidget {
-  final void Function(BuildContext context, ProductEntity product)? onAddToCart;
-
-  const _WishlistScreenContent({this.onAddToCart});
+  const _WishlistScreenContent();
 
   @override
   State<_WishlistScreenContent> createState() => _WishlistScreenContentState();
@@ -66,14 +63,39 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
   }
 
   void _handleAddToCart(WishlistEntryEntity entry) {
-    if (widget.onAddToCart != null) {
-      widget.onAddToCart!(context, entry.product);
-    } else {
+    final product = entry.product;
+    if (product.productVariants.length > 1) {
       AppSnackbar.show(
         context,
-        message: 'Función añadir al carrito no disponible.',
+        message: 'Selecciona tu variante favorita en el detalle del producto.',
       );
+      context.go('/product/${product.id}', extra: product);
+      return;
     }
+
+    final variant = product.defaultVariant ?? (product.productVariants.isNotEmpty ? product.productVariants.first : null);
+    final variantId = variant?.id;
+
+    context.read<CartCubit>().addItem(
+      CartItemEntity(
+        productId: product.id,
+        productName: product.name,
+        variantId: variantId,
+        variantLabel: variant?.label,
+        cartKey: CartItemEntity.buildKey(product.id, variantId),
+        quantity: 1,
+        unitPrice: variant?.salePrice ?? product.displaySalePrice ?? 0.0,
+        unitCost: variant?.unitCost ?? 0.0,
+        availableStock: product.totalStock,
+        usesBatches: product.usesBatches,
+        imageUrl: product.primaryImageUrl,
+        sku: variant?.sku ?? product.defaultVariant?.sku,
+      ),
+    );
+    AppSnackbar.show(
+      context,
+      message: '${product.name} agregado al carrito',
+    );
   }
 
   Future<void> _confirmRemove(WishlistEntryEntity entry) async {
@@ -370,7 +392,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
           return WishlistCard(
             key: ValueKey(entry.wishlistId),
             entry: entry,
-            isProcessing: false,
+            isProcessing: state.removingIds.contains(entry.wishlistId),
             onAddToCart: () => _handleAddToCart(entry),
             onRemove: () => _confirmRemove(entry),
           );
