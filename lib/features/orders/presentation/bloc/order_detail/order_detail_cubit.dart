@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
@@ -37,6 +37,8 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     required this.processReturnUc,
   }) : super(const OrderDetailState());
 
+  static const String _creditPaymentMethod = 'CRÉDITO';
+
   void setInitialOrder(OrderEntity order) {
     emit(
       state.copyWith(
@@ -64,30 +66,32 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     emit(state.copyWith(isLoading: true, hasError: false));
 
     try {
-      final currentCustomerId = state.order?.customerId ?? state.selectedCustomerId;
-      final profileFuture = (currentCustomerId != null && currentCustomerId.isNotEmpty)
-          ? getProfileByIdUc(currentCustomerId)
-          : Future.value(null);
-
-      final results = await Future.wait<dynamic>([
-        getOrderDetailsUc(orderId),
-        getFinancialAccountsUc(),
-        profileFuture,
-      ]);
-
-      final result = results[0] as dynamic; // Either<Failure, OrderDetailsEntity>
-      final accountsResult = results[1] as dynamic; // Either<Failure, List<Map<String, dynamic>>>
-      final profileResult = results[2] as dynamic; // Either<Failure, Map<String, dynamic>?>?
-
-      result.fold(
-        (failure) {
-          debugPrint('🔴 [OrderDetailCubit] Error al cargar orden ($orderId): ${failure.message}');
+      // 1. Fetch main order first
+      final orderResult = await getOrderDetailsUc(orderId);
+      
+      await orderResult.fold<Future<void>>(
+        (failure) async {
+          developer.log('Error al cargar orden ($orderId)', error: failure.message, name: 'OrderDetailCubit');
           emit(state.copyWith(isLoading: false, hasError: true, errorMessage: failure.message));
         },
-        (details) {
+        (details) async {
+          // 2. Extract customer ID and execute secondary queries in parallel
+          final customerId = details.order.customerId;
+          final profileFuture = (customerId != null && customerId.isNotEmpty)
+              ? getProfileByIdUc(customerId)
+              : Future.value(null);
+
+          final secondaryResults = await Future.wait([
+            getFinancialAccountsUc(),
+            profileFuture,
+          ]);
+
+          final accountsResult = secondaryResults[0] as dynamic;
+          final profileResult = secondaryResults[1] as dynamic;
+
           final accountsData = accountsResult.fold(
             (l) {
-              debugPrint('🔴 [OrderDetailCubit] Error en accounts: ${l.message}');
+              developer.log('Error en accounts', error: l.message, name: 'OrderDetailCubit');
               return <Map<String, dynamic>>[];
             },
             (r) => r as List<Map<String, dynamic>>,
@@ -96,7 +100,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
           List<Map<String, dynamic>> profilesData = [];
           if (profileResult != null) {
             profileResult.fold(
-              (l) => debugPrint('🔴 [OrderDetailCubit] Error en profile: ${l.message}'),
+              (l) => developer.log('Error en profile', error: l.message, name: 'OrderDetailCubit'),
               (r) {
                 if (r != null) profilesData = [r as Map<String, dynamic>];
               },
@@ -120,7 +124,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
         },
       );
     } catch (e, st) {
-      debugPrint('🔴 [OrderDetailCubit] Error fatal en fetchData: $e\n$st');
+      developer.log('Error fatal en fetchData', error: e, stackTrace: st, name: 'OrderDetailCubit');
       emit(state.copyWith(isLoading: false, hasError: true, errorMessage: 'Error inesperado al cargar la orden.'));
     }
   }
@@ -129,7 +133,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     final result = await checkActiveCashShiftUc();
     return result.fold(
       (l) {
-        debugPrint('🔴 [OrderDetailCubit] Error comprobando turno activo: ${l.message}');
+        developer.log('Error comprobando turno activo', error: l.message, name: 'OrderDetailCubit');
         return null;
       },
       (r) => r,
@@ -152,7 +156,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     final result = await searchCustomersUc(query);
     return result.fold(
       (l) {
-        debugPrint('🔴 [OrderDetailCubit] Error searching customers: ${l.message}');
+        developer.log('Error searching customers', error: l.message, name: 'OrderDetailCubit');
         return [];
       },
       (r) => r,
@@ -163,7 +167,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     emit(
       state.copyWith(
         paymentMethod: method,
-        pointsUsed: method == 'CRÉDITO' ? 0 : state.pointsUsed,
+        pointsUsed: method == _creditPaymentMethod ? 0 : state.pointsUsed,
       ),
     );
     _recalculatePoints(ratio, earnRate);
@@ -196,7 +200,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
   void _recalculatePoints(double pointsToSolesRatio, double earningRate) {
     if (state.selectedCustomerId == null ||
         state.items.isEmpty ||
-        state.paymentMethod == 'CRÉDITO' ||
+        state.paymentMethod == _creditPaymentMethod ||
         earningRate <= 0) {
       emit(state.copyWith(pointsEarned: 0));
       return;
@@ -330,6 +334,11 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     String variantId,
     String warehouseId,
   ) async {
+    developer.log(
+      'WARNING: fetchAvailableBatches is mocked and currently returns an empty list. A proper UseCase must be implemented.',
+      name: 'OrderDetailCubit',
+      level: 900,
+    );
     // Mock for now until UseCase is created, or inject Supabase client later.
     // In Clean Architecture, this should be a UseCase!
     return [];
@@ -351,7 +360,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
 
     return result.fold(
       (failure) {
-        debugPrint('🔴 [OrderDetailCubit] Error al procesar devolución: ${failure.message}');
+        developer.log('Error al procesar devolución', error: failure.message, name: 'OrderDetailCubit');
         emit(state.copyWith(isReturning: false, errorMessage: failure.message));
         return false;
       },
