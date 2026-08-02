@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
@@ -17,6 +16,7 @@ import 'package:inventory_store_app/features/purchases/domain/usecases/get_purch
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entry_form/inventory_entry_form_state.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/fetch_purchase_order_items_usecase.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'dart:developer' as developer;
 
 @injectable
 class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
@@ -71,7 +71,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
       // Warehouses
       (futures[0] as Either<dynamic, dynamic>).fold(
-        (l) => debugPrint('[EntryFormCubit] warehouses error: ${l.message}'),
+        (l) => developer.log('warehouses error: ${l.message}', name: 'InventoryEntryFormCubit'),
         (r) {
           warehouses = r as List<WarehouseModel>;
         },
@@ -79,7 +79,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
       // Suppliers
       (futures[1] as Either<dynamic, dynamic>).fold(
-        (l) => debugPrint('[EntryFormCubit] suppliers error: ${l.message}'),
+        (l) => developer.log('suppliers error: ${l.message}', name: 'InventoryEntryFormCubit'),
         (r) {
           suppliers = r as List<SupplierEntity>;
         },
@@ -87,7 +87,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
       // Accounts
       (futures[2] as Either<dynamic, dynamic>).fold(
-        (l) => debugPrint('[EntryFormCubit] accounts error: ${l.message}'),
+        (l) => developer.log('accounts error: ${l.message}', name: 'InventoryEntryFormCubit'),
         (r) {
           accounts =
               (r as List<FinancialAccountModel>)
@@ -123,7 +123,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
         await _loadDraft();
       }
     } catch (e, st) {
-      debugPrint('[EntryFormCubit] init error: $e\n$st');
+      developer.log('init error', error: e, stackTrace: st, name: 'InventoryEntryFormCubit');
       emit(state.copyWith(errorMessage: 'Error cargando datos.'));
     } finally {
       emit(state.copyWith(isLoading: false));
@@ -280,7 +280,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       await clearDraft();
       emit(state.copyWith(isSaving: false, isSuccess: true));
     } catch (e, st) {
-      debugPrint('[EntryFormCubit] saveEntry error: $e\n$st');
+      developer.log('saveEntry error', error: e, stackTrace: st, name: 'InventoryEntryFormCubit');
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
@@ -385,8 +385,9 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
             items: newItems,
           ),
         );
-      } catch (e) {
-        // Fallback
+      } catch (e, st) {
+        developer.log('Error parsing draft JSON. Corrupted state found.', error: e, stackTrace: st, name: 'InventoryEntryFormCubit');
+        await clearDraft();
       }
     }
   }
@@ -410,13 +411,15 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       final List<InventoryEntryItemEntity> loadedItems = [];
       itemsResult.fold(
         (failure) {
-          debugPrint(
-            '[EntryFormCubit] fetchOrderItems failure: ${failure.message}',
+          developer.log(
+            'fetchOrderItems failure: ${failure.message}',
+            name: 'InventoryEntryFormCubit',
           );
         },
         (items) {
-          debugPrint(
-            '[EntryFormCubit] fetchOrderItems returned ${items.length} items',
+          developer.log(
+            'fetchOrderItems returned ${items.length} items',
+            name: 'InventoryEntryFormCubit',
           );
           for (final i in items) {
             final remaining = i.quantityOrdered - i.quantityReceived;
@@ -448,9 +451,10 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
               ? DateTime.tryParse(poResp['created_at'])
               : null;
 
-      debugPrint(
-        '[EntryFormCubit] PO $poId -> supplier_id=$supId warehouse_id=$whId '
+      developer.log(
+        'PO $poId -> supplier_id=$supId warehouse_id=$whId '
         '(almacenes activos: ${state.warehouses.map((w) => w.id).toList()})',
+        name: 'InventoryEntryFormCubit',
       );
 
       String? selectedWh = whId ?? state.selectedWarehouseId;
@@ -469,7 +473,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
         ),
       );
     } catch (e, st) {
-      debugPrint('[EntryFormCubit] Error loading purchase order: $e\n$st');
+      developer.log('Error loading purchase order', error: e, stackTrace: st, name: 'InventoryEntryFormCubit');
     }
   }
 }
