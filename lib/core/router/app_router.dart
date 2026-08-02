@@ -151,6 +151,9 @@ class AppRouter {
                 providers: [
                   BlocProvider(create: (_) => sl<SidebarBadgeCubit>()),
                   BlocProvider(
+                    create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
+                  ),
+                  BlocProvider(
                     create: (_) => sl<CartCubit>()..initCart(cartType: 'pos'),
                   ),
                   BlocProvider(create: (_) => sl<PosCubit>()),
@@ -162,19 +165,16 @@ class AppRouter {
             GoRoute(
               path: '/admin',
               builder:
-                  (context, state) => BlocProvider(
-                    create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
-                    child: AdminCatalogScreen(
-                      floatingActionButton: const PosCartFab(),
-                      onProfileAvatarTap: () {
-                        final auth = context.read<AuthCubit>();
-                        if (auth.state.currentUser == null) {
-                          context.go('/login');
-                        } else {
-                          context.push('/admin/profile');
-                        }
-                      },
-                    ),
+                  (context, state) => AdminCatalogScreen(
+                    floatingActionButton: const PosCartFab(),
+                    onProfileAvatarTap: () {
+                      final auth = context.read<AuthCubit>();
+                      if (auth.state.currentUser == null) {
+                        context.go('/login');
+                      } else {
+                        context.push('/admin/profile');
+                      }
+                    },
                   ),
             ),
             ...AuthRoutes.adminRoutes,
