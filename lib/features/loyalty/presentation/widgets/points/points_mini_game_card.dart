@@ -169,6 +169,9 @@ class _PointsMiniGameCardState extends State<PointsMiniGameCard> {
               if (prizePreview.isNotEmpty)
                 Row(
                   children: List.generate(prizePreview.length, (index) {
+                    while (index >= _boxKeys.length) {
+                      _boxKeys.add(GlobalKey());
+                    }
                     final reward = prizePreview[index];
                     final locked =
                         state.isPlayingMiniGame || !state.boxesRoundReady;
@@ -187,7 +190,7 @@ class _PointsMiniGameCardState extends State<PointsMiniGameCard> {
                         state.lastBoxesReward != null;
 
                     return Expanded(
-                      key: _boxKeys[index],
+                      key: index < _boxKeys.length ? _boxKeys[index] : null,
                       child: Padding(
                         padding: EdgeInsets.only(left: index == 0 ? 0 : 8),
                         child: GestureDetector(

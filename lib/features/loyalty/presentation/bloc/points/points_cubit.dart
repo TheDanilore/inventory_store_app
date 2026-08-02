@@ -106,13 +106,13 @@ class PointsCubit extends Cubit<PointsState> {
       final nextCheckinReward = _rewardForStreakDay(nextStreakDay);
 
       // Minijuegos
-      final todayGames = dashboard['today_games'] as Map<String, dynamic>? ?? {};
+      final todayGames = (dashboard['today_games'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
 
       // Movimientos
-      final movements = List<Map<String, dynamic>>.from(dashboard['recent_movements'] ?? []);
+      final movements = (dashboard['recent_movements'] as List<dynamic>? ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
 
       final boxGame = movements.firstWhere(
-        (m) => m['movement_type'] == 'MINI_GAME_BOXES' && (m['created_at'] as String).startsWith(now.toUtc().toIso8601String().substring(0, 10)),
+        (m) => m['movement_type'] == 'MINI_GAME_BOXES' && (m['created_at']?.toString().startsWith(now.toUtc().toIso8601String().substring(0, 10)) ?? false),
         orElse: () => <String, dynamic>{},
       );
 
@@ -392,12 +392,21 @@ class PointsCubit extends Cubit<PointsState> {
             final newMovement = {
               'points': points,
               'description': description,
+              'movement_type': movementType,
               'created_at': now.toIso8601String(),
             };
             emit(
               state.copyWith(
                 currentBalance: state.currentBalance + points,
                 movements: [newMovement, ...state.movements],
+                boxesPlaysToday: movementType == 'MINI_GAME_BOXES' ? state.boxesPlaysToday + 1 : state.boxesPlaysToday,
+                memoramaPlaysToday: movementType == 'MINI_GAME_MEMORY' ? state.memoramaPlaysToday + 1 : state.memoramaPlaysToday,
+                catcherPlaysToday: movementType == 'MINI_GAME_CATCHER' ? state.catcherPlaysToday + 1 : state.catcherPlaysToday,
+                pinataPlaysToday: movementType == 'MINI_GAME_PINATA' ? state.pinataPlaysToday + 1 : state.pinataPlaysToday,
+                superSaltoPlaysToday: movementType == 'MINI_GAME_JUMP' ? state.superSaltoPlaysToday + 1 : state.superSaltoPlaysToday,
+                clawPlaysToday: movementType == 'MINI_GAME_CLAW' ? state.clawPlaysToday + 1 : state.clawPlaysToday,
+                stackPlaysToday: movementType == 'MINI_GAME_STACK' ? state.stackPlaysToday + 1 : state.stackPlaysToday,
+                dodgePlaysToday: movementType == 'MINI_GAME_DODGE' ? state.dodgePlaysToday + 1 : state.dodgePlaysToday,
               ),
             );
           }
@@ -413,7 +422,10 @@ class PointsCubit extends Cubit<PointsState> {
 
 
   void _initWalletChannel(String authUserId) {
-    if (_walletChannel != null) return; // Ya está suscrito
+    if (_walletChannel != null) {
+      _walletChannel?.unsubscribe();
+      _walletChannel = null;
+    }
 
     _walletChannel = _supabase
         .channel('public:profiles_wallet_$authUserId')

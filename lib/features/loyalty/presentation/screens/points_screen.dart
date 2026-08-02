@@ -121,7 +121,7 @@ class _PointsScreenState extends State<PointsScreen> {
               );
             }
 
-            if (state.errorMessage != null && state.currentBalance == 0) {
+            if (state.errorMessage != null && state.profileId == null) {
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
@@ -155,6 +155,12 @@ class _PointsScreenState extends State<PointsScreen> {
               );
             }
 
+            final pointsToSolesRatio = config.getDouble(
+              'points_to_soles_ratio',
+              0.01,
+            );
+            final hundredCoinsValue = (100 * pointsToSolesRatio).toStringAsFixed(2);
+
             return RefreshIndicator(
               color: AppColors.primary,
               onRefresh: _loadData,
@@ -180,57 +186,43 @@ class _PointsScreenState extends State<PointsScreen> {
                         Column(
                           children: [
                             const SizedBox(height: 20),
-                            Builder(
-                              builder: (context) {
-                                final pointsToSolesRatio = config.getDouble(
-                                  'points_to_soles_ratio',
-                                  0.01,
-                                );
-                                final hundredCoinsValue = (100 *
-                                        pointsToSolesRatio)
-                                    .toStringAsFixed(2);
-                                return PointsBalanceHeroCard(
-                                  balanceKey: _balanceKey,
-                                  currentBalance: state.currentBalance,
-                                  hundredCoinsValue: hundredCoinsValue,
-                                  currentStreak: state.currentStreak,
-                                );
-                              },
+                            PointsBalanceHeroCard(
+                              balanceKey: _balanceKey,
+                              currentBalance: state.currentBalance,
+                              hundredCoinsValue: hundredCoinsValue,
+                              currentStreak: state.currentStreak,
                             ),
                             const SizedBox(height: 20),
-                            Builder(
-                              builder: (context) {
-                                final pointsToSolesRatio = config.getDouble(
-                                  'points_to_soles_ratio',
-                                  0.01,
-                                );
-                                final hundredCoinsValue = (100 *
-                                        pointsToSolesRatio)
-                                    .toStringAsFixed(2);
-                                return PointsDailyCheckinCard(
-                                  claimButtonKey: _claimButtonKey,
-                                  currentStreak: state.currentStreak,
-                                  hasTodayCheckin: state.hasTodayCheckin,
-                                  nextCheckinReward: state.nextCheckinReward,
-                                  isClaimingCheckin: state.isClaimingCheckin,
-                                  hundredCoinsValue: hundredCoinsValue,
-                                  claimMessage:
-                                      'Reclama tu bono diario de puntos',
-                                  streakPreviewLabel:
-                                      'Días seguidos: ${state.currentStreak}',
-                                  onClaim: () => _handleClaim(state),
-                                );
-                              },
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: PointsDailyCheckinCard(
+                                claimButtonKey: _claimButtonKey,
+                                currentStreak: state.currentStreak,
+                                hasTodayCheckin: state.hasTodayCheckin,
+                                nextCheckinReward: state.nextCheckinReward,
+                                isClaimingCheckin: state.isClaimingCheckin,
+                                hundredCoinsValue: hundredCoinsValue,
+                                claimMessage: 'Reclama tu bono diario de puntos',
+                                streakPreviewLabel:
+                                    'Días seguidos: ${state.currentStreak}',
+                                onClaim: () => _handleClaim(state),
+                              ),
                             ),
                             const SizedBox(height: 24),
                             const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 20),
+                              padding: EdgeInsets.symmetric(horizontal: 16),
                               child: PointsMiniGameCard(),
                             ),
                             const SizedBox(height: 24),
-                            const PointsGameActionsSection(),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: PointsGameActionsSection(),
+                            ),
                             const SizedBox(height: 24),
-                            const PointsMovementsSection(),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: PointsMovementsSection(),
+                            ),
                             const SizedBox(height: 40),
                           ],
                         ),
