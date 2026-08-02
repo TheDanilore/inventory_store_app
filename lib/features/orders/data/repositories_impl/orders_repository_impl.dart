@@ -1,6 +1,7 @@
-import 'dart:async' show StreamController;
+import 'dart:async' show StreamController, Timer;
+import 'dart:io' show SocketException;
 
-import 'package:flutter/foundation.dart';
+import 'dart:developer' as developer;
 import 'package:fpdart/fpdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
@@ -47,7 +48,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final orders = data.map((json) => OrderModel.fromJson(json)).toList();
       return Right(orders);
     } catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] Error en getCustomerOrders: $e\n$st');
+      developer.log('Error en getCustomerOrders', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(ServerFailure(message: 'Error fetching orders: $e'));
     }
   }
@@ -68,9 +69,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final orders = data.map((json) => OrderModel.fromJson(json)).toList();
       return Right(orders);
     } catch (e, st) {
-      debugPrint(
-        '🔴 [OrdersRepo] Error en getPendingOrdersByCustomer: $e\n$st',
-      );
+      developer.log('Error en getPendingOrdersByCustomer', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(ServerFailure(message: 'Error fetching pending orders: $e'));
     }
   }
@@ -150,9 +149,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final orders = rawData.map((e) => OrderModel.fromJson(e)).toList();
 
       return Right((orders: orders, total: totalRecords));
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error en getFilteredOrders', error: e, stackTrace: st, name: 'OrdersRepo');
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') ||
+      if (e is SocketException ||
+          errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
           errStr.contains('failed host lookup')) {
         return const Left(ServerFailure(message: 'Sin conexión a internet.'));
@@ -191,14 +192,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
               .maybeSingle();
 
       if (data == null) {
-        debugPrint(
-          '🔴 [OrdersRepo] getOrderById data == null para id: $orderId',
-        );
+        developer.log('getOrderById data == null para id: $orderId', name: 'OrdersRepo');
         return const Left(ServerFailure(message: 'Pedido no encontrado.'));
       }
       return Right(OrderModel.fromJson(data));
     } catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] Error en getOrderById: $e\n$st');
+      developer.log('Error en getOrderById', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(ServerFailure(message: 'Error fetching order: $e'));
     }
   }
@@ -220,7 +219,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final items = data.map((json) => OrderItemModel.fromJson(json)).toList();
       return Right(items);
     } catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] Error en getOrderItems: $e\n$st');
+      developer.log('Error en getOrderItems', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(ServerFailure(message: 'Error fetching order items: $e'));
     }
   }
@@ -266,18 +265,14 @@ class OrdersRepositoryImpl implements OrdersRepository {
         return const Right(null);
       }
     } on PostgrestException catch (e, st) {
-      debugPrint(
-        '🔴 [OrdersRepo] PostgrestException en updateOrderStatus: $e\n$st',
-      );
+      developer.log('PostgrestException en updateOrderStatus', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(
         ServerFailure(
           message: 'Error de base de datos al actualizar el estado.',
         ),
       );
     } catch (e, st) {
-      debugPrint(
-        '🔴 [OrdersRepo] Error inesperado en updateOrderStatus: $e\n$st',
-      );
+      developer.log('Error inesperado en updateOrderStatus', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(
         ServerFailure(message: 'Error inesperado al actualizar el estado.'),
       );
@@ -372,10 +367,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
       // ─── ESCENARIO 3: SIMPLE SAVE (Borrador) ────────────────────────────
       // Lógica de puntos (crédito no genera en borrador)
-      int finalPointsUsed = paymentMethod == 'CRÉDITO' ? 0 : pointsUsed;
-      int finalPointsEarned = paymentMethod == 'CRÉDITO' ? 0 : pointsEarned;
-      String paymentStatus = paymentMethod == 'CRÉDITO' ? 'PENDING' : 'PAID';
-      double amountPaid = paymentMethod == 'CRÉDITO' ? 0 : totalAmount;
+      const String creditPaymentType = 'CRÉDITO';
+      final isCredit = paymentMethod.toUpperCase() == creditPaymentType;
+      int finalPointsUsed = isCredit ? 0 : pointsUsed;
+      int finalPointsEarned = isCredit ? 0 : pointsEarned;
+      String paymentStatus = isCredit ? 'PENDING' : 'PAID';
+      double amountPaid = isCredit ? 0 : totalAmount;
 
       await _supabase
           .from('orders')
@@ -395,26 +392,28 @@ class OrdersRepositoryImpl implements OrdersRepository {
           })
           .eq('id', orderId);
 
-      await Future.wait(
-        items.map(
-          (item) => _supabase
-              .from('order_items')
-              .update({
-                'quantity': item.quantity,
-                'unit_cost': item.unitCost,
-                'net_profit':
-                    (item.appliedPrice - item.unitCost) * item.quantity,
-              })
-              .eq('id', item.id),
-        ),
-      );
+      // [OPTIMIZACIÓN DATA EGRESS] Elimina N peticiones simultáneas, las agrupa en 1.
+      final upsertPayload = items.map((item) => {
+        'id': item.id,
+        'order_id': orderId,
+        'product_id': item.productId,
+        'variant_id': item.variantId,
+        'quantity': item.quantity,
+        'unit_cost': item.unitCost,
+        'applied_price': item.appliedPrice,
+        'net_profit': (item.appliedPrice - item.unitCost) * item.quantity,
+      }).toList();
+
+      if (upsertPayload.isNotEmpty) {
+        await _supabase.from('order_items').upsert(upsertPayload);
+      }
 
       return const Right(null);
     } on PostgrestException catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] PostgrestException en saveOrderChanges: $e\n$st');
+      developer.log('PostgrestException en saveOrderChanges', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(ServerFailure(message: 'Error de base de datos al guardar: ${e.message}'));
     } catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] Error en saveOrderChanges: $e\n$st');
+      developer.log('Error en saveOrderChanges', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(ServerFailure(message: 'Error al guardar: $e'));
     }
   }
@@ -437,8 +436,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
             notesOverride ?? 'Reembolso por devolución · Pedido #$orderId',
       );
       return const Right(null);
-    } catch (e) {
-      debugPrint('[OrderDetailService] processReturn error: $e');
+    } catch (e, st) {
+      developer.log('Error en processReturn', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(ServerFailure(message: 'Error al registrar devolución: $e'));
     }
   }
@@ -470,10 +469,10 @@ class OrdersRepositoryImpl implements OrdersRepository {
       await _supabase.rpc('rpc_cancel_order', params: {'payload': payload});
       return const Right(null);
     } on PostgrestException catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] PostgrestException en cancelOrder: $e\n$st');
+      developer.log('PostgrestException en cancelOrder', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(ServerFailure(message: 'Error de BD al cancelar orden: ${e.message}'));
     } catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] Error inesperado en cancelOrder: $e\n$st');
+      developer.log('Error inesperado en cancelOrder', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(ServerFailure(message: 'Error al cancelar orden: $e'));
     }
   }
@@ -503,7 +502,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
       return Right(List<Map<String, dynamic>>.from(resp));
     } catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] Error en fetchOrderItemsForPdf: $e\n$st');
+      developer.log('Error en fetchOrderItemsForPdf', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(ServerFailure(message: 'Error al obtener ítems para PDF: $e'));
     }
   }
@@ -527,7 +526,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
       _cachedFinancialAccounts = accounts;
       return Right(accounts);
     } catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] Error en getFinancialAccounts: $e\n$st');
+      developer.log('Error en getFinancialAccounts', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(
         ServerFailure(message: 'Error fetching financial accounts: $e'),
       );
@@ -547,7 +546,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
               .maybeSingle();
       return Right(response);
     } catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] Error en getProfileById: $e\n$st');
+      developer.log('Error en getProfileById', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(ServerFailure(message: 'Error fetching profile: $e'));
     }
   }
@@ -566,7 +565,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
           .limit(20);
       return Right(List<Map<String, dynamic>>.from(response));
     } catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] Error en searchCustomers: $e\n$st');
+      developer.log('Error en searchCustomers', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(ServerFailure(message: 'Error searching customers: $e'));
     }
   }
@@ -578,7 +577,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
       // We return null since the RPC register_financial_movement will handle it.
       return const Right(null);
     } catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] Error en checkActiveCashShift: $e\n$st');
+      developer.log('Error en checkActiveCashShift', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(
         ServerFailure(message: 'Error checking active cash shift: $e'),
       );
@@ -619,7 +618,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
         );
       }
     } catch (e, st) {
-      debugPrint('🔴 [OrdersRepo] Error en registerCreditPayment: $e\n$st');
+      developer.log('Error en registerCreditPayment', error: e, stackTrace: st, name: 'OrdersRepo');
       return Left(
         ServerFailure(message: 'Error al registrar pago en base de datos: $e'),
       );
@@ -630,6 +629,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
   Stream<Either<Failure, int>> watchPendingOrdersCount() {
     final controller = StreamController<Either<Failure, int>>.broadcast();
     RealtimeChannel? channel;
+    Timer? debounceTimer;
 
     Future<void> fetchCount() async {
       try {
@@ -642,7 +642,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
         if (!controller.isClosed) {
           controller.add(Right(response.count));
         }
-      } catch (e) {
+      } catch (e, st) {
+        developer.log('Error fetching count', error: e, stackTrace: st, name: 'OrdersRepo');
         if (!controller.isClosed) {
           controller.add(
             Left(ServerFailure(message: 'Error fetching count: $e')),
@@ -661,8 +662,10 @@ class OrdersRepositoryImpl implements OrdersRepository {
             schema: 'public',
             table: 'orders',
             callback: (payload) {
-              // Cada vez que hay una inserción/actualización/borrado en 'orders', consultamos el count
-              fetchCount();
+              debounceTimer?.cancel();
+              debounceTimer = Timer(const Duration(milliseconds: 1500), () {
+                fetchCount();
+              });
             },
           );
       channel!.subscribe();
@@ -670,6 +673,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
     // Limpieza al cerrarse el stream
     controller.onCancel = () async {
+      debounceTimer?.cancel();
       await channel?.unsubscribe();
       await controller.close();
     };
