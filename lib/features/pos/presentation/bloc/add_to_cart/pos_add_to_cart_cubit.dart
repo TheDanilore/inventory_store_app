@@ -14,16 +14,14 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
     emit(PosAddToCartLoading());
 
     try {
-      // Parallelize network requests to avoid N+1 latency in POS
-      final results = await Future.wait([
-        _repository.fetchVariantsByProductIds([product.id]),
-        _repository.loadStockByVariant(product.id),
-      ]);
+      // Parallelize network requests cleanly with sound static typing
+      final variantMapFuture = _repository.fetchVariantsByProductIds([product.id]);
+      final stockFuture = _repository.loadStockByVariant(product.id);
 
-      final variantMapRes = results[0] as dynamic;
-      final stockRes = results[1] as dynamic;
+      final variantMapRes = await variantMapFuture;
+      final stockRes = await stockFuture;
 
-      final variantMap = variantMapRes.fold(
+      final Map<String, List<ProductVariantEntity>> variantMap = variantMapRes.fold(
         (l) {
           developer.log(
             'Error al descargar variantes para el POS desde Repositorio',
@@ -32,12 +30,14 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
           );
           throw Exception(l.message);
         },
-        (r) => r as Map<String, List<ProductVariantEntity>>,
+        (r) => r,
       );
 
-      final variants = variantMap[product.id] ?? [];
+      final List<ProductVariantEntity> variants = List<ProductVariantEntity>.from(
+        variantMap[product.id] ?? [],
+      );
 
-      final stockByVariant = stockRes.fold(
+      final Map<String, int> stockByVariant = stockRes.fold(
         (l) {
           developer.log(
             'Advertencia: No se pudo cargar el stock del POS por variante',
@@ -46,13 +46,13 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
           );
           return <String, int>{};
         },
-        (r) => r as Map<String, int>,
+        (r) => r,
       );
 
       ProductVariantEntity? selectedVariant;
       if (variants.isNotEmpty) {
         selectedVariant = variants.firstWhere(
-          (v) => (stockByVariant[v.id] ?? 0) > 0,
+          (ProductVariantEntity v) => (stockByVariant[v.id] ?? 0) > 0,
           orElse: () => variants.first,
         );
       }
