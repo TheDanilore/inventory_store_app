@@ -3,16 +3,19 @@ import 'package:flutter/material.dart';
 
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/variant_picker/variant_picker_cubit.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/variant_picker/variant_picker_state.dart';
 
 class CartVariantPickerSheet extends StatefulWidget {
   final CartCubit cartCubit;
@@ -59,14 +62,17 @@ class CartVariantPickerSheet extends StatefulWidget {
                   maxWidth: 540,
                   maxHeight: 620,
                 ),
-                child: CartVariantPickerSheet(
-                  cartCubit: cartCubit,
-                  product: product,
-                  existingCartItem: existingCartItem,
-                  initialQuantity: initialQuantity,
-                  onVariantSelected: onVariantSelected,
-                  selectedVariantId: selectedVariantId,
-                  isDialog: true,
+                child: BlocProvider<VariantPickerCubit>(
+                  create: (_) => VariantPickerCubit(sl<ProductsRepository>())..loadData(product.id),
+                  child: CartVariantPickerSheet(
+                    cartCubit: cartCubit,
+                    product: product,
+                    existingCartItem: existingCartItem,
+                    initialQuantity: initialQuantity,
+                    onVariantSelected: onVariantSelected,
+                    selectedVariantId: selectedVariantId,
+                    isDialog: true,
+                  ),
                 ),
               ),
             ),
@@ -76,15 +82,17 @@ class CartVariantPickerSheet extends StatefulWidget {
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder:
-            (context) => CartVariantPickerSheet(
-              cartCubit: cartCubit,
-              product: product,
-              existingCartItem: existingCartItem,
-              initialQuantity: initialQuantity,
-              onVariantSelected: onVariantSelected,
-              selectedVariantId: selectedVariantId,
-            ),
+        builder: (context) => BlocProvider<VariantPickerCubit>(
+          create: (_) => VariantPickerCubit(sl<ProductsRepository>())..loadData(product.id),
+          child: CartVariantPickerSheet(
+            cartCubit: cartCubit,
+            product: product,
+            existingCartItem: existingCartItem,
+            initialQuantity: initialQuantity,
+            onVariantSelected: onVariantSelected,
+            selectedVariantId: selectedVariantId,
+          ),
+        ),
       );
     }
   }
@@ -94,110 +102,101 @@ class CartVariantPickerSheet extends StatefulWidget {
 }
 
 class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
-  final _service = sl<ProductsRepository>();
-  bool _isLoading = true;
-  List<ProductVariantEntity> _variants = [];
-  Map<String, int> _stockByVariant = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    try {
-      final variantsRes = await _service.loadActiveVariants(widget.product.id);
-      final variantsData = variantsRes.fold(
-        (l) => <Map<String, dynamic>>[],
-        (r) => r,
-      );
-      _variants =
-          variantsData
-              .map((v) => ProductVariantModel.fromJson(v).toEntity())
-              .toList();
-      final stockRes = await _service.loadStockByVariant(widget.product.id);
-      _stockByVariant = stockRes.fold((l) => <String, int>{}, (r) => r);
-    } catch (e) {
-      debugPrint('Error loading variants: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Container(
-        height: 220,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius:
-              widget.isDialog
+    return BlocBuilder<VariantPickerCubit, VariantPickerState>(
+      builder: (context, state) {
+        if (state is VariantPickerInitial || state is VariantPickerLoading) {
+          return Container(
+            height: 220,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: widget.isDialog
                   ? BorderRadius.circular(20)
                   : const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(AppColors.primary),
-          ),
-        ),
-      );
-    }
-
-    if (_variants.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius:
-              widget.isDialog
-                  ? BorderRadius.circular(20)
-                  : const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.isDialog)
-                Align(
-                  alignment: Alignment.topRight,
-                  child: IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ),
-              const Text(
-                'Este producto no tiene variantes disponibles o están inactivas.',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.error,
-                ),
-                textAlign: TextAlign.center,
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation(AppColors.primary),
               ),
-            ],
-          ),
-        ),
-      );
-    }
+            ),
+          );
+        }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius:
-            widget.isDialog
+        if (state is VariantPickerError) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: widget.isDialog
+                  ? BorderRadius.circular(20)
+                  : const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: AppEmptyState(
+              icon: Icons.wifi_off_rounded,
+              title: 'Error de conexión',
+              message: state.message,
+              action: ElevatedButton.icon(
+                onPressed: () => context.read<VariantPickerCubit>().loadData(widget.product.id),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Reintentar'),
+              ),
+            ),
+          );
+        }
+
+        if (state is VariantPickerLoaded && state.variants.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: widget.isDialog
+                  ? BorderRadius.circular(20)
+                  : const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.isDialog)
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ),
+                  const Text(
+                    'Este producto no tiene variantes disponibles o están inactivas.',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.error,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final variants = (state as VariantPickerLoaded).variants;
+        final stockByVariant = state.stockByVariant;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: widget.isDialog
                 ? BorderRadius.circular(20)
                 : const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!widget.isDialog) ...[
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (!widget.isDialog) ...[
               const SizedBox(height: 12),
               Center(
                 child: Container(
@@ -280,9 +279,9 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
                   mainAxisSpacing: 16,
                   childAspectRatio: 0.75,
                 ),
-                itemCount: _variants.length,
+                itemCount: variants.length,
                 itemBuilder: (context, index) {
-                  return _buildVariantOption(context, _variants[index]);
+                  return _buildVariantOption(context, variants[index], stockByVariant);
                 },
               ),
             ),
@@ -291,13 +290,16 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
         ),
       ),
     );
+      },
+    );
   }
 
   Widget _buildVariantOption(
     BuildContext context,
     ProductVariantEntity variant,
+    Map<String, int> stockByVariant,
   ) {
-    final int variantStock = _stockByVariant[variant.id] ?? 0;
+    final int variantStock = stockByVariant[variant.id] ?? 0;
     final bool isAgotado = widget.product.stockControl && variantStock <= 0;
 
     final bool isSelected = variant.id == widget.selectedVariantId;
@@ -401,19 +403,19 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
                               ? CachedNetworkImage(
                                 imageUrl: variant.images.first.imageUrl,
                                 fit: BoxFit.cover,
-                                placeholder: (context, url) => _imgFallback(),
+                                placeholder: (context, url) => const _ImgFallback(),
                                 errorWidget:
-                                    (context, url, error) => _imgFallback(),
+                                    (context, url, error) => const _ImgFallback(),
                               )
                               : widget.product.images.isNotEmpty
                               ? CachedNetworkImage(
                                 imageUrl: widget.product.images.first.imageUrl,
                                 fit: BoxFit.cover,
-                                placeholder: (context, url) => _imgFallback(),
+                                placeholder: (context, url) => const _ImgFallback(),
                                 errorWidget:
-                                    (context, url, error) => _imgFallback(),
+                                    (context, url, error) => const _ImgFallback(),
                               )
-                              : _imgFallback(),
+                              : const _ImgFallback(),
                     ),
                   ),
                   Padding(
@@ -495,14 +497,22 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
     );
   }
 
-  Widget _imgFallback() => Container(
-    color: Colors.grey.shade100,
-    child: const Center(
-      child: Icon(
-        Icons.image_outlined,
-        color: AppColors.textSecondary,
-        size: 28,
+}
+
+class _ImgFallback extends StatelessWidget {
+  const _ImgFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.grey.shade100,
+      child: const Center(
+        child: Icon(
+          Icons.image_outlined,
+          color: AppColors.textSecondary,
+          size: 28,
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
