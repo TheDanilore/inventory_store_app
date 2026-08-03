@@ -357,8 +357,10 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
               sublabel: 'Reduce la deuda total del cliente',
               isSelected: state.selectedOrder == null,
               onTap: () {
-                cubit.selectOrder(null, debt);
-                _amountCtrl.clear();
+                final val = debt.toStringAsFixed(2);
+                _amountCtrl.text = val;
+                cubit.selectOrder(null, debt, val);
+                cubit.validateAmount(val, debt);
               },
             ),
             ...state.pendingOrders.map((order) {
@@ -376,8 +378,10 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
                 pointsEarned: pointsEarned > 0 ? pointsEarned : null,
                 isSelected: state.selectedOrder?.id == order.id,
                 onTap: () {
-                  cubit.selectOrder(order, pending);
-                  _amountCtrl.text = pending.toStringAsFixed(2);
+                  final val = pending.toStringAsFixed(2);
+                  _amountCtrl.text = val;
+                  cubit.selectOrder(order, pending, val);
+                  cubit.validateAmount(val, pending);
                 },
               );
             }),

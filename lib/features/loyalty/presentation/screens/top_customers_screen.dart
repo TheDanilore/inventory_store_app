@@ -18,7 +18,8 @@ class TopCustomersScreen extends StatefulWidget {
 
 class _TopCustomersScreenState extends State<TopCustomersScreen> {
   void _openRoulette() {
-    final state = context.read<LoyaltyTopCustomersCubit>().state;
+    final cubit = context.read<LoyaltyTopCustomersCubit>();
+    final state = cubit.state;
     if (state.participants.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -36,7 +37,10 @@ class _TopCustomersScreenState extends State<TopCustomersScreen> {
       barrierColor: Colors.black.withValues(alpha: 0.4),
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) {
-        return const GlassRouletteDialog();
+        return BlocProvider.value(
+          value: cubit,
+          child: const GlassRouletteDialog(),
+        );
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return FadeTransition(

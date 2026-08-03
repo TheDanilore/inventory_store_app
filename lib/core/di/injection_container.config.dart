@@ -240,6 +240,8 @@ import '../../features/inventory/domain/usecases/create_inventory_entry_usecase.
     as _i419;
 import '../../features/inventory/domain/usecases/create_inventory_exit_usecase.dart'
     as _i738;
+import '../../features/inventory/domain/usecases/delete_warehouse_usecase.dart'
+    as _i1033;
 import '../../features/inventory/domain/usecases/export_kardex_pdf_usecase.dart'
     as _i876;
 import '../../features/inventory/domain/usecases/get_active_warehouses_exits_usecase.dart'
@@ -587,6 +589,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i747.LoyaltyRepository>(
       () => _i643.LoyaltyRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
+    gh.factory<_i1033.DeleteWarehouseUseCase>(
+      () => _i1033.DeleteWarehouseUseCase(gh<_i317.WarehousesRepository>()),
+    );
     gh.factory<_i160.GetActiveWarehousesExitsUseCase>(
       () => _i160.GetActiveWarehousesExitsUseCase(
         gh<_i317.WarehousesRepository>(),
@@ -682,13 +687,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i480.SyncCartUseCase>(
       () => _i480.SyncCartUseCase(gh<_i322.CartRepository>()),
-    );
-    gh.factory<_i276.WarehousesCubit>(
-      () => _i276.WarehousesCubit(
-        getWarehousesUseCase: gh<_i71.GetWarehousesUseCase>(),
-        saveWarehouseUseCase: gh<_i656.SaveWarehouseUseCase>(),
-        toggleWarehouseStatusUseCase: gh<_i275.ToggleWarehouseStatusUseCase>(),
-      ),
     );
     gh.factory<_i761.CustomerCreditMovementsCubit>(
       () => _i761.CustomerCreditMovementsCubit(
@@ -1204,6 +1202,14 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i601.UpdateCustomerLocationUseCase>(),
         gh<_i601.DeleteCustomerLocationUseCase>(),
         gh<_i601.SetDefaultCustomerLocationUseCase>(),
+      ),
+    );
+    gh.factory<_i276.WarehousesCubit>(
+      () => _i276.WarehousesCubit(
+        getWarehousesUseCase: gh<_i71.GetWarehousesUseCase>(),
+        saveWarehouseUseCase: gh<_i656.SaveWarehouseUseCase>(),
+        toggleWarehouseStatusUseCase: gh<_i275.ToggleWarehouseStatusUseCase>(),
+        deleteWarehouseUseCase: gh<_i1033.DeleteWarehouseUseCase>(),
       ),
     );
     gh.factory<_i1068.KardexCubit>(
