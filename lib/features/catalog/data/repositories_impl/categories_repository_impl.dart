@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,11 +13,19 @@ class CategoriesRepositoryImpl implements CategoriesRepository {
 
   CategoriesRepositoryImpl(this._supabase);
 
-  Either<Failure, T> _handleError<T>(Object e) {
+  Either<Failure, T> _handleError<T>(Object e, [StackTrace? st]) {
+    developer.log('CategoriesRepositoryImpl Error', error: e, stackTrace: st);
     if (e is PostgrestException) {
-      return left(Failure.from('Error de BD: '));
+      if (e.code == '23503') {
+        return left(
+          Failure.from(
+            'No se puede eliminar: Esta categoría está asociada a productos en el catálogo. Reasígnalos o desactiva la categoría.',
+          ),
+        );
+      }
+      return left(Failure.from('Error de BD: ${e.message}'));
     }
-    return left(Failure.from('Ocurrió un error inesperado: '));
+    return left(Failure.from('Ocurrió un error inesperado: ${e.toString()}'));
   }
 
   @override
@@ -72,24 +81,10 @@ class CategoriesRepositoryImpl implements CategoriesRepository {
   @override
   Future<Either<Failure, void>> deleteCategory(String id) async {
     try {
-      // Verificación de integridad relacional antes del borrado
-      final existingProducts = await _supabase
-          .from('products')
-          .select('id')
-          .eq('category_id', id)
-          .limit(1);
-      if ((existingProducts as List).isNotEmpty) {
-        return left(
-          Failure.from(
-            'No se puede eliminar: Esta categoría tiene productos asociados en el catálogo. Reasígnalos o desactiva la categoría.',
-          ),
-        );
-      }
-
       await _supabase.from('categories').delete().eq('id', id);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 

@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,14 +13,15 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
 
   IngredientsRepositoryImpl(this._supabase);
 
-  Either<Failure, T> _handleError<T>(Object e) {
+  Either<Failure, T> _handleError<T>(Object e, [StackTrace? st]) {
+    developer.log('IngredientsRepositoryImpl Error', error: e, stackTrace: st);
     if (e is PostgrestException) {
       if (e.code == '23503') {
-        return left(Failure.from('No se puede eliminar porque este elemento está siendo utilizado en productos o registros del sistema.'));
+        return left(Failure.from('No se puede eliminar: Este componente químico está siendo utilizado en las formulaciones de productos del catálogo.'));
       }
       return left(Failure.from('Error de BD: ${e.message}'));
     }
-    return left(Failure.from('Ocurrió un error inesperado al procesar la solicitud.'));
+    return left(Failure.from('Ocurrió un error inesperado al procesar la solicitud: ${e.toString()}'));
   }
 
   @override
@@ -91,23 +93,10 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
   @override
   Future<Either<Failure, void>> deleteIngredient(String id) async {
     try {
-      final usage = await _supabase
-          .from('product_active_ingredients')
-          .select('product_id')
-          .eq('ingredient_id', id)
-          .limit(1);
-      if ((usage as List).isNotEmpty) {
-        return left(
-          Failure.from(
-            'No se puede eliminar: Este componente químico está siendo utilizado en las formulaciones de productos del catálogo.',
-          ),
-        );
-      }
-
       await _supabase.from('active_ingredients').delete().eq('id', id);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 

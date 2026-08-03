@@ -41,8 +41,9 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
 
     final cubit = context.read<AttributesCubit>();
     final success = await cubit.saveAttribute(
-      _nameCtrl.text,
+      _nameCtrl.text.trim(),
       id: widget.attribute?.id,
+      description: _descCtrl.text.trim(),
     );
 
     if (success && mounted) {

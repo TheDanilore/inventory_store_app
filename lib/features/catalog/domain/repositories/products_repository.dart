@@ -43,8 +43,15 @@ abstract class ProductsRepository {
   );
 
   // Atributos
-  Future<Either<Failure, AttributeEntity>> createAttribute(String name);
-  Future<Either<Failure, void>> updateAttribute(String id, String name);
+  Future<Either<Failure, AttributeEntity>> createAttribute(
+    String name, {
+    String? description,
+  });
+  Future<Either<Failure, void>> updateAttribute(
+    String id,
+    String name, {
+    String? description,
+  });
   Future<Either<Failure, void>> deleteAttribute(String id);
   Future<Either<Failure, AttributeValueEntity>> createAttributeValue(
     String attributeId,

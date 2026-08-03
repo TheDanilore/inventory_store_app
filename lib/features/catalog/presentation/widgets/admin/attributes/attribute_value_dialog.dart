@@ -19,6 +19,7 @@ class AttributeValueDialog extends StatefulWidget {
 }
 
 class _AttributeValueDialogState extends State<AttributeValueDialog> {
+  final _formKey = GlobalKey<FormState>();
   final _valueCtrl = TextEditingController();
 
   @override
@@ -28,12 +29,12 @@ class _AttributeValueDialogState extends State<AttributeValueDialog> {
   }
 
   Future<void> _save() async {
-    if (_valueCtrl.text.trim().isEmpty) return;
+    if (!_formKey.currentState!.validate()) return;
 
     final cubit = context.read<AttributesCubit>();
     final success = await cubit.saveAttributeValue(
       widget.attributeId,
-      _valueCtrl.text,
+      _valueCtrl.text.trim(),
     );
 
     if (success && mounted) {
@@ -45,11 +46,15 @@ class _AttributeValueDialogState extends State<AttributeValueDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text('Añadir valor a ${widget.attributeName}'),
-      content: TextField(
-        controller: _valueCtrl,
-        autofocus: true,
-        decoration: const InputDecoration(hintText: 'Ej: Rojo, XL, Madera...'),
-        onSubmitted: (_) => _save(),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _valueCtrl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Ej: Rojo, XL, Madera...'),
+          validator: (val) => val == null || val.trim().isEmpty ? 'Ingresa un valor' : null,
+          onFieldSubmitted: (_) => _save(),
+        ),
       ),
       actions: [
         BlocSelector<AttributesCubit, AttributesState, bool>(

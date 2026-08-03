@@ -144,12 +144,6 @@ class _CategoriesManagementScreenState
             type: SnackbarType.success,
           );
           _clearDesktopForm();
-        } else if (cubit.state.errorMessage != null) {
-          AppSnackbar.show(
-            context,
-            message: cubit.state.errorMessage!,
-            type: SnackbarType.error,
-          );
         }
       }
     } finally {
@@ -201,12 +195,6 @@ class _CategoriesManagementScreenState
         message: 'Categoría eliminada exitosamente.',
         type: SnackbarType.success,
       );
-    } else if (cubit.state.errorMessage != null && mounted) {
-      AppSnackbar.show(
-        context,
-        message: cubit.state.errorMessage!,
-        type: SnackbarType.error,
-      );
     }
   }
 
@@ -215,7 +203,19 @@ class _CategoriesManagementScreenState
     return AdminLayout(
       title: 'Categorías',
       showBackButton: true,
-      body: BlocBuilder<CategoriesCubit, CategoriesState>(
+      body: BlocConsumer<CategoriesCubit, CategoriesState>(
+        listenWhen: (previous, current) =>
+            current.errorMessage != null &&
+            current.errorMessage != previous.errorMessage,
+        listener: (context, state) {
+          if (state.errorMessage != null) {
+            AppSnackbar.show(
+              context,
+              message: state.errorMessage!,
+              type: SnackbarType.error,
+            );
+          }
+        },
         builder: (context, state) {
           final cubit = context.read<CategoriesCubit>();
           return LayoutBuilder(

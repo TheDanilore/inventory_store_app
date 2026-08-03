@@ -25,6 +25,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
   Either<Failure, T> _handleError<T>(Object e, [StackTrace? st]) {
     developer.log('ProductsRepositoryImpl Error', error: e, stackTrace: st);
     if (e is PostgrestException) {
+      if (e.code == '23503') {
+        return left(
+          Failure.from(
+            'No se puede eliminar: Este registro o sus valores están siendo utilizados por otros elementos (productos, variantes o inventario) en el sistema.',
+          ),
+        );
+      }
       return left(Failure.from('Error de BD: ${e.message}'));
     } else if (e is StorageException) {
       return left(Failure.from('Error en Storage (Imágenes): ${e.message}'));
@@ -350,26 +357,51 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
-  Future<Either<Failure, AttributeEntity>> createAttribute(String name) async {
+  Future<Either<Failure, AttributeEntity>> createAttribute(
+    String name, {
+    String? description,
+  }) async {
     try {
+      final payload = {
+        'name': name.trim(),
+        if (description != null && description.trim().isNotEmpty)
+          'description': description.trim(),
+      };
       final res =
           await _supabase
               .from('attributes')
-              .insert({'name': name.trim()})
-              .select('id, name')
+              .insert(payload)
+              .select('id, name, description')
               .single();
-      return right(AttributeEntity(id: res['id'], name: res['name']));
+      return right(
+        AttributeEntity(
+          id: res['id'],
+          name: res['name'],
+          description: res['description'] as String?,
+        ),
+      );
     } catch (e, st) {
       return _handleError(e, st);
     }
   }
 
   @override
-  Future<Either<Failure, void>> updateAttribute(String id, String name) async {
+  Future<Either<Failure, void>> updateAttribute(
+    String id,
+    String name, {
+    String? description,
+  }) async {
     try {
+      final payload = {
+        'name': name.trim(),
+        'description':
+            (description != null && description.trim().isNotEmpty)
+                ? description.trim()
+                : null,
+      };
       await _supabase
           .from('attributes')
-          .update({'name': name.trim()})
+          .update(payload)
           .eq('id', id);
       return right(null);
     } catch (e, st) {
@@ -388,15 +420,16 @@ class ProductsRepositoryImpl implements ProductsRepository {
           (valuesRes as List).map((v) => v['id'] as String).toList();
 
       if (valueIds.isNotEmpty) {
-        final usage = await _supabase
+        final usageCheck = await _supabase
             .from('variant_attribute_values')
             .select('variant_id')
             .inFilter('attribute_value_id', valueIds)
             .limit(1);
-        if ((usage as List).isNotEmpty) {
+
+        if ((usageCheck as List).isNotEmpty) {
           return left(
             Failure.from(
-              'No se puede eliminar: Esta propiedad tiene valores que están siendo utilizados por variantes de productos en el catálogo.',
+              'No se puede eliminar: Esta propiedad o algunos de sus valores están asignados a variantes de productos existentes en el sistema.',
             ),
           );
         }
@@ -546,15 +579,16 @@ class ProductsRepositoryImpl implements ProductsRepository {
   @override
   Future<Either<Failure, void>> deleteAttributeValue(String valueId) async {
     try {
-      final usage = await _supabase
+      final usageCheck = await _supabase
           .from('variant_attribute_values')
           .select('variant_id')
           .eq('attribute_value_id', valueId)
           .limit(1);
-      if ((usage as List).isNotEmpty) {
+
+      if ((usageCheck as List).isNotEmpty) {
         return left(
           Failure.from(
-            'No se puede eliminar: Este valor está siendo utilizado por variantes de productos en el catálogo.',
+            'No se puede eliminar: Este valor está siendo utilizado en una o más variantes de productos existentes.',
           ),
         );
       }

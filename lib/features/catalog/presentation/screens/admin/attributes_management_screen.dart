@@ -96,7 +96,11 @@ class _AttributesManagementScreenState
     }
 
     final cubit = context.read<AttributesCubit>();
-    final success = await cubit.saveAttribute(name, id: _editingAttributeId);
+    final success = await cubit.saveAttribute(
+      name,
+      id: _editingAttributeId,
+      description: _desktopDescCtrl.text.trim(),
+    );
 
     if (success && mounted) {
       AppSnackbar.show(
@@ -453,12 +457,6 @@ class _AttributesManagementScreenState
                     message: 'Propiedad "${attr.name}" eliminada',
                     type: SnackbarType.success,
                   );
-                } else if (cubit.state.errorMessage != null) {
-                  AppSnackbar.show(
-                    context,
-                    message: cubit.state.errorMessage!,
-                    type: SnackbarType.error,
-                  );
                 }
               }
             }
@@ -496,7 +494,6 @@ class _AttributeCardState extends State<_AttributeCard> {
   @override
   Widget build(BuildContext context) {
     final values = widget.attribute.values;
-    final isSaving = context.watch<AttributesCubit>().state.isSaving;
 
     return Material(
       color: Colors.transparent,
@@ -548,8 +545,8 @@ class _AttributeCardState extends State<_AttributeCard> {
                             Icons.category_outlined,
                             color: AppColors.primary,
                             size: 20,
+                            ),
                           ),
-                        ),
                         const SizedBox(width: 12),
                         Text(
                           widget.attribute.name,
@@ -609,29 +606,34 @@ class _AttributeCardState extends State<_AttributeCard> {
                     runSpacing: 8,
                     children: [
                       ...values.map((v) => _ValueChip(value: v)),
-                      AnimatedScale(
-                        scale: isSaving ? 0.95 : 1.0,
-                        duration: const Duration(milliseconds: 150),
-                        child: ActionChip(
-                          label: const Text('Añadir valor'),
-                          avatar: const Icon(
-                            Icons.add,
-                            size: 16,
-                            color: AppColors.primary,
-                          ),
-                          backgroundColor: AppColors.primary.withValues(
-                            alpha: 0.1,
-                          ),
-                          labelStyle: const TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          side: BorderSide.none,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          onPressed: widget.onAddValue,
-                        ),
+                      BlocSelector<AttributesCubit, AttributesState, bool>(
+                        selector: (state) => state.isSaving,
+                        builder: (context, isSaving) {
+                          return AnimatedScale(
+                            scale: isSaving ? 0.95 : 1.0,
+                            duration: const Duration(milliseconds: 150),
+                            child: ActionChip(
+                              label: const Text('Añadir valor'),
+                              avatar: const Icon(
+                                Icons.add,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                              backgroundColor: AppColors.primary.withValues(
+                                alpha: 0.1,
+                              ),
+                              labelStyle: const TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              side: BorderSide.none,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              onPressed: widget.onAddValue,
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -678,12 +680,6 @@ class _ValueChipState extends State<_ValueChip> {
           context,
           message: 'Valor eliminado',
           type: SnackbarType.success,
-        );
-      } else if (cubit.state.errorMessage != null) {
-        AppSnackbar.show(
-          context,
-          message: cubit.state.errorMessage!,
-          type: SnackbarType.error,
         );
       }
       setState(() => _isDeleting = false);

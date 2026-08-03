@@ -4959,7 +4959,7 @@ ALTER TABLE ONLY "public"."supplier_credits"
 
 
 ALTER TABLE ONLY "public"."variant_attribute_values"
-    ADD CONSTRAINT "vav_attribute_value_id_fkey" FOREIGN KEY ("attribute_value_id") REFERENCES "public"."attribute_values"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "vav_attribute_value_id_fkey" FOREIGN KEY ("attribute_value_id") REFERENCES "public"."attribute_values"("id") ON DELETE RESTRICT;
 
 
 

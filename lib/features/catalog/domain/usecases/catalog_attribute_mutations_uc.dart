@@ -9,8 +9,11 @@ import 'package:inventory_store_app/features/catalog/domain/entities/attribute_e
 class CreateAttributeUseCase {
   final ProductsRepository repository;
   CreateAttributeUseCase(this.repository);
-  Future<Either<Failure, AttributeEntity>> call(String name) async {
-    return await repository.createAttribute(name);
+  Future<Either<Failure, AttributeEntity>> call(
+    String name, {
+    String? description,
+  }) async {
+    return await repository.createAttribute(name, description: description);
   }
 }
 
@@ -18,8 +21,16 @@ class CreateAttributeUseCase {
 class UpdateAttributeUC {
   final ProductsRepository repository;
   UpdateAttributeUC(this.repository);
-  Future<Either<Failure, void>> call(String id, String name) async {
-    return await repository.updateAttribute(id, name);
+  Future<Either<Failure, void>> call(
+    String id,
+    String name, {
+    String? description,
+  }) async {
+    return await repository.updateAttribute(
+      id,
+      name,
+      description: description,
+    );
   }
 }
 

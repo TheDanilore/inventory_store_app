@@ -121,12 +121,6 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
           type: SnackbarType.success,
         );
         _clearDesktopForm();
-      } else if (cubit.state.errorMessage != null) {
-        AppSnackbar.show(
-          context,
-          message: cubit.state.errorMessage!,
-          type: SnackbarType.error,
-        );
       }
     }
   }
@@ -136,7 +130,19 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
     return AdminLayout(
       title: 'Componentes Químicos',
       showBackButton: true,
-      body: BlocBuilder<IngredientsCubit, IngredientsState>(
+      body: BlocConsumer<IngredientsCubit, IngredientsState>(
+        listenWhen: (previous, current) =>
+            current.errorMessage != null &&
+            current.errorMessage != previous.errorMessage,
+        listener: (context, state) {
+          if (state.errorMessage != null) {
+            AppSnackbar.show(
+              context,
+              message: state.errorMessage!,
+              type: SnackbarType.error,
+            );
+          }
+        },
         builder: (context, state) {
           final cubit = context.read<IngredientsCubit>();
           final isSaving = state.isSaving;
@@ -520,20 +526,14 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
       },
     );
 
-    if (confirmed == true && mounted) {
+    if (confirmed == true && context.mounted) {
       final success = await cubit.deleteIngredient(ingredient.id);
-      if (mounted) {
+      if (context.mounted) {
         if (success) {
           AppSnackbar.show(
             context,
             message: 'Componente eliminado exitosamente.',
             type: SnackbarType.success,
-          );
-        } else if (cubit.state.errorMessage != null) {
-          AppSnackbar.show(
-            context,
-            message: cubit.state.errorMessage!,
-            type: SnackbarType.error,
           );
         }
       }

@@ -46,11 +46,18 @@ class AttributesCubit extends Cubit<AttributesState> {
     );
   }
 
-  Future<bool> saveAttribute(String name, {String? id}) async {
+  Future<bool> saveAttribute(
+    String name, {
+    String? id,
+    String? description,
+  }) async {
     emit(state.copyWith(isSaving: true));
 
     if (id == null) {
-      final result = await createAttributeUseCase(name);
+      final result = await createAttributeUseCase(
+        name,
+        description: description,
+      );
       return result.fold(
         (failure) {
           emit(state.copyWith(isSaving: false, errorMessage: failure.message));
@@ -80,7 +87,11 @@ class AttributesCubit extends Cubit<AttributesState> {
         },
       );
     } else {
-      final result = await updateAttributeUC(id, name);
+      final result = await updateAttributeUC(
+        id,
+        name,
+        description: description,
+      );
       return result.fold(
         (failure) {
           emit(state.copyWith(isSaving: false, errorMessage: failure.message));
@@ -94,6 +105,7 @@ class AttributesCubit extends Cubit<AttributesState> {
           if (index != -1) {
             currentAttributes[index] = currentAttributes[index].copyWith(
               name: name,
+              description: description,
             );
           }
           currentAttributes.sort(
