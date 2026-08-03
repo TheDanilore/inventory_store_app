@@ -867,6 +867,19 @@ $$;
 ALTER FUNCTION "public"."get_top_customers"("p_limit" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."handle_update_timestamp"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."handle_update_timestamp"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -3707,7 +3720,8 @@ CREATE TABLE IF NOT EXISTS "public"."product_variants" (
     "created_by" "uuid",
     "updated_by" "uuid",
     "unit_cost" numeric DEFAULT 0 NOT NULL,
-    "barcode" "text"
+    "barcode" "text",
+    "updated_at" timestamp with time zone DEFAULT "now"()
 );
 
 
@@ -4539,6 +4553,10 @@ CREATE INDEX "wsb_variant_id_idx" ON "public"."warehouse_stock_batches" USING "b
 
 
 CREATE INDEX "wsb_warehouse_id_idx" ON "public"."warehouse_stock_batches" USING "btree" ("warehouse_id");
+
+
+
+CREATE OR REPLACE TRIGGER "set_product_variants_updated_at" BEFORE UPDATE ON "public"."product_variants" FOR EACH ROW EXECUTE FUNCTION "public"."handle_update_timestamp"();
 
 
 
@@ -5771,6 +5789,12 @@ GRANT ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query"
 GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."handle_update_timestamp"() TO "anon";
+GRANT ALL ON FUNCTION "public"."handle_update_timestamp"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."handle_update_timestamp"() TO "service_role";
 
 
 

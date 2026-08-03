@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:inventory_store_app/core/utils/isolate_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
 import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
@@ -47,6 +48,11 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   Timer? _debounce;
 
   final _isDiscountPercentageNotifier = ValueNotifier<bool>(false);
+
+  /// Mutex local que impide doble-ejecución de _processSale ante taps rápidos.
+  /// El estado PosStatus.loading tarda un frame en propagarse al botón;
+  /// este flag bloquea la re-entrada de forma síncrona e inmediata.
+  bool _isProcessing = false;
 
   bool _isLoadingInitialData = true;
 
@@ -140,7 +146,37 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     });
   }
 
+  // ─── HELPER DE CÁLCULO (evita recalcular totalFinal 3× por frame) ───────────
+
+  double _calcTotal(PosState pos, CartState cart, double ratio) {
+    return PosCalculatorUtils.calcularTotalFinal(
+      discountText: _descuentoCtrl.text,
+      isDiscountPercentage: _isDiscountPercentageNotifier.value,
+      pos: pos,
+      cart: cart,
+      ratio: ratio,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
   Future<void> _processSale(
+    PosCubit posCubit,
+    CartCubit cartCubit, {
+    bool isDraft = false,
+  }) async {
+    // Mutex: bloquea re-entrada síncrona antes de que el BLoC actualice la UI.
+    if (_isProcessing) return;
+    _isProcessing = true;
+
+    try {
+      await _processSaleInternal(posCubit, cartCubit, isDraft: isDraft);
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _processSaleInternal(
     PosCubit posCubit,
     CartCubit cartCubit, {
     bool isDraft = false,
@@ -205,12 +241,11 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
     final earningRate = config.getDouble('points_earning_rate', 0.03);
 
-    final totalFinal = PosCalculatorUtils.calcularTotalFinal(
-      discountText: _descuentoCtrl.text,
-      isDiscountPercentage: _isDiscountPercentageNotifier.value,
-      pos: posCubit.state,
-      cart: cartCubit.state,
-      ratio: pointsToSolesRatio,
+    // Usa el helper memoizado en lugar de invocar directamente la utilidad.
+    final totalFinal = _calcTotal(
+      posCubit.state,
+      cartCubit.state,
+      pointsToSolesRatio,
     );
 
     if (isCredito && !isDraft) {
@@ -350,7 +385,12 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         },
       );
     } catch (e, st) {
-      developer.log('Error cargando lotes', error: e, stackTrace: st);
+      developer.log(
+        'Error cargando lotes',
+        name: 'PosCheckoutScreen',
+        error: e,
+        stackTrace: st,
+      );
       if (mounted) {
         AppSnackbar.show(
           context,
@@ -472,6 +512,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                     } catch (e, st) {
                       developer.log(
                         'Error generando comprobante',
+                        name: 'PosCheckoutScreen',
                         error: e,
                         stackTrace: st,
                       );
@@ -788,36 +829,41 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                   prev.saldoActualCliente != curr.saldoActualCliente ||
                   prev.puntosAUsar != curr.puntosAUsar,
           builder: (context, posState) {
-            final cartCubit = context.watch<CartCubit>();
             final isCredito = posState.paymentMethod == 'CRÉDITO';
-            return AdminSalePointsSection(
-              show:
-                  isLoyaltyEnabled &&
-                  posState.selectedClientId != null &&
-                  posState.saldoActualCliente > 0 &&
-                  !isCredito,
-              saldoActualCliente: posState.saldoActualCliente,
-              maxPuntosAplicables: PosCalculatorUtils.maxPuntosAplicables(
-                posState,
-                cartCubit.state,
-                ratio,
-              ),
-              pointsToSolesRatio: ratio,
-              pointsController: _puntosCtrl,
-              onPointsChanged: (p) {
-                final posCubit = context.read<PosCubit>();
-                final next = PosCalculatorUtils.clampPointsValue(
-                  p,
-                  posState,
-                  cartCubit.state,
-                  ratio,
-                );
-                posCubit.setPuntosAUsar(next);
-                _puntosCtrl.value = TextEditingValue(
-                  text: next.toString(),
-                  selection: TextSelection.collapsed(
-                    offset: next.toString().length,
+            return BlocSelector<CartCubit, CartState, double>(
+              selector: (state) => state.totalAmount,
+              builder: (context, totalAmount) {
+                final cartState = context.read<CartCubit>().state;
+                return AdminSalePointsSection(
+                  show:
+                      isLoyaltyEnabled &&
+                      posState.selectedClientId != null &&
+                      posState.saldoActualCliente > 0 &&
+                      !isCredito,
+                  saldoActualCliente: posState.saldoActualCliente,
+                  maxPuntosAplicables: PosCalculatorUtils.maxPuntosAplicables(
+                    posState,
+                    cartState,
+                    ratio,
                   ),
+                  pointsToSolesRatio: ratio,
+                  pointsController: _puntosCtrl,
+                  onPointsChanged: (p) {
+                    final posCubit = context.read<PosCubit>();
+                    final next = PosCalculatorUtils.clampPointsValue(
+                      p,
+                      posState,
+                      cartState,
+                      ratio,
+                    );
+                    posCubit.setPuntosAUsar(next);
+                    _puntosCtrl.value = TextEditingValue(
+                      text: next.toString(),
+                      selection: TextSelection.collapsed(
+                        offset: next.toString().length,
+                      ),
+                    );
+                  },
                 );
               },
             );
@@ -1025,7 +1071,14 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    onChanged: (_) {},
+                    // Restringe la entrada a números con máximo 2 decimales.
+                    // Elimina el callback vacío onChanged — el ListenableBuilder
+                    // padre ya reacciona al controller automáticamente.
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*\.?\d{0,2}'),
+                      ),
+                    ],
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
@@ -1204,12 +1257,12 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
             final descuentoExcedido =
                 descuentoExtra >
                 (cartCubit.state.totalAmount - (puntosSeguros * ratio));
-            final totalFinal = PosCalculatorUtils.calcularTotalFinal(
-              discountText: _descuentoCtrl.text,
-              isDiscountPercentage: _isDiscountPercentageNotifier.value,
-              pos: posCubit.state,
-              cart: cartCubit.state,
-              ratio: ratio,
+
+            // Usa el helper _calcTotal para no recalcular el total 3 veces por frame.
+            final totalFinal = _calcTotal(
+              posCubit.state,
+              cartCubit.state,
+              ratio,
             );
 
             final disp = PosCalculatorUtils.getCreditDisponible(
@@ -1222,15 +1275,20 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                 disp < totalFinal;
             final creditoSinCliente =
                 isCredito && posCubit.state.selectedClientId == null;
-            final isCajaAccount = posCubit.state.accounts.any(
-              (a) =>
-                  a['id'] == posCubit.state.selectedAccountId &&
-                  a['type'] == 'CAJA',
+
+            // Unificado con la misma lógica booleana que usa _processSale,
+            // eliminando el magic string 'CAJA' que era inconsistente.
+            final accountData = posCubit.state.accounts.firstWhere(
+              (a) => a['id'] == posCubit.state.selectedAccountId,
+              orElse: () => {},
             );
+            final requiresShift =
+                accountData['is_cash_register'] == true ||
+                accountData['requires_shift'] == true;
             final noCajaAbierta =
                 !isCredito &&
                 posCubit.state.selectedAccountId != null &&
-                isCajaAccount &&
+                requiresShift &&
                 posCubit.state.activeShift == null;
 
             final puedeVender =
@@ -1240,7 +1298,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                 !creditoSinCliente &&
                 !noCajaAbierta;
 
-            final isProcessingSale = posCubit.state.status == PosStatus.loading;
+            // Combina el estado del BLoC con el mutex local para máxima seguridad.
+            final isProcessingSale =
+                posCubit.state.status == PosStatus.loading || _isProcessing;
 
             return Stack(
               children: [

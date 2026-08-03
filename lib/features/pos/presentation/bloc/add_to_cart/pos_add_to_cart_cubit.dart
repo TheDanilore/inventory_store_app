@@ -27,8 +27,8 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
           .fold((l) {
             developer.log(
               'Error al descargar variantes para el POS desde Repositorio',
-              error: l.message,
               name: 'PosAddToCartCubit',
+              error: l.message,
             );
             throw Exception(l.message);
           }, (r) => r);
@@ -39,8 +39,8 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
       final Map<String, int> stockByVariant = stockRes.fold((l) {
         developer.log(
           'Advertencia: No se pudo cargar el stock del POS por variante',
-          error: l.message,
           name: 'PosAddToCartCubit',
+          error: l.message,
         );
         return <String, int>{};
       }, (r) => r);
@@ -64,9 +64,9 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
     } catch (e, st) {
       developer.log(
         'Fallo crítico cargando datos del producto en POS',
+        name: 'PosAddToCartCubit',
         error: e,
         stackTrace: st,
-        name: 'PosAddToCartCubit',
       );
       final errMsg = e.toString().replaceAll('Exception: ', '');
       final isNetworkError =

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
 
 import 'package:inventory_store_app/features/pos/domain/repositories/pos_repository.dart';
@@ -43,6 +44,9 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
   Timer? _debounce;
   bool _lastSaleWasDraft = false;
   Map<String, int> _lastSoldQuantities = {};
+
+  /// Mutex local anti-doble-tap que previene la ejecución simultánea de ventas.
+  bool _isProcessing = false;
 
   @override
   void initState() {
@@ -99,6 +103,21 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     CartCubit cartCubit, {
     bool isDraft = false,
   }) async {
+    if (_isProcessing) return;
+    _isProcessing = true;
+
+    try {
+      await _processSaleInternal(posCubit, cartCubit, isDraft: isDraft);
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _processSaleInternal(
+    PosCubit posCubit,
+    CartCubit cartCubit, {
+    bool isDraft = false,
+  }) async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -149,7 +168,11 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
         orElse: () => <String, dynamic>{},
       );
 
-      if (accountData['type'] == 'CAJA' && activeShift == null) {
+      final requiresShift =
+          accountData['is_cash_register'] == true ||
+          accountData['requires_shift'] == true;
+
+      if (requiresShift && activeShift == null) {
         AppSnackbar.show(
           context,
           message: 'La caja seleccionada no tiene un turno abierto.',
@@ -776,6 +799,9 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
           TextFormField(
             controller: _descuentoCtrl,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+            ],
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
               hintText: '0.00',
@@ -852,13 +878,17 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
               cart: cartCubit.state,
               ratio: ratio,
             );
+            final isBusy =
+                _isProcessing || posCubit.state.status == PosStatus.loading;
+            final canProceed = cartCubit.state.items.isNotEmpty && !isBusy;
+
             return Row(
               children: [
                 Expanded(
                   flex: 1,
                   child: OutlinedButton.icon(
                     onPressed:
-                        cartCubit.state.items.isEmpty
+                        !canProceed
                             ? null
                             : () => _processSale(
                               posCubit,
@@ -880,7 +910,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                   flex: 2,
                   child: ElevatedButton(
                     onPressed:
-                        cartCubit.state.items.isEmpty
+                        !canProceed
                             ? null
                             : () => _processSale(
                               posCubit,
@@ -889,7 +919,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                             ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
-                          cartCubit.state.items.isEmpty
+                          !canProceed
                               ? Colors.grey.shade400
                               : AppColors.teal,
                       padding: const EdgeInsets.symmetric(vertical: 16),

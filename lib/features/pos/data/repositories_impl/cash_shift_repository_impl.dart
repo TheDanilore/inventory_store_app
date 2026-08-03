@@ -12,6 +12,8 @@ import 'package:inventory_store_app/features/pos/data/models/cash_shift_model.da
 class CashShiftRepositoryImpl implements CashShiftRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
+  CashShiftRepositoryImpl();
+
   // Caché en memoria del profileId — el Singleton vive toda la sesión.
   // Se invalida en logout mediante clearCachedProfile().
   String? _cachedProfileId;
@@ -291,20 +293,19 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
           await _supabase
               .from('cash_shifts')
               .select(
-                'id, status, account_id',
-              ) // Solo los campos mínimos necesarios
+                'id, status, account_id, opening_amount, opened_at',
+              ) // Campos mínimos necesarios + reales para integridad de auditoría
               .eq('account_id', accountId)
               .eq('status', 'OPEN')
               .maybeSingle();
 
       if (shiftData == null) return right(null);
 
-      // Usamos los campos mínimos
       final shift = CashShiftEntity(
         id: shiftData['id'],
         status: CashShiftStatus.fromString(shiftData['status']),
-        openingAmount: 0.0, // No requerido para el checkout
-        openedAt: DateTime.now(), // Fake date for checkout
+        openingAmount: (shiftData['opening_amount'] as num).toDouble(),
+        openedAt: DateTime.parse(shiftData['opened_at'] as String),
         accountId: shiftData['account_id'],
       );
 
