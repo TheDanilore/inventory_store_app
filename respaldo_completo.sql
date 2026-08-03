@@ -1369,6 +1369,8 @@ DECLARE
   v_current_balance numeric;
   v_current_debt numeric;
   v_credit_limit numeric;
+  v_credit_active boolean;
+  v_credit_disponible numeric;
 BEGIN
   -- 1. BLINDAJE DE SEGURIDAD: Resolver creador únicamente vía JWT de Supabase Auth
   SELECT id INTO v_created_by FROM profiles WHERE auth_user_id = v_auth_user_id LIMIT 1;
@@ -1381,6 +1383,30 @@ BEGIN
   IF payload->>'accountId' IS NOT NULL AND payload->>'accountId' != '' THEN v_account_id := (payload->>'accountId')::uuid; END IF;
   
   -- YA NO TOMAMOS EL activeShiftId DESDE EL PAYLOAD POR SEGURIDAD. EL BACKEND LO DETERMINARÁ.
+
+  -- VALIDACIÓN ATÓMICA DE CRÉDITO ANTES DE COMPROMETER STOCK O CREAR ÓRDENES
+  IF NOT v_is_draft AND v_is_credit AND v_customer_id IS NOT NULL THEN
+    SELECT id, current_debt, credit_limit, is_active 
+      INTO v_credit_id, v_current_debt, v_credit_limit, v_credit_active
+    FROM customer_credits
+    WHERE profile_id = v_customer_id
+    FOR UPDATE;
+    
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'El cliente no tiene línea de crédito registrada.' USING ERRCODE = 'P0010';
+    END IF;
+    
+    IF NOT v_credit_active THEN
+      RAISE EXCEPTION 'La línea de crédito del cliente no está activa.' USING ERRCODE = 'P0011';
+    END IF;
+
+    v_credit_disponible := v_credit_limit - v_current_debt;
+    IF v_credit_disponible < (v_total_amount - v_amount_paid) THEN
+      RAISE EXCEPTION 'Crédito insuficiente para esta venta. Disponible: %, Requerido: %', 
+        v_credit_disponible, (v_total_amount - v_amount_paid)
+        USING ERRCODE = 'P0012';
+    END IF;
+  END IF;
 
   v_order_status := CASE WHEN v_is_draft THEN 'PENDING' ELSE 'COMPLETED' END;
 
@@ -1560,21 +1586,8 @@ BEGIN
       END IF;
     END IF;
 
-    -- Flujo de Crédito a Clientes
+    -- Flujo de Crédito a Clientes (ya validado y bloqueado atómicamente al inicio del RPC)
     IF v_is_credit AND v_customer_id IS NOT NULL THEN
-      SELECT id, current_debt, credit_limit INTO v_credit_id, v_current_debt, v_credit_limit
-      FROM customer_credits
-      WHERE profile_id = v_customer_id
-      FOR UPDATE;
-      
-      IF NOT FOUND THEN
-        RAISE EXCEPTION 'El cliente no tiene una cuenta de crédito asignada.';
-      END IF;
-      
-      IF (v_current_debt + v_total_amount - v_amount_paid) > v_credit_limit THEN
-        RAISE EXCEPTION 'Esta venta supera el límite de crédito disponible del cliente.';
-      END IF;
-      
       UPDATE customer_credits
       SET current_debt = current_debt + (v_total_amount - v_amount_paid)
       WHERE id = v_credit_id;

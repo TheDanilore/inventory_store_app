@@ -196,10 +196,38 @@ class PosRepositoryImpl implements PosRepository {
 
       final orderId = response as String;
       return right(orderId);
+    } on PostgrestException catch (e, stack) {
+      developer.log(
+        'PostgrestException en processSale RPC',
+        error: e,
+        stackTrace: stack,
+      );
+      return left(ServerFailure(message: _mapSaleError(e)));
     } catch (e, stack) {
-      developer.log('Error en processSale RPC', error: e, stackTrace: stack);
+      developer.log(
+        'Error general en processSale RPC',
+        error: e,
+        stackTrace: stack,
+      );
       return left(Failure.from(e));
     }
+  }
+
+  String _mapSaleError(PostgrestException e) {
+    switch (e.code) {
+      case 'P0010':
+        return 'El cliente no tiene línea de crédito registrada.';
+      case 'P0011':
+        return 'La línea de crédito del cliente no está activa.';
+      case 'P0012':
+        return e.message.isNotEmpty
+            ? e.message
+            : 'Crédito insuficiente para completar la venta.';
+    }
+    if (e.message.isNotEmpty) {
+      return e.message;
+    }
+    return 'Ocurrió un error al procesar la venta en la base de datos.';
   }
 
   @override
