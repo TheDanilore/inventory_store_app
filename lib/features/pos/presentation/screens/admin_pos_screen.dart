@@ -15,7 +15,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_header.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_header.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_category_chips.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_grid_view.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_add_to_cart_sheet.dart';
@@ -165,21 +165,14 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                         ),
                         child: Column(
                           children: [
-                            CatalogHeader(
+                            PosHeader(
                               searchController: _searchCtrl,
                               searchFocusNode: _searchFocusNode,
-                              isExporting:
-                                  state.actionState == ViewState.loading,
-                              onExport: () {},
                               onSearchChanged: _onSearchChanged,
                               searchByIngredient: state.searchByIngredient,
                               onToggleIngredientSearch:
                                   cubit.toggleSearchByIngredient,
-                              isPosMode: true,
                               onBack: () => context.go('/admin'),
-                              onAddProduct: () {
-                                context.go('/admin/products/product-form');
-                              },
                             ),
                             const SizedBox(height: 12),
                             if (state.categories.isNotEmpty)

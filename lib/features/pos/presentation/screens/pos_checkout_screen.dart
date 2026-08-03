@@ -83,6 +83,11 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       if (posCubit.state.selectedClientId != null) {
         await posCubit.fetchClientCredit(posCubit.state.selectedClientId!);
       }
+      if (posCubit.state.selectedWarehouseId != null) {
+        await _updateCartItemsStockForWarehouse(
+          posCubit.state.selectedWarehouseId!,
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoadingInitialData = false);
@@ -136,14 +141,29 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       warehouseId: warehouseId,
     );
 
-    res.fold((_) => null, (stockMap) {
-      for (final item in items) {
-        if (item.variantId != null) {
-          final stock = stockMap[item.variantId] ?? 0;
-          cartCubit.updateAvailableStock(item.cartKey, stock);
+    res.fold(
+      (failure) {
+        developer.log(
+          'Error al verificar stock de carrito por almacén: ${failure.message}',
+          name: 'PosCheckoutScreen._updateCartItemsStockForWarehouse',
+        );
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Alerta al verificar stock: ${failure.message}',
+            type: SnackbarType.warning,
+          );
         }
-      }
-    });
+      },
+      (stockMap) {
+        for (final item in items) {
+          if (item.variantId != null) {
+            final stock = stockMap[item.variantId] ?? 0;
+            cartCubit.updateAvailableStock(item.cartKey, stock);
+          }
+        }
+      },
+    );
   }
 
   // ─── HELPER DE CÁLCULO (evita recalcular totalFinal 3× por frame) ───────────

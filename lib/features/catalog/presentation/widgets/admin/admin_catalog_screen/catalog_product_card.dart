@@ -80,11 +80,19 @@ class _AdminProductCardState extends State<AdminProductCard> {
           onHighlightChanged:
               (isPressed) => setState(() => _isCardPressed = isPressed),
           onHover: (hover) => setState(() => _isHovered = hover),
-          onTap:
-              () => context.go(
+          onTap: () {
+            if (widget.isFullPosMode) {
+              if (!isAgotado && !isDesactivado) {
+                HapticFeedback.lightImpact();
+                widget.onSale();
+              }
+            } else {
+              context.go(
                 '/admin/product/${widget.product.id}',
                 extra: widget.product,
-              ),
+              );
+            }
+          },
           onLongPress: () {
             HapticFeedback.mediumImpact();
             // Podría abrir un modal o bottomSheet de acciones secundarias
@@ -378,37 +386,35 @@ class _AdminProductCardState extends State<AdminProductCard> {
                   ),
                   child: Row(
                     children: [
-                      // Botón primario: "Vender" con label visible
-                      _PrimaryCardAction(
-                        icon: Icons.point_of_sale_rounded,
-                        label: 'Vender',
-                        enabled: !isAgotado && !isDesactivado,
-                        color: Theme.of(context).colorScheme.primary,
-                        onTap:
-                            (!isAgotado && !isDesactivado)
-                                ? () {
-                                  HapticFeedback.lightImpact();
-                                  widget.onSale();
-                                }
-                                : null,
-                      ),
-                      // Divisor visual
-                      if (!widget.isFullPosMode)
+                      if (widget.isFullPosMode)
+                        _PrimaryCardAction(
+                          icon: Icons.add_shopping_cart_rounded,
+                          label: 'Agregar',
+                          enabled: !isAgotado && !isDesactivado,
+                          color: Theme.of(context).colorScheme.primary,
+                          onTap:
+                              (!isAgotado && !isDesactivado)
+                                  ? () {
+                                    HapticFeedback.lightImpact();
+                                    widget.onSale();
+                                  }
+                                  : null,
+                          isFullWidth: true,
+                        )
+                      else ...[
+                        _PrimaryCardAction(
+                          icon: Icons.edit_rounded,
+                          label: 'Editar',
+                          enabled: true,
+                          color: Colors.blue,
+                          onTap: widget.onEdit,
+                          isFullWidth: false,
+                        ),
                         Container(
                           width: 1,
                           height: 18,
                           color: AppColors.border,
                         ),
-                      // Botón Editar
-                      if (!widget.isFullPosMode)
-                        _IconCardAction(
-                          icon: Icons.edit_rounded,
-                          tooltip: 'Editar producto',
-                          color: Colors.blue,
-                          onTap: widget.onEdit,
-                        ),
-                      // Botón Activar / Desactivar
-                      if (!widget.isFullPosMode)
                         _IconCardAction(
                           icon:
                               _isToggling
@@ -426,6 +432,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                   : AppColors.textSecondary,
                           onTap: _isToggling ? null : _handleToggle,
                         ),
+                      ],
                     ],
                   ),
                 ),
@@ -466,13 +473,13 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-/// Botón de acción primario: pill con ícono + label (para "Vender").
 class _PrimaryCardAction extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool enabled;
   final Color color;
   final VoidCallback? onTap;
+  final bool isFullWidth;
 
   const _PrimaryCardAction({
     required this.icon,
@@ -480,10 +487,15 @@ class _PrimaryCardAction extends StatelessWidget {
     required this.enabled,
     required this.color,
     required this.onTap,
+    this.isFullWidth = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final radius = isFullWidth
+        ? BorderRadius.circular(10)
+        : const BorderRadius.only(bottomLeft: Radius.circular(10));
+
     return Expanded(
       flex: 3,
       child: Semantics(
@@ -495,9 +507,7 @@ class _PrimaryCardAction extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               onTap: onTap,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(10),
-              ),
+              borderRadius: radius,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 height: 40,
@@ -506,9 +516,7 @@ class _PrimaryCardAction extends StatelessWidget {
                       enabled
                           ? color.withValues(alpha: 0.10)
                           : Colors.transparent,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(10),
-                  ),
+                  borderRadius: radius,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,

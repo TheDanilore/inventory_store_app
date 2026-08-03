@@ -58,6 +58,11 @@ class PosCubit extends Cubit<PosState> {
       (data) {
         String? initialAccountId;
         String? initialPaymentMethod;
+        String? initialWarehouseId;
+
+        if (data.warehouses.isNotEmpty) {
+          initialWarehouseId = data.warehouses.first.id;
+        }
 
         if (data.accounts.isNotEmpty) {
           final firstAcc = data.accounts.firstWhere(
@@ -75,6 +80,7 @@ class PosCubit extends Cubit<PosState> {
             isLoading: false,
             warehouses: data.warehouses,
             accounts: data.accounts,
+            selectedWarehouseId: initialWarehouseId ?? state.selectedWarehouseId,
             selectedAccountId: initialAccountId,
             paymentMethod: initialPaymentMethod ?? state.paymentMethod,
           ),
