@@ -255,14 +255,16 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
       final resp = await _supabase
           .from('inventory_entry_items')
           .select('''
-          quantity, unit_cost, batch_number, expiry_date, variant_id,
-          products!inner(
+          id, product_id, quantity, unit_cost, batch_number, expiry_date, variant_id,
+          products(
+            id,
             name, 
             uses_batches,
-            product_images(image_url, is_main, variant_id)
+            product_images(*)
           ),
-          product_variants!inner(
-            product_images(image_url, is_main),
+          product_variants(
+            id,
+            product_images(*),
             variant_attribute_values(
               attribute_values(value)
             )

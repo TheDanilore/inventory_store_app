@@ -7,6 +7,7 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/invento
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form/inventory_exit_form_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits/inventory_exits_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/kardex/kardex_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses/warehouses_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_entries_screen.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_entry_form_screen.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_exit_form_screen.dart';
@@ -91,7 +92,11 @@ class InventoryRoutes {
     ),
     GoRoute(
       path: '/admin/warehouses',
-      builder: (context, state) => const WarehousesManagementScreen(),
+      builder:
+          (context, state) => BlocProvider(
+            create: (_) => sl<WarehousesCubit>()..loadWarehouses(),
+            child: const WarehousesManagementScreen(),
+          ),
     ),
   ];
 }
