@@ -2824,11 +2824,11 @@ BEGIN
             END IF;
 
             -- Sincronización limpia de atributos de la variante
-            DELETE FROM variant_attribute_values WHERE product_variant_id = v_variant_id;
+            DELETE FROM variant_attribute_values WHERE variant_id = v_variant_id;
             IF v_variant ? 'attribute_value_ids' THEN
                 FOR v_attr_id IN SELECT * FROM jsonb_array_elements_text(v_variant->'attribute_value_ids')
                 LOOP
-                    INSERT INTO variant_attribute_values (product_variant_id, attribute_value_id)
+                    INSERT INTO variant_attribute_values (variant_id, attribute_value_id)
                     VALUES (v_variant_id, v_attr_id::uuid);
                 END LOOP;
             END IF;
@@ -2865,12 +2865,12 @@ DECLARE
     v_attr_id uuid;
 BEGIN
     -- Operación 100% atómica dentro de la transacción del motor de PostgreSQL
-    DELETE FROM variant_attribute_values WHERE product_variant_id = p_variant_id;
+    DELETE FROM variant_attribute_values WHERE variant_id = p_variant_id;
     
     IF p_attribute_value_ids IS NOT NULL AND array_length(p_attribute_value_ids, 1) > 0 THEN
         FOREACH v_attr_id IN ARRAY p_attribute_value_ids
         LOOP
-            INSERT INTO variant_attribute_values (product_variant_id, attribute_value_id)
+            INSERT INTO variant_attribute_values (variant_id, attribute_value_id)
             VALUES (p_variant_id, v_attr_id);
         END LOOP;
     END IF;

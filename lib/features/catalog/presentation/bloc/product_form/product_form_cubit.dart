@@ -176,13 +176,16 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           final fullProduct = await _unwrap(_getProductByIdUC.call(effectiveId));
           if (fullProduct != null) {
             targetProduct = fullProduct;
+          } else {
+            throw Exception('El servidor no devolvió el detalle del producto.');
           }
         } catch (e, st) {
           developer.log(
-            'ProductFormCubit: Error al hidratar el detalle completo por ID: $effectiveId',
+            'ProductFormCubit: Error crítico al hidratar detalle por ID: $effectiveId. Se aborta para evitar corrupción de datos.',
             error: e,
             stackTrace: st,
           );
+          rethrow;
         }
       }
 
@@ -681,19 +684,30 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     if (e is TimeoutException) {
       return e.message ?? 'La operación tardó demasiado. Intenta de nuevo.';
     }
-    final s = e.toString().toLowerCase();
-    if (s.contains('23505') ||
-        s.contains('unique_violation') ||
-        s.contains('ya existe')) {
+    final s = e.toString();
+    final sLower = s.toLowerCase();
+    if (sLower.contains('23505') ||
+        sLower.contains('unique_violation') ||
+        sLower.contains('ya existe')) {
       return 'El código o SKU ingresado ya existe en la base de datos.';
     }
-    if (s.contains('socketexception') ||
-        s.contains('clientexception') ||
-        s.contains('failed host lookup') ||
-        s.contains('timeout')) {
+    if (sLower.contains('socketexception') ||
+        sLower.contains('clientexception') ||
+        sLower.contains('failed host lookup') ||
+        sLower.contains('timeout')) {
       return 'Error de red. Verifica tu conexión e intenta de nuevo.';
     }
-    return 'Ocurrió un error al guardar el producto.';
+    if (s.contains('PostgrestException') || s.contains('code:')) {
+      final match = RegExp(r'message:\s*([^,)]+)').firstMatch(s);
+      if (match != null && match.group(1) != null) {
+        return 'Error BD (${match.group(1)!.trim()})';
+      }
+      return 'Error en Supabase: $s';
+    }
+    if (e is String && e.isNotEmpty && e != 'Ocurrió un error al guardar el producto.') {
+      return e;
+    }
+    return 'Ocurrió un error al guardar el producto: $s';
   }
 
   Future<Uint8List> _optimizarImagen(Uint8List bytesOriginales) async {

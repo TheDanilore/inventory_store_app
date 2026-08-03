@@ -443,7 +443,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                         prefixText: 'S/ ',
                                         inputFormatters: [
                                           FilteringTextInputFormatter.allow(
-                                            RegExp(r'[0-9.]'),
+                                            RegExp(r'^\d+\.?\d{0,2}'),
                                           ),
                                         ],
                                       ),
@@ -462,7 +462,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                         prefixText: 'S/ ',
                                         inputFormatters: [
                                           FilteringTextInputFormatter.allow(
-                                            RegExp(r'[0-9.]'),
+                                            RegExp(r'^\d+\.?\d{0,2}'),
                                           ),
                                         ],
                                       ),
@@ -487,7 +487,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                         prefixText: 'S/ ',
                                         inputFormatters: [
                                           FilteringTextInputFormatter.allow(
-                                            RegExp(r'[0-9.]'),
+                                            RegExp(r'^\d+\.?\d{0,2}'),
                                           ),
                                         ],
                                       ),
