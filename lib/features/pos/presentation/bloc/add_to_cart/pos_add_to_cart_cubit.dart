@@ -10,7 +10,7 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
 
   PosAddToCartCubit(this._repository) : super(PosAddToCartInitial());
 
-  Future<void> loadData(ProductEntity product) async {
+  Future<void> loadData(ProductEntity product, {String? warehouseId}) async {
     emit(PosAddToCartLoading());
 
     try {
@@ -18,7 +18,10 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
       final variantMapFuture = _repository.fetchVariantsByProductIds([
         product.id,
       ]);
-      final stockFuture = _repository.loadStockByVariant(product.id);
+      final stockFuture = _repository.loadStockByVariant(
+        product.id,
+        warehouseId: warehouseId,
+      );
 
       final variantMapRes = await variantMapFuture;
       final stockRes = await stockFuture;

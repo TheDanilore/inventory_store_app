@@ -181,62 +181,6 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     CartCubit cartCubit, {
     bool isDraft = false,
   }) async {
-    if (posCubit.state.selectedWarehouseId == null) {
-      AppSnackbar.show(
-        context,
-        message: 'Selecciona un almacén.',
-        type: SnackbarType.error,
-      );
-      return;
-    }
-    if (cartCubit.state.items.isEmpty) {
-      AppSnackbar.show(
-        context,
-        message: 'La caja está vacía.',
-        type: SnackbarType.error,
-      );
-      return;
-    }
-    final hasNoStockItem = cartCubit.state.items.values.any(
-      (i) => i.availableStock <= 0,
-    );
-    if (!isDraft && hasNoStockItem) {
-      AppSnackbar.show(
-        context,
-        message: 'Hay productos sin stock en la tienda/almacén seleccionado.',
-        type: SnackbarType.error,
-      );
-      return;
-    }
-    final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
-    if (!isDraft && !isCredito) {
-      if (posCubit.state.selectedAccountId == null) {
-        AppSnackbar.show(
-          context,
-          message: 'Selecciona una cuenta financiera para el ingreso.',
-          type: SnackbarType.error,
-        );
-        return;
-      }
-      final accountData = posCubit.state.accounts.firstWhere(
-        (a) => a['id'] == posCubit.state.selectedAccountId,
-        orElse: () => {},
-      );
-
-      // Validación estandarizada por booleano, sin Strings quemados (Zero-Trust fallback)
-      final requiresShift =
-          accountData['is_cash_register'] == true ||
-          accountData['requires_shift'] == true;
-      if (requiresShift && posCubit.state.activeShift == null) {
-        AppSnackbar.show(
-          context,
-          message: 'La cuenta seleccionada requiere un turno abierto.',
-          type: SnackbarType.error,
-        );
-        return;
-      }
-    }
-
     final config = context.read<AppConfigCubit>();
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
     final earningRate = config.getDouble('points_earning_rate', 0.03);
@@ -248,35 +192,19 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       pointsToSolesRatio,
     );
 
-    if (isCredito && !isDraft) {
-      if (posCubit.state.selectedClientId == null) {
-        AppSnackbar.show(
-          context,
-          message: 'Debes seleccionar un cliente para ventas a crédito.',
-          type: SnackbarType.error,
-        );
-        return;
-      }
-      if (!PosCalculatorUtils.isCreditActivo(posCubit.state.creditInfo)) {
-        AppSnackbar.show(
-          context,
-          message: 'El cliente no tiene línea de crédito activa.',
-          type: SnackbarType.error,
-        );
-        return;
-      }
-      final disp = PosCalculatorUtils.getCreditDisponible(
-        posCubit.state.creditInfo,
+    final validationError = PosCalculatorUtils.validateSalePreFlight(
+      posState: posCubit.state,
+      cartState: cartCubit.state,
+      totalFinal: totalFinal,
+      isDraft: isDraft,
+    );
+    if (validationError != null) {
+      AppSnackbar.show(
+        context,
+        message: validationError,
+        type: SnackbarType.error,
       );
-      if (disp < totalFinal) {
-        AppSnackbar.show(
-          context,
-          message:
-              'Crédito insuficiente. Disponible: S/ ${disp.toStringAsFixed(2)}',
-          type: SnackbarType.error,
-        );
-        return;
-      }
+      return;
     }
 
     if (!isDraft) {

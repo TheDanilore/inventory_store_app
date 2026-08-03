@@ -427,7 +427,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 ),
                 icon: const Icon(Icons.point_of_sale_rounded, size: 16),
                 label: const Text(
-                  'Abrir Caja',
+                  'Punto de Venta (POS)',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
               ),

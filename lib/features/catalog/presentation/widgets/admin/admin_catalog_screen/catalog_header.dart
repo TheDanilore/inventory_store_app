@@ -392,14 +392,32 @@ class _CatalogHeaderState extends State<CatalogHeader> {
       children: [
         Row(
           children: [
-            if (widget.isPosMode && widget.onBack != null) ...[
-              IconButton(
-                onPressed: widget.onBack,
-                icon: const Icon(
-                  Icons.arrow_back_rounded,
-                  color: AppColors.textPrimary,
+            if (widget.isPosMode) ...[
+              if (widget.onBack != null) ...[
+                IconButton(
+                  onPressed: widget.onBack,
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: AppColors.textPrimary,
+                  ),
+                  tooltip: 'Volver al Catálogo',
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.background,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radius),
+                      side: const BorderSide(color: AppColors.border),
+                    ),
+                  ),
                 ),
-                tooltip: 'Volver al Catálogo',
+                const SizedBox(width: 8),
+              ],
+              IconButton(
+                onPressed: () => Scaffold.of(context).openDrawer(),
+                icon: const Icon(
+                  Icons.storefront_rounded,
+                  color: AppColors.primary,
+                ),
+                tooltip: 'Operaciones POS (Ventas recientes y borradores)',
                 style: IconButton.styleFrom(
                   backgroundColor: AppColors.background,
                   shape: RoundedRectangleBorder(
@@ -488,14 +506,32 @@ class _CatalogHeaderState extends State<CatalogHeader> {
       children: [
         Row(
           children: [
-            if (widget.isPosMode && widget.onBack != null) ...[
-              IconButton(
-                onPressed: widget.onBack,
-                icon: const Icon(
-                  Icons.arrow_back_rounded,
-                  color: AppColors.textPrimary,
+            if (widget.isPosMode) ...[
+              if (widget.onBack != null) ...[
+                IconButton(
+                  onPressed: widget.onBack,
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: AppColors.textPrimary,
+                  ),
+                  tooltip: 'Volver al Catálogo',
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.background,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radius),
+                      side: const BorderSide(color: AppColors.border),
+                    ),
+                  ),
                 ),
-                tooltip: 'Volver al Catálogo',
+                const SizedBox(width: 8),
+              ],
+              IconButton(
+                onPressed: () => Scaffold.of(context).openDrawer(),
+                icon: const Icon(
+                  Icons.storefront_rounded,
+                  color: AppColors.primary,
+                ),
+                tooltip: 'Operaciones POS (Ventas recientes y borradores)',
                 style: IconButton.styleFrom(
                   backgroundColor: AppColors.background,
                   shape: RoundedRectangleBorder(

@@ -211,12 +211,10 @@ class PosCubit extends Cubit<PosState> {
   Future<void> checkActiveShift(String accountId) async {
     final account = state.accounts.firstWhere(
       (a) => a['id'] == accountId,
-      orElse: () => {},
+      orElse: () => <String, dynamic>{},
     );
-    // Remove magic string 'CAJA'. Ideally this maps to an enum.
-    final accountType = account['type']?.toString().toUpperCase();
-    if (accountType != 'CAJA' && accountType != 'CASH_REGISTER') {
-      emit(state.copyWith(activeShift: null)); // Trick to nullify if not caja
+    if (!PosCalculatorUtils.accountRequiresShift(account)) {
+      emit(state.copyWith(activeShift: null));
       return;
     }
 

@@ -125,4 +125,67 @@ class PosCalculatorUtils {
   }) {
     return (total * rate).floor();
   }
+
+  static bool accountRequiresShift(Map<String, dynamic>? accountData) {
+    if (accountData == null || accountData.isEmpty) return false;
+    if (accountData['is_cash_register'] == true ||
+        accountData['requires_shift'] == true) {
+      return true;
+    }
+    final accountType = accountData['type']?.toString().toUpperCase() ?? '';
+    return accountType == 'CAJA' || accountType == 'CASH_REGISTER';
+  }
+
+  static String? validateSalePreFlight({
+    required PosState posState,
+    required CartState cartState,
+    required double totalFinal,
+    bool isDraft = false,
+  }) {
+    if (posState.selectedWarehouseId == null) {
+      return 'Selecciona un almacén para continuar.';
+    }
+    if (cartState.items.isEmpty) {
+      return 'La caja está vacía.';
+    }
+
+    if (!isDraft) {
+      final hasNoStockItem = cartState.items.values.any(
+        (i) => i.availableStock <= 0,
+      );
+      if (hasNoStockItem) {
+        return 'Hay productos sin stock en la tienda/almacén seleccionado.';
+      }
+    }
+
+    final isCredito = posState.paymentMethod == 'CRÉDITO';
+
+    if (!isDraft && !isCredito) {
+      if (posState.selectedAccountId == null) {
+        return 'Selecciona una cuenta financiera para el ingreso.';
+      }
+      final accountData = posState.accounts.firstWhere(
+        (a) => a['id'] == posState.selectedAccountId,
+        orElse: () => <String, dynamic>{},
+      );
+      if (accountRequiresShift(accountData) && posState.activeShift == null) {
+        return 'La cuenta seleccionada requiere un turno abierto.';
+      }
+    }
+
+    if (isCredito && !isDraft) {
+      if (posState.selectedClientId == null) {
+        return 'Debes seleccionar un cliente para ventas a crédito.';
+      }
+      if (!isCreditActivo(posState.creditInfo)) {
+        return 'El cliente no tiene línea de crédito activa.';
+      }
+      final disp = getCreditDisponible(posState.creditInfo);
+      if (disp < totalFinal) {
+        return 'Crédito insuficiente. Disponible: S/ ${disp.toStringAsFixed(2)}';
+      }
+    }
+
+    return null; // Validación exitosa
+  }
 }

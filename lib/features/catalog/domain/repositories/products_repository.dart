@@ -155,8 +155,9 @@ abstract class ProductsRepository {
   fetchProductExtraData(String productId);
 
   Future<Either<Failure, Map<String, int>>> loadStockByVariant(
-    String productId,
-  );
+    String productId, {
+    String? warehouseId,
+  });
   Future<Either<Failure, List<Map<String, dynamic>>>> loadActiveVariants(
     String productId,
   );

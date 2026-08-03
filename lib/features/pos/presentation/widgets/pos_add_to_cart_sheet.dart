@@ -15,22 +15,26 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/add_to_cart/pos_add_to_cart_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/add_to_cart/pos_add_to_cart_state.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 
 /// Bottom sheet para agregar un producto al carrito del POS.
 /// Carga variantes con el join relacional correcto (sin JSONB obsoleto).
 class PosAddToCartSheet extends StatefulWidget {
   final ProductEntity productEntity;
   final bool isDialogMode;
+  final String? warehouseId;
 
   const PosAddToCartSheet({
     super.key,
     required this.productEntity,
     this.isDialogMode = false,
+    this.warehouseId,
   });
 
   static Future<void> show(BuildContext context, ProductEntity product) async {
     final isDesktop = MediaQuery.of(context).size.width >= 700;
     final cartCubit = context.read<CartCubit>();
+    final warehouseId = context.read<PosCubit>().state.selectedWarehouseId;
 
     if (isDesktop) {
       await showDialog<void>(
@@ -43,7 +47,7 @@ class PosAddToCartSheet extends StatefulWidget {
                   create:
                       (_) =>
                           PosAddToCartCubit(sl<ProductsRepository>())
-                            ..loadData(product),
+                            ..loadData(product, warehouseId: warehouseId),
                 ),
               ],
               child: Dialog(
@@ -56,6 +60,7 @@ class PosAddToCartSheet extends StatefulWidget {
                   child: PosAddToCartSheet(
                     productEntity: product,
                     isDialogMode: true,
+                    warehouseId: warehouseId,
                   ),
                 ),
               ),
@@ -74,14 +79,17 @@ class PosAddToCartSheet extends StatefulWidget {
                   create:
                       (_) =>
                           PosAddToCartCubit(sl<ProductsRepository>())
-                            ..loadData(product),
+                            ..loadData(product, warehouseId: warehouseId),
                 ),
               ],
               child: Padding(
                 padding: EdgeInsets.only(
                   bottom: MediaQuery.of(context).viewInsets.bottom,
                 ),
-                child: PosAddToCartSheet(productEntity: product),
+                child: PosAddToCartSheet(
+                  productEntity: product,
+                  warehouseId: warehouseId,
+                ),
               ),
             ),
       );
@@ -137,6 +145,7 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                 onPressed:
                     () => context.read<PosAddToCartCubit>().loadData(
                       widget.productEntity,
+                      warehouseId: widget.warehouseId,
                     ),
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Reintentar'),

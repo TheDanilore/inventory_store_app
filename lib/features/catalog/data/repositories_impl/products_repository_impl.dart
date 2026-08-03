@@ -964,9 +964,20 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
   @override
   Future<Either<Failure, Map<String, int>>> loadStockByVariant(
-    String productId,
-  ) async {
+    String productId, {
+    String? warehouseId,
+  }) async {
     try {
+      if (warehouseId != null && warehouseId.isNotEmpty) {
+        final varRes = await _supabase
+            .from('product_variants')
+            .select('id')
+            .eq('product_id', productId);
+        final vIds = List<Map<String, dynamic>>.from(varRes)
+            .map((r) => r['id'] as String)
+            .toList();
+        return await fetchVariantStockByVariantIds(vIds, warehouseId: warehouseId);
+      }
       final response = await _supabase
           .from('product_stock_summary')
           .select('variant_id, total_stock')

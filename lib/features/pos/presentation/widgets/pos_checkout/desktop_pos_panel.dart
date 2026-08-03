@@ -122,24 +122,6 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       return;
     }
 
-    if (posCubit.state.selectedWarehouseId == null) {
-      AppSnackbar.show(
-        context,
-        message: 'Selecciona un almacén.',
-        type: SnackbarType.error,
-      );
-      return;
-    }
-    if (cartCubit.state.items.isEmpty) {
-      AppSnackbar.show(
-        context,
-        message: 'La caja está vacía.',
-        type: SnackbarType.error,
-      );
-      return;
-    }
-
-    final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
     final config = context.read<AppConfigCubit>();
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
     final earningRate = config.getDouble('points_earning_rate', 0.03);
@@ -152,66 +134,19 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       ratio: pointsToSolesRatio,
     );
 
-    if (!isDraft && !isCredito) {
-      if (posCubit.state.selectedAccountId == null) {
-        AppSnackbar.show(
-          context,
-          message: 'Selecciona una cuenta financiera para el ingreso.',
-          type: SnackbarType.error,
-        );
-        return;
-      }
-
-      final activeShift = posCubit.state.activeShift;
-      final accountData = posCubit.state.accounts.firstWhere(
-        (a) => a['id'] == posCubit.state.selectedAccountId,
-        orElse: () => <String, dynamic>{},
+    final validationError = PosCalculatorUtils.validateSalePreFlight(
+      posState: posCubit.state,
+      cartState: cartCubit.state,
+      totalFinal: totalFinal,
+      isDraft: isDraft,
+    );
+    if (validationError != null) {
+      AppSnackbar.show(
+        context,
+        message: validationError,
+        type: SnackbarType.error,
       );
-
-      final requiresShift =
-          accountData['is_cash_register'] == true ||
-          accountData['requires_shift'] == true;
-
-      if (requiresShift && activeShift == null) {
-        AppSnackbar.show(
-          context,
-          message: 'La caja seleccionada no tiene un turno abierto.',
-          type: SnackbarType.error,
-        );
-        return;
-      }
-    }
-
-    if (isCredito && !isDraft) {
-      if (posCubit.state.selectedClientId == null) {
-        AppSnackbar.show(
-          context,
-          message: 'Debes seleccionar un cliente para ventas a crédito.',
-          type: SnackbarType.error,
-        );
-        return;
-      }
-      if (!PosCalculatorUtils.isCreditActivo(posCubit.state.creditInfo)) {
-        AppSnackbar.show(
-          context,
-          message: 'El cliente no tiene línea de crédito activa.',
-          type: SnackbarType.error,
-        );
-        return;
-      }
-
-      final disp = PosCalculatorUtils.getCreditDisponible(
-        posCubit.state.creditInfo,
-      );
-      if (disp < totalFinal) {
-        AppSnackbar.show(
-          context,
-          message:
-              'Crédito insuficiente. Disponible: S/ ${disp.toStringAsFixed(2)}',
-          type: SnackbarType.error,
-        );
-        return;
-      }
+      return;
     }
 
     if (!isDraft) {
@@ -345,8 +280,8 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final posCubit = context.watch<PosCubit>();
-    final cartCubit = context.watch<CartCubit>();
+    final posCubit = context.read<PosCubit>();
+    final cartCubit = context.read<CartCubit>();
     final config = context.watch<AppConfigCubit>();
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
     final earningRate = config.getDouble('points_earning_rate', 0.03);
@@ -450,61 +385,66 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                         ),
                       ),
                       const Spacer(),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          size: 20,
-                          color: AppColors.textSecondary,
-                        ),
-                        tooltip: 'Vaciar caja',
-                        onPressed:
-                            cartCubit.state.items.isEmpty
-                                ? null
-                                : () {
-                                  showDialog(
-                                    context: context,
-                                    builder:
-                                        (ctx) => AlertDialog(
-                                          title: const Text('¿Vaciar caja?'),
-                                          content: const Text(
-                                            'Se eliminarán todos los productos de la caja actual.',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed:
-                                                  () => Navigator.pop(ctx),
-                                              child: const Text(
-                                                'Cancelar',
-                                                style: TextStyle(
-                                                  color:
-                                                      AppColors.textSecondary,
+                      BlocSelector<CartCubit, CartState, bool>(
+                        selector: (state) => state.items.isEmpty,
+                        builder: (context, isCartEmpty) {
+                          return IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              size: 20,
+                              color: AppColors.textSecondary,
+                            ),
+                            tooltip: 'Vaciar caja',
+                            onPressed:
+                                isCartEmpty
+                                    ? null
+                                    : () {
+                                      showDialog(
+                                        context: context,
+                                        builder:
+                                            (ctx) => AlertDialog(
+                                              title: const Text('¿Vaciar caja?'),
+                                              content: const Text(
+                                                'Se eliminarán todos los productos de la caja actual.',
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed:
+                                                      () => Navigator.pop(ctx),
+                                                  child: const Text(
+                                                    'Cancelar',
+                                                    style: TextStyle(
+                                                      color:
+                                                          AppColors.textSecondary,
+                                                    ),
+                                                  ),
                                                 ),
-                                              ),
-                                            ),
-                                            ElevatedButton(
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    AppColors.danger,
-                                              ),
-                                              onPressed: () {
-                                                posCubit.removeClient();
-                                                posCubit.setPuntosAUsar(0);
-                                                cartCubit.clearCart();
-                                                posCubit
-                                                    .clearAllBatchOverrides();
-                                                Navigator.pop(ctx);
-                                              },
-                                              child: const Text(
-                                                'Vaciar',
-                                                style: TextStyle(
-                                                  color: Colors.white,
+                                                ElevatedButton(
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        AppColors.danger,
+                                                  ),
+                                                  onPressed: () {
+                                                    posCubit.removeClient();
+                                                    posCubit.setPuntosAUsar(0);
+                                                    cartCubit.clearCart();
+                                                    posCubit
+                                                        .clearAllBatchOverrides();
+                                                    Navigator.pop(ctx);
+                                                  },
+                                                  child: const Text(
+                                                    'Vaciar',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
                                                 ),
-                                              ),
+                                              ],
                                             ),
-                                          ],
-                                        ),
-                                  );
-                                },
+                                      );
+                                    },
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -546,9 +486,14 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
               ],
             ),
 
-            // Capa de carga
-            if (posCubit.state.status == PosStatus.loading)
-              const PosProcessingOverlay(isVisible: true),
+            // Capa de carga aislada con BlocSelector para cero rebuilds superfluas
+            BlocSelector<PosCubit, PosState, bool>(
+              selector: (state) => state.status == PosStatus.loading,
+              builder: (context, isLoading) {
+                if (!isLoading) return const SizedBox.shrink();
+                return const PosProcessingOverlay(isVisible: true);
+              },
+            ),
           ],
         ),
       ),
