@@ -21,10 +21,19 @@ class AdminProductsScreen extends StatefulWidget {
 
 class _AdminProductsScreenState extends State<AdminProductsScreen> {
   final _searchCtrl = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 15 && _isFabExtended.value) {
+        _isFabExtended.value = false;
+      } else if (_scrollController.offset <= 15 && !_isFabExtended.value) {
+        _isFabExtended.value = true;
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _searchCtrl.text = context.read<AdminCatalogCubit>().state.searchTerm;
     });
@@ -32,6 +41,8 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
   @override
   void dispose() {
+    _isFabExtended.dispose();
+    _scrollController.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -88,16 +99,30 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
             ]
           : null,
       floatingActionButton: !isDesktop
-          ? FloatingActionButton.extended(
-              onPressed: () => context.go('/admin/products/product-form'),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 4,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text(
-                'Nuevo Producto',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-              ),
+          ? ValueListenableBuilder<bool>(
+              valueListenable: _isFabExtended,
+              builder: (context, extended, child) {
+                return extended
+                    ? FloatingActionButton.extended(
+                        onPressed: () => context.go('/admin/products/product-form'),
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        icon: const Icon(Icons.add_rounded),
+                        label: const Text(
+                          'Nuevo Producto',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                        ),
+                      )
+                    : FloatingActionButton(
+                        onPressed: () => context.go('/admin/products/product-form'),
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        tooltip: 'Nuevo Producto',
+                        child: const Icon(Icons.add_rounded),
+                      );
+              },
             )
           : null,
       body: LayoutBuilder(
@@ -425,6 +450,8 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     } else {
       // 📱 Listado de Tarjetas Flotantes para Móvil (Filosofía Apple / HIG)
       contentList = ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.only(bottom: 80),
         physics: const AlwaysScrollableScrollPhysics(),
         itemCount: state.products.length,
         itemBuilder: (context, index) {
