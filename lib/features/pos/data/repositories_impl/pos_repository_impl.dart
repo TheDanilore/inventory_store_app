@@ -25,11 +25,12 @@ class PosRepositoryImpl implements PosRepository {
     final user = _supabase.auth.currentUser;
     if (user == null) return;
 
-    final profile = await _supabase
-        .from('profiles')
-        .select('id, role')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
+    final profile =
+        await _supabase
+            .from('profiles')
+            .select('id, role')
+            .eq('auth_user_id', user.id)
+            .maybeSingle();
 
     if (profile != null) {
       _cachedProfileId = profile['id'] as String?;

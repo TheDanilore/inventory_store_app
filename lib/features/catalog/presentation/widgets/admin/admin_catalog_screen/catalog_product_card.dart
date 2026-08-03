@@ -492,9 +492,10 @@ class _PrimaryCardAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = isFullWidth
-        ? BorderRadius.circular(10)
-        : const BorderRadius.only(bottomLeft: Radius.circular(10));
+    final radius =
+        isFullWidth
+            ? BorderRadius.circular(10)
+            : const BorderRadius.only(bottomLeft: Radius.circular(10));
 
     return Expanded(
       flex: 3,

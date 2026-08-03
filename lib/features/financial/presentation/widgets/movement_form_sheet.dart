@@ -21,14 +21,15 @@ class MovementFormSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => MultiBlocProvider(
-        providers: [
-          BlocProvider.value(value: accCubit),
-          BlocProvider.value(value: movCubit),
-          BlocProvider.value(value: shiftCubit),
-        ],
-        child: const MovementFormSheet(),
-      ),
+      builder:
+          (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider.value(value: accCubit),
+              BlocProvider.value(value: movCubit),
+              BlocProvider.value(value: shiftCubit),
+            ],
+            child: const MovementFormSheet(),
+          ),
     );
   }
 
@@ -261,7 +262,9 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
               const SizedBox(height: 14),
 
               _FieldLabel(
-                _type == 'TRANSFER' ? 'Cuenta Origen (De donde sale)' : 'Cuenta',
+                _type == 'TRANSFER'
+                    ? 'Cuenta Origen (De donde sale)'
+                    : 'Cuenta',
               ),
               _AccountSelector(
                 value: _sourceAccountId,
@@ -284,14 +287,16 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
               if (_hasShiftBlocker)
                 _ShiftWarningBanner(
                   isTrasfer: _type == 'TRANSFER',
-                  sourceAccountName: _accounts
-                      .where((a) => a.id == _sourceAccountId)
-                      .firstOrNull
-                      ?.name,
-                  destAccountName: _accounts
-                      .where((a) => a.id == _destAccountId)
-                      .firstOrNull
-                      ?.name,
+                  sourceAccountName:
+                      _accounts
+                          .where((a) => a.id == _sourceAccountId)
+                          .firstOrNull
+                          ?.name,
+                  destAccountName:
+                      _accounts
+                          .where((a) => a.id == _destAccountId)
+                          .firstOrNull
+                          ?.name,
                 ),
               if (_hasShiftBlocker) const SizedBox(height: 12),
 
@@ -319,7 +324,9 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
               TextFormField(
                 controller: _descCtrl,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: _inputDeco('Ej. Aporte de capital, Pago de taxi...'),
+                decoration: _inputDeco(
+                  'Ej. Aporte de capital, Pago de taxi...',
+                ),
                 validator:
                     (v) =>
                         (v == null || v.trim().isEmpty) && _type != 'TRANSFER'
@@ -396,9 +403,10 @@ class _ShiftWarningBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = isTrasfer
-        ? (sourceAccountName ?? destAccountName ?? 'la caja seleccionada')
-        : (sourceAccountName ?? 'la caja seleccionada');
+    final name =
+        isTrasfer
+            ? (sourceAccountName ?? destAccountName ?? 'la caja seleccionada')
+            : (sourceAccountName ?? 'la caja seleccionada');
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -411,7 +419,11 @@ class _ShiftWarningBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 20),
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: AppColors.warning,
+            size: 20,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

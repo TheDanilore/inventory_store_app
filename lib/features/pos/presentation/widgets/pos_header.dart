@@ -89,23 +89,33 @@ class PosHeader extends StatelessWidget {
                         expectedAmount: expected,
                       );
                       if (closed == true && context.mounted) {
-                        context.read<PosCubit>().initPosData(forceRefresh: true);
+                        context.read<PosCubit>().initPosData(
+                          forceRefresh: true,
+                        );
                         context.read<CashShiftsCubit>().fetchShifts();
                       }
                     } else {
-                      final cashAccounts = posState.accounts
-                          .where((a) =>
-                              (a['type']?.toString().toLowerCase() == 'caja' ||
-                               a['type']?.toString().toLowerCase() == 'cash'))
-                          .toList();
+                      final cashAccounts =
+                          posState.accounts
+                              .where(
+                                (a) =>
+                                    (a['type']?.toString().toLowerCase() ==
+                                            'caja' ||
+                                        a['type']?.toString().toLowerCase() ==
+                                            'cash'),
+                              )
+                              .toList();
                       final opened = await OpenShiftSheet.show(
                         context,
-                        accounts: cashAccounts.isNotEmpty
-                            ? cashAccounts
-                            : posState.accounts,
+                        accounts:
+                            cashAccounts.isNotEmpty
+                                ? cashAccounts
+                                : posState.accounts,
                       );
                       if (opened == true && context.mounted) {
-                        context.read<PosCubit>().initPosData(forceRefresh: true);
+                        context.read<PosCubit>().initPosData(
+                          forceRefresh: true,
+                        );
                         context.read<CashShiftsCubit>().fetchShifts();
                       }
                     }
@@ -117,14 +127,16 @@ class PosHeader extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: isShiftOpen
-                          ? const Color(0xFFECFDF5)
-                          : const Color(0xFFFEF2F2),
+                      color:
+                          isShiftOpen
+                              ? const Color(0xFFECFDF5)
+                              : const Color(0xFFFEF2F2),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isShiftOpen
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFFEF4444),
+                        color:
+                            isShiftOpen
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFEF4444),
                       ),
                     ),
                     child: Row(
@@ -135,9 +147,8 @@ class PosHeader extends StatelessWidget {
                               ? Icons.lock_open_rounded
                               : Icons.lock_clock_rounded,
                           size: 14,
-                          color: isShiftOpen
-                              ? AppColors.success
-                              : AppColors.error,
+                          color:
+                              isShiftOpen ? AppColors.success : AppColors.error,
                         ),
                         const SizedBox(width: 6),
                         Text(
@@ -147,9 +158,10 @@ class PosHeader extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: isShiftOpen
-                                ? const Color(0xFF065F46)
-                                : const Color(0xFF991B1B),
+                            color:
+                                isShiftOpen
+                                    ? const Color(0xFF065F46)
+                                    : const Color(0xFF991B1B),
                           ),
                         ),
                       ],
@@ -170,7 +182,8 @@ class PosHeader extends StatelessWidget {
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: posState.selectedWarehouseId ??
+                        value:
+                            posState.selectedWarehouseId ??
                             (posState.warehouses.isNotEmpty
                                 ? posState.warehouses.first.id
                                 : null),
@@ -183,23 +196,24 @@ class PosHeader extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                         ),
-                        items: posState.warehouses.map((wh) {
-                          return DropdownMenuItem<String>(
-                            value: wh.id,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.warehouse_rounded,
-                                  size: 16,
-                                  color: AppColors.primary,
+                        items:
+                            posState.warehouses.map((wh) {
+                              return DropdownMenuItem<String>(
+                                value: wh.id,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.warehouse_rounded,
+                                      size: 16,
+                                      color: AppColors.primary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(wh.name),
+                                  ],
                                 ),
-                                const SizedBox(width: 6),
-                                Text(wh.name),
-                              ],
-                            ),
-                          );
-                        }).toList(),
+                              );
+                            }).toList(),
                         onChanged: (newWhId) {
                           if (newWhId != null &&
                               newWhId != posState.selectedWarehouseId) {
@@ -217,7 +231,8 @@ class PosHeader extends StatelessWidget {
                             } else {
                               AppSnackbar.show(
                                 context,
-                                message: 'Almacén activo cambiado correctamente',
+                                message:
+                                    'Almacén activo cambiado correctamente',
                                 type: SnackbarType.info,
                               );
                             }
@@ -253,14 +268,16 @@ class PosHeader extends StatelessWidget {
             Container(
               height: 44,
               decoration: BoxDecoration(
-                color: searchByIngredient
-                    ? const Color(0xFFECFDF5)
-                    : AppColors.background,
+                color:
+                    searchByIngredient
+                        ? const Color(0xFFECFDF5)
+                        : AppColors.background,
                 borderRadius: BorderRadius.circular(AppColors.radius),
                 border: Border.all(
-                  color: searchByIngredient
-                      ? const Color(0xFF10B981)
-                      : AppColors.border,
+                  color:
+                      searchByIngredient
+                          ? const Color(0xFF10B981)
+                          : AppColors.border,
                   width: searchByIngredient ? 1.5 : 1,
                 ),
               ),
@@ -277,22 +294,25 @@ class PosHeader extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                       decoration: InputDecoration(
-                        hintText: searchByIngredient
-                            ? 'Ej: Glifosato, Clorpirifos, Paracetamol...'
-                            : 'Buscar producto en caja...',
+                        hintText:
+                            searchByIngredient
+                                ? 'Ej: Glifosato, Clorpirifos, Paracetamol...'
+                                : 'Buscar producto en caja...',
                         hintStyle: TextStyle(
-                          color: searchByIngredient
-                              ? const Color(0xFF6EE7B7)
-                              : AppColors.textMuted,
+                          color:
+                              searchByIngredient
+                                  ? const Color(0xFF6EE7B7)
+                                  : AppColors.textMuted,
                           fontSize: 14,
                         ),
                         prefixIcon: Icon(
                           searchByIngredient
                               ? Icons.science_rounded
                               : Icons.search_rounded,
-                          color: searchByIngredient
-                              ? const Color(0xFF10B981)
-                              : AppColors.textMuted,
+                          color:
+                              searchByIngredient
+                                  ? const Color(0xFF10B981)
+                                  : AppColors.textMuted,
                           size: 20,
                         ),
                         suffixIcon: ValueListenableBuilder<TextEditingValue>(
@@ -316,16 +336,17 @@ class PosHeader extends StatelessWidget {
                           },
                         ),
                         border: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
                   Tooltip(
                     message: 'Buscar por ingrediente activo',
                     child: InkWell(
-                      onTap: () =>
-                          onToggleIngredientSearch(!searchByIngredient),
+                      onTap:
+                          () => onToggleIngredientSearch(!searchByIngredient),
                       child: Container(
                         padding: const EdgeInsets.only(left: 8, right: 14),
                         child: Row(
@@ -336,9 +357,10 @@ class PosHeader extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: searchByIngredient
-                                    ? const Color(0xFF059669)
-                                    : AppColors.textMuted,
+                                color:
+                                    searchByIngredient
+                                        ? const Color(0xFF059669)
+                                        : AppColors.textMuted,
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -348,15 +370,15 @@ class PosHeader extends StatelessWidget {
                               height: 18,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(9),
-                                color: searchByIngredient
-                                    ? const Color(0xFF10B981)
-                                    : AppColors.border,
+                                color:
+                                    searchByIngredient
+                                        ? const Color(0xFF10B981)
+                                        : AppColors.border,
                               ),
                               child: Stack(
                                 children: [
                                   AnimatedPositioned(
-                                    duration:
-                                        const Duration(milliseconds: 200),
+                                    duration: const Duration(milliseconds: 200),
                                     curve: Curves.easeInOut,
                                     left: searchByIngredient ? 16 : 2,
                                     top: 2,

@@ -361,8 +361,9 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
                   children: [
                     // Banner de advertencia cuando Lealtad está desactivada (aislado con BlocSelector)
                     BlocSelector<AppConfigCubit, AppConfigState, bool>(
-                      selector: (s) =>
-                          !(s.businessInfo?.loyaltyGlobalEnabled ?? true),
+                      selector:
+                          (s) =>
+                              !(s.businessInfo?.loyaltyGlobalEnabled ?? true),
                       builder: (context, isDisabled) {
                         if (!isDisabled) return const SizedBox.shrink();
                         return Container(
@@ -376,7 +377,10 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.warning_rounded, color: Colors.red.shade700),
+                              Icon(
+                                Icons.warning_rounded,
+                                color: Colors.red.shade700,
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
@@ -403,7 +407,9 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
                               children: [
                                 _buildNavigationRail(),
                                 Container(
-                                    width: 1, color: Colors.grey.shade200),
+                                  width: 1,
+                                  color: Colors.grey.shade200,
+                                ),
                                 Expanded(
                                   child: Container(
                                     color: AppColors.background,
@@ -554,20 +560,30 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
               children: [
                 isWide
                     ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _buildField(_earningRateKey, disabled: isSaving)),
-                          const SizedBox(width: 16),
-                          Expanded(child: _buildField(_pointsRatioKey, disabled: isSaving)),
-                        ],
-                      )
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _buildField(
+                            _earningRateKey,
+                            disabled: isSaving,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildField(
+                            _pointsRatioKey,
+                            disabled: isSaving,
+                          ),
+                        ),
+                      ],
+                    )
                     : Column(
-                        children: [
-                          _buildField(_earningRateKey, disabled: isSaving),
-                          const SizedBox(height: 12),
-                          _buildField(_pointsRatioKey, disabled: isSaving),
-                        ],
-                      ),
+                      children: [
+                        _buildField(_earningRateKey, disabled: isSaving),
+                        const SizedBox(height: 12),
+                        _buildField(_pointsRatioKey, disabled: isSaving),
+                      ],
+                    ),
               ],
             ),
             const SizedBox(height: 20),
@@ -579,20 +595,30 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
               children: [
                 isWide
                     ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _buildField(_checkinRewardKey, disabled: isSaving)),
-                          const SizedBox(width: 16),
-                          Expanded(child: _buildField(_checkinStreakStepKey, disabled: isSaving)),
-                        ],
-                      )
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _buildField(
+                            _checkinRewardKey,
+                            disabled: isSaving,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildField(
+                            _checkinStreakStepKey,
+                            disabled: isSaving,
+                          ),
+                        ),
+                      ],
+                    )
                     : Column(
-                        children: [
-                          _buildField(_checkinRewardKey, disabled: isSaving),
-                          const SizedBox(height: 12),
-                          _buildField(_checkinStreakStepKey, disabled: isSaving),
-                        ],
-                      ),
+                      children: [
+                        _buildField(_checkinRewardKey, disabled: isSaving),
+                        const SizedBox(height: 12),
+                        _buildField(_checkinStreakStepKey, disabled: isSaving),
+                      ],
+                    ),
               ],
             ),
           ],
@@ -633,10 +659,11 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
           icon: Icons.inventory_2_rounded,
           color: Colors.purple,
           children: [
-            _buildResponsiveGrid(
-              [_boxesPrize1Key, _boxesPrize2Key, _boxesPrize3Key],
-              isSaving: isSaving,
-            ),
+            _buildResponsiveGrid([
+              _boxesPrize1Key,
+              _boxesPrize2Key,
+              _boxesPrize3Key,
+            ], isSaving: isSaving),
           ],
         ),
         const SizedBox(height: 20),
@@ -646,10 +673,11 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
           icon: Icons.celebration_rounded,
           color: Colors.pink,
           children: [
-            _buildResponsiveGrid(
-              [_pinataGrandPrizeKey, _pinataConsolationPrizeKey, _memoramaMatchRewardKey],
-              isSaving: isSaving,
-            ),
+            _buildResponsiveGrid([
+              _pinataGrandPrizeKey,
+              _pinataConsolationPrizeKey,
+              _memoramaMatchRewardKey,
+            ], isSaving: isSaving),
           ],
         ),
         const SizedBox(height: 20),
@@ -660,7 +688,11 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
           color: Colors.lightBlue,
           children: [
             _buildResponsiveGrid(
-              [_catcherCoinRewardKey, _catcherGiftRewardKey, _catcherBombPenaltyKey],
+              [
+                _catcherCoinRewardKey,
+                _catcherGiftRewardKey,
+                _catcherBombPenaltyKey,
+              ],
               isSaving: isSaving,
               allowNegativeKeys: {_catcherBombPenaltyKey},
             ),
@@ -673,10 +705,13 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
           icon: Icons.precision_manufacturing_rounded,
           color: Colors.amber,
           children: [
-            _buildResponsiveGrid(
-              [_clawPrize1Key, _clawPrize2Key, _clawPrize3Key, _clawPrize4Key, _clawPrize5Key],
-              isSaving: isSaving,
-            ),
+            _buildResponsiveGrid([
+              _clawPrize1Key,
+              _clawPrize2Key,
+              _clawPrize3Key,
+              _clawPrize4Key,
+              _clawPrize5Key,
+            ], isSaving: isSaving),
           ],
         ),
       ],
@@ -812,7 +847,9 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
                 child: AppPrimaryButton(
                   label: isSaving ? 'Guardando...' : 'Guardar Cambios',
                   onPressed:
-                      isSaving ? null : () => _saveSection(_selectedIndex, keys),
+                      isSaving
+                          ? null
+                          : () => _saveSection(_selectedIndex, keys),
                 ),
               ),
             ),
@@ -889,7 +926,11 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     );
   }
 
-  Widget _buildField(String key, {bool allowNegative = false, bool disabled = false}) {
+  Widget _buildField(
+    String key, {
+    bool allowNegative = false,
+    bool disabled = false,
+  }) {
     final def = _settings[key]!;
 
     Widget? prefix;

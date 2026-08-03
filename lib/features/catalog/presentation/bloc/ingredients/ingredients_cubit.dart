@@ -108,7 +108,8 @@ class IngredientsCubit extends Cubit<IngredientsState> {
             isSaving: false,
             clearErrorMessage: true,
             ingredients: updatedList,
-            viewState: updatedList.isEmpty ? ViewState.empty : ViewState.success,
+            viewState:
+                updatedList.isEmpty ? ViewState.empty : ViewState.success,
           ),
         );
         return true;

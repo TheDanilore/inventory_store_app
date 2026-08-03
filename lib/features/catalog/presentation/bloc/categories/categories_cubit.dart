@@ -165,7 +165,8 @@ class CategoriesCubit extends Cubit<CategoriesState> {
             isSaving: false,
             clearErrorMessage: true,
             categories: updatedList,
-            viewState: updatedList.isEmpty ? ViewState.empty : ViewState.success,
+            viewState:
+                updatedList.isEmpty ? ViewState.empty : ViewState.success,
           ),
         );
         return true;

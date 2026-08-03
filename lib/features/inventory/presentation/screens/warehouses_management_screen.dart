@@ -349,33 +349,39 @@ class _WarehousesManagementScreenState
                                               CrossAxisAlignment.end,
                                           children: [
                                             Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 4,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color:
                                                     wh.isActive
                                                         ? Colors.green.shade50
                                                         : Colors.red.shade50,
-                                                borderRadius: BorderRadius.circular(
-                                                  6,
-                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
                                                 border: Border.all(
                                                   color:
                                                       wh.isActive
-                                                          ? Colors.green.shade200
+                                                          ? Colors
+                                                              .green
+                                                              .shade200
                                                           : Colors.red.shade200,
                                                 ),
                                               ),
                                               child: Text(
-                                                wh.isActive ? 'ACTIVO' : 'INACTIVO',
+                                                wh.isActive
+                                                    ? 'ACTIVO'
+                                                    : 'INACTIVO',
                                                 style: TextStyle(
                                                   fontSize: 9,
                                                   fontWeight: FontWeight.w800,
                                                   color:
                                                       wh.isActive
-                                                          ? Colors.green.shade700
+                                                          ? Colors
+                                                              .green
+                                                              .shade700
                                                           : Colors.red.shade700,
                                                 ),
                                               ),
@@ -389,9 +395,11 @@ class _WarehousesManagementScreenState
                                                   val,
                                                 );
                                               },
-                                              activeThumbColor: AppColors.primary,
+                                              activeThumbColor:
+                                                  AppColors.primary,
                                               materialTapTargetSize:
-                                                  MaterialTapTargetSize.shrinkWrap,
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
                                             ),
                                           ],
                                         ),

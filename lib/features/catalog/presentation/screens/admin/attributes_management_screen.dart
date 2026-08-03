@@ -545,8 +545,8 @@ class _AttributeCardState extends State<_AttributeCard> {
                             Icons.category_outlined,
                             color: AppColors.primary,
                             size: 20,
-                            ),
                           ),
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           widget.attribute.name,
@@ -671,9 +671,7 @@ class _ValueChipState extends State<_ValueChip> {
 
     setState(() => _isDeleting = true);
     final cubit = context.read<AttributesCubit>();
-    final success = await cubit.deleteAttributeValue(
-      widget.value.id,
-    );
+    final success = await cubit.deleteAttributeValue(widget.value.id);
     if (mounted) {
       if (success) {
         AppSnackbar.show(

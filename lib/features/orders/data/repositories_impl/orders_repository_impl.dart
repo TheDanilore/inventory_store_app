@@ -54,7 +54,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
         stackTrace: st,
         name: 'OrdersRepo',
       );
-      return Left(ServerFailure(message: 'Error de base de datos al obtener pedidos: ${e.message}'));
+      return Left(
+        ServerFailure(
+          message: 'Error de base de datos al obtener pedidos: ${e.message}',
+        ),
+      );
     } on SocketException catch (e, st) {
       developer.log(
         'Error de red en getCustomerOrders',
@@ -62,7 +66,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
         stackTrace: st,
         name: 'OrdersRepo',
       );
-      return Left(ServerFailure(message: 'Sin conexión a internet. Verifique su red.'));
+      return Left(
+        ServerFailure(message: 'Sin conexión a internet. Verifique su red.'),
+      );
     } catch (e, st) {
       developer.log(
         'Error inesperado en getCustomerOrders',
@@ -264,7 +270,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
         stackTrace: st,
         name: 'OrdersRepo',
       );
-      return Left(ServerFailure(message: 'Error al cargar ítems del pedido: ${e.message}'));
+      return Left(
+        ServerFailure(
+          message: 'Error al cargar ítems del pedido: ${e.message}',
+        ),
+      );
     } on SocketException catch (e, st) {
       developer.log(
         'Error de red en getOrderItems',
@@ -272,7 +282,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
         stackTrace: st,
         name: 'OrdersRepo',
       );
-      return Left(ServerFailure(message: 'Sin conexión a internet al consultar el detalle.'));
+      return Left(
+        ServerFailure(
+          message: 'Sin conexión a internet al consultar el detalle.',
+        ),
+      );
     } catch (e, st) {
       developer.log(
         'Error inesperado en getOrderItems',
@@ -280,35 +294,51 @@ class OrdersRepositoryImpl implements OrdersRepository {
         stackTrace: st,
         name: 'OrdersRepo',
       );
-      return Left(ServerFailure(message: 'No se pudo obtener el detalle de la orden.'));
+      return Left(
+        ServerFailure(message: 'No se pudo obtener el detalle de la orden.'),
+      );
     }
   }
 
   @override
-  Future<Either<Failure, ({List<CartItemEntity> validItems, List<String> outOfStock, List<String> priceChanged})>> validateReorderItems(
-    List<OrderItemEntity> items,
-  ) async {
+  Future<
+    Either<
+      Failure,
+      ({
+        List<CartItemEntity> validItems,
+        List<String> outOfStock,
+        List<String> priceChanged,
+      })
+    >
+  >
+  validateReorderItems(List<OrderItemEntity> items) async {
     try {
-      final productIds = items.map((e) => e.productId).whereType<String>().toSet().toList();
+      final productIds =
+          items.map((e) => e.productId).whereType<String>().toSet().toList();
       if (productIds.isEmpty) {
-        return Right((validItems: const [], outOfStock: const [], priceChanged: const []));
+        return Right((
+          validItems: const [],
+          outOfStock: const [],
+          priceChanged: const [],
+        ));
       }
 
       final productsData = await _supabase
           .from('products')
-          .select('id, name, is_active, uses_batches, product_variants(id, sale_price, unit_cost, is_active), warehouse_stock_batches(product_id, variant_id, available_quantity)')
+          .select(
+            'id, name, is_active, uses_batches, product_variants(id, sale_price, unit_cost, is_active), warehouse_stock_batches(product_id, variant_id, available_quantity)',
+          )
           .inFilter('id', productIds);
 
-      final productsMap = {
-        for (final p in productsData) p['id'] as String: p,
-      };
+      final productsMap = {for (final p in productsData) p['id'] as String: p};
 
       final validItems = <CartItemEntity>[];
       final outOfStock = <String>[];
       final priceChanged = <String>[];
 
       for (final item in items) {
-        if (item.productId == null || !productsMap.containsKey(item.productId)) {
+        if (item.productId == null ||
+            !productsMap.containsKey(item.productId)) {
           outOfStock.add(item.productName ?? 'Producto no disponible');
           continue;
         }
@@ -334,8 +364,10 @@ class OrdersRepositoryImpl implements OrdersRepository {
             if (variant['is_active'] == false) {
               isVariantActive = false;
             } else {
-              currentPrice = (variant['sale_price'] as num?)?.toDouble() ?? currentPrice;
-              currentCost = (variant['unit_cost'] as num?)?.toDouble() ?? currentCost;
+              currentPrice =
+                  (variant['sale_price'] as num?)?.toDouble() ?? currentPrice;
+              currentCost =
+                  (variant['unit_cost'] as num?)?.toDouble() ?? currentCost;
             }
           } else {
             isVariantActive = false;
@@ -343,40 +375,57 @@ class OrdersRepositoryImpl implements OrdersRepository {
         }
 
         if (!isVariantActive) {
-          outOfStock.add(item.variantDisplayName ?? item.productName ?? 'Variante no disponible');
+          outOfStock.add(
+            item.variantDisplayName ??
+                item.productName ??
+                'Variante no disponible',
+          );
           continue;
         }
 
-        final batches = pData['warehouse_stock_batches'] as List<dynamic>? ?? [];
+        final batches =
+            pData['warehouse_stock_batches'] as List<dynamic>? ?? [];
         int totalAvailableStock = 0;
         for (final b in batches) {
           final bMap = b as Map<String, dynamic>;
           if (item.variantId != null) {
             if (bMap['variant_id'] == item.variantId) {
-              totalAvailableStock += (bMap['available_quantity'] as num?)?.toInt() ?? 0;
+              totalAvailableStock +=
+                  (bMap['available_quantity'] as num?)?.toInt() ?? 0;
             }
           } else {
             if (bMap['variant_id'] == null || bMap['variant_id'] == '') {
-              totalAvailableStock += (bMap['available_quantity'] as num?)?.toInt() ?? 0;
+              totalAvailableStock +=
+                  (bMap['available_quantity'] as num?)?.toInt() ?? 0;
             }
           }
         }
 
         if (totalAvailableStock <= 0) {
-          outOfStock.add(item.variantDisplayName ?? item.productName ?? 'Agotado');
+          outOfStock.add(
+            item.variantDisplayName ?? item.productName ?? 'Agotado',
+          );
           continue;
         }
 
         if ((currentPrice - item.appliedPrice).abs() > 0.01) {
-          priceChanged.add(item.variantDisplayName ?? item.productName ?? 'Artículo actualizado');
+          priceChanged.add(
+            item.variantDisplayName ??
+                item.productName ??
+                'Artículo actualizado',
+          );
         }
 
-        final qtyToTake = item.quantity > totalAvailableStock ? totalAvailableStock : item.quantity;
+        final qtyToTake =
+            item.quantity > totalAvailableStock
+                ? totalAvailableStock
+                : item.quantity;
 
         validItems.add(
           CartItemEntity(
             productId: item.productId!,
-            productName: pData['name'] as String? ?? item.productName ?? 'Producto',
+            productName:
+                pData['name'] as String? ?? item.productName ?? 'Producto',
             cartKey: item.variantId ?? item.productId ?? item.id,
             quantity: qtyToTake,
             unitPrice: currentPrice,
@@ -392,7 +441,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
         );
       }
 
-      return Right((validItems: validItems, outOfStock: outOfStock, priceChanged: priceChanged));
+      return Right((
+        validItems: validItems,
+        outOfStock: outOfStock,
+        priceChanged: priceChanged,
+      ));
     } on PostgrestException catch (e, st) {
       developer.log(
         'Error de Supabase en validateReorderItems',
@@ -400,7 +453,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
         stackTrace: st,
         name: 'OrdersRepo',
       );
-      return Left(ServerFailure(message: 'Error al verificar stock: ${e.message}'));
+      return Left(
+        ServerFailure(message: 'Error al verificar stock: ${e.message}'),
+      );
     } on SocketException catch (e, st) {
       developer.log(
         'Error de red en validateReorderItems',
@@ -408,7 +463,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
         stackTrace: st,
         name: 'OrdersRepo',
       );
-      return Left(ServerFailure(message: 'Sin conexión para validar disponibilidad.'));
+      return Left(
+        ServerFailure(message: 'Sin conexión para validar disponibilidad.'),
+      );
     } catch (e, st) {
       developer.log(
         'Error inesperado en validateReorderItems',
@@ -416,7 +473,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
         stackTrace: st,
         name: 'OrdersRepo',
       );
-      return Left(ServerFailure(message: 'No se pudo verificar el inventario para reordenar.'));
+      return Left(
+        ServerFailure(
+          message: 'No se pudo verificar el inventario para reordenar.',
+        ),
+      );
     }
   }
 

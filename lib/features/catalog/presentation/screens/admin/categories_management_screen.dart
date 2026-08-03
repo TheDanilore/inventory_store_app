@@ -204,9 +204,10 @@ class _CategoriesManagementScreenState
       title: 'Categorías',
       showBackButton: true,
       body: BlocConsumer<CategoriesCubit, CategoriesState>(
-        listenWhen: (previous, current) =>
-            current.errorMessage != null &&
-            current.errorMessage != previous.errorMessage,
+        listenWhen:
+            (previous, current) =>
+                current.errorMessage != null &&
+                current.errorMessage != previous.errorMessage,
         listener: (context, state) {
           if (state.errorMessage != null) {
             AppSnackbar.show(

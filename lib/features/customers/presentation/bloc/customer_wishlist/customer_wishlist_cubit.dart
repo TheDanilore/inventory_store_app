@@ -78,7 +78,11 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
     final profileId = profileIdResult.fold((l) => null, (r) => r);
 
     if (profileId == null) {
-      emit(const CustomerWishlistError('Usuario no autenticado para realizar esta acción'));
+      emit(
+        const CustomerWishlistError(
+          'Usuario no autenticado para realizar esta acción',
+        ),
+      );
       return;
     }
 
@@ -86,7 +90,8 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
     if (currentState is CustomerWishlistLoaded) {
       if (currentState.removingIds.contains(entry.wishlistId)) return;
 
-      final newRemovingIds = Set<String>.from(currentState.removingIds)..add(entry.wishlistId);
+      final newRemovingIds = Set<String>.from(currentState.removingIds)
+        ..add(entry.wishlistId);
       emit(currentState.copyWith(removingIds: newRemovingIds));
 
       try {
@@ -98,8 +103,11 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
             currentState.items
                 .where((i) => i.wishlistId != entry.wishlistId)
                 .toList();
-        final afterRemovingIds = Set<String>.from(newRemovingIds)..remove(entry.wishlistId);
-        emit(currentState.copyWith(items: updated, removingIds: afterRemovingIds));
+        final afterRemovingIds = Set<String>.from(newRemovingIds)
+          ..remove(entry.wishlistId);
+        emit(
+          currentState.copyWith(items: updated, removingIds: afterRemovingIds),
+        );
       } catch (e, st) {
         developer.log(
           'Error crítico al eliminar ítem de lista de deseos',
@@ -107,7 +115,8 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
           stackTrace: st,
           name: 'WishlistCubit',
         );
-        final afterRemovingIds = Set<String>.from(newRemovingIds)..remove(entry.wishlistId);
+        final afterRemovingIds = Set<String>.from(newRemovingIds)
+          ..remove(entry.wishlistId);
         emit(CustomerWishlistError(Failure.from(e).message));
         emit(currentState.copyWith(removingIds: afterRemovingIds));
       }

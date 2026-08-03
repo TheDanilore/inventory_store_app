@@ -26,11 +26,7 @@ class UpdateAttributeUC {
     String name, {
     String? description,
   }) async {
-    return await repository.updateAttribute(
-      id,
-      name,
-      description: description,
-    );
+    return await repository.updateAttribute(id, name, description: description);
   }
 }
 

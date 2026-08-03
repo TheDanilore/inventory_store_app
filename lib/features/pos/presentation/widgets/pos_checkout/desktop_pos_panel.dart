@@ -403,7 +403,9 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                                         context: context,
                                         builder:
                                             (ctx) => AlertDialog(
-                                              title: const Text('¿Vaciar caja?'),
+                                              title: const Text(
+                                                '¿Vaciar caja?',
+                                              ),
                                               content: const Text(
                                                 'Se eliminarán todos los productos de la caja actual.',
                                               ),
@@ -415,15 +417,17 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                                                     'Cancelar',
                                                     style: TextStyle(
                                                       color:
-                                                          AppColors.textSecondary,
+                                                          AppColors
+                                                              .textSecondary,
                                                     ),
                                                   ),
                                                 ),
                                                 ElevatedButton(
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor:
-                                                        AppColors.danger,
-                                                  ),
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            AppColors.danger,
+                                                      ),
                                                   onPressed: () {
                                                     posCubit.removeClient();
                                                     posCubit.setPuntosAUsar(0);
@@ -864,9 +868,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                             ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
-                          !canProceed
-                              ? Colors.grey.shade400
-                              : AppColors.teal,
+                          !canProceed ? Colors.grey.shade400 : AppColors.teal,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),

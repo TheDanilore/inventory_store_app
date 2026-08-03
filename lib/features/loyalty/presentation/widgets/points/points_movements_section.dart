@@ -158,18 +158,66 @@ class _MovementRow extends StatelessWidget {
   const _MovementRow({required this.movement});
 
   static const Map<String, (IconData, Color, Color)> _typeMap = {
-    'DAILY_CHECKIN': (Icons.event_available_rounded, Color(0xFF10B981), Color(0xFFD1FAE5)),
-    'CHECKIN': (Icons.event_available_rounded, Color(0xFF10B981), Color(0xFFD1FAE5)),
-    'MINI_GAME_BOXES': (Icons.inbox_rounded, Color(0xFFF59E0B), Color(0xFFFEF3C7)),
-    'MINI_GAME_MEMORY': (Icons.extension_rounded, Color(0xFF0D9488), Color(0xFFCCFBF1)),
-    'MINI_GAME_CATCHER': (Icons.monetization_on_rounded, Color(0xFFE5A93C), Color(0xFFFEF3C7)),
-    'MINI_GAME_PINATA': (Icons.card_giftcard_rounded, Color(0xFFE05C41), Color(0xFFFFE4E6)),
-    'MINI_GAME_JUMP': (Icons.directions_run_rounded, Color(0xFF6A5AE0), Color(0xFFEDE9FE)),
-    'MINI_GAME_CLAW': (Icons.toys_rounded, Color(0xFFB26CFF), Color(0xFFF3E8FF)),
-    'MINI_GAME_STACK': (Icons.layers_rounded, Color(0xFF4E79FF), Color(0xFFEFF6FF)),
-    'MINI_GAME_DODGE': (Icons.rocket_launch_rounded, Color(0xFF3E7DD1), Color(0xFFEFF6FF)),
-    'REDEMPTION': (Icons.shopping_cart_checkout_rounded, Color(0xFFEF4444), Color(0xFFFFE4E6)),
-    'EARN': (Icons.account_balance_wallet_rounded, Color(0xFF10B981), Color(0xFFD1FAE5)),
+    'DAILY_CHECKIN': (
+      Icons.event_available_rounded,
+      Color(0xFF10B981),
+      Color(0xFFD1FAE5),
+    ),
+    'CHECKIN': (
+      Icons.event_available_rounded,
+      Color(0xFF10B981),
+      Color(0xFFD1FAE5),
+    ),
+    'MINI_GAME_BOXES': (
+      Icons.inbox_rounded,
+      Color(0xFFF59E0B),
+      Color(0xFFFEF3C7),
+    ),
+    'MINI_GAME_MEMORY': (
+      Icons.extension_rounded,
+      Color(0xFF0D9488),
+      Color(0xFFCCFBF1),
+    ),
+    'MINI_GAME_CATCHER': (
+      Icons.monetization_on_rounded,
+      Color(0xFFE5A93C),
+      Color(0xFFFEF3C7),
+    ),
+    'MINI_GAME_PINATA': (
+      Icons.card_giftcard_rounded,
+      Color(0xFFE05C41),
+      Color(0xFFFFE4E6),
+    ),
+    'MINI_GAME_JUMP': (
+      Icons.directions_run_rounded,
+      Color(0xFF6A5AE0),
+      Color(0xFFEDE9FE),
+    ),
+    'MINI_GAME_CLAW': (
+      Icons.toys_rounded,
+      Color(0xFFB26CFF),
+      Color(0xFFF3E8FF),
+    ),
+    'MINI_GAME_STACK': (
+      Icons.layers_rounded,
+      Color(0xFF4E79FF),
+      Color(0xFFEFF6FF),
+    ),
+    'MINI_GAME_DODGE': (
+      Icons.rocket_launch_rounded,
+      Color(0xFF3E7DD1),
+      Color(0xFFEFF6FF),
+    ),
+    'REDEMPTION': (
+      Icons.shopping_cart_checkout_rounded,
+      Color(0xFFEF4444),
+      Color(0xFFFFE4E6),
+    ),
+    'EARN': (
+      Icons.account_balance_wallet_rounded,
+      Color(0xFF10B981),
+      Color(0xFFD1FAE5),
+    ),
   };
 
   @override
@@ -187,8 +235,16 @@ class _MovementRow extends StatelessWidget {
     final (icon, badgeColor, badgeBg) =
         _typeMap[type] ??
         (isPositive
-            ? (Icons.monetization_on_rounded, PointsDS.success, PointsDS.successLight)
-            : (Icons.trending_down_rounded, PointsDS.danger, PointsDS.dangerLight));
+            ? (
+              Icons.monetization_on_rounded,
+              PointsDS.success,
+              PointsDS.successLight,
+            )
+            : (
+              Icons.trending_down_rounded,
+              PointsDS.danger,
+              PointsDS.dangerLight,
+            ));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -208,9 +264,7 @@ class _MovementRow extends StatelessWidget {
               color: badgeBg,
               borderRadius: BorderRadius.circular(11),
             ),
-            child: Center(
-              child: Icon(icon, color: badgeColor, size: 20),
-            ),
+            child: Center(child: Icon(icon, color: badgeColor, size: 20)),
           ),
           const SizedBox(width: 12),
 

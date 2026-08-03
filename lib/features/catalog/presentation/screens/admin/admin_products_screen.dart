@@ -74,57 +74,64 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     return AdminLayout(
       title: 'Inventario de Productos',
       showBackButton: true,
-      actions: isDesktop
-          ? [
-              ElevatedButton.icon(
-                onPressed: () => context.go('/admin/products/product-form'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
+      actions:
+          isDesktop
+              ? [
+                ElevatedButton.icon(
+                  onPressed: () => context.go('/admin/products/product-form'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                    ),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text(
+                    'Nuevo Producto',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                   ),
                 ),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text(
-                  'Nuevo Producto',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-              ),
-            ]
-          : null,
-      floatingActionButton: !isDesktop
-          ? ValueListenableBuilder<bool>(
-              valueListenable: _isFabExtended,
-              builder: (context, extended, child) {
-                return extended
-                    ? FloatingActionButton.extended(
-                        onPressed: () => context.go('/admin/products/product-form'),
+              ]
+              : null,
+      floatingActionButton:
+          !isDesktop
+              ? ValueListenableBuilder<bool>(
+                valueListenable: _isFabExtended,
+                builder: (context, extended, child) {
+                  return extended
+                      ? FloatingActionButton.extended(
+                        onPressed:
+                            () => context.go('/admin/products/product-form'),
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         elevation: 4,
                         icon: const Icon(Icons.add_rounded),
                         label: const Text(
                           'Nuevo Producto',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
                         ),
                       )
-                    : FloatingActionButton(
-                        onPressed: () => context.go('/admin/products/product-form'),
+                      : FloatingActionButton(
+                        onPressed:
+                            () => context.go('/admin/products/product-form'),
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         elevation: 4,
                         tooltip: 'Nuevo Producto',
                         child: const Icon(Icons.add_rounded),
                       );
-              },
-            )
-          : null,
+                },
+              )
+              : null,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isDesktopLayout = constraints.maxWidth >= 900;
@@ -176,7 +183,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                             vertical: 14,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppColors.radius),
+                            borderRadius: BorderRadius.circular(
+                              AppColors.radius,
+                            ),
                           ),
                         ),
                       )

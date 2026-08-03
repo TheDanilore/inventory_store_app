@@ -198,18 +198,19 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
         'RPC claim_daily_checkin falló ($e). Ejecutando respaldo resiliente en Dart...',
       );
       try {
-        final todayStr = DateTime.now()
-            .toUtc()
-            .toIso8601String()
-            .substring(0, 10);
+        final todayStr = DateTime.now().toUtc().toIso8601String().substring(
+          0,
+          10,
+        );
 
         // 1. Validar si ya existe el check-in de hoy
-        final existing = await _supabase
-            .from('daily_checkins')
-            .select('id')
-            .eq('profile_id', profileId)
-            .eq('checkin_date', todayStr)
-            .maybeSingle();
+        final existing =
+            await _supabase
+                .from('daily_checkins')
+                .select('id')
+                .eq('profile_id', profileId)
+                .eq('checkin_date', todayStr)
+                .maybeSingle();
         if (existing != null) {
           return left(Failure.from('Ya realizaste tu check-in hoy.'));
         }
@@ -220,12 +221,13 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
             .subtract(const Duration(days: 1))
             .toIso8601String()
             .substring(0, 10);
-        final yesterdayCheckin = await _supabase
-            .from('daily_checkins')
-            .select('streak_day')
-            .eq('profile_id', profileId)
-            .eq('checkin_date', yesterdayStr)
-            .maybeSingle();
+        final yesterdayCheckin =
+            await _supabase
+                .from('daily_checkins')
+                .select('streak_day')
+                .eq('profile_id', profileId)
+                .eq('checkin_date', yesterdayStr)
+                .maybeSingle();
         final streakDay =
             (yesterdayCheckin != null && yesterdayCheckin['streak_day'] != null)
                 ? (yesterdayCheckin['streak_day'] as num).toInt() + 1
@@ -264,11 +266,12 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
         });
 
         // 6. Actualizar balance en profiles
-        final profile = await _supabase
-            .from('profiles')
-            .select('wallet_balance')
-            .eq('id', profileId)
-            .maybeSingle();
+        final profile =
+            await _supabase
+                .from('profiles')
+                .select('wallet_balance')
+                .eq('id', profileId)
+                .maybeSingle();
         final currentBalance =
             (profile != null && profile['wallet_balance'] != null)
                 ? (profile['wallet_balance'] as num).toInt()

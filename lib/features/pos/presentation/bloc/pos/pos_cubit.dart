@@ -80,7 +80,8 @@ class PosCubit extends Cubit<PosState> {
             isLoading: false,
             warehouses: data.warehouses,
             accounts: data.accounts,
-            selectedWarehouseId: initialWarehouseId ?? state.selectedWarehouseId,
+            selectedWarehouseId:
+                initialWarehouseId ?? state.selectedWarehouseId,
             selectedAccountId: initialAccountId,
             paymentMethod: initialPaymentMethod ?? state.paymentMethod,
           ),

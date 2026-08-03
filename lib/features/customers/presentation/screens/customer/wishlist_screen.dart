@@ -73,7 +73,11 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
       return;
     }
 
-    final variant = product.defaultVariant ?? (product.productVariants.isNotEmpty ? product.productVariants.first : null);
+    final variant =
+        product.defaultVariant ??
+        (product.productVariants.isNotEmpty
+            ? product.productVariants.first
+            : null);
     final variantId = variant?.id;
 
     context.read<CartCubit>().addItem(
@@ -92,10 +96,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
         sku: variant?.sku ?? product.defaultVariant?.sku,
       ),
     );
-    AppSnackbar.show(
-      context,
-      message: '${product.name} agregado al carrito',
-    );
+    AppSnackbar.show(context, message: '${product.name} agregado al carrito');
   }
 
   Future<void> _confirmRemove(WishlistEntryEntity entry) async {

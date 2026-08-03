@@ -163,15 +163,32 @@ class WarehousesCubit extends Cubit<WarehousesState> {
   }
 
   Future<bool> deleteWarehouse(String id) async {
-    emit(state.copyWith(isLoading: true, clearErrorMessage: true, clearSuccessMessage: true));
+    emit(
+      state.copyWith(
+        isLoading: true,
+        clearErrorMessage: true,
+        clearSuccessMessage: true,
+      ),
+    );
     try {
       await deleteWarehouseUseCase.call(id);
-      emit(state.copyWith(isLoading: false, successMessage: 'Almacén eliminado exitosamente'));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          successMessage: 'Almacén eliminado exitosamente',
+        ),
+      );
       await loadWarehouses(isRefresh: true);
       return true;
     } catch (e) {
       String msg = e.toString().replaceAll('Exception: ', '');
-      emit(state.copyWith(isLoading: false, errorMessage: msg, clearSuccessMessage: true));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: msg,
+          clearSuccessMessage: true,
+        ),
+      );
       return false;
     }
   }

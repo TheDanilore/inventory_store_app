@@ -51,8 +51,12 @@ class _AttributeValueDialogState extends State<AttributeValueDialog> {
         child: TextFormField(
           controller: _valueCtrl,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'Ej: Rojo, XL, Madera...'),
-          validator: (val) => val == null || val.trim().isEmpty ? 'Ingresa un valor' : null,
+          decoration: const InputDecoration(
+            hintText: 'Ej: Rojo, XL, Madera...',
+          ),
+          validator:
+              (val) =>
+                  val == null || val.trim().isEmpty ? 'Ingresa un valor' : null,
           onFieldSubmitted: (_) => _save(),
         ),
       ),

@@ -415,7 +415,8 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                           }
 
                           final selVar = loadedState.selectedVariant;
-                          if (selVar == null && loadedState.variants.isNotEmpty) {
+                          if (selVar == null &&
+                              loadedState.variants.isNotEmpty) {
                             return;
                           }
 

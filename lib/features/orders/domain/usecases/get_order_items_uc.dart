@@ -15,9 +15,17 @@ class GetOrderItemsUc {
     return repository.getOrderItems(orderId);
   }
 
-  Future<Either<Failure, ({List<CartItemEntity> validItems, List<String> outOfStock, List<String> priceChanged})>> validateReorderItems(
-    List<OrderItemEntity> items,
-  ) {
+  Future<
+    Either<
+      Failure,
+      ({
+        List<CartItemEntity> validItems,
+        List<String> outOfStock,
+        List<String> priceChanged,
+      })
+    >
+  >
+  validateReorderItems(List<OrderItemEntity> items) {
     return repository.validateReorderItems(items);
   }
 }

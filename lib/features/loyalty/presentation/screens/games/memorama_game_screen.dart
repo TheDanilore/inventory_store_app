@@ -497,7 +497,9 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFFFC107).withValues(alpha: 0.25),
+                          color: const Color(
+                            0xFFFFC107,
+                          ).withValues(alpha: 0.25),
                           blurRadius: 20,
                           spreadRadius: 2,
                         ),
@@ -579,10 +581,7 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFF1E293B),
-                    Color(0xFF0F172A),
-                  ],
+                  colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -607,21 +606,30 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                     width: 90,
                     height: 90,
                     decoration: BoxDecoration(
-                      color: completed
-                          ? const Color(0xFFFFC107).withValues(alpha: 0.15)
-                          : const Color(0xFFFF5722).withValues(alpha: 0.15),
+                      color:
+                          completed
+                              ? const Color(0xFFFFC107).withValues(alpha: 0.15)
+                              : const Color(0xFFFF5722).withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: completed
-                            ? const Color(0xFFFFC107).withValues(alpha: 0.4)
-                            : const Color(0xFFFF5722).withValues(alpha: 0.4),
+                        color:
+                            completed
+                                ? const Color(0xFFFFC107).withValues(alpha: 0.4)
+                                : const Color(
+                                  0xFFFF5722,
+                                ).withValues(alpha: 0.4),
                         width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: completed
-                              ? const Color(0xFFFFC107).withValues(alpha: 0.25)
-                              : const Color(0xFFFF5722).withValues(alpha: 0.25),
+                          color:
+                              completed
+                                  ? const Color(
+                                    0xFFFFC107,
+                                  ).withValues(alpha: 0.25)
+                                  : const Color(
+                                    0xFFFF5722,
+                                  ).withValues(alpha: 0.25),
                           blurRadius: 20,
                           spreadRadius: 2,
                         ),
@@ -632,9 +640,10 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                           ? Icons.emoji_events_rounded
                           : Icons.hourglass_empty_rounded,
                       size: 46,
-                      color: completed
-                          ? const Color(0xFFFFC107)
-                          : const Color(0xFFFF7043),
+                      color:
+                          completed
+                              ? const Color(0xFFFFC107)
+                              : const Color(0xFFFF7043),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -656,10 +665,7 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                       ),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF332A15),
-                            Color(0xFF423214),
-                          ],
+                          colors: [Color(0xFF332A15), Color(0xFF423214)],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
@@ -670,7 +676,9 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFFFC107).withValues(alpha: 0.18),
+                            color: const Color(
+                              0xFFFFC107,
+                            ).withValues(alpha: 0.18),
                             blurRadius: 15,
                           ),
                         ],
@@ -741,7 +749,10 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                                 .getDouble('memorama_daily_limit', 1)
                                 .round();
                         final played =
-                            context.read<PointsCubit>().state.memoramaPlaysToday;
+                            context
+                                .read<PointsCubit>()
+                                .state
+                                .memoramaPlaysToday;
                         final canPlayAgain =
                             widget.profileId == 'offline' ||
                             (limit - (played + 1) > 0);
@@ -853,10 +864,7 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B).withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: color.withValues(alpha: 0.4),
-          width: 1.5,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.25),

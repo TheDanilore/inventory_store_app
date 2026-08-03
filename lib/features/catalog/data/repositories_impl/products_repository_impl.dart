@@ -399,10 +399,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
                 ? description.trim()
                 : null,
       };
-      await _supabase
-          .from('attributes')
-          .update(payload)
-          .eq('id', id);
+      await _supabase.from('attributes').update(payload).eq('id', id);
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
@@ -1042,10 +1039,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
             .from('product_variants')
             .select('id')
             .eq('product_id', productId);
-        final vIds = List<Map<String, dynamic>>.from(varRes)
-            .map((r) => r['id'] as String)
-            .toList();
-        return await fetchVariantStockByVariantIds(vIds, warehouseId: warehouseId);
+        final vIds =
+            List<Map<String, dynamic>>.from(
+              varRes,
+            ).map((r) => r['id'] as String).toList();
+        return await fetchVariantStockByVariantIds(
+          vIds,
+          warehouseId: warehouseId,
+        );
       }
       final response = await _supabase
           .from('product_stock_summary')

@@ -71,7 +71,9 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
 
   Future<void> _handleReorder(String orderId) async {
     try {
-      final result = await context.read<CustomerOrdersCubit>().reorderOrder(orderId);
+      final result = await context.read<CustomerOrdersCubit>().reorderOrder(
+        orderId,
+      );
       if (!mounted) return;
 
       result.fold(
@@ -86,7 +88,8 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
           if (reorderData.validItems.isEmpty) {
             AppSnackbar.show(
               context,
-              message: 'Los productos de este pedido se encuentran agotados o descontinuados.',
+              message:
+                  'Los productos de este pedido se encuentran agotados o descontinuados.',
               type: SnackbarType.error,
             );
             return;
@@ -97,10 +100,12 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
             cartCubit.addItem(cartItem);
           }
 
-          if (reorderData.outOfStock.isNotEmpty || reorderData.priceChanged.isNotEmpty) {
+          if (reorderData.outOfStock.isNotEmpty ||
+              reorderData.priceChanged.isNotEmpty) {
             AppSnackbar.show(
               context,
-              message: '¡Productos añadidos al carrito! Nota: Algunos artículos cambiaron de precio o están agotados.',
+              message:
+                  '¡Productos añadidos al carrito! Nota: Algunos artículos cambiaron de precio o están agotados.',
               type: SnackbarType.warning,
             );
           } else {
@@ -164,10 +169,15 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          BlocSelector<CustomerOrdersCubit, CustomerOrdersState, bool>(
+                          BlocSelector<
+                            CustomerOrdersCubit,
+                            CustomerOrdersState,
+                            bool
+                          >(
                             selector: (s) => s.isBackgroundLoading,
                             builder: (context, isBackgroundLoading) {
-                              if (!isBackgroundLoading) return const SizedBox.shrink();
+                              if (!isBackgroundLoading)
+                                return const SizedBox.shrink();
                               return _buildBackgroundSyncIndicator();
                             },
                           ),
@@ -202,7 +212,9 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                     selector: (s) => s.isLoadingMore,
                     builder: (context, isLoadingMore) {
                       if (!isLoadingMore) {
-                        return const SliverToBoxAdapter(child: SizedBox.shrink());
+                        return const SliverToBoxAdapter(
+                          child: SizedBox.shrink(),
+                        );
                       }
                       return const SliverToBoxAdapter(
                         child: Padding(
@@ -410,7 +422,9 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color:
-                              isSelected ? Colors.white : AppColors.textSecondary,
+                              isSelected
+                                  ? Colors.white
+                                  : AppColors.textSecondary,
                         ),
                       ),
                     ),

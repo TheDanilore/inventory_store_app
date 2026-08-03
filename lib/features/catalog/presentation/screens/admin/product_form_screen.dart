@@ -216,10 +216,11 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
         }
       },
       child: BlocBuilder<ProductFormCubit, ProductFormState>(
-        buildWhen: (prev, curr) =>
-            prev.isInitializingData != curr.isInitializingData ||
-            prev.hasErrorLoading != curr.hasErrorLoading ||
-            prev.isSaving != curr.isSaving,
+        buildWhen:
+            (prev, curr) =>
+                prev.isInitializingData != curr.isInitializingData ||
+                prev.hasErrorLoading != curr.hasErrorLoading ||
+                prev.isSaving != curr.isSaving,
         builder: (context, state) {
           final cubit = context.read<ProductFormCubit>();
           final canPopNow =

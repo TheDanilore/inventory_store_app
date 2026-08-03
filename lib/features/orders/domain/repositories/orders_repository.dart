@@ -32,7 +32,17 @@ abstract class OrdersRepository {
 
   Future<Either<Failure, OrderEntity>> getOrderById(String orderId);
   Future<Either<Failure, List<OrderItemEntity>>> getOrderItems(String orderId);
-  Future<Either<Failure, ({List<CartItemEntity> validItems, List<String> outOfStock, List<String> priceChanged})>> validateReorderItems(List<OrderItemEntity> items);
+  Future<
+    Either<
+      Failure,
+      ({
+        List<CartItemEntity> validItems,
+        List<String> outOfStock,
+        List<String> priceChanged,
+      })
+    >
+  >
+  validateReorderItems(List<OrderItemEntity> items);
 
   Future<Either<Failure, void>> updateOrderStatus({
     required OrderEntity order,

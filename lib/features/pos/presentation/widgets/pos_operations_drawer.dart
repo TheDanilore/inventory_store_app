@@ -165,13 +165,23 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
                             Navigator.pop(context);
                             context.push('/admin/all-cash-shifts');
                           },
-                          icon: const Icon(Icons.point_of_sale_rounded, size: 16),
-                          label: const Text('Turnos de Caja', style: TextStyle(fontSize: 12)),
+                          icon: const Icon(
+                            Icons.point_of_sale_rounded,
+                            size: 16,
+                          ),
+                          label: const Text(
+                            'Turnos de Caja',
+                            style: TextStyle(fontSize: 12),
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.primary,
                             side: const BorderSide(color: AppColors.border),
                             padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusSm)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AppColors.radiusSm,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -182,13 +192,23 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
                             Navigator.pop(context);
                             context.go('/admin');
                           },
-                          icon: const Icon(Icons.inventory_2_outlined, size: 16),
-                          label: const Text('Inventario', style: TextStyle(fontSize: 12)),
+                          icon: const Icon(
+                            Icons.inventory_2_outlined,
+                            size: 16,
+                          ),
+                          label: const Text(
+                            'Inventario',
+                            style: TextStyle(fontSize: 12),
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textPrimary,
                             side: const BorderSide(color: AppColors.border),
                             padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusSm)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AppColors.radiusSm,
+                              ),
+                            ),
                           ),
                         ),
                       ),

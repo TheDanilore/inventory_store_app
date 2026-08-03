@@ -77,7 +77,11 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
 
   void setSearchQuery(String query) {
     final trimmed = query.trim();
-    final newFiltered = _applyFilters(state.orders, state.statusFilter, trimmed);
+    final newFiltered = _applyFilters(
+      state.orders,
+      state.statusFilter,
+      trimmed,
+    );
     emit(state.copyWith(searchQuery: trimmed, filteredOrders: newFiltered));
   }
 
@@ -106,9 +110,17 @@ class CustomerOrdersCubit extends Cubit<CustomerOrdersState> {
     );
   }
 
-  Future<Either<Failure, ({List<CartItemEntity> validItems, List<String> outOfStock, List<String> priceChanged})>> reorderOrder(
-    String orderId,
-  ) async {
+  Future<
+    Either<
+      Failure,
+      ({
+        List<CartItemEntity> validItems,
+        List<String> outOfStock,
+        List<String> priceChanged,
+      })
+    >
+  >
+  reorderOrder(String orderId) async {
     final itemsResult = await fetchOrderItems(orderId);
     return itemsResult.fold(
       (f) => Left(f),

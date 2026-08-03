@@ -168,12 +168,14 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       ProductEntity? targetProduct = product;
       final effectiveId = targetProduct?.id ?? productId;
 
-      // HIDRATACIÓN BAJO DEMANDA: Al editar, consultamos invariablemente el detalle por ID 
+      // HIDRATACIÓN BAJO DEMANDA: Al editar, consultamos invariablemente el detalle por ID
       // para recuperar las variantes con el árbol completo de atributos (variant_attribute_values)
       // que se omitieron en el listado por control de Data Egress.
       if (effectiveId != null && effectiveId.isNotEmpty) {
         try {
-          final fullProduct = await _unwrap(_getProductByIdUC.call(effectiveId));
+          final fullProduct = await _unwrap(
+            _getProductByIdUC.call(effectiveId),
+          );
           if (fullProduct != null) {
             targetProduct = fullProduct;
           } else {
@@ -704,7 +706,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       }
       return 'Error en Supabase: $s';
     }
-    if (e is String && e.isNotEmpty && e != 'Ocurrió un error al guardar el producto.') {
+    if (e is String &&
+        e.isNotEmpty &&
+        e != 'Ocurrió un error al guardar el producto.') {
       return e;
     }
     return 'Ocurrió un error al guardar el producto: $s';

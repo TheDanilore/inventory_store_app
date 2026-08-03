@@ -17,11 +17,19 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
     developer.log('IngredientsRepositoryImpl Error', error: e, stackTrace: st);
     if (e is PostgrestException) {
       if (e.code == '23503') {
-        return left(Failure.from('No se puede eliminar: Este componente químico está siendo utilizado en las formulaciones de productos del catálogo.'));
+        return left(
+          Failure.from(
+            'No se puede eliminar: Este componente químico está siendo utilizado en las formulaciones de productos del catálogo.',
+          ),
+        );
       }
       return left(Failure.from('Error de BD: ${e.message}'));
     }
-    return left(Failure.from('Ocurrió un error inesperado al procesar la solicitud: ${e.toString()}'));
+    return left(
+      Failure.from(
+        'Ocurrió un error inesperado al procesar la solicitud: ${e.toString()}',
+      ),
+    );
   }
 
   @override

@@ -131,9 +131,10 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
       title: 'Componentes Químicos',
       showBackButton: true,
       body: BlocConsumer<IngredientsCubit, IngredientsState>(
-        listenWhen: (previous, current) =>
-            current.errorMessage != null &&
-            current.errorMessage != previous.errorMessage,
+        listenWhen:
+            (previous, current) =>
+                current.errorMessage != null &&
+                current.errorMessage != previous.errorMessage,
         listener: (context, state) {
           if (state.errorMessage != null) {
             AppSnackbar.show(
