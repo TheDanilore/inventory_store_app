@@ -72,7 +72,7 @@ class IngredientsCubit extends Cubit<IngredientsState> {
   }
 
   Future<bool> saveIngredient(String name, {String? id}) async {
-    emit(state.copyWith(isSaving: true));
+    emit(state.copyWith(isSaving: true, clearErrorMessage: true));
 
     final result =
         id == null
@@ -93,7 +93,7 @@ class IngredientsCubit extends Cubit<IngredientsState> {
   }
 
   Future<bool> deleteIngredient(String id) async {
-    emit(state.copyWith(isSaving: true));
+    emit(state.copyWith(isSaving: true, clearErrorMessage: true));
     final result = await deleteIngredientUC(id);
 
     return result.fold(
@@ -101,9 +101,16 @@ class IngredientsCubit extends Cubit<IngredientsState> {
         emit(state.copyWith(isSaving: false, errorMessage: failure.message));
         return false;
       },
-      (_) async {
-        emit(state.copyWith(isSaving: false, clearErrorMessage: true));
-        await loadIngredients();
+      (_) {
+        final updatedList = state.ingredients.where((i) => i.id != id).toList();
+        emit(
+          state.copyWith(
+            isSaving: false,
+            clearErrorMessage: true,
+            ingredients: updatedList,
+            viewState: updatedList.isEmpty ? ViewState.empty : ViewState.success,
+          ),
+        );
         return true;
       },
     );

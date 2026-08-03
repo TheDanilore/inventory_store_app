@@ -85,7 +85,7 @@ class CategoriesCubit extends Cubit<CategoriesState> {
   }
 
   Future<void> toggleStatus(CategoryEntity cat, bool isActive) async {
-    emit(state.copyWith(isSaving: true));
+    emit(state.copyWith(isSaving: true, clearErrorMessage: true));
     final result = await updateCategoryUC(
       id: cat.id!,
       name: cat.name,
@@ -121,7 +121,7 @@ class CategoriesCubit extends Cubit<CategoriesState> {
     required String description,
     required bool isActive,
   }) async {
-    emit(state.copyWith(isSaving: true));
+    emit(state.copyWith(isSaving: true, clearErrorMessage: true));
 
     final result =
         existingCategory == null
@@ -151,16 +151,23 @@ class CategoriesCubit extends Cubit<CategoriesState> {
   }
 
   Future<bool> deleteCategory(String id) async {
-    emit(state.copyWith(isSaving: true));
+    emit(state.copyWith(isSaving: true, clearErrorMessage: true));
     final result = await deleteCategoryUC(id);
     return result.fold(
       (failure) {
         emit(state.copyWith(isSaving: false, errorMessage: failure.message));
         return false;
       },
-      (_) async {
-        emit(state.copyWith(isSaving: false, clearErrorMessage: true));
-        await loadCategories(forceRefresh: true);
+      (_) {
+        final updatedList = state.categories.where((c) => c.id != id).toList();
+        emit(
+          state.copyWith(
+            isSaving: false,
+            clearErrorMessage: true,
+            categories: updatedList,
+            viewState: updatedList.isEmpty ? ViewState.empty : ViewState.success,
+          ),
+        );
         return true;
       },
     );

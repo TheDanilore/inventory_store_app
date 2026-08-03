@@ -51,7 +51,7 @@ class AttributesCubit extends Cubit<AttributesState> {
     String? id,
     String? description,
   }) async {
-    emit(state.copyWith(isSaving: true));
+    emit(state.copyWith(isSaving: true, clearErrorMessage: true));
 
     if (id == null) {
       final result = await createAttributeUseCase(
@@ -130,7 +130,7 @@ class AttributesCubit extends Cubit<AttributesState> {
   }
 
   Future<bool> deleteAttribute(String id) async {
-    emit(state.copyWith(isSaving: true));
+    emit(state.copyWith(isSaving: true, clearErrorMessage: true));
     final result = await deleteAttributeUC(id);
     return result.fold(
       (failure) {
@@ -159,7 +159,7 @@ class AttributesCubit extends Cubit<AttributesState> {
     String value, {
     String? valueId,
   }) async {
-    emit(state.copyWith(isSaving: true));
+    emit(state.copyWith(isSaving: true, clearErrorMessage: true));
 
     if (valueId == null) {
       final result = await createAttributeValueUC(attributeId, value);
@@ -234,7 +234,7 @@ class AttributesCubit extends Cubit<AttributesState> {
   }
 
   Future<bool> deleteAttributeValue(String valueId) async {
-    emit(state.copyWith(isSaving: true));
+    emit(state.copyWith(isSaving: true, clearErrorMessage: true));
     final result = await deleteAttributeValueUC(valueId);
     return result.fold(
       (failure) {
