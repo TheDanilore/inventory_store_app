@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/open_shift_sheet.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/close_shift_sheet.dart';
 
 class PosHeader extends StatelessWidget {
   final TextEditingController searchController;
@@ -72,7 +74,42 @@ class PosHeader extends StatelessWidget {
 
                 // ── Indicador / Control de Turno de Caja ──────────────
                 InkWell(
-                  onTap: () => context.push('/admin/all-cash-shifts'),
+                  onTap: () async {
+                    if (isShiftOpen) {
+                      final shiftsCubit = context.read<CashShiftsCubit>();
+                      final expected = await shiftsCubit.calcExpected(
+                        activeShift.id,
+                        activeShift.accountId ?? '',
+                        activeShift.openingAmount,
+                      );
+                      if (!context.mounted) return;
+                      final closed = await CloseShiftSheet.show(
+                        context,
+                        shift: activeShift,
+                        expectedAmount: expected,
+                      );
+                      if (closed == true && context.mounted) {
+                        context.read<PosCubit>().initPosData(forceRefresh: true);
+                        context.read<CashShiftsCubit>().fetchShifts();
+                      }
+                    } else {
+                      final cashAccounts = posState.accounts
+                          .where((a) =>
+                              (a['type']?.toString().toLowerCase() == 'caja' ||
+                               a['type']?.toString().toLowerCase() == 'cash'))
+                          .toList();
+                      final opened = await OpenShiftSheet.show(
+                        context,
+                        accounts: cashAccounts.isNotEmpty
+                            ? cashAccounts
+                            : posState.accounts,
+                      );
+                      if (opened == true && context.mounted) {
+                        context.read<PosCubit>().initPosData(forceRefresh: true);
+                        context.read<CashShiftsCubit>().fetchShifts();
+                      }
+                    }
+                  },
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
                     padding: const EdgeInsets.symmetric(

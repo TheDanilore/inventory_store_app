@@ -17,6 +17,26 @@ class PosRepositoryImpl implements PosRepository {
 
   PosRepositoryImpl();
 
+  String? _cachedProfileId;
+  String? _cachedRole;
+
+  Future<void> _ensureProfileLoaded() async {
+    if (_cachedProfileId != null && _cachedRole != null) return;
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
+    final profile = await _supabase
+        .from('profiles')
+        .select('id, role')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+    if (profile != null) {
+      _cachedProfileId = profile['id'] as String?;
+      _cachedRole = profile['role'] as String?;
+    }
+  }
+
   @override
   Future<Either<Failure, PosInitData>> loadInitialData({
     bool forceRefresh = false,
@@ -277,9 +297,16 @@ class PosRepositoryImpl implements PosRepository {
     int limit = 10,
   }) async {
     try {
-      final res = await _supabase
+      await _ensureProfileLoaded();
+      var query = _supabase
           .from('orders')
-          .select('id, total_amount, created_at, customer_name, status')
+          .select('id, total_amount, created_at, customer_name, status');
+
+      if (_cachedRole != 'admin' && _cachedProfileId != null) {
+        query = query.eq('created_by', _cachedProfileId!);
+      }
+
+      final res = await query
           .order('created_at', ascending: false)
           .limit(limit);
 

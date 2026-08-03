@@ -285,65 +285,6 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
               ),
             ),
           ],
-
-          // ── Almacén ────────────────────────────────────────────────────
-          if (warehouseList.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            const Divider(height: 1, color: AppColors.divider),
-            const SizedBox(height: 14),
-            const Text(
-              'Almacén de origen',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(AppColors.radius),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: selectedWarehouseId,
-                  isExpanded: true,
-                  icon: const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.textSecondary,
-                  ),
-                  items:
-                      warehouseList.map((w) {
-                        return DropdownMenuItem<String>(
-                          value: w.id,
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.warehouse_rounded,
-                                size: 16,
-                                color: AppColors.teal,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                w.name,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                  onChanged: onWarehouseChanged,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
