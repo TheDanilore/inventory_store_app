@@ -13,6 +13,7 @@ import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
+import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 
 class AttributesManagementScreen extends StatefulWidget {
   const AttributesManagementScreen({super.key});
@@ -445,12 +446,20 @@ class _AttributesManagementScreenState
 
             if (confirmed == true && context.mounted) {
               final success = await cubit.deleteAttribute(attr.id);
-              if (success && context.mounted) {
-                AppSnackbar.show(
-                  context,
-                  message: 'Propiedad "${attr.name}" eliminada',
-                  type: SnackbarType.success,
-                );
+              if (context.mounted) {
+                if (success) {
+                  AppSnackbar.show(
+                    context,
+                    message: 'Propiedad "${attr.name}" eliminada',
+                    type: SnackbarType.success,
+                  );
+                } else if (cubit.state.errorMessage != null) {
+                  AppSnackbar.show(
+                    context,
+                    message: cubit.state.errorMessage!,
+                    type: SnackbarType.error,
+                  );
+                }
               }
             }
           },
@@ -649,18 +658,34 @@ class _ValueChipState extends State<_ValueChip> {
   bool _isDeleting = false;
 
   void _handleDelete() async {
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Eliminar Valor',
+      message: '¿Estás seguro de eliminar el valor "${widget.value.value}"?',
+      confirmText: 'Eliminar',
+      confirmColor: AppColors.error,
+    );
+    if (confirmed != true || !mounted) return;
+
     setState(() => _isDeleting = true);
-    final success = await context.read<AttributesCubit>().deleteAttributeValue(
+    final cubit = context.read<AttributesCubit>();
+    final success = await cubit.deleteAttributeValue(
       widget.value.id,
     );
-    if (success && mounted) {
-      AppSnackbar.show(
-        context,
-        message: 'Valor eliminado',
-        type: SnackbarType.success,
-      );
-    }
     if (mounted) {
+      if (success) {
+        AppSnackbar.show(
+          context,
+          message: 'Valor eliminado',
+          type: SnackbarType.success,
+        );
+      } else if (cubit.state.errorMessage != null) {
+        AppSnackbar.show(
+          context,
+          message: cubit.state.errorMessage!,
+          type: SnackbarType.error,
+        );
+      }
       setState(() => _isDeleting = false);
     }
   }

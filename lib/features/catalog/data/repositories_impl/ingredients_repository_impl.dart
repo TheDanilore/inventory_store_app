@@ -14,9 +14,12 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
 
   Either<Failure, T> _handleError<T>(Object e) {
     if (e is PostgrestException) {
-      return left(Failure.from('Error de BD: '));
+      if (e.code == '23503') {
+        return left(Failure.from('No se puede eliminar porque este elemento está siendo utilizado en productos o registros del sistema.'));
+      }
+      return left(Failure.from('Error de BD: ${e.message}'));
     }
-    return left(Failure.from('Ocurrió un error inesperado: '));
+    return left(Failure.from('Ocurrió un error inesperado al procesar la solicitud.'));
   }
 
   @override
@@ -88,6 +91,19 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
   @override
   Future<Either<Failure, void>> deleteIngredient(String id) async {
     try {
+      final usage = await _supabase
+          .from('product_active_ingredients')
+          .select('product_id')
+          .eq('ingredient_id', id)
+          .limit(1);
+      if ((usage as List).isNotEmpty) {
+        return left(
+          Failure.from(
+            'No se puede eliminar: Este componente químico está siendo utilizado en las formulaciones de productos del catálogo.',
+          ),
+        );
+      }
+
       await _supabase.from('active_ingredients').delete().eq('id', id);
       return right(null);
     } catch (e) {

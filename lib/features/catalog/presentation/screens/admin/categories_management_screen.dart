@@ -126,7 +126,7 @@ class _CategoriesManagementScreenState
     final cubit = context.read<CategoriesCubit>();
 
     try {
-      await cubit.saveCategory(
+      final success = await cubit.saveCategory(
         existingCategory: _editingCategory,
         name: name,
         description: _desktopDescCtrl.text.trim(),
@@ -134,15 +134,23 @@ class _CategoriesManagementScreenState
       );
 
       if (mounted) {
-        AppSnackbar.show(
-          context,
-          message:
-              _editingCategory == null
-                  ? 'Categoría creada correctamente.'
-                  : 'Categoría actualizada correctamente.',
-          type: SnackbarType.success,
-        );
-        _clearDesktopForm();
+        if (success) {
+          AppSnackbar.show(
+            context,
+            message:
+                _editingCategory == null
+                    ? 'Categoría creada correctamente.'
+                    : 'Categoría actualizada correctamente.',
+            type: SnackbarType.success,
+          );
+          _clearDesktopForm();
+        } else if (cubit.state.errorMessage != null) {
+          AppSnackbar.show(
+            context,
+            message: cubit.state.errorMessage!,
+            type: SnackbarType.error,
+          );
+        }
       }
     } finally {
       if (mounted) setState(() => _isSavingDesktop = false);
@@ -188,14 +196,14 @@ class _CategoriesManagementScreenState
       if (_editingCategory?.id == cat.id) {
         _clearDesktopForm();
       }
-      AppSnackbar.showMessenger(
-        ScaffoldMessenger.of(context),
+      AppSnackbar.show(
+        context,
         message: 'Categoría eliminada exitosamente.',
         type: SnackbarType.success,
       );
     } else if (cubit.state.errorMessage != null && mounted) {
-      AppSnackbar.showMessenger(
-        ScaffoldMessenger.of(context),
+      AppSnackbar.show(
+        context,
         message: cubit.state.errorMessage!,
         type: SnackbarType.error,
       );

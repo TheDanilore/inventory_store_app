@@ -6,6 +6,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/category_en
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/categories/categories_state.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class CategoryFormSheet extends StatefulWidget {
   final CategoryEntity? category;
@@ -49,14 +50,21 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
       isActive: _isActive,
     );
 
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Guardado exitosamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      Navigator.pop(context);
+    if (mounted) {
+      if (success) {
+        AppSnackbar.show(
+          context,
+          message: 'Guardado exitosamente',
+          type: SnackbarType.success,
+        );
+        Navigator.pop(context);
+      } else if (cubit.state.errorMessage != null) {
+        AppSnackbar.show(
+          context,
+          message: cubit.state.errorMessage!,
+          type: SnackbarType.error,
+        );
+      }
     }
   }
 

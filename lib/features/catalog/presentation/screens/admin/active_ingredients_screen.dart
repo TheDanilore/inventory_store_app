@@ -110,16 +110,24 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
     final cubit = context.read<IngredientsCubit>();
     final success = await cubit.saveIngredient(name, id: _editingIngredientId);
 
-    if (success && mounted) {
-      AppSnackbar.show(
-        context,
-        message:
-            _editingIngredientId == null
-                ? 'Componente creado correctamente.'
-                : 'Componente actualizado correctamente.',
-        type: SnackbarType.success,
-      );
-      _clearDesktopForm();
+    if (mounted) {
+      if (success) {
+        AppSnackbar.show(
+          context,
+          message:
+              _editingIngredientId == null
+                  ? 'Componente creado correctamente.'
+                  : 'Componente actualizado correctamente.',
+          type: SnackbarType.success,
+        );
+        _clearDesktopForm();
+      } else if (cubit.state.errorMessage != null) {
+        AppSnackbar.show(
+          context,
+          message: cubit.state.errorMessage!,
+          type: SnackbarType.error,
+        );
+      }
     }
   }
 
@@ -512,8 +520,23 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
       },
     );
 
-    if (confirmed == true) {
-      await cubit.deleteIngredient(ingredient.id);
+    if (confirmed == true && mounted) {
+      final success = await cubit.deleteIngredient(ingredient.id);
+      if (mounted) {
+        if (success) {
+          AppSnackbar.show(
+            context,
+            message: 'Componente eliminado exitosamente.',
+            type: SnackbarType.success,
+          );
+        } else if (cubit.state.errorMessage != null) {
+          AppSnackbar.show(
+            context,
+            message: cubit.state.errorMessage!,
+            type: SnackbarType.error,
+          );
+        }
+      }
     }
   }
 }

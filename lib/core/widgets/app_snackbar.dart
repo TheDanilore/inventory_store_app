@@ -138,6 +138,8 @@ class AppSnackbar {
     _queue.insert(0, newSnackbar);
 
     final overlayState =
+        Navigator.maybeOf(messenger.context, rootNavigator: true)?.overlay ??
+        Overlay.maybeOf(messenger.context) ??
         messenger.context.findAncestorStateOfType<OverlayState>();
     if (overlayState == null) return;
 

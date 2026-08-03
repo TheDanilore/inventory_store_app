@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredients/ingredients_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class ActiveIngredientFormSheet extends StatefulWidget {
   /// ID del ingrediente existente (null = creación)
@@ -46,8 +47,24 @@ class _ActiveIngredientFormSheetState extends State<ActiveIngredientFormSheet> {
       id: widget.ingredientId,
     );
 
-    if (success && mounted) {
-      Navigator.pop(context);
+    if (mounted) {
+      if (success) {
+        AppSnackbar.show(
+          context,
+          message:
+              widget.ingredientId == null
+                  ? 'Componente creado correctamente.'
+                  : 'Componente actualizado correctamente.',
+          type: SnackbarType.success,
+        );
+        Navigator.pop(context);
+      } else if (cubit.state.errorMessage != null) {
+        AppSnackbar.show(
+          context,
+          message: cubit.state.errorMessage!,
+          type: SnackbarType.error,
+        );
+      }
     }
   }
 

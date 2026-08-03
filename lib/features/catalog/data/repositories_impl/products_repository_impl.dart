@@ -380,6 +380,28 @@ class ProductsRepositoryImpl implements ProductsRepository {
   @override
   Future<Either<Failure, void>> deleteAttribute(String id) async {
     try {
+      final valuesRes = await _supabase
+          .from('attribute_values')
+          .select('id')
+          .eq('attribute_id', id);
+      final valueIds =
+          (valuesRes as List).map((v) => v['id'] as String).toList();
+
+      if (valueIds.isNotEmpty) {
+        final usage = await _supabase
+            .from('variant_attribute_values')
+            .select('variant_id')
+            .inFilter('attribute_value_id', valueIds)
+            .limit(1);
+        if ((usage as List).isNotEmpty) {
+          return left(
+            Failure.from(
+              'No se puede eliminar: Esta propiedad tiene valores que están siendo utilizados por variantes de productos en el catálogo.',
+            ),
+          );
+        }
+      }
+
       await _supabase.from('attributes').delete().eq('id', id);
       return right(null);
     } catch (e, st) {
@@ -524,6 +546,19 @@ class ProductsRepositoryImpl implements ProductsRepository {
   @override
   Future<Either<Failure, void>> deleteAttributeValue(String valueId) async {
     try {
+      final usage = await _supabase
+          .from('variant_attribute_values')
+          .select('variant_id')
+          .eq('attribute_value_id', valueId)
+          .limit(1);
+      if ((usage as List).isNotEmpty) {
+        return left(
+          Failure.from(
+            'No se puede eliminar: Este valor está siendo utilizado por variantes de productos en el catálogo.',
+          ),
+        );
+      }
+
       await _supabase.from('attribute_values').delete().eq('id', valueId);
       return right(null);
     } catch (e, st) {
