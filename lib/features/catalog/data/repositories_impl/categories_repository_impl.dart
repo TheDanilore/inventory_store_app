@@ -72,6 +72,20 @@ class CategoriesRepositoryImpl implements CategoriesRepository {
   @override
   Future<Either<Failure, void>> deleteCategory(String id) async {
     try {
+      // Verificación de integridad relacional antes del borrado
+      final existingProducts = await _supabase
+          .from('products')
+          .select('id')
+          .eq('category_id', id)
+          .limit(1);
+      if ((existingProducts as List).isNotEmpty) {
+        return left(
+          Failure.from(
+            'No se puede eliminar: Esta categoría tiene productos asociados en el catálogo. Reasígnalos o desactiva la categoría.',
+          ),
+        );
+      }
+
       await _supabase.from('categories').delete().eq('id', id);
       return right(null);
     } catch (e) {

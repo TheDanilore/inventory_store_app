@@ -169,6 +169,39 @@ class _CategoriesManagementScreenState
     cubit.toggleStatus(cat, val);
   }
 
+  Future<void> _confirmDeleteCategory(
+    CategoryEntity cat,
+    CategoriesCubit cubit,
+  ) async {
+    final confirm = await AppConfirmDialog.show(
+      context,
+      title: 'Eliminar Categoría',
+      message:
+          '¿Estás seguro de eliminar la categoría "${cat.name}"?\nSe validará que no tenga productos vinculados.',
+      confirmText: 'Eliminar',
+      confirmColor: AppColors.error,
+    );
+    if (confirm != true) return;
+    if (!mounted) return;
+    final success = await cubit.deleteCategory(cat.id!);
+    if (success && mounted) {
+      if (_editingCategory?.id == cat.id) {
+        _clearDesktopForm();
+      }
+      AppSnackbar.showMessenger(
+        ScaffoldMessenger.of(context),
+        message: 'Categoría eliminada exitosamente.',
+        type: SnackbarType.success,
+      );
+    } else if (cubit.state.errorMessage != null && mounted) {
+      AppSnackbar.showMessenger(
+        ScaffoldMessenger.of(context),
+        message: cubit.state.errorMessage!,
+        type: SnackbarType.error,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AdminLayout(
@@ -628,6 +661,15 @@ class _CategoriesManagementScreenState
                         ),
                         tooltip: 'Editar categoría',
                         onPressed: () => _showCategoryForm(cat),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: AppColors.error,
+                          size: 20,
+                        ),
+                        tooltip: 'Eliminar categoría',
+                        onPressed: () => _confirmDeleteCategory(cat, cubit),
                       ),
                       Semantics(
                         label: 'Estado de la categoría ${cat.name}',

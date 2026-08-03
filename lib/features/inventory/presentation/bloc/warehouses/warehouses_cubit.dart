@@ -4,6 +4,7 @@ import 'package:inventory_store_app/features/inventory/domain/entities/warehouse
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_warehouses_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/save_warehouse_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/toggle_warehouse_status_usecase.dart';
+import 'package:inventory_store_app/features/inventory/domain/usecases/delete_warehouse_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses/warehouses_state.dart';
 
 @injectable
@@ -11,11 +12,13 @@ class WarehousesCubit extends Cubit<WarehousesState> {
   final GetWarehousesUseCase getWarehousesUseCase;
   final SaveWarehouseUseCase saveWarehouseUseCase;
   final ToggleWarehouseStatusUseCase toggleWarehouseStatusUseCase;
+  final DeleteWarehouseUseCase deleteWarehouseUseCase;
 
   WarehousesCubit({
     required this.getWarehousesUseCase,
     required this.saveWarehouseUseCase,
     required this.toggleWarehouseStatusUseCase,
+    required this.deleteWarehouseUseCase,
   }) : super(const WarehousesState());
 
   void initLoad() {
@@ -156,6 +159,20 @@ class WarehousesCubit extends Cubit<WarehousesState> {
       }
 
       emit(state.copyWith(errorMessage: msg, clearSuccessMessage: true));
+    }
+  }
+
+  Future<bool> deleteWarehouse(String id) async {
+    emit(state.copyWith(isLoading: true, clearErrorMessage: true, clearSuccessMessage: true));
+    try {
+      await deleteWarehouseUseCase.call(id);
+      emit(state.copyWith(isLoading: false, successMessage: 'Almacén eliminado exitosamente'));
+      await loadWarehouses(isRefresh: true);
+      return true;
+    } catch (e) {
+      String msg = e.toString().replaceAll('Exception: ', '');
+      emit(state.copyWith(isLoading: false, errorMessage: msg, clearSuccessMessage: true));
+      return false;
     }
   }
 }

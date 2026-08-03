@@ -149,4 +149,20 @@ class CategoriesCubit extends Cubit<CategoriesState> {
       },
     );
   }
+
+  Future<bool> deleteCategory(String id) async {
+    emit(state.copyWith(isSaving: true));
+    final result = await deleteCategoryUC(id);
+    return result.fold(
+      (failure) {
+        emit(state.copyWith(isSaving: false, errorMessage: failure.message));
+        return false;
+      },
+      (_) async {
+        emit(state.copyWith(isSaving: false, clearErrorMessage: true));
+        await loadCategories(forceRefresh: true);
+        return true;
+      },
+    );
+  }
 }

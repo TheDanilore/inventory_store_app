@@ -118,4 +118,45 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
         })
         .eq('id', wh.id);
   }
+
+  @override
+  Future<void> deleteWarehouse(String id) async {
+    // 1. Validar lotes en el almacén
+    final stockBatches = await _supabase
+        .from('warehouse_stock_batches')
+        .select('id')
+        .eq('warehouse_id', id)
+        .limit(1);
+    if ((stockBatches as List).isNotEmpty) {
+      throw Exception(
+        'No se puede eliminar: El almacén tiene stock o historial de lotes registrado. Desactiva el almacén en su lugar.',
+      );
+    }
+
+    // 2. Validar pedidos asociados
+    final orders = await _supabase
+        .from('orders')
+        .select('id')
+        .eq('warehouse_id', id)
+        .limit(1);
+    if ((orders as List).isNotEmpty) {
+      throw Exception(
+        'No se puede eliminar: Existen pedidos vinculados a este almacén. Desactiva el almacén en su lugar.',
+      );
+    }
+
+    // 3. Validar entradas de inventario
+    final entries = await _supabase
+        .from('inventory_entries')
+        .select('id')
+        .eq('warehouse_id', id)
+        .limit(1);
+    if ((entries as List).isNotEmpty) {
+      throw Exception(
+        'No se puede eliminar: Existen entradas de inventario registradas en este almacén.',
+      );
+    }
+
+    await _supabase.from('warehouses').delete().eq('id', id);
+  }
 }

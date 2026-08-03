@@ -17,4 +17,6 @@ abstract class WarehousesRepository {
   });
 
   Future<void> toggleWarehouseStatus(WarehouseEntity wh, bool isActive);
+
+  Future<void> deleteWarehouse(String id);
 }

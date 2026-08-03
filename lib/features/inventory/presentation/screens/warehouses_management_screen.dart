@@ -11,6 +11,7 @@ import 'package:inventory_store_app/features/inventory/presentation/widgets/ware
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouse_form_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 
 class WarehousesManagementScreen extends StatefulWidget {
   const WarehousesManagementScreen({super.key});
@@ -67,6 +68,24 @@ class _WarehousesManagementScreenState
             child: WarehouseFormSheet(warehouse: warehouse),
           ),
     );
+  }
+
+  Future<void> _confirmDeleteWarehouse(
+    BuildContext context,
+    WarehousesCubit cubit,
+    WarehouseEntity warehouse,
+  ) async {
+    final confirm = await AppConfirmDialog.show(
+      context,
+      title: 'Eliminar Almacén',
+      message:
+          '¿Estás seguro de eliminar el almacén "${warehouse.name}"?\nSe verificará que no cuente con historial de stock, pedidos ni entradas vinculadas.',
+      confirmText: 'Eliminar',
+      confirmColor: AppColors.error,
+    );
+    if (confirm != true) return;
+    if (!mounted) return;
+    await cubit.deleteWarehouse(warehouse.id);
   }
 
   @override
@@ -306,55 +325,75 @@ class _WarehousesManagementScreenState
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
+                                    const SizedBox(width: 8),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline_rounded,
+                                            color: AppColors.error,
+                                            size: 22,
                                           ),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                wh.isActive
-                                                    ? Colors.green.shade50
-                                                    : Colors.red.shade50,
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                            border: Border.all(
-                                              color:
-                                                  wh.isActive
-                                                      ? Colors.green.shade200
-                                                      : Colors.red.shade200,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            wh.isActive ? 'ACTIVO' : 'INACTIVO',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w800,
-                                              color:
-                                                  wh.isActive
-                                                      ? Colors.green.shade700
-                                                      : Colors.red.shade700,
-                                            ),
-                                          ),
+                                          tooltip: 'Eliminar almacén',
+                                          onPressed:
+                                              () => _confirmDeleteWarehouse(
+                                                context,
+                                                cubit,
+                                                wh,
+                                              ),
                                         ),
-                                        const SizedBox(height: 4),
-                                        Switch(
-                                          value: wh.isActive,
-                                          onChanged: (val) {
-                                            cubit.toggleWarehouseStatus(
-                                              wh,
-                                              val,
-                                            );
-                                          },
-                                          activeThumbColor: AppColors.primary,
-                                          materialTapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
+                                        const SizedBox(width: 4),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 4,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    wh.isActive
+                                                        ? Colors.green.shade50
+                                                        : Colors.red.shade50,
+                                                borderRadius: BorderRadius.circular(
+                                                  6,
+                                                ),
+                                                border: Border.all(
+                                                  color:
+                                                      wh.isActive
+                                                          ? Colors.green.shade200
+                                                          : Colors.red.shade200,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                wh.isActive ? 'ACTIVO' : 'INACTIVO',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w800,
+                                                  color:
+                                                      wh.isActive
+                                                          ? Colors.green.shade700
+                                                          : Colors.red.shade700,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Switch(
+                                              value: wh.isActive,
+                                              onChanged: (val) {
+                                                cubit.toggleWarehouseStatus(
+                                                  wh,
+                                                  val,
+                                                );
+                                              },
+                                              activeThumbColor: AppColors.primary,
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
