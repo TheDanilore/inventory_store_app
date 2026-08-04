@@ -7,35 +7,59 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_state.dart';
 
-class CloseShiftSheet extends StatefulWidget {
-  final CashShiftEntity shift;
-  final double expectedAmount;
-
-  const CloseShiftSheet({
-    super.key,
-    required this.shift,
-    required this.expectedAmount,
-  });
-
+class CloseShiftSheet {
+  /// Muestra un Dialog centrado en desktop y un BottomSheet en mobile.
   static Future<bool?> show(
     BuildContext context, {
     required CashShiftEntity shift,
     required double expectedAmount,
   }) {
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
+    if (isDesktop) {
+      return showDialog<bool>(
+        context: context,
+        barrierColor: Colors.black54,
+        builder:
+            (_) => Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 80,
+                vertical: 40,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: _CloseShiftContent(
+                  shift: shift,
+                  expectedAmount: expectedAmount,
+                ),
+              ),
+            ),
+      );
+    }
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (_) => CloseShiftSheet(shift: shift, expectedAmount: expectedAmount),
+          (_) =>
+              _CloseShiftContent(shift: shift, expectedAmount: expectedAmount),
     );
   }
-
-  @override
-  State<CloseShiftSheet> createState() => _CloseShiftSheetState();
 }
 
-class _CloseShiftSheetState extends State<CloseShiftSheet> {
+// ── Widget interno reutilizable (dialog y bottom sheet comparten el mismo) ──
+
+class _CloseShiftContent extends StatefulWidget {
+  final CashShiftEntity shift;
+  final double expectedAmount;
+
+  const _CloseShiftContent({required this.shift, required this.expectedAmount});
+
+  @override
+  State<_CloseShiftContent> createState() => _CloseShiftContentState();
+}
+
+class _CloseShiftContentState extends State<_CloseShiftContent> {
   final _actualCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -69,7 +93,8 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
+    final bottom = isDesktop ? 0.0 : MediaQuery.of(context).viewInsets.bottom;
     final accountName = widget.shift.accountName ?? '';
     final openingAmount = widget.shift.openingAmount;
 
@@ -91,26 +116,40 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius:
+            isDesktop
+                ? BorderRadius.circular(20)
+                : const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow:
+            isDesktop
+                ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 30,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+                : null,
       ),
-      padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + bottom),
+      padding: EdgeInsets.fromLTRB(20, isDesktop ? 24 : 8, 20, 20 + bottom),
       child: Form(
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.textSecondary.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
+            if (!isDesktop)
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.textSecondary.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
             Row(
               children: [
                 Container(
@@ -130,6 +169,15 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
                   'Cerrar turno de caja',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
                 ),
+                if (isDesktop) ...[
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    color: AppColors.textSecondary,
+                    tooltip: 'Cerrar',
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 20),

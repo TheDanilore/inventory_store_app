@@ -432,11 +432,6 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
 
                             context.read<CartCubit>().addItem(cartItem);
                             Navigator.pop(context);
-                            AppSnackbar.show(
-                              context,
-                              message: 'Producto agregado a la caja',
-                              type: SnackbarType.success,
-                            );
                           } catch (e) {
                             AppSnackbar.show(
                               context,

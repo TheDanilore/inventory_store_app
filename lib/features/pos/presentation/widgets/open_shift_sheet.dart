@@ -6,27 +6,51 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_state.dart';
 
-class OpenShiftSheet extends StatefulWidget {
-  final List<Map<String, dynamic>> accounts;
-  const OpenShiftSheet({super.key, required this.accounts});
-
+class OpenShiftSheet {
+  /// Muestra un Dialog centrado en desktop y un BottomSheet en mobile.
   static Future<bool?> show(
     BuildContext context, {
     required List<Map<String, dynamic>> accounts,
   }) {
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
+    if (isDesktop) {
+      return showDialog<bool>(
+        context: context,
+        barrierColor: Colors.black54,
+        builder:
+            (_) => Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 80,
+                vertical: 40,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: _OpenShiftContent(accounts: accounts),
+              ),
+            ),
+      );
+    }
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => OpenShiftSheet(accounts: accounts),
+      builder: (_) => _OpenShiftContent(accounts: accounts),
     );
   }
-
-  @override
-  State<OpenShiftSheet> createState() => _OpenShiftSheetState();
 }
 
-class _OpenShiftSheetState extends State<OpenShiftSheet> {
+// ── Widget interno reutilizable (dialog y bottom sheet comparten el mismo) ──
+
+class _OpenShiftContent extends StatefulWidget {
+  final List<Map<String, dynamic>> accounts;
+  const _OpenShiftContent({required this.accounts});
+
+  @override
+  State<_OpenShiftContent> createState() => _OpenShiftContentState();
+}
+
+class _OpenShiftContentState extends State<_OpenShiftContent> {
   final _amountCtrl = TextEditingController(text: '0.00');
   final _formKey = GlobalKey<FormState>();
   String? _selectedAccountId;
@@ -59,30 +83,46 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
+    final bottom = isDesktop ? 0.0 : MediaQuery.of(context).viewInsets.bottom;
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius:
+            isDesktop
+                ? BorderRadius.circular(20)
+                : const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow:
+            isDesktop
+                ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 30,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+                : null,
       ),
-      padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + bottom),
+      padding: EdgeInsets.fromLTRB(20, isDesktop ? 24 : 8, 20, 20 + bottom),
       child: Form(
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.textSecondary.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
+            if (!isDesktop)
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.textSecondary.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
             Row(
               children: [
                 Container(
@@ -102,6 +142,15 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
                   'Abrir turno de caja',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
                 ),
+                if (isDesktop) ...[
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    color: AppColors.textSecondary,
+                    tooltip: 'Cerrar',
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 20),

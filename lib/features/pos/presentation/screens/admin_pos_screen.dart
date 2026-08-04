@@ -22,6 +22,9 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_add_to
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/desktop_pos_panel.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_operations_drawer.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
 
 extension ProductToCartExtension on ProductEntity {
   CartItemEntity toCartItem() {
@@ -124,8 +127,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       child: BlocListener<CartCubit, CartState>(
         listenWhen:
             (previous, current) =>
-                previous.errorMessage != current.errorMessage ||
-                previous.items.length != current.items.length,
+                (current.errorMessage != null &&
+                    current.errorMessage != previous.errorMessage) ||
+                (current.items.length > previous.items.length),
         listener: (context, state) {
           if (state.errorMessage != null) {
             AppSnackbar.show(
@@ -219,29 +223,42 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
               );
 
               if (isDesktop) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                return Stack(
                   children: [
-                    Expanded(flex: 6, child: catalogContent),
-                    Container(
-                      width: 440,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.02),
-                            blurRadius: 10,
-                            offset: const Offset(-3, 0),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(flex: 6, child: catalogContent),
+                        Container(
+                          width: 440,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.02),
+                                blurRadius: 10,
+                                offset: const Offset(-3, 0),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: DesktopPosPanel(
-                        onSaleCompleted: (soldQuantities) {
-                          context.read<AdminCatalogCubit>().decrementStockLocal(
-                            soldQuantities,
-                          );
-                        },
-                      ),
+                          child: DesktopPosPanel(
+                            onSaleCompleted: (soldQuantities) {
+                              context
+                                  .read<AdminCatalogCubit>()
+                                  .decrementStockLocal(soldQuantities);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Overlay global de procesamiento: cubre toda la pantalla
+                    BlocSelector<PosCubit, PosState, bool>(
+                      selector: (s) => s.status == PosStatus.loading,
+                      builder:
+                          (ctx, isLoading) =>
+                              isLoading
+                                  ? const PosProcessingOverlay(isVisible: true)
+                                  : const SizedBox.shrink(),
                     ),
                   ],
                 );

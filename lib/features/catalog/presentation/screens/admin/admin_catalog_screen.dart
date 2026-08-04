@@ -390,8 +390,31 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    if (widget.floatingActionButton != null)
-                      widget.floatingActionButton!,
+                    // FAB de acceso rápido al POS (siempre visible en mobile)
+                    Tooltip(
+                      message: 'Ir a Punto de Venta',
+                      child: Material(
+                        color: const Color(0xFF0D9488),
+                        borderRadius: BorderRadius.circular(16),
+                        elevation: 4,
+                        shadowColor: Colors.black.withValues(alpha: 0.25),
+                        child: InkWell(
+                          onTap: () => context.go('/admin/pos'),
+                          borderRadius: BorderRadius.circular(16),
+                          splashColor: Colors.white.withValues(alpha: 0.15),
+                          highlightColor: Colors.white.withValues(alpha: 0.08),
+                          child: const SizedBox(
+                            width: 52,
+                            height: 52,
+                            child: Icon(
+                              Icons.point_of_sale_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     CatalogAddProductFab(
                       onTap: () {

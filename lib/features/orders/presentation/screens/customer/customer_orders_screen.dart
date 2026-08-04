@@ -176,8 +176,9 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                           >(
                             selector: (s) => s.isBackgroundLoading,
                             builder: (context, isBackgroundLoading) {
-                              if (!isBackgroundLoading)
+                              if (!isBackgroundLoading) {
                                 return const SizedBox.shrink();
+                              }
                               return _buildBackgroundSyncIndicator();
                             },
                           ),

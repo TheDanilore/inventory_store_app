@@ -22,7 +22,6 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checko
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
 import 'package:inventory_store_app/core/widgets/batch_edit_sheet.dart';
 
 class DesktopPosPanel extends StatefulWidget {
@@ -302,8 +301,17 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
 
           posCubit.removeClient();
           posCubit.setPuntosAUsar(0);
+          posCubit.setDiscountText('');
           cartCubit.clearCart();
           posCubit.clearAllBatchOverrides();
+
+          // Limpiar controladores de texto independientes del estado Cubit
+          _clienteCtrl.clear();
+          _puntosCtrl.text = '0';
+          _descuentoCtrl.clear();
+
+          // Refrescar saldos de cuentas (balance) tras la venta
+          posCubit.initPosData(forceRefresh: true);
 
           widget.onSaleCompleted?.call(_lastSoldQuantities);
 
@@ -488,15 +496,6 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                 // Action Bar inferior
                 _buildStickyActionBar(pointsToSolesRatio),
               ],
-            ),
-
-            // Capa de carga aislada con BlocSelector para cero rebuilds superfluas
-            BlocSelector<PosCubit, PosState, bool>(
-              selector: (state) => state.status == PosStatus.loading,
-              builder: (context, isLoading) {
-                if (!isLoading) return const SizedBox.shrink();
-                return const PosProcessingOverlay(isVisible: true);
-              },
             ),
           ],
         ),
