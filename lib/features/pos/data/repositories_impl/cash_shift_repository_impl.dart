@@ -289,6 +289,11 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
     String accountId,
   ) async {
     try {
+      final profileId = await _getProfileId();
+      if (profileId == null) {
+         return left(const ServerFailure(message: 'Usuario no autenticado'));
+      }
+
       final shiftData =
           await _supabase
               .from('cash_shifts')
@@ -296,6 +301,7 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
                 'id, status, account_id, opening_amount, opened_at',
               ) // Campos mínimos necesarios + reales para integridad de auditoría
               .eq('account_id', accountId)
+              .eq('opened_by', profileId)
               .eq('status', 'OPEN')
               .maybeSingle();
 

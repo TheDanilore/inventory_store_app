@@ -14,7 +14,7 @@ import 'package:inventory_store_app/features/cart/domain/entities/cart_item_enti
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
-
+import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_header.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_category_chips.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_grid_view.dart';
@@ -194,7 +194,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                           ],
                         ),
                       ),
-                      Expanded(child: _buildMainContent(cubit, state)),
+                      Expanded(child: _buildMainContent(context, cubit, state)),
                       if (state.products.isNotEmpty && state.totalPages > 1)
                         Container(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -222,22 +222,22 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                 },
               );
 
-              if (isDesktop) {
-                return Stack(
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(flex: 6, child: catalogContent),
+              return Stack(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(flex: 6, child: catalogContent),
+                      if (isDesktop)
                         Container(
                           width: 440,
                           decoration: BoxDecoration(
                             color: Colors.white,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.02),
-                                blurRadius: 10,
-                                offset: const Offset(-3, 0),
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 15,
+                                offset: const Offset(-5, 0),
                               ),
                             ],
                           ),
@@ -249,22 +249,19 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                             },
                           ),
                         ),
-                      ],
-                    ),
-                    // Overlay global de procesamiento: cubre toda la pantalla
-                    BlocSelector<PosCubit, PosState, bool>(
-                      selector: (s) => s.status == PosStatus.loading,
-                      builder:
-                          (ctx, isLoading) =>
-                              isLoading
-                                  ? const PosProcessingOverlay(isVisible: true)
-                                  : const SizedBox.shrink(),
-                    ),
-                  ],
-                );
-              } else {
-                return catalogContent;
-              }
+                    ],
+                  ),
+                  // Overlay global de procesamiento: cubre toda la pantalla
+                  BlocSelector<PosCubit, PosState, bool>(
+                    selector: (s) => s.status == PosStatus.loading,
+                    builder:
+                        (ctx, isLoading) =>
+                            isLoading
+                                ? const PosProcessingOverlay(isVisible: true)
+                                : const SizedBox.shrink(),
+                  ),
+                ],
+              );
             },
           ),
           floatingActionButton:
@@ -309,10 +306,35 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     );
   }
 
-  Widget _buildMainContent(AdminCatalogCubit cubit, AdminCatalogState state) {
+  Widget _buildMainContent(
+    BuildContext context,
+    AdminCatalogCubit cubit,
+    AdminCatalogState state,
+  ) {
     if ((state.catalogState == ViewState.loading) && state.products.isEmpty) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+      return GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount:
+              MediaQuery.of(context).size.width >= 1200
+                  ? 6
+                  : MediaQuery.of(context).size.width >= 800
+                      ? 4
+                      : MediaQuery.of(context).size.width >= 600
+                          ? 3
+                          : 2,
+          childAspectRatio: 0.75,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
+        itemCount: 12,
+        itemBuilder: (context, index) {
+          return const AppShimmer(
+            width: double.infinity,
+            height: double.infinity,
+            borderRadius: 16,
+          );
+        },
       );
     }
 
@@ -339,7 +361,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
           (p) => Future.value(), // No permitimos editar en modo caja
       searchByIngredient: state.searchByIngredient,
       matchedIngredients: state.matchedIngredients,
-      bottomPadding: 24,
+      bottomPadding: MediaQuery.of(context).size.width >= 800 ? 24 : 100,
       isPosMode: true,
       onEdit: (product) {}, // No permitimos editar en modo caja
     );

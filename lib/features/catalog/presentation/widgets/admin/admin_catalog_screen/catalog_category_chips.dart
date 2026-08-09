@@ -92,8 +92,8 @@ class CategoryChips extends StatelessWidget {
         color: isSelected ? AppColors.primary : AppColors.border,
       ),
       onPressed: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
   }
 }
@@ -173,11 +173,11 @@ class _SortFilterChip extends StatelessWidget {
             ),
           ],
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: AppColors.background,
           border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(AppColors.radius),
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -267,13 +267,13 @@ class _StockFilterChip extends StatelessWidget {
             ),
           ],
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: hasFilter ? const Color(0xFFF0FDF4) : AppColors.background,
           border: Border.all(
             color: hasFilter ? const Color(0xFF10B981) : AppColors.border,
           ),
-          borderRadius: BorderRadius.circular(AppColors.radius),
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
