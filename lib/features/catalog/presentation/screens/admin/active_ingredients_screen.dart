@@ -131,10 +131,9 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
       title: 'Componentes Químicos',
       showBackButton: true,
       body: BlocConsumer<IngredientsCubit, IngredientsState>(
-        listenWhen:
-            (previous, current) =>
-                current.errorMessage != null &&
-                current.errorMessage != previous.errorMessage,
+      listenWhen:
+          (previous, current) =>
+              current.errorId != previous.errorId,
         listener: (context, state) {
           if (state.errorMessage != null) {
             AppSnackbar.show(
@@ -535,6 +534,13 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
             context,
             message: 'Componente eliminado exitosamente.',
             type: SnackbarType.success,
+          );
+        } else {
+          final errorMsg = cubit.state.errorMessage;
+          AppSnackbar.show(
+            context,
+            message: errorMsg ?? 'No se pudo eliminar el componente.',
+            type: SnackbarType.error,
           );
         }
       }

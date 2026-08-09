@@ -46,6 +46,7 @@ class IngredientsCubit extends Cubit<IngredientsState> {
         state.copyWith(
           viewState: ViewState.error,
           errorMessage: failure.message,
+          incrementErrorId: true,
         ),
       ),
       (ingredients) => emit(
@@ -81,7 +82,11 @@ class IngredientsCubit extends Cubit<IngredientsState> {
 
     return result.fold(
       (failure) {
-        emit(state.copyWith(isSaving: false, errorMessage: failure.message));
+        emit(state.copyWith(
+          isSaving: false,
+          errorMessage: failure.message,
+          incrementErrorId: true,
+        ));
         return false;
       },
       (_) async {
@@ -98,7 +103,11 @@ class IngredientsCubit extends Cubit<IngredientsState> {
 
     return result.fold(
       (failure) {
-        emit(state.copyWith(isSaving: false, errorMessage: failure.message));
+        emit(state.copyWith(
+          isSaving: false,
+          errorMessage: failure.message,
+          incrementErrorId: true,
+        ));
         return false;
       },
       (_) {

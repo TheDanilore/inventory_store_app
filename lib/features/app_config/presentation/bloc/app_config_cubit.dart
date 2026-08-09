@@ -1,7 +1,10 @@
 import 'package:injectable/injectable.dart';
+import 'dart:developer' as developer;
 import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
+import 'package:inventory_store_app/features/app_config/domain/entities/app_setting_entity.dart';
+import 'package:inventory_store_app/features/app_config/domain/repositories/app_config_repository.dart';
 import 'package:inventory_store_app/features/app_config/domain/usecases/get_app_settings_uc.dart';
 import 'package:inventory_store_app/features/app_config/domain/usecases/get_business_info_uc.dart';
 import 'package:inventory_store_app/features/app_config/domain/usecases/save_business_info_uc.dart';
@@ -22,6 +25,7 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   final ChangeConnectionUseCase changeConnectionUseCase;
   final RestoreDefaultConnectionUseCase restoreDefaultConnectionUseCase;
   final GetConnectionUrlUseCase getConnectionUrlUseCase;
+  final AppConfigRepository _appConfigRepository;
 
   AppConfigCubit({
     required this.getAppSettingsUseCase,
@@ -31,7 +35,9 @@ class AppConfigCubit extends Cubit<AppConfigState> {
     required this.changeConnectionUseCase,
     required this.restoreDefaultConnectionUseCase,
     required this.getConnectionUrlUseCase,
-  }) : super(const AppConfigState());
+    required AppConfigRepository appConfigRepository,
+  })  : _appConfigRepository = appConfigRepository,
+        super(const AppConfigState());
 
   // --- Helpers para compatibilidad ---
   BusinessInfoEntity? get businessInfo => state.businessInfo;
@@ -55,19 +61,66 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   ViewState get businessInfoState => state.status;
   ViewState get saveState => state.saveStatus;
 
+  /// Guarda un único valor de configuración en Supabase y actualiza el estado.
   Future<bool> saveValue(
     String key,
     dynamic value, {
     String? description,
   }) async {
-    return true;
+    return saveMultipleValues(
+      {key: value},
+      descriptions: description != null ? {key: description} : null,
+    );
   }
 
+  /// Guarda múltiples valores de configuración en Supabase y actualiza el estado local.
   Future<bool> saveMultipleValues(
     Map<String, dynamic> newValues, {
     Map<String, String>? descriptions,
   }) async {
-    return true;
+    if (newValues.isEmpty) return true;
+
+    emit(state.copyWith(saveStatus: ViewState.loading, clearErrorMessage: true));
+
+    try {
+      final settingsList = newValues.entries.map((e) {
+        return AppSettingEntity(
+          key: e.key,
+          value: (e.value as num).toDouble(),
+          description: descriptions?[e.key],
+        );
+      }).toList();
+
+      await _appConfigRepository.upsertAppSettings(settingsList);
+
+      // Actualizar el mapa de valores en memoria para reflejar los cambios
+      // sin necesidad de hacer una nueva llamada a la red.
+      final updatedValues = Map<String, double>.from(state.values)
+        ..addAll(
+          newValues.map((k, v) => MapEntry(k, (v as num).toDouble())),
+        );
+
+      emit(
+        state.copyWith(
+          saveStatus: ViewState.success,
+          values: updatedValues,
+        ),
+      );
+      return true;
+    } catch (e, st) {
+      developer.log(
+        'AppConfigCubit.saveMultipleValues falló',
+        error: e.toString(),
+        stackTrace: st,
+      );
+      emit(
+        state.copyWith(
+          saveStatus: ViewState.error,
+          errorMessage: 'Error al guardar la configuración: ${e.toString()}',
+        ),
+      );
+      return false;
+    }
   }
 
   Future<String?> uploadBusinessLogo(Uint8List bytes) async {

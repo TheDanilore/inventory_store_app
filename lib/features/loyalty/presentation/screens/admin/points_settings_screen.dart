@@ -6,6 +6,7 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/app_co
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+// ignore: unused_import
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -290,186 +291,233 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     super.dispose();
   }
 
-  Future<void> _saveSection(int tabIndex, List<String> keys) async {
-    final formKey = _formsKeys[tabIndex];
-    if (formKey == null || !formKey.currentState!.validate()) {
-      AppSnackbar.show(
-        context,
-        message: 'Corrige los errores en esta sección antes de guardar.',
-        type: SnackbarType.error,
-      );
-      return;
-    }
-
-    final newValues = <String, double>{};
-    final descriptions = <String, String>{};
-
-    for (final key in keys) {
-      final def = _settings[key]!;
-      double parsed =
-          double.tryParse(def.controller.text.trim()) ?? def.fallback;
-
-      if (def.format == SettingFormat.percent) {
-        parsed = parsed / 100.0;
-      }
-
-      newValues[def.key] = parsed;
-      descriptions[def.key] = def.description;
-    }
-
-    final cubit = context.read<AppConfigCubit>();
-    final success = await cubit.saveMultipleValues(
-      newValues,
-      descriptions: descriptions,
-    );
-
-    if (mounted) {
-      if (success) {
-        AppSnackbar.show(
-          context,
-          message: 'Configuración guardada correctamente.',
-          type: SnackbarType.success,
-        );
-      } else {
-        AppSnackbar.show(
-          context,
-          message: 'Error al guardar la configuración.',
-          type: SnackbarType.error,
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Escucha solo settingsState para inicialización — aislado del resto de la UI
-    return BlocListener<AppConfigCubit, AppConfigState>(
+    return BlocConsumer<AppConfigCubit, AppConfigState>(
+      listenWhen:
+          (previous, current) =>
+              previous.status != current.status ||
+              previous.saveStatus != current.saveStatus,
       listener: (context, state) {
-        if (!_isInitialized && state.status == ViewState.success) {
-          final cubit = context.read<AppConfigCubit>();
-          _fillControllers(cubit);
+        // Poblar controladores cuando los datos lleguen por primera vez
+        if (state.status == ViewState.success && !_isInitialized) {
+          _fillControllers(context.read<AppConfigCubit>());
           setState(() => _isInitialized = true);
         }
+        // Feedback del guardado
+        if (state.saveStatus == ViewState.success) {
+          AppSnackbar.show(
+            context,
+            message: 'Configuración guardada correctamente.',
+            type: SnackbarType.success,
+          );
+        } else if (state.saveStatus == ViewState.error) {
+          AppSnackbar.show(
+            context,
+            message: state.errorMessage ?? 'Error al guardar la configuración.',
+            type: SnackbarType.error,
+          );
+        }
       },
-      child: AdminLayout(
-        title: 'Configuración de Juegos',
-        showBackButton: true,
-        body:
-            !_isInitialized
-                ? const Center(child: CircularProgressIndicator())
-                : Column(
-                  children: [
-                    // Banner de advertencia cuando Lealtad está desactivada (aislado con BlocSelector)
-                    BlocSelector<AppConfigCubit, AppConfigState, bool>(
-                      selector:
-                          (s) =>
-                              !(s.businessInfo?.loyaltyGlobalEnabled ?? true),
-                      builder: (context, isDisabled) {
-                        if (!isDisabled) return const SizedBox.shrink();
-                        return Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.all(16),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.red.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.warning_rounded,
-                                color: Colors.red.shade700,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'El módulo de Lealtad (Monedas) está desactivado globalmente en la Información del Negocio. Estos ajustes no tendrán efecto hasta que lo actives.',
-                                  style: TextStyle(
-                                    color: Colors.red.shade900,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+      builder: (context, state) {
+        final isSaving = state.saveStatus == ViewState.loading;
+        final isLoading =
+            state.status == ViewState.initial ||
+            state.status == ViewState.loading;
+        final hasError = state.status == ViewState.error;
+
+        return AdminLayout(
+          title: 'Configuración de Juegos',
+          showBackButton: true,
+          body:
+              isLoading
+                  ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
+                  : hasError
+                  ? _buildErrorState()
+                  : _buildContent(state, isSaving),
+        );
+      },
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+          const SizedBox(height: 16),
+          const Text('Error al cargar la configuración.'),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => context.read<AppConfigCubit>().loadConfig(),
+            child: const Text('Reintentar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(AppConfigState state, bool isSaving) {
+    // Banner de advertencia cuando Lealtad está desactivada globalmente
+    final isDisabled = !(state.businessInfo?.loyaltyGlobalEnabled ?? true);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (isDisabled)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.red.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_rounded, color: Colors.red.shade700),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'El módulo de Lealtad está desactivado globalmente. '
+                    'Estos ajustes no tendrán efecto hasta que lo actives en '
+                    'Información del Negocio.',
+                    style: TextStyle(
+                      color: Colors.red.shade900,
+                      fontWeight: FontWeight.w600,
                     ),
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final isWide = constraints.maxWidth >= 800;
+                  ),
+                ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth >= 800) {
+                return _buildWideLayout(isSaving);
+              }
+              return _buildMobileLayout(isSaving);
+            },
+          ),
+        ),
+      ],
+    );
+  }
 
-                          if (isWide) {
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildNavigationRail(),
-                                Container(
-                                  width: 1,
-                                  color: Colors.grey.shade200,
-                                ),
-                                Expanded(
-                                  child: Container(
-                                    color: AppColors.background,
-                                    alignment: Alignment.topCenter,
-                                    child: _buildSelectedTabContent(
-                                      _selectedIndex,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }
-
-                          // ── Vista Móvil: TabBar + TabBarView de 1 columna ──
-                          return Column(
-                            children: [
-                              TabBar(
-                                controller: _tabController,
-                                labelColor: AppColors.primary,
-                                unselectedLabelColor: Colors.grey,
-                                indicatorColor: AppColors.primary,
-                                isScrollable: true,
-                                tabs: const [
-                                  Tab(text: 'Sistema y Ratio'),
-                                  Tab(text: 'Límites Diarios'),
-                                  Tab(text: 'Premios'),
-                                ],
-                              ),
-                              Expanded(
-                                child: Container(
-                                  color: AppColors.background,
-                                  child: TabBarView(
-                                    controller: _tabController,
-                                    children: [
-                                      _buildSelectedTabContent(0),
-                                      _buildSelectedTabContent(1),
-                                      _buildSelectedTabContent(2),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
+  // ── Vista Ancha (≥800px): NavigationRail + contenido ──────────
+  Widget _buildWideLayout(bool isSaving) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1200),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Columna Izquierda: Menú de navegación
+              Expanded(flex: 25, child: _buildNavigationRail()),
+              const SizedBox(width: 32),
+              // Columna Derecha: Contenido del tab
+              Expanded(
+                flex: 75,
+                child: Form(
+                  key: _formsKeys[_selectedIndex],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Builder(
+                        builder: (context) {
+                          if (_selectedIndex == 0) return _buildSystemTab(isSaving);
+                          if (_selectedIndex == 1) return _buildLimitsTab(isSaving);
+                          return _buildPrizesTab(isSaving);
                         },
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 24),
+                      _buildSaveButton(isSaving),
+                    ],
+                  ),
                 ),
-        bottomNavigationBar: _isInitialized ? _buildGlobalSaveButton() : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Vista Móvil (<800px): TabBar fijo + TabBarView con scroll ─────────────
+  Widget _buildMobileLayout(bool isSaving) {
+    return Column(
+      children: [
+        Material(
+          color: AppColors.surface,
+          elevation: 0,
+          child: TabBar(
+            controller: _tabController,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: Colors.grey,
+            indicatorColor: AppColors.primary,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: const [
+              Tab(text: 'Sistema y Ratio'),
+              Tab(text: 'Límites Diarios'),
+              Tab(text: 'Premios'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildTabScrollView(0, isSaving),
+              _buildTabScrollView(1, isSaving),
+              _buildTabScrollView(2, isSaving),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Cada tab en mobile es un SingleChildScrollView independiente con su Form
+  Widget _buildTabScrollView(int index, bool isSaving) {
+    return Form(
+      key: _formsKeys[index],
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            if (index == 0) _buildSystemTab(isSaving),
+            if (index == 1) _buildLimitsTab(isSaving),
+            if (index == 2) _buildPrizesTab(isSaving),
+            const SizedBox(height: 32),
+            _buildSaveButton(isSaving),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildNavigationRail() {
     return Container(
-      width: 240,
-      color: Colors.white,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: AppColors.cardShadow(opacity: 0.04),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
           _buildRailItem(0, Icons.settings_rounded, 'Sistema y Ratio'),
           _buildRailItem(1, Icons.sports_esports_rounded, 'Límites Diarios'),
           _buildRailItem(2, Icons.redeem_rounded, 'Premios y Juegos'),
@@ -478,70 +526,50 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     );
   }
 
-  Widget _buildRailItem(int index, IconData icon, String label) {
+  Widget _buildRailItem(int index, IconData icon, String title) {
     final isSelected = _selectedIndex == index;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedIndex = index;
-          _tabController.animateTo(index);
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? AppColors.primary.withValues(alpha: 0.1)
-                  : Colors.transparent,
-          border: Border(
-            right: BorderSide(
-              color: isSelected ? AppColors.primary : Colors.transparent,
-              width: 4,
-            ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color:
+                isSelected
+                    ? AppColors.primary.withValues(alpha: 0.1)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
           ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? AppColors.primary : Colors.grey.shade600,
-              size: 22,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? AppColors.primary : Colors.grey.shade800,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  fontSize: 14,
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? AppColors.primary : Colors.grey.shade500,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color:
+                        isSelected ? AppColors.primary : Colors.grey.shade700,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontSize: 14,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSelectedTabContent(int index) {
-    // BlocSelector aísla únicamente el estado de guardado para deshabilitar campos
-    return BlocSelector<AppConfigCubit, AppConfigState, bool>(
-      selector: (s) => s.saveStatus == ViewState.loading,
-      builder: (context, isSaving) {
-        return Form(
-          key: _formsKeys[index],
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              if (index == 0) _buildSystemTab(isSaving),
-              if (index == 1) _buildLimitsTab(isSaving),
-              if (index == 2) _buildPrizesTab(isSaving),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -820,42 +848,55 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     }
   }
 
-  /// Botón de guardado — BlocSelector aislado para no reconstruir toda la UI
-  Widget _buildGlobalSaveButton() {
-    return BlocSelector<AppConfigCubit, AppConfigState, bool>(
-      selector: (s) => s.saveStatus == ViewState.loading,
-      builder: (context, isSaving) {
-        final keys = _getKeysForTab(_selectedIndex);
-        return Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 10,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
-          child: SafeArea(
-            top: false,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: SizedBox(
-                width: 250,
-                child: AppPrimaryButton(
-                  label: isSaving ? 'Guardando...' : 'Guardar Cambios',
-                  onPressed:
-                      isSaving
-                          ? null
-                          : () => _saveSection(_selectedIndex, keys),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+  Future<void> _saveSection(int tabIndex, List<String> keys) async {
+    final formKey = _formsKeys[tabIndex];
+    if (formKey == null || !formKey.currentState!.validate()) {
+      AppSnackbar.show(
+        context,
+        message: 'Corrige los errores antes de guardar.',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
+    final newValues = <String, double>{};
+    final descriptions = <String, String>{};
+
+    for (final key in keys) {
+      final def = _settings[key]!;
+      double parsed =
+          double.tryParse(def.controller.text.trim()) ?? def.fallback;
+      if (def.format == SettingFormat.percent) {
+        parsed = parsed / 100.0;
+      }
+      newValues[def.key] = parsed;
+      descriptions[def.key] = def.description;
+    }
+
+    await context.read<AppConfigCubit>().saveMultipleValues(
+      newValues,
+      descriptions: descriptions,
+    );
+  }
+
+  Widget _buildSaveButton(bool isSaving) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: SizedBox(
+        width: 220,
+        child: AppPrimaryButton(
+          label: isSaving ? 'Guardando...' : 'Guardar Cambios',
+          loading: isSaving,
+          icon: const Icon(Icons.save_rounded, size: 18),
+          onPressed:
+              isSaving
+                  ? null
+                  : () => _saveSection(
+                    _selectedIndex,
+                    _getKeysForTab(_selectedIndex),
+                  ),
+        ),
+      ),
     );
   }
 

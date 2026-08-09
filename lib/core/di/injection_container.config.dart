@@ -1184,6 +1184,19 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i561.AccountMovementsRepository>(),
       ),
     );
+    gh.factory<_i556.AppConfigCubit>(
+      () => _i556.AppConfigCubit(
+        getAppSettingsUseCase: gh<_i506.GetAppSettingsUseCase>(),
+        getBusinessInfoUseCase: gh<_i868.GetBusinessInfoUseCase>(),
+        saveBusinessInfoUseCase: gh<_i702.SaveBusinessInfoUseCase>(),
+        uploadLogoUseCase: gh<_i217.UploadLogoUseCase>(),
+        changeConnectionUseCase: gh<_i287.ChangeConnectionUseCase>(),
+        restoreDefaultConnectionUseCase:
+            gh<_i36.RestoreDefaultConnectionUseCase>(),
+        getConnectionUrlUseCase: gh<_i653.GetConnectionUrlUseCase>(),
+        appConfigRepository: gh<_i257.AppConfigRepository>(),
+      ),
+    );
     gh.factory<_i851.CustomerCreditListCubit>(
       () => _i851.CustomerCreditListCubit(
         gh<_i749.GetCreditAccountsUseCase>(),
@@ -1359,18 +1372,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i425.GetFinancialAccountsUseCase>(),
         gh<_i315.GetPendingCustomerOrdersUc>(),
         gh<_i1006.CheckActiveShiftUc>(),
-      ),
-    );
-    gh.factory<_i556.AppConfigCubit>(
-      () => _i556.AppConfigCubit(
-        getAppSettingsUseCase: gh<_i506.GetAppSettingsUseCase>(),
-        getBusinessInfoUseCase: gh<_i868.GetBusinessInfoUseCase>(),
-        saveBusinessInfoUseCase: gh<_i702.SaveBusinessInfoUseCase>(),
-        uploadLogoUseCase: gh<_i217.UploadLogoUseCase>(),
-        changeConnectionUseCase: gh<_i287.ChangeConnectionUseCase>(),
-        restoreDefaultConnectionUseCase:
-            gh<_i36.RestoreDefaultConnectionUseCase>(),
-        getConnectionUrlUseCase: gh<_i653.GetConnectionUrlUseCase>(),
       ),
     );
     gh.factory<_i864.CheckActiveCashShiftUc>(

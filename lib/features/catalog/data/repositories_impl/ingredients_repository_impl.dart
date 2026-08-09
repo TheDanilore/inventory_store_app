@@ -101,6 +101,25 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
   @override
   Future<Either<Failure, void>> deleteIngredient(String id) async {
     try {
+      // Verificación previa: comprobar si el ingrediente está referenciado
+      // en algún producto antes de intentar el DELETE.
+      // Esto evita un round-trip fallido y permite un mensaje más descriptivo.
+      final usages = await _supabase
+          .from('product_active_ingredients')
+          .select('product_id')
+          .eq('ingredient_id', id);
+
+      if (usages.isNotEmpty) {
+        final count = (usages as List).length;
+        return left(
+          Failure.from(
+            'No se puede eliminar: Este componente está siendo utilizado '
+            'en $count ${count == 1 ? "producto" : "productos"} del catálogo. '
+            'Retíralo de los productos antes de eliminarlo.',
+          ),
+        );
+      }
+
       await _supabase.from('active_ingredients').delete().eq('id', id);
       return right(null);
     } catch (e, st) {

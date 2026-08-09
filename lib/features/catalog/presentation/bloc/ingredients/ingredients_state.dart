@@ -8,6 +8,9 @@ class IngredientsState extends Equatable {
   final String? errorMessage;
   final bool isSaving;
   final String searchQuery;
+  // Contador incremental: garantiza que listenWhen se dispare aunque
+  // el mensaje de error sea idéntico al anterior (evita deduplicación silenciosa).
+  final int errorId;
 
   const IngredientsState({
     this.viewState = ViewState.initial,
@@ -15,6 +18,7 @@ class IngredientsState extends Equatable {
     this.errorMessage,
     this.isSaving = false,
     this.searchQuery = '',
+    this.errorId = 0,
   });
 
   IngredientsState copyWith({
@@ -24,6 +28,7 @@ class IngredientsState extends Equatable {
     bool? isSaving,
     String? searchQuery,
     bool clearErrorMessage = false,
+    bool incrementErrorId = false,
   }) {
     return IngredientsState(
       viewState: viewState ?? this.viewState,
@@ -32,6 +37,7 @@ class IngredientsState extends Equatable {
           clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
       isSaving: isSaving ?? this.isSaving,
       searchQuery: searchQuery ?? this.searchQuery,
+      errorId: incrementErrorId ? errorId + 1 : errorId,
     );
   }
 
@@ -42,5 +48,6 @@ class IngredientsState extends Equatable {
     errorMessage,
     isSaving,
     searchQuery,
+    errorId,
   ];
 }
