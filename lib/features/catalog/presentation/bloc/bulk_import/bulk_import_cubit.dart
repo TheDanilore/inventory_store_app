@@ -18,18 +18,18 @@ class BulkImportCubit extends Cubit<BulkImportState> {
 
   Future<void> pickAndParseFile() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final files = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv'],
-        withData: true,
       );
 
-      if (result != null && result.files.isNotEmpty) {
+      if (files.isNotEmpty) {
         emit(state.copyWith(status: BulkImportStatus.parsing, clearErrorMessage: true));
-        final file = result.files.first;
-        if (file.bytes != null) {
-          final csvString = utf8.decode(file.bytes!);
-          final List<List<dynamic>> rows = const CsvToListConverter().convert(csvString);
+        final file = files.first;
+        final bytes = await file.readAsBytes();
+        if (bytes.isNotEmpty) {
+          final csvString = utf8.decode(bytes);
+          final List<List<dynamic>> rows = Csv().decode(csvString);
           _validateAndProcessCsv(rows);
         } else {
           emit(state.copyWith(status: BulkImportStatus.error, errorMessage: 'No se pudo leer el contenido del archivo.'));

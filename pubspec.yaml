@@ -53,12 +53,12 @@ dependencies:
   file_saver: ^0.4.0
   cached_network_image: ^3.4.1
   vibration: ^3.2.0
-  go_router: ^17.3.0
+  go_router: ^18.0.0
   flutter_web_plugins:
     sdk: flutter
   flutter_staggered_animations: ^1.1.1
   flutter_fortune_wheel: ^1.3.2
-  shimmer: ^3.0.0
+  shimmer: ^4.0.0
   flutter_map: ^8.3.1
   latlong2: ^0.10.1
   geolocator: ^14.0.3
