@@ -7,6 +7,7 @@ import 'package:inventory_store_app/features/catalog/presentation/screens/admin/
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/attributes_management_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/categories_management_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/product_form_screen.dart';
+import 'package:inventory_store_app/features/catalog/presentation/screens/admin/bulk_import_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/product_detail_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_loader.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/full_screen_gallery.dart';
@@ -16,6 +17,7 @@ import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/categories/categories_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredients/ingredients_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/bulk_import/bulk_import_cubit.dart';
 
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 
@@ -100,6 +102,17 @@ class CatalogRoutes {
           (context, state) => BlocProvider(
             create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
             child: const AdminProductsScreen(),
+          ),
+    ),
+    GoRoute(
+      path: '/admin/products/bulk-import',
+      builder:
+          (context, state) => MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (_) => sl<AdminCatalogCubit>()),
+              BlocProvider(create: (_) => sl<BulkImportCubit>()),
+            ],
+            child: const BulkImportScreen(),
           ),
     ),
     GoRoute(

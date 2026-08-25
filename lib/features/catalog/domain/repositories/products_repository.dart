@@ -184,6 +184,9 @@ abstract class ProductsRepository {
 
   // Guardado Atómico (RPC)
   Future<Either<Failure, void>> saveProductComplete(SaveProductPayload payload);
+  
+  // Importación Masiva (RPC)
+  Future<Either<Failure, void>> importCatalogBatch(List<Map<String, dynamic>> payload, String? warehouseId);
 }
 
 class SaveProductPayload {

@@ -1355,4 +1355,19 @@ class ProductsRepositoryImpl implements ProductsRepository {
       return _handleError(e, st);
     }
   }
+  @override
+  Future<Either<Failure, void>> importCatalogBatch(
+    List<Map<String, dynamic>> payload,
+    String? warehouseId,
+  ) async {
+    try {
+      await _supabase.rpc(
+        'import_catalog_batch',
+        params: {'payload': payload, 'p_warehouse_id': warehouseId},
+      );
+      return right(null);
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
 }

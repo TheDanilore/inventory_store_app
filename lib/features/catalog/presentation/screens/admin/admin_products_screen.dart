@@ -62,19 +62,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     ProductEntity product,
     AdminCatalogCubit cubit,
   ) async {
-    final willActivate = !product.isActive;
-    final success = await cubit.toggleProductActive(product);
-
-    if (success && mounted) {
-      AppSnackbar.show(
-        context,
-        message:
-            willActivate
-                ? '${product.name} ha sido activado'
-                : '${product.name} ha sido desactivado',
-        type: SnackbarType.success,
-      );
-    }
+    await cubit.toggleProductActive(product);
   }
 
   @override
@@ -84,10 +72,14 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
     return Shortcuts(
       shortcuts: <ShortcutActivator, Intent>{
-        const SingleActivator(LogicalKeyboardKey.keyF, control: true): const SearchIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyF, meta: true): const SearchIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyN, control: true): const NewProductIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyN, meta: true): const NewProductIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true):
+            const SearchIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyF, meta: true):
+            const SearchIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true):
+            const NewProductIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyN, meta: true):
+            const NewProductIntent(),
       },
       child: Actions(
         actions: <Type, Action<Intent>>{
@@ -106,186 +98,246 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         },
         child: Focus(
           autofocus: true,
-          child: AdminLayout(
-            title: 'Inventario de Productos',
-            showBackButton: true,
-            actions:
-                isDesktop
-                    ? [
-                      ElevatedButton.icon(
-                        onPressed: () => context.go('/admin/products/product-form'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                          ),
-                        ),
-                        icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text(
-                          'Nuevo Producto (Ctrl+N)',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                        ),
+          child: BlocListener<AdminCatalogCubit, AdminCatalogState>(
+            listenWhen:
+                (previous, current) =>
+                    previous.actionState != current.actionState,
+            listener: (context, state) {
+              if (state.actionState == ViewState.error) {
+                AppSnackbar.show(
+                  context,
+                  message: state.errorMessage ?? 'Ocurrió un error',
+                  type: SnackbarType.error,
+                );
+              } else if (state.actionState == ViewState.success) {
+                // The backend state has been refreshed, visual confirmation is immediate via rebuild.
+                // We only show snackbar on errors to avoid noise, unless specifically desired.
+              }
+            },
+            child: AdminLayout(
+              title: 'Inventario de Productos',
+              showBackButton: true,
+              actions: [
+                if (!isDesktop)
+                  IconButton(
+                    icon: const Icon(Icons.upload_file_rounded),
+                    tooltip: 'Importar Lote (CSV)',
+                    onPressed: () => context.go('/admin/products/bulk-import'),
+                  ),
+                if (isDesktop) ...[
+                  OutlinedButton.icon(
+                    onPressed: () => context.go('/admin/products/bulk-import'),
+                    icon: const Icon(Icons.upload_file_rounded, size: 18),
+                    label: const Text(
+                      'Importar Lote (CSV)',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.border),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusSm)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => context.go('/admin/products/product-form'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppColors.radiusSm),
                       ),
-                    ]
-                    : null,
-            floatingActionButton:
-                !isDesktop
-                    ? ValueListenableBuilder<bool>(
-                      valueListenable: _isFabExtended,
-                      builder: (context, extended, child) {
-                        return extended
-                            ? FloatingActionButton.extended(
-                              onPressed:
-                                  () => context.go('/admin/products/product-form'),
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              elevation: 4,
-                              icon: const Icon(Icons.add_rounded),
-                              label: const Text(
-                                'Nuevo Producto',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text(
+                      'Nuevo Producto (Ctrl+N)',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ],
+              floatingActionButton:
+                  !isDesktop
+                      ? ValueListenableBuilder<bool>(
+                        valueListenable: _isFabExtended,
+                        builder: (context, extended, child) {
+                          return extended
+                              ? FloatingActionButton.extended(
+                                onPressed:
+                                    () => context.go(
+                                      '/admin/products/product-form',
+                                    ),
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                elevation: 4,
+                                icon: const Icon(Icons.add_rounded),
+                                label: const Text(
+                                  'Nuevo Producto',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
                                 ),
-                              ),
-                            )
-                            : FloatingActionButton(
-                              onPressed:
-                                  () => context.go('/admin/products/product-form'),
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              elevation: 4,
-                              tooltip: 'Nuevo Producto',
-                              child: const Icon(Icons.add_rounded),
-                            );
-                      },
-                    )
-                    : null,
-            body: LayoutBuilder(
-              builder: (context, constraints) {
-                final isDesktopLayout = constraints.maxWidth >= 900;
+                              )
+                              : FloatingActionButton(
+                                onPressed:
+                                    () => context.go(
+                                      '/admin/products/product-form',
+                                    ),
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                elevation: 4,
+                                tooltip: 'Nuevo Producto',
+                                child: const Icon(Icons.add_rounded),
+                              );
+                        },
+                      )
+                      : null,
+              body: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isDesktopLayout = constraints.maxWidth >= 900;
 
-                return Container(
-                  color: AppColors.background,
-                  padding: EdgeInsets.all(isDesktopLayout ? 24.0 : 16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ── Barra de Búsqueda y Filtros ────────────────────────
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(AppColors.radius),
-                                border: Border.all(color: AppColors.border),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.02),
-                                    blurRadius: 10,
-                                    spreadRadius: 0,
-                                    offset: const Offset(0, 2),
-                                  )
-                                ],
-                              ),
-                              child: TextField(
-                                controller: _searchCtrl,
-                                focusNode: _searchFocusNode,
-                                onChanged: cubit.setSearchTerm,
-                                decoration: InputDecoration(
-                                  hintText: isDesktopLayout ? 'Buscar por nombre, código o SKU... (Ctrl+F)' : 'Buscar por nombre...',
-                                  hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
-                                  prefixIcon: const Icon(
-                                    Icons.search_rounded,
-                                    color: AppColors.textMuted,
-                                    size: 20,
-                                  ),
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          if (isDesktopLayout)
-                            OutlinedButton.icon(
-                              onPressed: () => cubit.refreshProducts(),
-                              icon: const Icon(Icons.refresh_rounded, size: 18),
-                              label: const Text('Actualizar'),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
+                  return Container(
+                    color: AppColors.background,
+                    padding: EdgeInsets.all(isDesktopLayout ? 24.0 : 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── Barra de Búsqueda y Filtros ────────────────────────
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
                                   borderRadius: BorderRadius.circular(
                                     AppColors.radius,
                                   ),
+                                  border: Border.all(color: AppColors.border),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.02,
+                                      ),
+                                      blurRadius: 10,
+                                      spreadRadius: 0,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            )
-                          else
-                            Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(AppColors.radius),
-                                border: Border.all(color: AppColors.border),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.02),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  )
-                                ],
-                              ),
-                              child: IconButton(
-                                onPressed: () => cubit.refreshProducts(),
-                                icon: const Icon(
-                                  Icons.refresh_rounded,
-                                  color: AppColors.textPrimary,
-                                  size: 20,
-                                ),
-                                tooltip: 'Actualizar',
-                                padding: const EdgeInsets.all(12),
-                                constraints: const BoxConstraints(
-                                  minWidth: 48,
-                                  minHeight: 48,
+                                child: TextField(
+                                  controller: _searchCtrl,
+                                  focusNode: _searchFocusNode,
+                                  onChanged: cubit.setSearchTerm,
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        isDesktopLayout
+                                            ? 'Buscar por nombre, código o SKU... (Ctrl+F)'
+                                            : 'Buscar por nombre...',
+                                    hintStyle: const TextStyle(
+                                      color: AppColors.textMuted,
+                                      fontSize: 14,
+                                    ),
+                                    prefixIcon: const Icon(
+                                      Icons.search_rounded,
+                                      color: AppColors.textMuted,
+                                      size: 20,
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 14,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      // ── Contenido Camaleónico (Desktop vs Mobile) ──────────
-                      Expanded(
-                        child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
-                          buildWhen:
-                              (previous, current) =>
-                                  previous.catalogState != current.catalogState ||
-                                  previous.products != current.products ||
-                                  previous.errorMessage != current.errorMessage,
-                          builder: (context, state) {
-                            return isDesktopLayout
-                                ? _buildDesktopTableContainer(state, cubit)
-                                : _buildMobileCardList(state, cubit);
-                          },
+                            const SizedBox(width: 12),
+                            if (isDesktopLayout)
+                              OutlinedButton.icon(
+                                onPressed: () => cubit.refreshProducts(),
+                                icon: const Icon(
+                                  Icons.refresh_rounded,
+                                  size: 18,
+                                ),
+                                label: const Text('Actualizar'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppColors.radius,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(
+                                    AppColors.radius,
+                                  ),
+                                  border: Border.all(color: AppColors.border),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.02,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: IconButton(
+                                  onPressed: () => cubit.refreshProducts(),
+                                  icon: const Icon(
+                                    Icons.refresh_rounded,
+                                    color: AppColors.textPrimary,
+                                    size: 20,
+                                  ),
+                                  tooltip: 'Actualizar',
+                                  padding: const EdgeInsets.all(12),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                    minHeight: 48,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                        const SizedBox(height: 20),
+
+                        // ── Contenido Camaleónico (Desktop vs Mobile) ──────────
+                        Expanded(
+                          child:
+                              BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+                                buildWhen:
+                                    (previous, current) =>
+                                        previous.catalogState !=
+                                            current.catalogState ||
+                                        previous.products != current.products ||
+                                        previous.errorMessage !=
+                                            current.errorMessage,
+                                builder: (context, state) {
+                                  return isDesktopLayout
+                                      ? _buildDesktopTableContainer(
+                                        state,
+                                        cubit,
+                                      )
+                                      : _buildMobileCardList(state, cubit);
+                                },
+                              ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -339,16 +391,17 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       return isDesktop
           ? _buildDesktopShimmer()
           : ListView.builder(
-              itemCount: 6,
-              itemBuilder: (context, index) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: AppShimmer(
-                  width: double.infinity,
-                  height: 100,
-                  borderRadius: 16,
+            itemCount: 6,
+            itemBuilder:
+                (context, index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: AppShimmer(
+                    width: double.infinity,
+                    height: 100,
+                    borderRadius: 16,
+                  ),
                 ),
-              ),
-            );
+          );
     }
 
     if (state.errorMessage != null && state.products.isEmpty) {
@@ -394,7 +447,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
             child: ConstrainedBox(
               constraints: BoxConstraints(minWidth: constraints.maxWidth),
               child: DataTable(
-                headingRowColor: WidgetStateProperty.all(AppColors.background.withValues(alpha: 0.5)),
+                headingRowColor: WidgetStateProperty.all(
+                  AppColors.background.withValues(alpha: 0.5),
+                ),
                 dataRowMinHeight: 68,
                 dataRowMaxHeight: 68,
                 columnSpacing: 24,
@@ -403,44 +458,64 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                   DataColumn(
                     label: Text(
                       'Producto',
-                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                   DataColumn(
                     label: Text(
                       'Categoría',
-                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                   DataColumn(
                     label: Text(
                       'Tipo',
-                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                   DataColumn(
                     label: Text(
                       'Stock',
-                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                   DataColumn(
                     label: Text(
                       'Estado',
-                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                   DataColumn(
                     label: Text(
                       'Acciones',
-                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ],
                 rows:
                     state.products.map((product) {
                       return DataRow(
-                        color: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
+                        color: WidgetStateProperty.resolveWith<Color?>((
+                          Set<WidgetState> states,
+                        ) {
                           if (states.contains(WidgetState.hovered)) {
                             return AppColors.primary.withValues(alpha: 0.04);
                           }
@@ -492,7 +567,10 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                           DataCell(
                             Text(
                               product.categoryName ?? 'Sin categoría',
-                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                           ),
                           DataCell(_buildTypeBadge(product.productType)),
@@ -512,7 +590,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                 size: 20,
                                 color: AppColors.textSecondary,
                               ),
-                              hoverColor: AppColors.primary.withValues(alpha: 0.1),
+                              hoverColor: AppColors.primary.withValues(
+                                alpha: 0.1,
+                              ),
                               tooltip: 'Editar Producto',
                               onPressed: () {
                                 context.go(
@@ -619,7 +699,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                             size: 24,
                           ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -668,29 +748,32 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   // ── Skeletons ─────────────────────────────────────────────────────────────
   Widget _buildDesktopShimmer() {
     return Column(
-      children: List.generate(6, (index) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        child: Row(
-          children: [
-            AppShimmer(width: 44, height: 44, borderRadius: 10),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppShimmer(width: 120, height: 16, borderRadius: 4),
-                const SizedBox(height: 8),
-                AppShimmer(width: 200, height: 12, borderRadius: 4),
-              ],
-            ),
-            const Spacer(),
-            AppShimmer(width: 80, height: 24, borderRadius: 12),
-            const SizedBox(width: 24),
-            AppShimmer(width: 60, height: 24, borderRadius: 12),
-            const SizedBox(width: 24),
-            AppShimmer(width: 40, height: 20, borderRadius: 10),
-          ],
+      children: List.generate(
+        6,
+        (index) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Row(
+            children: [
+              AppShimmer(width: 44, height: 44, borderRadius: 10),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppShimmer(width: 120, height: 16, borderRadius: 4),
+                  const SizedBox(height: 8),
+                  AppShimmer(width: 200, height: 12, borderRadius: 4),
+                ],
+              ),
+              const Spacer(),
+              AppShimmer(width: 80, height: 24, borderRadius: 12),
+              const SizedBox(width: 24),
+              AppShimmer(width: 60, height: 24, borderRadius: 12),
+              const SizedBox(width: 24),
+              AppShimmer(width: 40, height: 20, borderRadius: 10),
+            ],
+          ),
         ),
-      )),
+      ),
     );
   }
 
@@ -735,7 +818,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   Widget _buildStockBadge(int stock) {
     final isOut = stock <= 0;
     final isLow = stock > 0 && stock <= 5;
-    
+
     Color bgColor;
     Color textColor;
     IconData iconData;
@@ -788,7 +871,11 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.category_outlined, size: 12, color: AppColors.primary),
+          const Icon(
+            Icons.category_outlined,
+            size: 12,
+            color: AppColors.primary,
+          ),
           const SizedBox(width: 4),
           Text(
             type.toUpperCase(),

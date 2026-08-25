@@ -119,6 +119,8 @@ import '../../features/catalog/presentation/bloc/admin_catalog/admin_catalog_cub
     as _i613;
 import '../../features/catalog/presentation/bloc/attributes/attributes_cubit.dart'
     as _i129;
+import '../../features/catalog/presentation/bloc/bulk_import/bulk_import_cubit.dart'
+    as _i314;
 import '../../features/catalog/presentation/bloc/categories/categories_cubit.dart'
     as _i1009;
 import '../../features/catalog/presentation/bloc/customer_catalog/customer_catalog_cubit.dart'
@@ -778,6 +780,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i392.GetKardexMovementsUseCase>(
       () => _i392.GetKardexMovementsUseCase(gh<_i269.KardexRepository>()),
+    );
+    gh.factory<_i314.BulkImportCubit>(
+      () => _i314.BulkImportCubit(
+        productsRepository: gh<_i570.ProductsRepository>(),
+      ),
     );
     gh.lazySingleton<_i600.GetWishlistUseCase>(
       () => _i600.GetWishlistUseCase(gh<_i728.WishlistRepository>()),
