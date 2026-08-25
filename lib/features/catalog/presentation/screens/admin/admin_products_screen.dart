@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -12,6 +13,14 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 
+class SearchIntent extends Intent {
+  const SearchIntent();
+}
+
+class NewProductIntent extends Intent {
+  const NewProductIntent();
+}
+
 class AdminProductsScreen extends StatefulWidget {
   const AdminProductsScreen({super.key});
 
@@ -21,6 +30,7 @@ class AdminProductsScreen extends StatefulWidget {
 
 class _AdminProductsScreenState extends State<AdminProductsScreen> {
   final _searchCtrl = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
@@ -44,6 +54,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     _isFabExtended.dispose();
     _scrollController.dispose();
     _searchCtrl.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -71,187 +82,236 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     final cubit = context.read<AdminCatalogCubit>();
     final isDesktop = MediaQuery.of(context).size.width >= 900;
 
-    return AdminLayout(
-      title: 'Inventario de Productos',
-      showBackButton: true,
-      actions:
-          isDesktop
-              ? [
-                ElevatedButton.icon(
-                  onPressed: () => context.go('/admin/products/product-form'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                    ),
-                  ),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text(
-                    'Nuevo Producto',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                  ),
-                ),
-              ]
-              : null,
-      floatingActionButton:
-          !isDesktop
-              ? ValueListenableBuilder<bool>(
-                valueListenable: _isFabExtended,
-                builder: (context, extended, child) {
-                  return extended
-                      ? FloatingActionButton.extended(
-                        onPressed:
-                            () => context.go('/admin/products/product-form'),
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 4,
-                        icon: const Icon(Icons.add_rounded),
-                        label: const Text(
-                          'Nuevo Producto',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                      )
-                      : FloatingActionButton(
-                        onPressed:
-                            () => context.go('/admin/products/product-form'),
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 4,
-                        tooltip: 'Nuevo Producto',
-                        child: const Icon(Icons.add_rounded),
-                      );
-                },
-              )
-              : null,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isDesktopLayout = constraints.maxWidth >= 900;
-
-          return Container(
-            color: AppColors.background,
-            padding: EdgeInsets.all(isDesktopLayout ? 24.0 : 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Barra de Búsqueda y Filtros ────────────────────────
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(AppColors.radius),
-                          border: Border.all(color: AppColors.border),
-                          boxShadow: AppColors.cardShadow(),
-                        ),
-                        child: TextField(
-                          controller: _searchCtrl,
-                          onChanged: cubit.setSearchTerm,
-                          decoration: const InputDecoration(
-                            hintText: 'Buscar por nombre, código o SKU...',
-                            prefixIcon: Icon(
-                              Icons.search_rounded,
-                              color: AppColors.textMuted,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    if (isDesktopLayout)
-                      OutlinedButton.icon(
-                        onPressed: () => cubit.refreshProducts(),
-                        icon: const Icon(Icons.refresh_rounded, size: 18),
-                        label: const Text('Actualizar'),
-                        style: OutlinedButton.styleFrom(
+    return Shortcuts(
+      shortcuts: <ShortcutActivator, Intent>{
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): const SearchIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyF, meta: true): const SearchIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true): const NewProductIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyN, meta: true): const NewProductIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          SearchIntent: CallbackAction<SearchIntent>(
+            onInvoke: (SearchIntent intent) {
+              _searchFocusNode.requestFocus();
+              return null;
+            },
+          ),
+          NewProductIntent: CallbackAction<NewProductIntent>(
+            onInvoke: (NewProductIntent intent) {
+              context.go('/admin/products/product-form');
+              return null;
+            },
+          ),
+        },
+        child: Focus(
+          autofocus: true,
+          child: AdminLayout(
+            title: 'Inventario de Productos',
+            showBackButton: true,
+            actions:
+                isDesktop
+                    ? [
+                      ElevatedButton.icon(
+                        onPressed: () => context.go('/admin/products/product-form'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
-                            vertical: 14,
+                            vertical: 10,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppColors.radius,
-                            ),
+                            borderRadius: BorderRadius.circular(AppColors.radiusSm),
                           ),
                         ),
-                      )
-                    else
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(AppColors.radius),
-                          border: Border.all(color: AppColors.border),
-                          boxShadow: AppColors.cardShadow(),
-                        ),
-                        child: IconButton(
-                          onPressed: () => cubit.refreshProducts(),
-                          icon: const Icon(
-                            Icons.refresh_rounded,
-                            color: AppColors.textPrimary,
-                            size: 20,
-                          ),
-                          tooltip: 'Actualizar',
-                          padding: const EdgeInsets.all(12),
-                          constraints: const BoxConstraints(
-                            minWidth: 48,
-                            minHeight: 48,
-                          ),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text(
+                          'Nuevo Producto (Ctrl+N)',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                         ),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 20),
+                    ]
+                    : null,
+            floatingActionButton:
+                !isDesktop
+                    ? ValueListenableBuilder<bool>(
+                      valueListenable: _isFabExtended,
+                      builder: (context, extended, child) {
+                        return extended
+                            ? FloatingActionButton.extended(
+                              onPressed:
+                                  () => context.go('/admin/products/product-form'),
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              elevation: 4,
+                              icon: const Icon(Icons.add_rounded),
+                              label: const Text(
+                                'Nuevo Producto',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            )
+                            : FloatingActionButton(
+                              onPressed:
+                                  () => context.go('/admin/products/product-form'),
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              elevation: 4,
+                              tooltip: 'Nuevo Producto',
+                              child: const Icon(Icons.add_rounded),
+                            );
+                      },
+                    )
+                    : null,
+            body: LayoutBuilder(
+              builder: (context, constraints) {
+                final isDesktopLayout = constraints.maxWidth >= 900;
 
-                // ── Contenido Camaleónico (Desktop vs Mobile) ──────────
-                Expanded(
-                  child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
-                    buildWhen:
-                        (previous, current) =>
-                            previous.catalogState != current.catalogState ||
-                            previous.products != current.products ||
-                            previous.errorMessage != current.errorMessage,
-                    builder: (context, state) {
-                      return isDesktopLayout
-                          ? _buildDesktopTableContainer(state, cubit)
-                          : _buildMobileCardList(state, cubit);
-                    },
+                return Container(
+                  color: AppColors.background,
+                  padding: EdgeInsets.all(isDesktopLayout ? 24.0 : 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Barra de Búsqueda y Filtros ────────────────────────
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(AppColors.radius),
+                                border: Border.all(color: AppColors.border),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.02),
+                                    blurRadius: 10,
+                                    spreadRadius: 0,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ],
+                              ),
+                              child: TextField(
+                                controller: _searchCtrl,
+                                focusNode: _searchFocusNode,
+                                onChanged: cubit.setSearchTerm,
+                                decoration: InputDecoration(
+                                  hintText: isDesktopLayout ? 'Buscar por nombre, código o SKU... (Ctrl+F)' : 'Buscar por nombre...',
+                                  hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                                  prefixIcon: const Icon(
+                                    Icons.search_rounded,
+                                    color: AppColors.textMuted,
+                                    size: 20,
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          if (isDesktopLayout)
+                            OutlinedButton.icon(
+                              onPressed: () => cubit.refreshProducts(),
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: const Text('Actualizar'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppColors.radius,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(AppColors.radius),
+                                border: Border.all(color: AppColors.border),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.02),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ],
+                              ),
+                              child: IconButton(
+                                onPressed: () => cubit.refreshProducts(),
+                                icon: const Icon(
+                                  Icons.refresh_rounded,
+                                  color: AppColors.textPrimary,
+                                  size: 20,
+                                ),
+                                tooltip: 'Actualizar',
+                                padding: const EdgeInsets.all(12),
+                                constraints: const BoxConstraints(
+                                  minWidth: 48,
+                                  minHeight: 48,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ── Contenido Camaleónico (Desktop vs Mobile) ──────────
+                      Expanded(
+                        child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+                          buildWhen:
+                              (previous, current) =>
+                                  previous.catalogState != current.catalogState ||
+                                  previous.products != current.products ||
+                                  previous.errorMessage != current.errorMessage,
+                          builder: (context, state) {
+                            return isDesktopLayout
+                                ? _buildDesktopTableContainer(state, cubit)
+                                : _buildMobileCardList(state, cubit);
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                );
+              },
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
 
-  // ── Personalidad Desktop: Estilo ERP de Alta Densidad ─────────────────────
   // ── Personalidad Desktop: Estilo ERP de Alta Densidad ─────────────────────
   Widget _buildDesktopTableContainer(
     AdminCatalogState state,
     AdminCatalogCubit cubit,
   ) {
     return Container(
-      width: double.infinity, // <-- Forzar ancho total
+      width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppColors.radiusLg),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppColors.cardShadow(),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 24,
+            spreadRadius: -4,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppColors.radiusLg),
@@ -277,19 +337,18 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     if (state.catalogState == ViewState.loading ||
         state.catalogState == ViewState.initial) {
       return isDesktop
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildDesktopShimmer()
           : ListView.builder(
-            itemCount: 6,
-            itemBuilder:
-                (context, index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: AppShimmer(
-                    width: double.infinity,
-                    height: 90,
-                    borderRadius: 16,
-                  ),
+              itemCount: 6,
+              itemBuilder: (context, index) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppShimmer(
+                  width: double.infinity,
+                  height: 100,
+                  borderRadius: 16,
                 ),
-          );
+              ),
+            );
     }
 
     if (state.errorMessage != null && state.products.isEmpty) {
@@ -335,57 +394,70 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
             child: ConstrainedBox(
               constraints: BoxConstraints(minWidth: constraints.maxWidth),
               child: DataTable(
-                headingRowColor: WidgetStateProperty.all(AppColors.background),
-                dataRowMinHeight: 64,
-                dataRowMaxHeight: 64,
+                headingRowColor: WidgetStateProperty.all(AppColors.background.withValues(alpha: 0.5)),
+                dataRowMinHeight: 68,
+                dataRowMaxHeight: 68,
                 columnSpacing: 24,
+                showBottomBorder: true,
                 columns: const [
                   DataColumn(
                     label: Text(
                       'Producto',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                     ),
                   ),
                   DataColumn(
                     label: Text(
                       'Categoría',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                     ),
                   ),
                   DataColumn(
                     label: Text(
                       'Tipo',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                     ),
                   ),
                   DataColumn(
                     label: Text(
                       'Stock',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                     ),
                   ),
                   DataColumn(
                     label: Text(
                       'Estado',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                     ),
                   ),
                   DataColumn(
                     label: Text(
                       'Acciones',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                     ),
                   ),
                 ],
                 rows:
                     state.products.map((product) {
                       return DataRow(
+                        color: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
+                          if (states.contains(WidgetState.hovered)) {
+                            return AppColors.primary.withValues(alpha: 0.04);
+                          }
+                          return null;
+                        }),
+                        onSelectChanged: (_) {
+                          context.go(
+                            '/admin/products/product-form/${product.id}',
+                            extra: {'productToEdit': product},
+                          );
+                        },
                         cells: [
                           DataCell(
                             Row(
                               children: [
-                                _buildProductAvatar(product, size: 40),
-                                const SizedBox(width: 12),
+                                _buildProductAvatar(product, size: 44),
+                                const SizedBox(width: 14),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -394,6 +466,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                       product.name,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w600,
+                                        fontSize: 14,
                                         color: AppColors.textPrimary,
                                       ),
                                     ),
@@ -419,7 +492,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                           DataCell(
                             Text(
                               product.categoryName ?? 'Sin categoría',
-                              style: const TextStyle(fontSize: 13),
+                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                             ),
                           ),
                           DataCell(_buildTypeBadge(product.productType)),
@@ -436,10 +509,11 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                             IconButton(
                               icon: const Icon(
                                 Icons.edit_outlined,
-                                size: 18,
-                                color: AppColors.primary,
+                                size: 20,
+                                color: AppColors.textSecondary,
                               ),
-                              tooltip: 'Editar',
+                              hoverColor: AppColors.primary.withValues(alpha: 0.1),
+                              tooltip: 'Editar Producto',
                               onPressed: () {
                                 context.go(
                                   '/admin/products/product-form/${product.id}',
@@ -465,83 +539,90 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         itemCount: state.products.length,
         itemBuilder: (context, index) {
           final product = state.products[index];
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: InkWell(
+              onTap: () {
+                context.go(
+                  '/admin/products/product-form/${product.id}',
+                  extra: {'productToEdit': product},
+                );
+              },
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-              boxShadow: AppColors.cardShadow(),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(14.0),
-              child: Row(
-                children: [
-                  _buildProductAvatar(product, size: 52),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                product.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ),
-                            Switch.adaptive(
-                              value: product.isActive,
-                              activeThumbColor: AppColors.success,
-                              onChanged:
-                                  (_) => _toggleProductoActivo(product, cubit),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          product.categoryName ?? 'Sin categoría',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            _buildStockBadge(product.totalStock),
-                            const SizedBox(width: 8),
-                            _buildTypeBadge(product.productType),
-                            const Spacer(),
-                            IconButton(
-                              constraints: const BoxConstraints(),
-                              padding: EdgeInsets.zero,
-                              icon: const Icon(
-                                Icons.edit_rounded,
-                                size: 20,
-                                color: AppColors.primary,
-                              ),
-                              onPressed: () {
-                                context.go(
-                                  '/admin/products/product-form/${product.id}',
-                                  extra: {'productToEdit': product},
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 16,
+                      spreadRadius: -2,
+                      offset: const Offset(0, 4),
                     ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _buildProductAvatar(product, size: 56),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              product.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              product.categoryName ?? 'Sin categoría',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                _buildStockBadge(product.totalStock),
+                                const SizedBox(width: 8),
+                                _buildTypeBadge(product.productType),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Switch.adaptive(
+                            value: product.isActive,
+                            activeThumbColor: AppColors.success,
+                            onChanged:
+                                (_) => _toggleProductoActivo(product, cubit),
+                          ),
+                          const SizedBox(height: 8),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppColors.textMuted,
+                            size: 24,
+                          ),
+                        ],
+                      )
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           );
@@ -584,6 +665,35 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     );
   }
 
+  // ── Skeletons ─────────────────────────────────────────────────────────────
+  Widget _buildDesktopShimmer() {
+    return Column(
+      children: List.generate(6, (index) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Row(
+          children: [
+            AppShimmer(width: 44, height: 44, borderRadius: 10),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppShimmer(width: 120, height: 16, borderRadius: 4),
+                const SizedBox(height: 8),
+                AppShimmer(width: 200, height: 12, borderRadius: 4),
+              ],
+            ),
+            const Spacer(),
+            AppShimmer(width: 80, height: 24, borderRadius: 12),
+            const SizedBox(width: 24),
+            AppShimmer(width: 60, height: 24, borderRadius: 12),
+            const SizedBox(width: 24),
+            AppShimmer(width: 40, height: 20, borderRadius: 10),
+          ],
+        ),
+      )),
+    );
+  }
+
   // ── Componentes de Apoyo y Diseño Atómico ───────────────────────────────
   Widget _buildProductAvatar(ProductEntity product, {required double size}) {
     final imageUrl =
@@ -600,8 +710,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppColors.border.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(10),
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
         image:
             imageUrl != null
                 ? DecorationImage(
@@ -623,22 +734,46 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
   Widget _buildStockBadge(int stock) {
     final isOut = stock <= 0;
+    final isLow = stock > 0 && stock <= 5;
+    
+    Color bgColor;
+    Color textColor;
+    IconData iconData;
+
+    if (isOut) {
+      bgColor = AppColors.error.withValues(alpha: 0.1);
+      textColor = AppColors.error;
+      iconData = Icons.error_outline_rounded;
+    } else if (isLow) {
+      bgColor = Colors.orange.withValues(alpha: 0.15);
+      textColor = Colors.orange.shade800;
+      iconData = Icons.warning_amber_rounded;
+    } else {
+      bgColor = AppColors.success.withValues(alpha: 0.1);
+      textColor = AppColors.success;
+      iconData = Icons.check_circle_outline_rounded;
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color:
-            isOut
-                ? AppColors.error.withValues(alpha: 0.1)
-                : AppColors.success.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        isOut ? 'Agotado (0)' : 'Stock: $stock',
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: isOut ? AppColors.error : AppColors.success,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(iconData, size: 12, color: textColor),
+          const SizedBox(width: 4),
+          Text(
+            isOut ? 'Agotado' : (isLow ? 'Bajo ($stock)' : 'Stock: $stock'),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -648,15 +783,22 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        type.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: AppColors.primary,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.category_outlined, size: 12, color: AppColors.primary),
+          const SizedBox(width: 4),
+          Text(
+            type.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
       ),
     );
   }
