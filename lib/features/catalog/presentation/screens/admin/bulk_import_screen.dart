@@ -58,15 +58,26 @@ class BulkImportScreen extends StatelessWidget {
                             style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
                           ),
                           const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: () => context.read<BulkImportCubit>().pickAndParseFile(),
-                            icon: const Icon(Icons.file_upload),
-                            label: const Text('Seleccionar Archivo CSV'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: () => context.read<BulkImportCubit>().downloadTemplate(),
+                                icon: const Icon(Icons.download_rounded),
+                                label: const Text('Descargar Plantilla'),
+                              ),
+                              const SizedBox(width: 16),
+                              ElevatedButton.icon(
+                                onPressed: () => context.read<BulkImportCubit>().pickAndParseFile(),
+                                icon: const Icon(Icons.file_upload),
+                                label: const Text('Seleccionar Archivo CSV'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -179,33 +190,38 @@ class BulkImportScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: AppColors.border),
               ),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SingleChildScrollView(
-                  child: DataTable(
-                    headingRowColor: WidgetStateProperty.all(AppColors.background),
-                    columns: const [
-                      DataColumn(label: Text('Nombre')),
-                      DataColumn(label: Text('SKU')),
-                      DataColumn(label: Text('Categoría')),
-                      DataColumn(label: Text('Costo')),
-                      DataColumn(label: Text('Precio Venta')),
-                      DataColumn(label: Text('Stock Inicial')),
-                    ],
-                    rows: state.parsedRows.take(100).map((row) { // Take 100 max for preview
-                      return DataRow(
-                        cells: [
-                          DataCell(Text(row['nombre'].toString())),
-                          DataCell(Text(row['sku'].toString())),
-                          DataCell(Text(row['categoria']?.toString() ?? '-')),
-                          DataCell(Text(row['costo_parsed'].toString())),
-                          DataCell(Text(row['precio_venta_parsed']?.toString() ?? '-')),
-                          DataCell(Text(row['stock_inicial_parsed']?.toString() ?? '0')),
+              child: BlocSelector<BulkImportCubit, BulkImportState, List<Map<String, dynamic>>>(
+                selector: (state) => state.parsedRows,
+                builder: (context, parsedRows) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SingleChildScrollView(
+                      child: DataTable(
+                        headingRowColor: WidgetStateProperty.all(AppColors.background),
+                        columns: const [
+                          DataColumn(label: Text('Nombre')),
+                          DataColumn(label: Text('SKU')),
+                          DataColumn(label: Text('Categoría')),
+                          DataColumn(label: Text('Costo')),
+                          DataColumn(label: Text('Precio Venta')),
+                          DataColumn(label: Text('Stock Inicial')),
                         ],
-                      );
-                    }).toList(),
-                  ),
-                ),
+                        rows: parsedRows.take(100).map((row) { // Take 100 max for preview
+                          return DataRow(
+                            cells: [
+                              DataCell(Text(row['nombre'].toString())),
+                              DataCell(Text(row['sku'].toString())),
+                              DataCell(Text(row['categoria']?.toString() ?? '-')),
+                              DataCell(Text(row['costo_parsed'].toString())),
+                              DataCell(Text(row['precio_venta_parsed']?.toString() ?? '-')),
+                              DataCell(Text(row['stock_inicial_parsed']?.toString() ?? '0')),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),

@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum BulkImportStatus { initial, parsing, validationDone, uploading, success, error }
+enum BulkImportStatus { initial, parsing, validationDone, uploading, downloadingTemplate, success, error }
 
 class BulkImportState extends Equatable {
   final BulkImportStatus status;

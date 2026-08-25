@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/bulk_import/bulk_import_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
+import 'dart:typed_data';
 
 @injectable
 class BulkImportCubit extends Cubit<BulkImportState> {
@@ -37,6 +39,29 @@ class BulkImportCubit extends Cubit<BulkImportState> {
       }
     } catch (e) {
       emit(state.copyWith(status: BulkImportStatus.error, errorMessage: 'Error al seleccionar archivo: $e'));
+    }
+  }
+
+  Future<void> downloadTemplate() async {
+    try {
+      emit(state.copyWith(status: BulkImportStatus.downloadingTemplate));
+      final List<List<dynamic>> rows = [
+        ['nombre', 'sku', 'costo', 'precio_venta', 'stock_inicial', 'categoria', 'descripcion', 'imagen_url'],
+        ['Camiseta Basic', 'CAM-BAS-S', 10.50, 15.00, 50, 'Ropa', 'Camiseta de algodón talla S', ''],
+        ['Camiseta Basic', 'CAM-BAS-M', 11.00, 16.00, 30, 'Ropa', 'Camiseta de algodón talla M', ''],
+        ['Zapatos Run', 'ZAP-RUN-40', 25.00, 45.00, 10, 'Calzado', 'Zapatos para correr talla 40', ''],
+      ];
+      final String csv = Csv().encode(rows);
+      final Uint8List bytes = utf8.encode(csv);
+      await FileSaver.instance.saveFile(
+        name: 'plantilla_productos',
+        bytes: bytes,
+        fileExtension: 'csv',
+        mimeType: MimeType.csv,
+      );
+      emit(state.copyWith(status: BulkImportStatus.initial));
+    } catch (e) {
+      emit(state.copyWith(status: BulkImportStatus.error, errorMessage: 'Error al descargar plantilla: $e'));
     }
   }
 
@@ -138,24 +163,49 @@ class BulkImportCubit extends Cubit<BulkImportState> {
     emit(state.copyWith(status: BulkImportStatus.uploading));
 
     try {
-      final payload = state.parsedRows.map((row) => {
-        'name': row['nombre'],
-        'description': row['descripcion']?.toString() ?? '',
-        'category_name': row['categoria']?.toString() ?? '',
-        'sku': row['sku'],
-        'unit_cost': row['costo_parsed'],
-        'sale_price': row['precio_venta_parsed'],
-        'initial_stock': row['stock_inicial_parsed'] ?? 0,
-        'image_url': row['imagen_url']?.toString() ?? '',
-      }).toList();
-
-      final result = await productsRepository.importCatalogBatch(payload, state.selectedWarehouseId);
+      // Agrupar filas por nombre de producto
+      final Map<String, Map<String, dynamic>> groupedProducts = {};
       
-      result.fold(
-        (failure) => emit(state.copyWith(status: BulkImportStatus.error, errorMessage: failure.message)),
-        (_) => emit(state.copyWith(status: BulkImportStatus.success))
-      );
+      for (final row in state.parsedRows) {
+        final name = row['nombre'].toString().trim();
+        if (!groupedProducts.containsKey(name)) {
+          groupedProducts[name] = {
+            'name': name,
+            'description': row['descripcion']?.toString() ?? '',
+            'category_name': row['categoria']?.toString() ?? '',
+            'variants': <Map<String, dynamic>>[],
+          };
+        }
+        
+        groupedProducts[name]!['variants'].add({
+          'sku': row['sku'],
+          'unit_cost': row['costo_parsed'],
+          'sale_price': row['precio_venta_parsed'],
+          'initial_stock': row['stock_inicial_parsed'] ?? 0,
+          'image_url': row['imagen_url']?.toString() ?? '',
+        });
+      }
+
+      final payloadList = groupedProducts.values.toList();
+      
+      // Batch Chunking (Lotes de 100 productos)
+      const int batchSize = 100;
+      for (int i = 0; i < payloadList.length; i += batchSize) {
+        final end = (i + batchSize < payloadList.length) ? i + batchSize : payloadList.length;
+        final batch = payloadList.sublist(i, end);
+        
+        final result = await productsRepository.importCatalogBatch(batch, state.selectedWarehouseId);
+        
+        if (result.isLeft()) {
+          final failure = result.fold((l) => l, (r) => null);
+          emit(state.copyWith(status: BulkImportStatus.error, errorMessage: 'Error en lote ${i ~/ batchSize + 1}: ${failure?.message}'));
+          return;
+        }
+      }
+
+      emit(state.copyWith(status: BulkImportStatus.success));
     } catch (e) {
+      // NOTA: Para QA profesional, registrar el stacktrace (st) en un logger central.
       emit(state.copyWith(status: BulkImportStatus.error, errorMessage: e.toString()));
     }
   }
