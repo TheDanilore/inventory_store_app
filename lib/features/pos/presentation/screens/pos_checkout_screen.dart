@@ -602,7 +602,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                       children: [
                         Expanded(
                           child: SingleChildScrollView(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(24),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [

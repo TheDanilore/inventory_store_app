@@ -233,11 +233,18 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                           width: 440,
                           decoration: BoxDecoration(
                             color: Colors.white,
+                            border: Border(
+                              left: BorderSide(
+                                color: Colors.grey.withValues(alpha: 0.15),
+                                width: 1,
+                              ),
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 15,
-                                offset: const Offset(-5, 0),
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 24,
+                                spreadRadius: -4,
+                                offset: const Offset(-8, 0),
                               ),
                             ],
                           ),
