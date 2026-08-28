@@ -265,7 +265,8 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         params: {'p_shift_id': shiftId, 'p_account_id': accountId},
       );
 
-      final expected = (result as num?)?.toDouble() ?? openingAmount;
+      final netMovements = (result as num?)?.toDouble() ?? 0.0;
+      final expected = openingAmount + netMovements;
       return right(expected);
     } on PostgrestException catch (e, stack) {
       developer.log(
