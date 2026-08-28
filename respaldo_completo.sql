@@ -880,6 +880,120 @@ $$;
 ALTER FUNCTION "public"."handle_update_timestamp"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."import_catalog_batch"("payload" "jsonb", "p_warehouse_id" "uuid" DEFAULT NULL::"uuid") RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    product_item jsonb;
+    variant_item jsonb;
+    v_product_id uuid;
+    v_variant_id uuid;
+    v_category_id uuid;
+    v_name text;
+    v_category_name text;
+    v_initial_stock numeric;
+BEGIN
+    -- Recorrer cada producto del JSON array 'payload'
+    FOR product_item IN SELECT * FROM jsonb_array_elements(payload)
+    LOOP
+        v_name := product_item->>'name';
+        v_category_name := product_item->>'category_name';
+
+        -- Buscar o crear categoría (si se proporciona)
+        v_category_id := NULL;
+        IF v_category_name IS NOT NULL AND trim(v_category_name) != '' THEN
+            SELECT id INTO v_category_id FROM categories WHERE name ILIKE trim(v_category_name) LIMIT 1;
+            
+            IF v_category_id IS NULL THEN
+                INSERT INTO categories (name) VALUES (trim(v_category_name)) RETURNING id INTO v_category_id;
+            END IF;
+        END IF;
+
+        -- Crear el Producto principal
+        INSERT INTO products (
+            name,
+            description,
+            category_id,
+            is_active,
+            stock_control,
+            product_type
+        ) VALUES (
+            v_name,
+            product_item->>'description',
+            v_category_id,
+            true,
+            true,
+            'good'
+        ) RETURNING id INTO v_product_id;
+
+        -- Recorrer cada variante asociada a este producto
+        FOR variant_item IN SELECT * FROM jsonb_array_elements(product_item->'variants')
+        LOOP
+            -- Crear la Variante
+            INSERT INTO product_variants (
+                product_id,
+                sku,
+                unit_cost,
+                sale_price,
+                is_active
+            ) VALUES (
+                v_product_id,
+                variant_item->>'sku',
+                (variant_item->>'unit_cost')::numeric,
+                (variant_item->>'sale_price')::numeric,
+                true
+            ) RETURNING id INTO v_variant_id;
+
+            -- Insertar imagen de la variante si existe
+            IF variant_item->>'image_url' IS NOT NULL AND variant_item->>'image_url' != '' THEN
+                INSERT INTO product_images (
+                    product_id,
+                    variant_id,
+                    image_url,
+                    is_main,
+                    display_order
+                ) VALUES (
+                    v_product_id,
+                    v_variant_id,
+                    variant_item->>'image_url',
+                    true,
+                    0
+                );
+            END IF;
+
+            -- Si hay stock inicial para la variante
+            v_initial_stock := COALESCE((variant_item->>'initial_stock')::numeric, 0);
+            IF v_initial_stock > 0 THEN
+                IF p_warehouse_id IS NULL THEN
+                    SELECT id INTO p_warehouse_id FROM warehouses LIMIT 1;
+                END IF;
+
+                IF p_warehouse_id IS NOT NULL THEN
+                    INSERT INTO warehouse_stock_batches (
+                        warehouse_id,
+                        product_id,
+                        variant_id,
+                        batch_number,
+                        available_quantity
+                    ) VALUES (
+                        p_warehouse_id,
+                        v_product_id,
+                        v_variant_id,
+                        'BATCH-INITIAL',
+                        v_initial_stock
+                    );
+                END IF;
+            END IF;
+            
+        END LOOP;
+    END LOOP;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."import_catalog_batch"("payload" "jsonb", "p_warehouse_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -5808,6 +5922,12 @@ GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "servic
 GRANT ALL ON FUNCTION "public"."handle_update_timestamp"() TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_update_timestamp"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_update_timestamp"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."import_catalog_batch"("payload" "jsonb", "p_warehouse_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."import_catalog_batch"("payload" "jsonb", "p_warehouse_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."import_catalog_batch"("payload" "jsonb", "p_warehouse_id" "uuid") TO "service_role";
 
 
 
