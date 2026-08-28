@@ -12,21 +12,26 @@ class OpenShiftSheet {
     BuildContext context, {
     required List<Map<String, dynamic>> accounts,
   }) {
+    final cashShiftsCubit = context.read<CashShiftsCubit>();
     final isDesktop = MediaQuery.of(context).size.width >= 800;
+    
     if (isDesktop) {
       return showDialog<bool>(
         context: context,
         barrierColor: Colors.black54,
         builder:
-            (_) => Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(
-                horizontal: 80,
-                vertical: 40,
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: _OpenShiftContent(accounts: accounts),
+            (_) => BlocProvider.value(
+              value: cashShiftsCubit,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: const EdgeInsets.symmetric(
+                  horizontal: 80,
+                  vertical: 40,
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: _OpenShiftContent(accounts: accounts),
+                ),
               ),
             ),
       );
@@ -35,7 +40,11 @@ class OpenShiftSheet {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _OpenShiftContent(accounts: accounts),
+      builder:
+          (_) => BlocProvider.value(
+            value: cashShiftsCubit,
+            child: _OpenShiftContent(accounts: accounts),
+          ),
     );
   }
 }
@@ -164,11 +173,11 @@ class _OpenShiftContentState extends State<_OpenShiftContent> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
-                    const SizedBox(width: 8),
-                    const Expanded(
+                    Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
                       child: Text(
                         'No hay cuentas de tipo CAJA configuradas en el sistema.',
                         style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600, fontSize: 13),
@@ -195,7 +204,7 @@ class _OpenShiftContentState extends State<_OpenShiftContent> {
                               value: a['id'],
                               child: Row(
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.point_of_sale_rounded,
                                     size: 16,
                                     color: AppColors.textSecondary,

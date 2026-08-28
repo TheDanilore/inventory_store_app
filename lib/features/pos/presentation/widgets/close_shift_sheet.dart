@@ -14,23 +14,27 @@ class CloseShiftSheet {
     required CashShiftEntity shift,
     required double expectedAmount,
   }) {
+    final cashShiftsCubit = context.read<CashShiftsCubit>();
     final isDesktop = MediaQuery.of(context).size.width >= 800;
     if (isDesktop) {
       return showDialog<bool>(
         context: context,
         barrierColor: Colors.black54,
         builder:
-            (_) => Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(
-                horizontal: 80,
-                vertical: 40,
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: _CloseShiftContent(
-                  shift: shift,
-                  expectedAmount: expectedAmount,
+            (_) => BlocProvider.value(
+              value: cashShiftsCubit,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: const EdgeInsets.symmetric(
+                  horizontal: 80,
+                  vertical: 40,
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: _CloseShiftContent(
+                    shift: shift,
+                    expectedAmount: expectedAmount,
+                  ),
                 ),
               ),
             ),
@@ -41,8 +45,10 @@ class CloseShiftSheet {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (_) =>
-              _CloseShiftContent(shift: shift, expectedAmount: expectedAmount),
+          (_) => BlocProvider.value(
+            value: cashShiftsCubit,
+            child: _CloseShiftContent(shift: shift, expectedAmount: expectedAmount),
+          ),
     );
   }
 }
