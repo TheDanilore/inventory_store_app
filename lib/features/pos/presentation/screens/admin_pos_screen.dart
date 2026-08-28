@@ -61,6 +61,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cubit = context.read<AdminCatalogCubit>();
+      cubit.setFilterIsActive(true); // Asegurar que no se vendan productos inactivos
       if (_searchCtrl.text != cubit.state.searchTerm) {
         _searchCtrl.text = cubit.state.searchTerm;
       }
@@ -152,51 +153,74 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
           body: Builder(
             builder: (context) {
               final isDesktop = MediaQuery.of(context).size.width >= 800;
-
-              Widget catalogContent = BlocBuilder<
-                AdminCatalogCubit,
-                AdminCatalogState
-              >(
-                builder: (context, state) {
-                  final cubit = context.read<AdminCatalogCubit>();
-                  return Column(
-                    children: [
-                      Container(
-                        color: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Column(
-                          children: [
-                            PosHeader(
+              Widget catalogContent = Column(
+                children: [
+                  Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Column(
+                      children: [
+                        BlocSelector<AdminCatalogCubit, AdminCatalogState, bool>(
+                          selector: (state) => state.searchByIngredient,
+                          builder: (context, searchByIngredient) {
+                            return PosHeader(
                               searchController: _searchCtrl,
                               searchFocusNode: _searchFocusNode,
                               onSearchChanged: _onSearchChanged,
-                              searchByIngredient: state.searchByIngredient,
+                              searchByIngredient: searchByIngredient,
                               onToggleIngredientSearch:
-                                  cubit.toggleSearchByIngredient,
+                                  context.read<AdminCatalogCubit>().toggleSearchByIngredient,
                               onBack: () => context.go('/admin'),
-                            ),
-                            const SizedBox(height: 12),
-                            if (state.categories.isNotEmpty)
-                              CategoryChips(
-                                categories: state.categories,
-                                selectedCategoryId: state.selectedCategoryId,
-                                onSelected: cubit.setCategory,
-                                filterIsActive: state.filterIsActive,
-                                onStatusSelected: cubit.setFilterIsActive,
-                                sortOption: state.sortOption,
-                                onSortSelected: cubit.setSortOption,
-                                stockFilter: state.stockFilter,
-                                onStockFilterSelected: cubit.setStockFilter,
-                              ),
-                          ],
+                            );
+                          },
                         ),
-                      ),
-                      Expanded(child: _buildMainContent(context, cubit, state)),
-                      if (state.products.isNotEmpty && state.totalPages > 1)
-                        Container(
+                        const SizedBox(height: 12),
+                        BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+                          buildWhen: (prev, current) =>
+                              prev.categories != current.categories ||
+                              prev.selectedCategoryId != current.selectedCategoryId ||
+                              prev.filterIsActive != current.filterIsActive ||
+                              prev.sortOption != current.sortOption ||
+                              prev.stockFilter != current.stockFilter,
+                          builder: (context, state) {
+                            if (state.categories.isEmpty) return const SizedBox.shrink();
+                            return CategoryChips(
+                              categories: state.categories,
+                              selectedCategoryId: state.selectedCategoryId,
+                              onSelected: context.read<AdminCatalogCubit>().setCategory,
+                              filterIsActive: state.filterIsActive,
+                              onStatusSelected: context.read<AdminCatalogCubit>().setFilterIsActive,
+                              sortOption: state.sortOption,
+                              onSortSelected: context.read<AdminCatalogCubit>().setSortOption,
+                              stockFilter: state.stockFilter,
+                              onStockFilterSelected: context.read<AdminCatalogCubit>().setStockFilter,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+                      buildWhen: (prev, current) =>
+                          prev.products != current.products ||
+                          prev.catalogState != current.catalogState ||
+                          prev.errorMessage != current.errorMessage,
+                      builder: (context, state) =>
+                          _buildMainContent(context, context.read<AdminCatalogCubit>(), state),
+                    ),
+                  ),
+                  BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+                    buildWhen: (prev, current) =>
+                        prev.currentPage != current.currentPage ||
+                        prev.totalPages != current.totalPages ||
+                        prev.products != current.products,
+                    builder: (context, state) {
+                      if (state.products.isNotEmpty && state.totalPages > 1) {
+                        return Container(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.surface,
@@ -213,13 +237,15 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                             child: AdminPageBlocks(
                               currentPage: state.currentPage,
                               totalPages: state.totalPages,
-                              onPageChanged: cubit.setPage,
+                              onPageChanged: context.read<AdminCatalogCubit>().setPage,
                             ),
                           ),
-                        ),
-                    ],
-                  );
-                },
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ],
               );
 
               return Stack(

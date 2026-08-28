@@ -156,13 +156,35 @@ class _OpenShiftContentState extends State<_OpenShiftContent> {
             const SizedBox(height: 20),
 
             _FieldLabel('Cuenta'),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: DropdownButtonHideUnderline(
+            if (widget.accounts.isEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'No hay cuentas de tipo CAJA configuradas en el sistema.',
+                        style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _selectedAccountId,
                   isExpanded: true,
@@ -253,7 +275,7 @@ class _OpenShiftContentState extends State<_OpenShiftContent> {
                 },
                 builder: (context, state) {
                   return ElevatedButton(
-                    onPressed: state.isLoading ? null : _save,
+                    onPressed: (state.isLoading || widget.accounts.isEmpty) ? null : _save,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.success,
                       foregroundColor: Colors.white,

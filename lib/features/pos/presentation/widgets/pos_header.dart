@@ -281,7 +281,7 @@ class PosHeader extends StatelessWidget {
               .toList();
           final opened = await OpenShiftSheet.show(
             context,
-            accounts: cashAccounts.isNotEmpty ? cashAccounts : posState.accounts,
+            accounts: cashAccounts, // Pasar estricto las cajas para que el Empty State lo maneje si no hay
           );
           if (opened == true && context.mounted) {
             context.read<PosCubit>().initPosData(forceRefresh: true);

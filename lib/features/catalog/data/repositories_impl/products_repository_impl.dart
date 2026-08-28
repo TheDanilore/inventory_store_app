@@ -156,10 +156,11 @@ class ProductsRepositoryImpl implements ProductsRepository {
         query = query.inFilter('id', matchingIds.toList());
       }
 
-      var transformQuery =
-          sortOption == CatalogSortOption.recent
-              ? query.order('created_at', ascending: false)
-              : query.order('name', ascending: true);
+      var transformQuery = query.order('is_active', ascending: false); // Productos activos primero
+
+      transformQuery = sortOption == CatalogSortOption.recent
+          ? transformQuery.order('created_at', ascending: false)
+          : transformQuery.order('name', ascending: true);
       transformQuery = transformQuery.range(offset, offset + limit - 1);
       final response = await transformQuery.count(CountOption.exact);
 
