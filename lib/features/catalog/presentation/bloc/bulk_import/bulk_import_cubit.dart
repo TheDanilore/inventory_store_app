@@ -47,9 +47,9 @@ class BulkImportCubit extends Cubit<BulkImportState> {
       emit(state.copyWith(status: BulkImportStatus.downloadingTemplate));
       final List<List<dynamic>> rows = [
         ['nombre', 'sku', 'costo', 'precio_venta', 'stock_inicial', 'categoria', 'descripcion', 'imagen_url'],
-        ['Camiseta Basic', 'CAM-BAS-S', 10.50, 15.00, 50, 'Ropa', 'Camiseta de algodón talla S', ''],
-        ['Camiseta Basic', 'CAM-BAS-M', 11.00, 16.00, 30, 'Ropa', 'Camiseta de algodón talla M', ''],
-        ['Zapatos Run', 'ZAP-RUN-40', 25.00, 45.00, 10, 'Calzado', 'Zapatos para correr talla 40', ''],
+        ['Camiseta Basic', 'CAM-BAS-S', 10.50, 15.00, 50, 'Ropa', 'Camiseta de algodón', ''],
+        ['Camiseta Basic', 'CAM-BAS-M', 11.00, 16.00, 30, 'Ropa', 'Camiseta de algodón', ''],
+        ['Zapatos Run', 'ZAP-RUN-40', 25.00, 45.00, 10, 'Calzado', 'Zapatos para correr', ''],
       ];
       final String csv = Csv().encode(rows);
       final Uint8List bytes = utf8.encode(csv);
@@ -183,13 +183,24 @@ class BulkImportCubit extends Cubit<BulkImportState> {
       
       for (final row in state.parsedRows) {
         final name = row['nombre'].toString().trim();
+        final descripcionFila = row['descripcion']?.toString().trim() ?? '';
+        final categoriaFila = row['categoria']?.toString().trim() ?? '';
+
         if (!groupedProducts.containsKey(name)) {
           groupedProducts[name] = {
             'name': name,
-            'description': row['descripcion']?.toString() ?? '',
-            'category_name': row['categoria']?.toString() ?? '',
+            'description': descripcionFila,
+            'category_name': categoriaFila,
             'variants': <Map<String, dynamic>>[],
           };
+        } else {
+          // Si el producto ya se agregó pero no tenía descripción o categoría, y esta fila sí tiene, se los asignamos
+          if (groupedProducts[name]!['description'] == '' && descripcionFila.isNotEmpty) {
+            groupedProducts[name]!['description'] = descripcionFila;
+          }
+          if (groupedProducts[name]!['category_name'] == '' && categoriaFila.isNotEmpty) {
+            groupedProducts[name]!['category_name'] = categoriaFila;
+          }
         }
         
         groupedProducts[name]!['variants'].add({
