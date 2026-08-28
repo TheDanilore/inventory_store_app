@@ -32,7 +32,7 @@ class BulkImportCubit extends Cubit<BulkImportState> {
         if (bytes.isNotEmpty) {
           final csvString = utf8.decode(bytes);
           final List<List<dynamic>> rows = Csv().decode(csvString);
-          _validateAndProcessCsv(rows);
+          await _validateAndProcessCsv(rows);
         } else {
           emit(state.copyWith(status: BulkImportStatus.error, errorMessage: 'No se pudo leer el contenido del archivo.'));
         }
@@ -65,7 +65,7 @@ class BulkImportCubit extends Cubit<BulkImportState> {
     }
   }
 
-  void _validateAndProcessCsv(List<List<dynamic>> rows) {
+  Future<void> _validateAndProcessCsv(List<List<dynamic>> rows) async {
     if (rows.isEmpty || rows.length == 1) {
       emit(state.copyWith(status: BulkImportStatus.error, errorMessage: 'El archivo está vacío o solo contiene encabezados.'));
       return;
@@ -145,7 +145,22 @@ class BulkImportCubit extends Cubit<BulkImportState> {
     final skus = parsedData.map((e) => e['sku'].toString()).toList();
     if (skus.length != skus.toSet().length) {
       validationErrors.add('Hay SKUs duplicados en el archivo CSV.');
+    } else {
+      // Validar SKUs existentes en base de datos
+      final existingSkusResult = await productsRepository.getExistingSkus(skus);
+      existingSkusResult.fold(
+        (failure) {
+          validationErrors.add('Error al validar SKUs en BD: ${failure.message}');
+        },
+        (existingSkus) {
+          if (existingSkus.isNotEmpty) {
+            validationErrors.add('SKUs ya existen en la base de datos: ${existingSkus.join(', ')}');
+          }
+        },
+      );
     }
+
+    if (isClosed) return;
 
     if (validationErrors.isNotEmpty) {
       emit(state.copyWith(status: BulkImportStatus.error, errors: validationErrors));
@@ -198,15 +213,21 @@ class BulkImportCubit extends Cubit<BulkImportState> {
         
         if (result.isLeft()) {
           final failure = result.fold((l) => l, (r) => null);
-          emit(state.copyWith(status: BulkImportStatus.error, errorMessage: 'Error en lote ${i ~/ batchSize + 1}: ${failure?.message}'));
+          if (!isClosed) {
+            emit(state.copyWith(status: BulkImportStatus.error, errorMessage: 'Error en lote ${i ~/ batchSize + 1}: ${failure?.message}'));
+          }
           return;
         }
       }
 
-      emit(state.copyWith(status: BulkImportStatus.success));
+      if (!isClosed) {
+        emit(state.copyWith(status: BulkImportStatus.success));
+      }
     } catch (e) {
       // NOTA: Para QA profesional, registrar el stacktrace (st) en un logger central.
-      emit(state.copyWith(status: BulkImportStatus.error, errorMessage: e.toString()));
+      if (!isClosed) {
+        emit(state.copyWith(status: BulkImportStatus.error, errorMessage: e.toString()));
+      }
     }
   }
 }

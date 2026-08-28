@@ -1370,4 +1370,22 @@ class ProductsRepositoryImpl implements ProductsRepository {
       return _handleError(e, st);
     }
   }
+
+  @override
+  Future<Either<Failure, List<String>>> getExistingSkus(List<String> skus) async {
+    try {
+      if (skus.isEmpty) return right([]);
+      final response = await _supabase
+          .from('product_variants')
+          .select('sku')
+          .inFilter('sku', skus);
+      
+      final existingSkus = List<Map<String, dynamic>>.from(response)
+          .map((e) => e['sku'].toString())
+          .toList();
+      return right(existingSkus);
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
 }

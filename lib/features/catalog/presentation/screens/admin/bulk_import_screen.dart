@@ -14,80 +14,146 @@ class BulkImportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocListener<BulkImportCubit, BulkImportState>(
-      listenWhen: (previous, current) =>
-          previous.status != current.status || previous.errorMessage != current.errorMessage,
+      listenWhen:
+          (previous, current) =>
+              previous.status != current.status ||
+              previous.errorMessage != current.errorMessage,
       listener: (context, state) {
-        if (state.status == BulkImportStatus.error && state.errorMessage != null) {
-          AppSnackbar.show(context, message: state.errorMessage!, type: SnackbarType.error);
+        if (state.status == BulkImportStatus.error &&
+            state.errorMessage != null) {
+          AppSnackbar.show(
+            context,
+            message: state.errorMessage!,
+            type: SnackbarType.error,
+          );
         } else if (state.status == BulkImportStatus.success) {
-          AppSnackbar.show(context, message: '¡Importación completada con éxito!', type: SnackbarType.success);
+          AppSnackbar.show(
+            context,
+            message: '¡Importación completada con éxito!',
+            type: SnackbarType.success,
+          );
           context.read<AdminCatalogCubit>().refreshProducts();
           context.pop();
         }
       },
-      child: AdminLayout(
-        title: 'Importación Masiva (CSV)',
-        showBackButton: true,
-        body: Container(
-          color: AppColors.background,
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildInstructions(context),
-              const SizedBox(height: 24),
-              Expanded(
-                child: BlocBuilder<BulkImportCubit, BulkImportState>(
-                  builder: (context, state) {
-                    if (state.status == BulkImportStatus.parsing || state.status == BulkImportStatus.uploading) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+      child: BlocBuilder<BulkImportCubit, BulkImportState>(
+        builder: (context, state) {
+          final isUploading = state.status == BulkImportStatus.uploading;
 
-                    if (state.status == BulkImportStatus.validationDone || state.errors.isNotEmpty) {
-                      return _buildValidationResults(context, state);
-                    }
+          return PopScope(
+            canPop: !isUploading,
+            onPopInvokedWithResult: (didPop, result) {
+              if (!didPop && isUploading) {
+                AppSnackbar.show(
+                  context,
+                  message: 'La importación está en curso, por favor espere.',
+                  type: SnackbarType.warning,
+                );
+              }
+            },
+            child: AdminLayout(
+              title: 'Importación Masiva (CSV)',
+              showBackButton: true,
+              onBack:
+                  isUploading
+                      ? () {
+                        AppSnackbar.show(
+                          context,
+                          message:
+                              'La importación está en curso, por favor espere.',
+                          type: SnackbarType.warning,
+                        );
+                      }
+                      : null,
+              body: Container(
+                color: AppColors.background,
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildInstructions(context),
+                    const SizedBox(height: 24),
+                    Expanded(
+                      child: BlocBuilder<BulkImportCubit, BulkImportState>(
+                        builder: (context, state) {
+                          if (state.status == BulkImportStatus.parsing ||
+                              state.status == BulkImportStatus.uploading) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
 
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.upload_file_rounded, size: 64, color: AppColors.primary.withValues(alpha: 0.5)),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Selecciona un archivo CSV para importar productos',
-                            style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-                          ),
-                          const SizedBox(height: 24),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              OutlinedButton.icon(
-                                onPressed: () => context.read<BulkImportCubit>().downloadTemplate(),
-                                icon: const Icon(Icons.download_rounded),
-                                label: const Text('Descargar Plantilla'),
-                              ),
-                              const SizedBox(width: 16),
-                              ElevatedButton.icon(
-                                onPressed: () => context.read<BulkImportCubit>().pickAndParseFile(),
-                                icon: const Icon(Icons.file_upload),
-                                label: const Text('Seleccionar Archivo CSV'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          if (state.status == BulkImportStatus.validationDone ||
+                              state.errors.isNotEmpty) {
+                            return _buildValidationResults(context, state);
+                          }
+
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.upload_file_rounded,
+                                  size: 64,
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Selecciona un archivo CSV para importar productos',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    OutlinedButton.icon(
+                                      onPressed:
+                                          () =>
+                                              context
+                                                  .read<BulkImportCubit>()
+                                                  .downloadTemplate(),
+                                      icon: const Icon(Icons.download_rounded),
+                                      label: const Text('Descargar Plantilla'),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    ElevatedButton.icon(
+                                      onPressed:
+                                          () =>
+                                              context
+                                                  .read<BulkImportCubit>()
+                                                  .pickAndParseFile(),
+                                      icon: const Icon(Icons.file_upload),
+                                      label: const Text(
+                                        'Seleccionar Archivo CSV',
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primary,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                          vertical: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -105,15 +171,29 @@ class BulkImportScreen extends StatelessWidget {
         children: const [
           Text(
             'Instrucciones de Importación',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Colors.blue,
+            ),
           ),
           SizedBox(height: 8),
-          Text('1. El archivo DEBE ser en formato .CSV (Valores separados por comas).'),
-          Text('2. La primera fila DEBE contener los siguientes encabezados exactos (en minúsculas):'),
+          Text(
+            '1. El archivo DEBE ser en formato .CSV (Valores separados por comas).',
+          ),
+          Text(
+            '2. La primera fila DEBE contener los siguientes encabezados exactos (en minúsculas):',
+          ),
           Text('   - Requeridos: "nombre", "sku", "costo"'),
-          Text('   - Opcionales: "descripcion", "categoria", "precio_venta", "stock_inicial", "imagen_url"'),
-          Text('3. Cada fila creará automáticamente un Producto y una Variante base.'),
-          Text('4. No usar separadores de miles en precios o stock. Usar punto (.) para decimales.'),
+          Text(
+            '   - Opcionales: "descripcion", "categoria", "precio_venta", "stock_inicial", "imagen_url"',
+          ),
+          Text(
+            '3. Cada fila creará automáticamente un Producto y una Variante base.',
+          ),
+          Text(
+            '4. No usar separadores de miles en precios o stock. Usar punto (.) para decimales.',
+          ),
         ],
       ),
     );
@@ -129,7 +209,9 @@ class BulkImportScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              hasErrors ? 'Se encontraron errores de validación' : 'Validación exitosa (${state.parsedRows.length} productos listos)',
+              hasErrors
+                  ? 'Se encontraron errores de validación'
+                  : 'Validación exitosa (${state.parsedRows.length} productos listos)',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -147,7 +229,7 @@ class BulkImportScreen extends StatelessWidget {
                 ),
               ),
             if (hasErrors)
-               OutlinedButton.icon(
+              OutlinedButton.icon(
                 onPressed: () => context.read<BulkImportCubit>().reset(),
                 icon: const Icon(Icons.refresh),
                 label: const Text('Intentar Nuevo Archivo'),
@@ -161,7 +243,9 @@ class BulkImportScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.error.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.error.withValues(alpha: 0.3),
+                ),
               ),
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
@@ -172,9 +256,18 @@ class BulkImportScreen extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.error_outline, color: AppColors.error, size: 20),
+                        const Icon(
+                          Icons.error_outline,
+                          color: AppColors.error,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
-                        Expanded(child: Text(state.errors[index], style: const TextStyle(color: AppColors.error))),
+                        Expanded(
+                          child: Text(
+                            state.errors[index],
+                            style: const TextStyle(color: AppColors.error),
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -190,14 +283,20 @@ class BulkImportScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: AppColors.border),
               ),
-              child: BlocSelector<BulkImportCubit, BulkImportState, List<Map<String, dynamic>>>(
+              child: BlocSelector<
+                BulkImportCubit,
+                BulkImportState,
+                List<Map<String, dynamic>>
+              >(
                 selector: (state) => state.parsedRows,
                 builder: (context, parsedRows) {
                   return SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: SingleChildScrollView(
                       child: DataTable(
-                        headingRowColor: WidgetStateProperty.all(AppColors.background),
+                        headingRowColor: WidgetStateProperty.all(
+                          AppColors.background,
+                        ),
                         columns: const [
                           DataColumn(label: Text('Nombre')),
                           DataColumn(label: Text('SKU')),
@@ -206,18 +305,34 @@ class BulkImportScreen extends StatelessWidget {
                           DataColumn(label: Text('Precio Venta')),
                           DataColumn(label: Text('Stock Inicial')),
                         ],
-                        rows: parsedRows.take(100).map((row) { // Take 100 max for preview
-                          return DataRow(
-                            cells: [
-                              DataCell(Text(row['nombre'].toString())),
-                              DataCell(Text(row['sku'].toString())),
-                              DataCell(Text(row['categoria']?.toString() ?? '-')),
-                              DataCell(Text(row['costo_parsed'].toString())),
-                              DataCell(Text(row['precio_venta_parsed']?.toString() ?? '-')),
-                              DataCell(Text(row['stock_inicial_parsed']?.toString() ?? '0')),
-                            ],
-                          );
-                        }).toList(),
+                        rows:
+                            parsedRows.take(100).map((row) {
+                              // Take 100 max for preview
+                              return DataRow(
+                                cells: [
+                                  DataCell(Text(row['nombre'].toString())),
+                                  DataCell(Text(row['sku'].toString())),
+                                  DataCell(
+                                    Text(row['categoria']?.toString() ?? '-'),
+                                  ),
+                                  DataCell(
+                                    Text(row['costo_parsed'].toString()),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      row['precio_venta_parsed']?.toString() ??
+                                          '-',
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      row['stock_inicial_parsed']?.toString() ??
+                                          '0',
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
                       ),
                     ),
                   );
