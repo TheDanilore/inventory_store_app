@@ -1388,4 +1388,42 @@ class ProductsRepositoryImpl implements ProductsRepository {
       return _handleError(e, st);
     }
   }
+
+  @override
+  Future<Either<Failure, void>> deleteProduct(String id) async {
+    try {
+      final response = await _supabase.rpc(
+        'delete_product_safely',
+        params: {'p_product_id': id},
+      );
+
+      final imageUrls = (response as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+      
+      if (imageUrls.isNotEmpty) {
+        // Extraer los paths relativos asumiendo que están en el bucket 'products'
+        // El image_url podría ser un path relativo o una URL completa, pero usualmente 
+        // Supabase storage espera el path (ej. 'folder/file.jpg').
+        // Intentaremos borrarlos pero si falla no abortaremos la eliminación en BD.
+        try {
+          // Extraemos los paths después del nombre del bucket si es URL completa,
+          // o lo usamos tal cual si es relativo.
+          final paths = imageUrls.map((url) {
+            if (url.contains('/storage/v1/object/public/products/')) {
+              return url.split('/storage/v1/object/public/products/').last;
+            }
+            return url;
+          }).toList();
+          
+          await _supabase.storage.from('products').remove(paths);
+        } catch (e) {
+          developer.log('ProductsRepositoryImpl: Error al borrar imágenes del bucket', error: e);
+        }
+      }
+
+      return const Right(null);
+    } catch (e, st) {
+      developer.log('ProductsRepositoryImpl: Error al eliminar producto', error: e, stackTrace: st);
+      return _handleError(e, st);
+    }
+  }
 }

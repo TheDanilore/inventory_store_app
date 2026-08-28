@@ -559,6 +559,48 @@ $$;
 ALTER FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") RETURNS "text"[]
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_image_urls TEXT[];
+BEGIN
+    -- Recopilar URLs de imágenes para que el frontend (Dart) las borre del bucket
+    SELECT array_agg(image_url) INTO v_image_urls 
+    FROM product_images 
+    WHERE product_id = p_product_id AND image_url IS NOT NULL;
+
+    -- Intentamos borrar primero las variantes (las cuales pueden tener imágenes, etc.)
+    -- Si la variante está vinculada a ventas (order_items), carritos (cart_items),
+    -- movimientos de inventario (inventory_movements) o balances de stock (warehouse_stock_balances)
+    -- y esas claves foráneas NO tienen ON DELETE CASCADE, PostgreSQL lanzará un foreign_key_violation.
+    
+    -- Limpiamos atributos de variantes
+    DELETE FROM variant_attribute_values WHERE variant_id IN (SELECT id FROM product_variants WHERE product_id = p_product_id);
+    
+    -- Limpiamos imagenes (las que no estén asociadas con CASCADE)
+    DELETE FROM product_images WHERE product_id = p_product_id;
+
+    -- Intentamos borrar variantes
+    DELETE FROM product_variants WHERE product_id = p_product_id;
+
+    -- Borramos el producto
+    DELETE FROM products WHERE id = p_product_id;
+
+    RETURN COALESCE(v_image_urls, ARRAY[]::TEXT[]);
+
+EXCEPTION
+    WHEN foreign_key_violation THEN
+        RAISE EXCEPTION 'No se puede eliminar el producto porque tiene ventas, movimientos de inventario o relaciones activas.';
+    WHEN others THEN
+        RAISE EXCEPTION 'Error al eliminar el producto: %', SQLERRM;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text" DEFAULT NULL::"text", "p_date_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_date_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_profile_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -5880,6 +5922,12 @@ GRANT ALL ON FUNCTION "public"."clear_cloud_cart_rpc"("p_user_id" "uuid") TO "se
 GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") TO "service_role";
 
 
 

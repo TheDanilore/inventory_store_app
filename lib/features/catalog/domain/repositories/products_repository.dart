@@ -188,6 +188,9 @@ abstract class ProductsRepository {
   // Importación Masiva (RPC)
   Future<Either<Failure, void>> importCatalogBatch(List<Map<String, dynamic>> payload, String? warehouseId);
   Future<Either<Failure, List<String>>> getExistingSkus(List<String> skus);
+
+  // Eliminación segura (RPC)
+  Future<Either<Failure, void>> deleteProduct(String id);
 }
 
 class SaveProductPayload {

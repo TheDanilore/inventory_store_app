@@ -90,6 +90,8 @@ import '../../features/catalog/domain/usecases/check_wishlist_state_usecase.dart
     as _i44;
 import '../../features/catalog/domain/usecases/create_ingredient_uc.dart'
     as _i498;
+import '../../features/catalog/domain/usecases/delete_product_uc.dart'
+    as _i1040;
 import '../../features/catalog/domain/usecases/export_catalog_pdf_usecase.dart'
     as _i961;
 import '../../features/catalog/domain/usecases/export_product_pdf_usecase.dart'
@@ -1347,6 +1349,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i987.CheckCustomerPurchaseUseCase>(
       () => _i987.CheckCustomerPurchaseUseCase(gh<_i570.ProductsRepository>()),
     );
+    gh.factory<_i1040.DeleteProductUC>(
+      () => _i1040.DeleteProductUC(gh<_i570.ProductsRepository>()),
+    );
     gh.factory<_i753.GetActiveProductsAndVariantsUseCase>(
       () => _i753.GetActiveProductsAndVariantsUseCase(
         gh<_i570.ProductsRepository>(),
@@ -1461,16 +1466,6 @@ extension GetItInjectableX on _i174.GetIt {
         getActiveAccounts: gh<_i425.GetFinancialAccountsUseCase>(),
         createInventoryEntry: gh<_i419.CreateInventoryEntryUseCase>(),
         getPurchaseOrderById: gh<_i611.GetPurchaseOrderByIdUseCase>(),
-      ),
-    );
-    gh.factory<_i613.AdminCatalogCubit>(
-      () => _i613.AdminCatalogCubit(
-        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
-        getProductsUC: gh<_i222.GetProductsUC>(),
-        setProductActiveUC: gh<_i1067.SetProductActiveUC>(),
-        clearCatalogCacheUC: gh<_i1067.ClearCatalogCacheUC>(),
-        exportCatalogPdfUC: gh<_i961.ExportCatalogPdfUseCase>(),
-        getProductStockUC: gh<_i958.GetProductStockUC>(),
       ),
     );
     gh.factory<_i1051.OrdersCubit>(
@@ -1620,6 +1615,17 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i1067.SaveVariantUC(
         gh<_i570.ProductsRepository>(),
         gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
+    );
+    gh.factory<_i613.AdminCatalogCubit>(
+      () => _i613.AdminCatalogCubit(
+        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
+        getProductsUC: gh<_i222.GetProductsUC>(),
+        setProductActiveUC: gh<_i1067.SetProductActiveUC>(),
+        deleteProductUC: gh<_i1040.DeleteProductUC>(),
+        clearCatalogCacheUC: gh<_i1067.ClearCatalogCacheUC>(),
+        exportCatalogPdfUC: gh<_i961.ExportCatalogPdfUseCase>(),
+        getProductStockUC: gh<_i958.GetProductStockUC>(),
       ),
     );
     gh.factory<_i991.CustomerCatalogCubit>(

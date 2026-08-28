@@ -65,6 +65,43 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     await cubit.toggleProductActive(product);
   }
 
+  Future<void> _confirmDeleteProduct(ProductEntity product, AdminCatalogCubit cubit) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar Producto', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('¿Estás seguro de que deseas eliminar "${product.name}"? Esta acción no se puede deshacer y fallará si el producto tiene stock o ventas asociadas.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusLg)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final success = await cubit.deleteProduct(product.id);
+      if (success && mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Producto eliminado correctamente',
+          type: SnackbarType.success,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<AdminCatalogCubit>();
@@ -110,8 +147,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                   type: SnackbarType.error,
                 );
               } else if (state.actionState == ViewState.success) {
-                // The backend state has been refreshed, visual confirmation is immediate via rebuild.
-                // We only show snackbar on errors to avoid noise, unless specifically desired.
+                // Éxito manejado individualmente
               }
             },
             child: AdminLayout(
@@ -318,18 +354,32 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                               BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
                                 buildWhen:
                                     (previous, current) =>
-                                        previous.catalogState !=
-                                            current.catalogState ||
+                                        previous.catalogState != current.catalogState ||
                                         previous.products != current.products ||
-                                        previous.errorMessage !=
-                                            current.errorMessage,
+                                        previous.actionState != current.actionState ||
+                                        previous.errorMessage != current.errorMessage,
                                 builder: (context, state) {
-                                  return isDesktopLayout
+                                  final content = isDesktopLayout
                                       ? _buildDesktopTableContainer(
                                         state,
                                         cubit,
                                       )
                                       : _buildMobileCardList(state, cubit);
+
+                                  return Stack(
+                                    children: [
+                                      content,
+                                      if (state.actionState == ViewState.loading)
+                                        Positioned.fill(
+                                          child: Container(
+                                            color: Colors.white.withValues(alpha: 0.5),
+                                            child: const Center(
+                                              child: CircularProgressIndicator(),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  );
                                 },
                               ),
                         ),
@@ -584,22 +634,39 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                             ),
                           ),
                           DataCell(
-                            IconButton(
-                              icon: const Icon(
-                                Icons.edit_outlined,
-                                size: 20,
-                                color: AppColors.textSecondary,
-                              ),
-                              hoverColor: AppColors.primary.withValues(
-                                alpha: 0.1,
-                              ),
-                              tooltip: 'Editar Producto',
-                              onPressed: () {
-                                context.go(
-                                  '/admin/products/product-form/${product.id}',
-                                  extra: {'productToEdit': product},
-                                );
-                              },
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 20,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  hoverColor: AppColors.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  tooltip: 'Editar Producto',
+                                  onPressed: () {
+                                    context.go(
+                                      '/admin/products/product-form/${product.id}',
+                                      extra: {'productToEdit': product},
+                                    );
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    size: 20,
+                                    color: AppColors.error,
+                                  ),
+                                  hoverColor: AppColors.error.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  tooltip: 'Eliminar Producto',
+                                  onPressed: () => _confirmDeleteProduct(product, cubit),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -693,10 +760,15 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                 (_) => _toggleProductoActivo(product, cubit),
                           ),
                           const SizedBox(height: 8),
-                          const Icon(
-                            Icons.chevron_right_rounded,
-                            color: AppColors.textMuted,
-                            size: 24,
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              color: AppColors.error,
+                              size: 24,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => _confirmDeleteProduct(product, cubit),
                           ),
                         ],
                       ),

@@ -10,6 +10,7 @@ import 'package:inventory_store_app/features/catalog/domain/usecases/get_categor
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_products_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_stock_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/export_catalog_pdf_usecase.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/delete_product_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
 
@@ -18,6 +19,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   final GetCategoriesUC getCategoriesUC;
   final GetProductsUC getProductsUC;
   final SetProductActiveUC setProductActiveUC;
+  final DeleteProductUC deleteProductUC;
   final ClearCatalogCacheUC clearCatalogCacheUC;
   final ExportCatalogPdfUseCase exportCatalogPdfUC;
   final GetProductStockUC getProductStockUC;
@@ -28,6 +30,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     required this.getCategoriesUC,
     required this.getProductsUC,
     required this.setProductActiveUC,
+    required this.deleteProductUC,
     required this.clearCatalogCacheUC,
     required this.exportCatalogPdfUC,
     required this.getProductStockUC,
@@ -221,10 +224,51 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         return false;
       },
       (_) async {
-        emit(state.copyWith(actionState: ViewState.success));
-        await refreshProducts();
+        // Borrado optimista para ahorrar Data Egress
+        final updatedProducts = state.products.map((p) {
+          if (p.id == product.id) {
+            return p.copyWith(isActive: willActivate);
+          }
+          return p;
+        }).toList();
+
+        emit(state.copyWith(
+          actionState: ViewState.success,
+          products: updatedProducts,
+        ));
         return true;
       },
+    );
+  }
+
+  Future<bool> deleteProduct(String productId) async {
+    if (state.isLoadingAction) return false;
+    
+    emit(state.copyWith(actionState: ViewState.loading));
+    final result = await deleteProductUC(productId);
+
+    return result.fold(
+      (failure) {
+        emit(
+          state.copyWith(
+            actionState: ViewState.error,
+            errorMessage: failure.message,
+          ),
+        );
+        return false;
+      },
+      (_) {
+        // Optimización Data Egress: remover localmente en lugar de llamar refreshProducts()
+        final updatedProducts = List<ProductEntity>.from(state.products)
+            ..removeWhere((p) => p.id == productId);
+
+        emit(state.copyWith(
+          actionState: ViewState.success,
+          products: updatedProducts,
+          totalCount: (state.totalCount > 0) ? state.totalCount - 1 : 0,
+        ));
+        return true;
+      }
     );
   }
 
