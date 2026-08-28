@@ -8,6 +8,7 @@ import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/open_shift_sheet.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/close_shift_sheet.dart';
+import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
 
 class PosHeader extends StatelessWidget {
   final TextEditingController searchController;
@@ -52,7 +53,10 @@ class PosHeader extends StatelessWidget {
           children: [
             IconButton(
               onPressed: onBack,
-              icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+              icon: const Icon(
+                Icons.arrow_back_rounded,
+                color: AppColors.textPrimary,
+              ),
               tooltip: 'Volver',
               style: IconButton.styleFrom(
                 backgroundColor: AppColors.background,
@@ -69,7 +73,11 @@ class PosHeader extends StatelessWidget {
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.point_of_sale_rounded, color: AppColors.primary, size: 20),
+              child: const Icon(
+                Icons.point_of_sale_rounded,
+                color: AppColors.primary,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -94,7 +102,10 @@ class PosHeader extends StatelessWidget {
             // ── Botón de Operaciones ──────
             IconButton(
               onPressed: () => Scaffold.of(context).openDrawer(),
-              icon: const Icon(Icons.receipt_long_rounded, color: AppColors.textPrimary),
+              icon: const Icon(
+                Icons.receipt_long_rounded,
+                color: AppColors.textPrimary,
+              ),
               tooltip: 'Operaciones de Caja',
               style: IconButton.styleFrom(
                 backgroundColor: AppColors.background,
@@ -123,9 +134,15 @@ class PosHeader extends StatelessWidget {
             children: [
               IconButton(
                 onPressed: onBack,
-                icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: AppColors.textPrimary,
+                ),
                 tooltip: 'Volver',
-                constraints: const BoxConstraints(minWidth: 48, minHeight: 48), // Regla 48dp
+                constraints: const BoxConstraints(
+                  minWidth: 48,
+                  minHeight: 48,
+                ), // Regla 48dp
                 style: IconButton.styleFrom(
                   backgroundColor: AppColors.background,
                   shape: RoundedRectangleBorder(
@@ -147,7 +164,10 @@ class PosHeader extends StatelessWidget {
               const Spacer(),
               IconButton(
                 onPressed: () => Scaffold.of(context).openDrawer(),
-                icon: const Icon(Icons.receipt_long_rounded, color: AppColors.textPrimary),
+                icon: const Icon(
+                  Icons.receipt_long_rounded,
+                  color: AppColors.textPrimary,
+                ),
                 tooltip: 'Operaciones',
                 constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                 style: IconButton.styleFrom(
@@ -181,79 +201,100 @@ class PosHeader extends StatelessWidget {
   }
 
   void _showMobileOptionsSheet(BuildContext context, PosState posState) {
-    final activeShift = posState.activeShift;
-    final isShiftOpen = activeShift != null && activeShift.isOpen;
+    final posCubit = context.read<PosCubit>();
+    final cashShiftsCubit = context.read<CashShiftsCubit>();
+    final cartCubit = context.read<CartCubit>();
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: posCubit),
+            BlocProvider.value(value: cashShiftsCubit),
+            BlocProvider.value(value: cartCubit),
+          ],
+          child: BlocBuilder<PosCubit, PosState>(
+            builder: (ctx, state) {
+              final activeShift = state.activeShift;
+              final isShiftOpen = activeShift != null && activeShift.isOpen;
+
+              return Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).scaffoldBackgroundColor,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
                   ),
                 ),
-              ),
-              const Text(
-                'Opciones de Caja',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 24),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const Text(
+                      'Opciones de Caja',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Turno de Caja',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 56, // Touch area
+                      child: _buildShiftIndicator(ctx, state, isShiftOpen),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Almacén Activo',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 56,
+                      child: _buildWarehouseSelector(ctx, state),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Turno de Caja',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 56, // Touch area
-                child: _buildShiftIndicator(context, posState, isShiftOpen),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Almacén Activo',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 56,
-                child: _buildWarehouseSelector(context, posState),
-              ),
-            ],
+              );
+            },
           ),
         );
       },
     );
   }
 
-  Widget _buildShiftIndicator(BuildContext context, PosState posState, bool isShiftOpen) {
+  Widget _buildShiftIndicator(
+    BuildContext context,
+    PosState posState,
+    bool isShiftOpen,
+  ) {
     final activeShift = posState.activeShift;
     return InkWell(
       onTap: () async {
@@ -275,13 +316,14 @@ class PosHeader extends StatelessWidget {
             context.read<CashShiftsCubit>().fetchShifts();
           }
         } else {
-          final cashAccounts = posState.accounts
-              .where((a) => (a['type']?.toString().toLowerCase() == 'caja' ||
-                             a['type']?.toString().toLowerCase() == 'cash'))
-              .toList();
+          final cashAccounts =
+              posState.accounts
+                  .where((a) => PosCalculatorUtils.accountRequiresShift(a))
+                  .toList();
           final opened = await OpenShiftSheet.show(
             context,
-            accounts: cashAccounts, // Pasar estricto las cajas para que el Empty State lo maneje si no hay
+            accounts:
+                cashAccounts, // Pasar estricto las cajas para que el Empty State lo maneje si no hay
           );
           if (opened == true && context.mounted) {
             context.read<PosCubit>().initPosData(forceRefresh: true);
@@ -293,10 +335,14 @@ class PosHeader extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isShiftOpen ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+          color:
+              isShiftOpen ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isShiftOpen ? const Color(0xFF10B981).withValues(alpha: 0.3) : const Color(0xFFEF4444).withValues(alpha: 0.3),
+            color:
+                isShiftOpen
+                    ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                    : const Color(0xFFEF4444).withValues(alpha: 0.3),
           ),
         ),
         child: Row(
@@ -316,7 +362,10 @@ class PosHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: isShiftOpen ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                color:
+                    isShiftOpen
+                        ? const Color(0xFF065F46)
+                        : const Color(0xFF991B1B),
               ),
             ),
           ],
@@ -327,7 +376,7 @@ class PosHeader extends StatelessWidget {
 
   Widget _buildWarehouseSelector(BuildContext context, PosState posState) {
     if (posState.warehouses.isEmpty) return const SizedBox.shrink();
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -337,28 +386,41 @@ class PosHeader extends StatelessWidget {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          isExpanded: MediaQuery.of(context).size.width < 800, // Expand in mobile bottom sheet
-          value: posState.selectedWarehouseId ??
-              (posState.warehouses.isNotEmpty ? posState.warehouses.first.id : null),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+          isExpanded:
+              MediaQuery.of(context).size.width <
+              800, // Expand in mobile bottom sheet
+          value:
+              posState.selectedWarehouseId ??
+              (posState.warehouses.isNotEmpty
+                  ? posState.warehouses.first.id
+                  : null),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.textSecondary,
+          ),
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
           ),
-          items: posState.warehouses.map((wh) {
-            return DropdownMenuItem<String>(
-              value: wh.id,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.warehouse_rounded, size: 18, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Text(wh.name),
-                ],
-              ),
-            );
-          }).toList(),
+          items:
+              posState.warehouses.map((wh) {
+                return DropdownMenuItem<String>(
+                  value: wh.id,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.warehouse_rounded,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(wh.name),
+                    ],
+                  ),
+                );
+              }).toList(),
           onChanged: (newWhId) {
             if (newWhId != null && newWhId != posState.selectedWarehouseId) {
               context.read<PosCubit>().setWarehouse(newWhId);
@@ -368,7 +430,8 @@ class PosHeader extends StatelessWidget {
                 cart.clearCart();
                 AppSnackbar.show(
                   context,
-                  message: 'Almacén cambiado. El carrito se vació para sincronizar stocks.',
+                  message:
+                      'Almacén cambiado. El carrito se vació para sincronizar stocks.',
                   type: SnackbarType.warning,
                 );
               } else {
@@ -389,10 +452,12 @@ class PosHeader extends StatelessWidget {
     return Container(
       height: 52, // Regla 48dp min, 52 es mejor para touch
       decoration: BoxDecoration(
-        color: searchByIngredient ? const Color(0xFFECFDF5) : AppColors.background,
+        color:
+            searchByIngredient ? const Color(0xFFECFDF5) : AppColors.background,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: searchByIngredient ? const Color(0xFF10B981) : AppColors.border,
+          color:
+              searchByIngredient ? const Color(0xFF10B981) : AppColors.border,
           width: searchByIngredient ? 1.5 : 0.5,
         ),
         boxShadow: [
@@ -416,16 +481,25 @@ class PosHeader extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
               decoration: InputDecoration(
-                hintText: searchByIngredient
-                    ? 'Buscar ingrediente activo...'
-                    : 'Buscar producto...',
+                hintText:
+                    searchByIngredient
+                        ? 'Buscar ingrediente activo...'
+                        : 'Buscar producto...',
                 hintStyle: TextStyle(
-                  color: searchByIngredient ? const Color(0xFF6EE7B7) : AppColors.textMuted,
+                  color:
+                      searchByIngredient
+                          ? const Color(0xFF6EE7B7)
+                          : AppColors.textMuted,
                   fontSize: 15,
                 ),
                 prefixIcon: Icon(
-                  searchByIngredient ? Icons.science_rounded : Icons.search_rounded,
-                  color: searchByIngredient ? const Color(0xFF10B981) : AppColors.textMuted,
+                  searchByIngredient
+                      ? Icons.science_rounded
+                      : Icons.search_rounded,
+                  color:
+                      searchByIngredient
+                          ? const Color(0xFF10B981)
+                          : AppColors.textMuted,
                   size: 22,
                 ),
                 suffixIcon: ValueListenableBuilder<TextEditingValue>(
@@ -433,7 +507,11 @@ class PosHeader extends StatelessWidget {
                   builder: (context, value, child) {
                     if (value.text.isEmpty) return const SizedBox.shrink();
                     return IconButton(
-                      icon: const Icon(Icons.cancel_rounded, size: 20, color: AppColors.textMuted),
+                      icon: const Icon(
+                        Icons.cancel_rounded,
+                        size: 20,
+                        color: AppColors.textMuted,
+                      ),
                       onPressed: () {
                         searchController.clear();
                         onSearchChanged('');
@@ -452,7 +530,9 @@ class PosHeader extends StatelessWidget {
             message: 'Buscar por ingrediente activo',
             child: InkWell(
               onTap: () => onToggleIngredientSearch(!searchByIngredient),
-              borderRadius: const BorderRadius.horizontal(right: Radius.circular(16)),
+              borderRadius: const BorderRadius.horizontal(
+                right: Radius.circular(16),
+              ),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
@@ -463,7 +543,10 @@ class PosHeader extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: searchByIngredient ? const Color(0xFF059669) : AppColors.textMuted,
+                        color:
+                            searchByIngredient
+                                ? const Color(0xFF059669)
+                                : AppColors.textMuted,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -473,7 +556,10 @@ class PosHeader extends StatelessWidget {
                       height: 20,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
-                        color: searchByIngredient ? const Color(0xFF10B981) : AppColors.border,
+                        color:
+                            searchByIngredient
+                                ? const Color(0xFF10B981)
+                                : AppColors.border,
                       ),
                       child: Stack(
                         children: [
