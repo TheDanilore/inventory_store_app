@@ -462,45 +462,45 @@ class _KardexScreenState extends State<KardexScreen> {
                     ),
                   ),
                 ),
-              ],
-            ),
-            bottomNavigationBar: BlocBuilder<KardexCubit, KardexState>(
-              builder: (context, state) {
-                final loadedState = state is KardexLoaded ? state : null;
-                final totalPages = loadedState?.totalPages ?? 1;
-                final currentPage = loadedState?.currentPage ?? 0;
-                final isLoading =
-                    state is KardexInitial || state is KardexLoading;
-                final isError = state is KardexError;
+                BlocBuilder<KardexCubit, KardexState>(
+                  builder: (context, state) {
+                    final loadedState = state is KardexLoaded ? state : null;
+                    final totalPages = loadedState?.totalPages ?? 1;
+                    final currentPage = loadedState?.currentPage ?? 0;
+                    final isLoading =
+                        state is KardexInitial || state is KardexLoading;
+                    final isError = state is KardexError;
 
-                if (totalPages <= 1 || isLoading || isError) {
-                  return const SizedBox.shrink();
-                }
+                    if (totalPages <= 1 || isLoading || isError) {
+                      return const SizedBox.shrink();
+                    }
 
-                return Container(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, -4),
+                    return Container(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, -4),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: SafeArea(
-                    top: false,
-                    child: AdminPageBlocks(
-                      currentPage: currentPage,
-                      totalPages: totalPages,
-                      onPageChanged:
-                          (page) =>
-                              context.read<KardexCubit>().changePage(page),
-                    ),
-                  ),
-                );
-              },
+                      child: SafeArea(
+                        top: false,
+                        child: AdminPageBlocks(
+                          currentPage: currentPage,
+                          totalPages: totalPages,
+                          onPageChanged:
+                              (page) =>
+                                  context.read<KardexCubit>().changePage(page),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
             floatingActionButton:
                 !isTablet

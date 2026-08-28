@@ -457,14 +457,6 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Puedes presionar Ctrl+S en cualquier momento para guardar rápidamente.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
                           const SizedBox(height: 16),
                           AppPrimaryButton(
                             label:

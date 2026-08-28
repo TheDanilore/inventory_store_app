@@ -188,7 +188,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                     ),
                     icon: const Icon(Icons.add_rounded, size: 18),
                     label: const Text(
-                      'Nuevo Producto (Ctrl+N)',
+                      'Nuevo Producto',
                       style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                   ),
@@ -270,7 +270,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                   decoration: InputDecoration(
                                     hintText:
                                         isDesktopLayout
-                                            ? 'Buscar por nombre, código o SKU... (Ctrl+F)'
+                                            ? 'Buscar por nombre, código o SKU...'
                                             : 'Buscar por nombre...',
                                     hintStyle: const TextStyle(
                                       color: AppColors.textMuted,

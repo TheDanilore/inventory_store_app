@@ -242,7 +242,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 currentSelectedOrder = null;
               }
 
-              final content = CustomScrollView(
+              final scrollContent = CustomScrollView(
                 slivers: [
                   if (state.isBackgroundLoading)
                     const SliverToBoxAdapter(
@@ -272,6 +272,40 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       currentSelectedOrder,
                     ),
                   ),
+                ],
+              );
+
+              final content = Column(
+                children: [
+                  Expanded(
+                    child: RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: () async => cubit.loadOrders(reset: true),
+                      child: scrollContent,
+                    ),
+                  ),
+                  if (state.totalPages > 1 && !state.isLoading && state.errorMessage.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, -4),
+                          ),
+                        ],
+                      ),
+                      child: SafeArea(
+                        top: false,
+                        child: AdminPageBlocks(
+                          currentPage: state.currentPage,
+                          totalPages: state.totalPages,
+                          onPageChanged: cubit.goToPage,
+                        ),
+                      ),
+                    ),
                 ],
               );
 
@@ -365,8 +399,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
       );
     }
 
-    final showPagination = totalPages > 1;
-    final itemCount = 1 + pageItems.length + (showPagination ? 1 : 0);
+    final itemCount = 1 + pageItems.length;
 
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
@@ -417,15 +450,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
           );
         }
 
-        // Bloque de paginación al final de la lista
-        return Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 24),
-          child: AdminPageBlocks(
-            currentPage: state.currentPage,
-            totalPages: totalPages,
-            onPageChanged: cubit.goToPage,
-          ),
-        );
+        return const SizedBox.shrink();
       }, childCount: itemCount),
     );
   }

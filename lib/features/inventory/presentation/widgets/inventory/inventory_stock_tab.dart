@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_cubit.dart';
@@ -8,8 +9,6 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'dart:async';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/product_detail_screen.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 
 class InventoryStockTab extends StatefulWidget {
   const InventoryStockTab({super.key});
@@ -22,7 +21,6 @@ class _InventoryStockTabState extends State<InventoryStockTab>
     with AutomaticKeepAliveClientMixin {
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
-  ProductModel? _selectedProduct;
 
   @override
   bool get wantKeepAlive => true;
@@ -117,83 +115,507 @@ class _InventoryStockTabState extends State<InventoryStockTab>
 
         return LayoutBuilder(
           builder: (context, constraints) {
-            final isTablet = constraints.maxWidth >= 800;
+            final isDesktop = constraints.maxWidth >= 900;
 
-            if (isTablet) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border(
-                          right: BorderSide(
-                            color: Colors.grey.withValues(alpha: 0.2),
-                          ),
-                        ),
-                      ),
-                      child: _buildListContent(
-                        currentState,
-                        state is InventoryLoading,
-                        isTablet: true,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 6,
-                    child:
-                        _selectedProduct == null
-                            ? Container(
-                              color: AppColors.background,
-                              child: Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.inventory_2_outlined,
-                                      size: 64,
-                                      color: AppColors.border,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    const Text(
-                                      'Selecciona un producto para ver sus detalles',
-                                      style: TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                            : ProductDetailScreen(
-                              key: ValueKey('product_${_selectedProduct!.id}'),
-                              product: _selectedProduct!.toEntity(),
-                              isAdmin: true,
-                              isEmbedded: true,
-                            ),
-                  ),
-                ],
+            if (isDesktop) {
+              return _buildDesktopLayout(
+                currentState,
+                state is InventoryLoading,
+                cubit: context.read<InventoryCubit>(),
               );
             }
 
-            return _buildListContent(
-              currentState,
-              state is InventoryLoading,
-              isTablet: false,
-            );
+            return _buildListContent(currentState, state is InventoryLoading);
           },
         );
       },
     );
   }
 
-  Widget _buildListContent(
+  Widget _buildDesktopLayout(
     InventoryLoaded state,
     bool isLoading, {
-    required bool isTablet,
+    required InventoryCubit cubit,
   }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Métricas y Filtros ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Métricas responsive usando Wrap
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  SizedBox(
+                    width: 200,
+                    child: _MetricCard(
+                      label: 'Valor Inv.',
+                      value: 'S/ ${state.globalTotalCost.toStringAsFixed(2)}',
+                      icon: Icons.monetization_on_rounded,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 200,
+                    child: _MetricCard(
+                      label: 'Stock total',
+                      value: '${state.globalTotalStock}',
+                      icon: Icons.inventory_rounded,
+                      color: AppColors.teal,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 200,
+                    child: _MetricCard(
+                      label: 'Bajo stock',
+                      value: '${state.globalLowStockCount}',
+                      icon: Icons.warning_amber_rounded,
+                      color:
+                          state.globalLowStockCount > 0
+                              ? AppColors.warning
+                              : AppColors.success,
+                      highlight: state.globalLowStockCount > 0,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Buscador y Categorías
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: _SearchField(
+                      controller: _searchCtrl,
+                      hint: 'Buscar producto o SKU...',
+                      onChanged: _onSearchChanged,
+                      onClear: () {
+                        _searchCtrl.clear();
+                        cubit.setStockSearch('');
+                      },
+                      onScan: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'La función de escáner QR estará disponible pronto.',
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  if (state.categories.isNotEmpty) ...[
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 7,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children:
+                              state.categories.map((cat) {
+                                final isSelected =
+                                    cat == state.stockCategoryFilter;
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: _CategoryPill(
+                                    label: cat,
+                                    isSelected: isSelected,
+                                    onTap: () => cubit.setStockCategory(cat),
+                                  ),
+                                );
+                              }).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // ── Tabla de Datos ──
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                border: Border.all(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 24,
+                    spreadRadius: -4,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                child:
+                    isLoading && state.stockItems.isEmpty
+                        ? const Center(child: CircularProgressIndicator())
+                        : state.stockItems.isEmpty
+                        ? const AppEmptyState(
+                          icon: Icons.inventory_2_outlined,
+                          title: 'Sin Resultados',
+                          message: 'No hay productos con stock disponible',
+                        )
+                        : LayoutBuilder(
+                          builder: (context, constraints) {
+                            return SingleChildScrollView(
+                              scrollDirection: Axis.vertical,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minWidth: constraints.maxWidth,
+                                  ),
+                                  child: DataTable(
+                                    headingRowColor: WidgetStateProperty.all(
+                                      AppColors.background.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                    ),
+                                    dataRowMinHeight: 68,
+                                    dataRowMaxHeight: 68,
+                                    columnSpacing: 24,
+                                    showBottomBorder: true,
+                                    columns: const [
+                                      DataColumn(
+                                        label: Text(
+                                          'Producto',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Text(
+                                          'SKU / Categoría',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Text(
+                                          'Costo / Precio',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Text(
+                                          'Stock',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    rows:
+                                        state.stockItems.map((item) {
+                                          final isLowStock = item.isLowStock;
+                                          return DataRow(
+                                            color:
+                                                WidgetStateProperty.resolveWith<
+                                                  Color?
+                                                >((Set<WidgetState> states) {
+                                                  if (states.contains(
+                                                    WidgetState.hovered,
+                                                  )) {
+                                                    return AppColors.primary
+                                                        .withValues(
+                                                          alpha: 0.04,
+                                                        );
+                                                  }
+                                                  return null;
+                                                }),
+                                            onSelectChanged: (_) {
+                                              _fetchProductAndSelect(
+                                                item.productId,
+                                              );
+                                            },
+                                            cells: [
+                                              DataCell(
+                                                Row(
+                                                  children: [
+                                                    _buildAvatar(
+                                                      item.imageUrl,
+                                                      size: 44,
+                                                    ),
+                                                    const SizedBox(width: 14),
+                                                    Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
+                                                      children: [
+                                                        Text(
+                                                          item.productName,
+                                                          style: const TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            fontSize: 14,
+                                                            color:
+                                                                AppColors
+                                                                    .textPrimary,
+                                                          ),
+                                                        ),
+                                                        if (item
+                                                            .attrsText
+                                                            .isNotEmpty)
+                                                          Text(
+                                                            item.attrsText,
+                                                            style: const TextStyle(
+                                                              fontSize: 12,
+                                                              color:
+                                                                  AppColors
+                                                                      .textSecondary,
+                                                            ),
+                                                          ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              DataCell(
+                                                Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Text(
+                                                      item.sku?.isNotEmpty ==
+                                                              true
+                                                          ? item.sku!
+                                                          : 'Sin SKU',
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color:
+                                                            AppColors
+                                                                .textPrimary,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      item.category,
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        color:
+                                                            AppColors
+                                                                .textSecondary,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              DataCell(
+                                                Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Text(
+                                                      'S/ ${item.unitCost.toStringAsFixed(2)}',
+                                                      style: const TextStyle(
+                                                        color:
+                                                            AppColors
+                                                                .textSecondary,
+                                                        fontSize: 13,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      'S/ ${item.salePrice.toStringAsFixed(2)}',
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color:
+                                                            AppColors
+                                                                .textPrimary,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              DataCell(
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 6,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color:
+                                                        isLowStock
+                                                            ? AppColors.warning
+                                                                .withValues(
+                                                                  alpha: 0.1,
+                                                                )
+                                                            : AppColors.success
+                                                                .withValues(
+                                                                  alpha: 0.1,
+                                                                ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          20,
+                                                        ),
+                                                    border: Border.all(
+                                                      color:
+                                                          isLowStock
+                                                              ? AppColors
+                                                                  .warning
+                                                              : AppColors
+                                                                  .success,
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        isLowStock
+                                                            ? Icons
+                                                                .warning_amber_rounded
+                                                            : Icons
+                                                                .check_circle_outline_rounded,
+                                                        size: 14,
+                                                        color:
+                                                            isLowStock
+                                                                ? AppColors
+                                                                    .warning
+                                                                : AppColors
+                                                                    .success,
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        '${item.stock}',
+                                                        style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color:
+                                                              isLowStock
+                                                                  ? AppColors
+                                                                      .warning
+                                                                  : AppColors
+                                                                      .success,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        }).toList(),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+              ),
+            ),
+          ),
+        ),
+
+        // ── Paginación ──
+        if (!isLoading && state.totalStockPages > 1)
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: AdminPageBlocks(
+                currentPage: state.currentStockPage,
+                totalPages: state.totalStockPages,
+                onPageChanged: (page) => cubit.setStockPage(page),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildAvatar(String? imageUrl, {double size = 44}) {
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          placeholder:
+              (context, url) => Container(
+                width: size,
+                height: size,
+                color: AppColors.background,
+                child: const Icon(
+                  Icons.image_outlined,
+                  color: AppColors.border,
+                ),
+              ),
+          errorWidget:
+              (context, url, error) => Container(
+                width: size,
+                height: size,
+                color: AppColors.background,
+                child: const Icon(
+                  Icons.image_not_supported_outlined,
+                  color: AppColors.border,
+                ),
+              ),
+        ),
+      );
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: const Icon(
+        Icons.inventory_2_outlined,
+        color: AppColors.primary,
+        size: 24,
+      ),
+    );
+  }
+
+  Widget _buildListContent(InventoryLoaded state, bool isLoading) {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -203,29 +625,35 @@ class _InventoryStockTabState extends State<InventoryStockTab>
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
               children: [
-                _MetricCard(
-                  label: 'Valor Inv.',
-                  value: 'S/ ${state.globalTotalCost.toStringAsFixed(2)}',
-                  icon: Icons.monetization_on_rounded,
-                  color: AppColors.primary,
+                Expanded(
+                  child: _MetricCard(
+                    label: 'Valor Inv.',
+                    value: 'S/ ${state.globalTotalCost.toStringAsFixed(2)}',
+                    icon: Icons.monetization_on_rounded,
+                    color: AppColors.primary,
+                  ),
                 ),
                 const SizedBox(width: 8),
-                _MetricCard(
-                  label: 'Stock total',
-                  value: '${state.globalTotalStock}',
-                  icon: Icons.inventory_rounded,
-                  color: AppColors.teal,
+                Expanded(
+                  child: _MetricCard(
+                    label: 'Stock total',
+                    value: '${state.globalTotalStock}',
+                    icon: Icons.inventory_rounded,
+                    color: AppColors.teal,
+                  ),
                 ),
                 const SizedBox(width: 8),
-                _MetricCard(
-                  label: 'Bajo stock',
-                  value: '${state.globalLowStockCount}',
-                  icon: Icons.warning_amber_rounded,
-                  color:
-                      state.globalLowStockCount > 0
-                          ? AppColors.warning
-                          : AppColors.success,
-                  highlight: state.globalLowStockCount > 0,
+                Expanded(
+                  child: _MetricCard(
+                    label: 'Bajo stock',
+                    value: '${state.globalLowStockCount}',
+                    icon: Icons.warning_amber_rounded,
+                    color:
+                        state.globalLowStockCount > 0
+                            ? AppColors.warning
+                            : AppColors.success,
+                    highlight: state.globalLowStockCount > 0,
+                  ),
                 ),
               ],
             ),
@@ -346,18 +774,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, i) {
                 final item = state.stockItems[i];
-                final isSelected =
-                    isTablet && _selectedProduct?.id == item.productId;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: InventoryStockCard(
-                    item: item,
-                    isSelected: isSelected,
-                    onTap:
-                        isTablet
-                            ? () => _fetchProductAndSelect(item.productId)
-                            : null, // Deja null para usar default que hace context.push
-                  ),
+                  child: InventoryStockCard(item: item),
                 );
               }, childCount: state.stockItems.length),
             ),
@@ -431,62 +850,60 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors:
-                highlight
-                    ? [color.withValues(alpha: 0.9), color]
-                    : [
-                      color.withValues(alpha: 0.15),
-                      color.withValues(alpha: 0.05),
-                    ],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: highlight ? color : color.withValues(alpha: 0.2),
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors:
+              highlight
+                  ? [color.withValues(alpha: 0.9), color]
+                  : [
+                    color.withValues(alpha: 0.15),
+                    color.withValues(alpha: 0.05),
+                  ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 16, color: highlight ? Colors.white : color),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color:
-                          highlight
-                              ? Colors.white.withValues(alpha: 0.9)
-                              : color.withValues(alpha: 0.9),
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: highlight ? color : color.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: highlight ? Colors.white : color),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color:
+                        highlight
+                            ? Colors.white.withValues(alpha: 0.9)
+                            : color.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w700,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: highlight ? Colors.white : color,
-                height: 1,
               ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: highlight ? Colors.white : color,
+              height: 1,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
