@@ -186,13 +186,14 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     bool isDraft = false,
   }) async {
     // Mutex: bloquea re-entrada síncrona antes de que el BLoC actualice la UI.
+    if (posCubit.state.status == PosStatus.loading) return;
     if (_isProcessing) return;
     _isProcessing = true;
 
     try {
       await _processSaleInternal(posCubit, cartCubit, isDraft: isDraft);
     } finally {
-      if (mounted) setState(() => _isProcessing = false);
+      _isProcessing = false; // Sin setState para no re-renderizar todo el widget
     }
   }
 

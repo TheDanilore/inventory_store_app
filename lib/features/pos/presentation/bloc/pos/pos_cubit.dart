@@ -66,7 +66,7 @@ class PosCubit extends Cubit<PosState> {
 
         if (data.accounts.isNotEmpty) {
           final firstAcc = data.accounts.firstWhere(
-            (a) => a['type'] == 'CAJA' || a['type'] == 'CASH_REGISTER',
+            (a) => PosCalculatorUtils.accountRequiresShift(a),
             orElse: () => data.accounts.first,
           );
           initialAccountId = firstAcc['id'] as String;

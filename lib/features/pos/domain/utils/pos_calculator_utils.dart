@@ -180,10 +180,6 @@ class PosCalculatorUtils {
       if (!isCreditActivo(posState.creditInfo)) {
         return 'El cliente no tiene línea de crédito activa.';
       }
-      final disp = getCreditDisponible(posState.creditInfo);
-      if (disp < totalFinal) {
-        return 'Crédito insuficiente. Disponible: S/ ${disp.toStringAsFixed(2)}';
-      }
     }
 
     return null; // Validación exitosa
