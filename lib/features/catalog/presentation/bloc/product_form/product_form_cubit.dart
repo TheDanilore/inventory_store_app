@@ -223,6 +223,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           _fetchIngredients(targetProduct.id),
         ]);
       } else {
+        _variantDrafts = [VariantDraftFormModel()]; // Variante por defecto
         await _fetchCategories();
       }
     } catch (e) {

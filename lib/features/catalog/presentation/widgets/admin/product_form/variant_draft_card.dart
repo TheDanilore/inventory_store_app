@@ -34,7 +34,6 @@ class VariantDraftCard extends StatefulWidget {
 class _VariantDraftCardState extends State<VariantDraftCard> {
   final List<_AttributeSelection> _selectedAttributes = [];
   bool _isExpanded = false;
-  Timer? _debounceTimer;
 
   late final TextEditingController skuCtrl;
   late final TextEditingController barcodeCtrl;
@@ -71,8 +70,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
   }
 
   void _onFieldChanged() {
-    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 300), _syncAllToDraft);
+    _syncAllToDraft();
   }
 
   void _syncAllToDraft() {
@@ -105,7 +103,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
 
   @override
   void dispose() {
-    _debounceTimer?.cancel();
     skuCtrl.dispose();
     barcodeCtrl.dispose();
     priceCtrl.dispose();
