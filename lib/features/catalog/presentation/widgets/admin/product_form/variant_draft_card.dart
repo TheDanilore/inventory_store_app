@@ -412,14 +412,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                         color: AppColors.primary,
                                       ),
                                     ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '(vacío = usa precio base)',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.grey.shade500,
-                                      ),
-                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 12),
