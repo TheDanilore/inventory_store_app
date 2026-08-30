@@ -21,6 +21,7 @@ class VariantDraftFormModel {
   // Imágenes
   final List<Uint8List> nuevasImagenes;
   final List<String> urlsExistentes;
+  final String? externalImageUrl;
 
   const VariantDraftFormModel({
     this.id,
@@ -34,6 +35,7 @@ class VariantDraftFormModel {
     String? unitCost,
     List<String>? urlsExistentes,
     List<Uint8List>? nuevasImagenes,
+    this.externalImageUrl,
     this.isActive = true,
   }) : sku = sku ?? '',
        barcode = barcode ?? '',
@@ -58,6 +60,7 @@ class VariantDraftFormModel {
       reorderPoint: variant.reorderPoint?.toString() ?? '3',
       unitCost: variant.unitCost?.toString() ?? '',
       urlsExistentes: variant.urlsExistentes,
+      externalImageUrl: null,
       isActive: variant.isActive,
     );
   }
@@ -75,6 +78,7 @@ class VariantDraftFormModel {
     bool? isActive,
     List<Uint8List>? nuevasImagenes,
     List<String>? urlsExistentes,
+    String? externalImageUrl,
   }) {
     return VariantDraftFormModel(
       id: id ?? this.id,
@@ -90,6 +94,7 @@ class VariantDraftFormModel {
       isActive: isActive ?? this.isActive,
       nuevasImagenes: nuevasImagenes ?? List.of(this.nuevasImagenes),
       urlsExistentes: urlsExistentes ?? List.of(this.urlsExistentes),
+      externalImageUrl: externalImageUrl ?? this.externalImageUrl,
     );
   }
 

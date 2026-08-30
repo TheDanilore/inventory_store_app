@@ -1233,6 +1233,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
               newImageUrl = _supabase.storage
                   .from('products')
                   .getPublicUrl(path);
+            } else if (draft.externalImageUrl != null) {
+              newImageUrl = draft.externalImageUrl;
             }
             return {
               'id': draft.id,

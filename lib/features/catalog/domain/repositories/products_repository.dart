@@ -225,8 +225,14 @@ class ImagePayload {
   final String? existingId;
   final String? existingUrl;
   final Uint8List? newBytes;
+  final String? externalImageUrl;
 
-  ImagePayload({this.existingId, this.existingUrl, this.newBytes});
+  ImagePayload({
+    this.existingId,
+    this.existingUrl,
+    this.newBytes,
+    this.externalImageUrl,
+  });
 }
 
 class VariantPayload {
@@ -241,6 +247,7 @@ class VariantPayload {
   final List<String> attributeValueIds;
   final bool clearImages;
   final Uint8List? newImageBytes;
+  final String? externalImageUrl;
 
   VariantPayload({
     this.id,
@@ -251,9 +258,10 @@ class VariantPayload {
     this.wholesaleMinQuantity,
     this.reorderPoint,
     required this.isActive,
-    required this.attributeValueIds,
-    required this.clearImages,
+    this.attributeValueIds = const [],
+    this.clearImages = false,
     this.newImageBytes,
+    this.externalImageUrl,
   });
 }
 

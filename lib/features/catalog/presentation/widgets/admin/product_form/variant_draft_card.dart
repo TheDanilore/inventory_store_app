@@ -547,8 +547,9 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                             child: Row(
                               children: [
                                 if (widget.draft.urlsExistentes.isEmpty &&
-                                    widget.draft.nuevasImagenes.isEmpty)
-                                  _buildAddButton(),
+                                    widget.draft.nuevasImagenes.isEmpty &&
+                                    widget.draft.externalImageUrl == null)
+                                  _buildAddButtons(),
                                 if (widget.draft.urlsExistentes.isNotEmpty)
                                   _buildThumbnail(
                                     CachedNetworkImage(
@@ -568,6 +569,27 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                         widget.onUpdate(
                                           widget.draft.copyWith(
                                             urlsExistentes: [],
+                                          ),
+                                        );
+                                      });
+                                    },
+                                  ),
+                                if (widget.draft.externalImageUrl != null)
+                                  _buildThumbnail(
+                                    CachedNetworkImage(
+                                      imageUrl: widget.draft.externalImageUrl!,
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) => const Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          const Icon(Icons.broken_image, color: Colors.red),
+                                    ),
+                                    onDelete: () {
+                                      setState(() {
+                                        widget.onUpdate(
+                                          widget.draft.copyWith(
+                                            externalImageUrl: null,
                                           ),
                                         );
                                       });
@@ -802,38 +824,113 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
     );
   }
 
-  Widget _buildAddButton() {
-    return GestureDetector(
-      onTap: widget.onPickImage,
-      child: Container(
-        margin: const EdgeInsets.only(right: 8, top: 4),
-        width: 80,
-        height: 80,
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.4),
-            style: BorderStyle.solid,
+  Widget _buildAddButtons() {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: widget.onPickImage,
+          child: Container(
+            margin: const EdgeInsets.only(right: 8, top: 4),
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.4),
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.add_photo_alternate_outlined,
+                  color: AppColors.primary,
+                  size: 22,
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Subir',
+                  style: TextStyle(fontSize: 10, color: AppColors.primary),
+                ),
+              ],
+            ),
           ),
         ),
-        child: const Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.add_photo_alternate_outlined,
-              color: AppColors.primary,
-              size: 22,
+        GestureDetector(
+          onTap: _promptForImageUrl,
+          child: Container(
+            margin: const EdgeInsets.only(right: 8, top: 4),
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.blueGrey.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: Colors.blueGrey.withValues(alpha: 0.4),
+                style: BorderStyle.solid,
+              ),
             ),
-            SizedBox(height: 4),
-            Text(
-              'Añadir',
-              style: TextStyle(fontSize: 10, color: AppColors.primary),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.link_rounded,
+                  color: Colors.blueGrey,
+                  size: 22,
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'URL',
+                  style: TextStyle(fontSize: 10, color: Colors.blueGrey),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _promptForImageUrl() async {
+    String? url;
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        final ctrl = TextEditingController();
+        return AlertDialog(
+          title: const Text('Pegar URL de Imagen'),
+          content: TextField(
+            controller: ctrl,
+            decoration: const InputDecoration(
+              hintText: 'https://...',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                url = ctrl.text.trim();
+                Navigator.pop(ctx);
+              },
+              child: const Text('Aceptar'),
             ),
           ],
-        ),
-      ),
+        );
+      },
     );
+    if (url != null && url!.isNotEmpty) {
+      widget.onUpdate(widget.draft.copyWith(
+        externalImageUrl: url,
+        urlsExistentes: [], // Limpiar otras
+        nuevasImagenes: [],
+      ));
+    }
   }
 
   Widget _buildThumbnail(Widget image, {required VoidCallback onDelete}) {

@@ -616,12 +616,14 @@ class ProductFormCubit extends Cubit<ProductFormState> {
               attributeValueIds: valueIds,
               clearImages:
                   draft.id != null &&
-                  (draft.urlsExistentes.isEmpty ||
-                      draft.nuevasImagenes.isNotEmpty),
+                  (draft.urlsExistentes.isEmpty &&
+                      draft.nuevasImagenes.isEmpty &&
+                      draft.externalImageUrl == null),
               newImageBytes:
                   draft.nuevasImagenes.isNotEmpty
                       ? draft.nuevasImagenes.first
                       : null,
+              externalImageUrl: draft.externalImageUrl,
             );
           }).toList();
 
