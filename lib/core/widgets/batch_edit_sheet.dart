@@ -126,22 +126,8 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
 
   void _resetToFefo() {
     _vibrate(duration: 50, amplitude: 128);
-    setState(() {
-      for (final b in _batches) {
-        b.assigned = 0;
-      }
-      int rem = widget.totalRequired;
-      for (int i = 0; i < _batches.length; i++) {
-        if (rem <= 0) break;
-        final b = _batches[i];
-        b.assigned = rem > b.available ? b.available : rem;
-        rem -= b.assigned;
-        _controllers[i].text = b.assigned.toString();
-      }
-      for (int i = 0; i < _batches.length; i++) {
-        _controllers[i].text = _batches[i].assigned.toString();
-      }
-    });
+    // Retorna lista vacía como señal atómica para restablecer a FEFO automático y cerrar de una vez
+    Navigator.pop(context, const <BatchAssignmentModel>[]);
   }
 
   void _changeAssigned(int index, int delta) {
@@ -279,27 +265,30 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
                   ),
                   const SizedBox(width: 8),
                   // Botón Reset FEFO Pro
-                  OutlinedButton.icon(
-                    onPressed: _resetToFefo,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.tealDark,
-                      side: BorderSide(
-                        color: AppColors.teal.withValues(alpha: 0.25),
+                  Tooltip(
+                    message: 'Restablecer a FEFO automático y cerrar',
+                    child: OutlinedButton.icon(
+                      onPressed: _resetToFefo,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.tealDark,
+                        side: BorderSide(
+                          color: AppColors.teal.withValues(alpha: 0.25),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    icon: const Icon(Icons.restart_alt_rounded, size: 16),
-                    label: const Text(
-                      'Reset FEFO',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                      icon: const Icon(Icons.restart_alt_rounded, size: 16),
+                      label: const Text(
+                        'Reset FEFO',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),

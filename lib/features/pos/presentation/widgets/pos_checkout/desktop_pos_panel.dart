@@ -247,7 +247,16 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
           );
 
           if (result != null && mounted) {
-            posCubit.setBatchOverride(item.cartKey, result);
+            if (result.isEmpty) {
+              posCubit.clearBatchOverride(item.cartKey);
+              AppSnackbar.show(
+                context,
+                message: 'Restablecido a FEFO automático',
+                type: SnackbarType.info,
+              );
+            } else {
+              posCubit.setBatchOverride(item.cartKey, result);
+            }
           }
         },
       );

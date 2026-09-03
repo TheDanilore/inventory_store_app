@@ -66,6 +66,13 @@ class OrderDetailBatchSheet {
 
     if (result != null && context.mounted) {
       cubit.updateBatchOverrides(item.id, result);
+      if (result.isEmpty) {
+        AppSnackbar.show(
+          context,
+          message: 'Restablecido a FEFO automático',
+          type: SnackbarType.info,
+        );
+      }
     }
   }
 }
