@@ -1742,16 +1742,17 @@ BEGIN
       END IF;
     END IF;
 
-    -- Flujo de Crédito a Clientes (ya validado y bloqueado atómicamente al inicio del RPC)
+    -- Flujo de Crédito a Clientes
+    -- FIX: customer_credit_movements con columnas correctas
     IF v_is_credit AND v_customer_id IS NOT NULL THEN
       UPDATE customer_credits
       SET current_debt = current_debt + (v_total_amount - v_amount_paid)
       WHERE id = v_credit_id;
       
-      INSERT INTO credit_movements (
-        credit_id, movement_type, amount, description, reference_id, reference_type, created_by
+      INSERT INTO customer_credit_movements (
+        customer_credit_id, order_id, movement_type, amount, notes, created_by
       ) VALUES (
-        v_credit_id, 'DEBT', (v_total_amount - v_amount_paid), 'Venta al crédito - POS #' || substring(v_order_id::text, 1, 8), v_order_id, 'ORDER', v_created_by
+        v_credit_id, v_order_id, 'CHARGE', (v_total_amount - v_amount_paid), 'Venta al crédito - POS #' || substring(v_order_id::text, 1, 8), v_created_by
       );
     END IF;
 
@@ -1782,12 +1783,19 @@ DECLARE
     v_new_debt         NUMERIC;
     v_current_wallet   INT;
     v_now              TIMESTAMPTZ;
+    v_created_by       UUID;
 BEGIN
     v_now := NOW() AT TIME ZONE 'America/Lima';
 
     IF p_amount <= 0 THEN
         RAISE EXCEPTION 'El monto debe ser mayor a 0.';
     END IF;
+
+    -- 0. RESOLVER EL ID DE PERFIL DEL USUARIO AUTENTICADO (Para evitar error de foreign key en account_movements)
+    SELECT id INTO v_created_by
+      FROM public.profiles
+     WHERE auth_user_id = auth.uid() OR id = auth.uid()
+     LIMIT 1;
 
     -- 1. BLINDAJE DE CAJA Y TURNOS
     SELECT type, name INTO v_account
@@ -1821,7 +1829,7 @@ BEGIN
            AND payment_status IN ('PENDING', 'PARTIAL')
            AND status = 'COMPLETED'
          ORDER BY created_at ASC
-         FOR UPDATE -- <== BLOQUEO TRANSACCIONAL PARA CONCURRENCIA
+         FOR UPDATE -- Bloqueo transaccional para concurrencia
     LOOP
         EXIT WHEN v_remaining <= 0;
 
@@ -1855,6 +1863,7 @@ BEGIN
                 amount,
                 payment_method,
                 notes,
+                created_by,
                 created_at
             ) VALUES (
                 p_credit_id,
@@ -1863,11 +1872,12 @@ BEGIN
                 v_to_apply,
                 v_account.name,
                 p_notes,
+                v_created_by,
                 v_now
             );
         END IF;
 
-        -- Movimiento de caja/banco
+        -- Movimiento de caja/banco (Usando v_created_by para respetar account_movements_created_by_fkey)
         IF v_to_apply > 0 THEN
             INSERT INTO public.account_movements (
                 account_id,
@@ -1887,7 +1897,7 @@ BEGIN
                 'orders',
                 v_order.id,
                 p_shift_id,
-                auth.uid(),
+                v_created_by,
                 v_now
             );
 
@@ -1902,7 +1912,7 @@ BEGIN
               INTO v_current_wallet
               FROM public.profiles
              WHERE id = p_customer_id
-             FOR UPDATE; -- <== BLOQUEO DE BILLETERA
+             FOR UPDATE;
              
             UPDATE public.profiles
                SET wallet_balance = v_current_wallet + v_points_earned
@@ -1932,7 +1942,7 @@ BEGIN
           INTO v_current_debt
           FROM public.customer_credits
          WHERE id = p_credit_id
-         FOR UPDATE; -- <== BLOQUEO TRANSACCIONAL PARA CONCURRENCIA DE DEUDA
+         FOR UPDATE;
 
         IF v_current_debt IS NOT NULL THEN
             IF p_amount > v_current_debt THEN

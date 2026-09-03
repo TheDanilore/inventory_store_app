@@ -62,6 +62,22 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
     });
   }
 
+  @override
+  void didUpdateWidget(PaymentStatusSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.accounts.isNotEmpty) {
+      if (_selectedAccount != null) {
+        final updated = widget.accounts.firstWhere(
+          (a) => a['id'] == _selectedAccount!['id'],
+          orElse: () => widget.accounts.first,
+        );
+        _selectedAccount = updated;
+      } else {
+        _selectedAccount = widget.accounts.first;
+      }
+    }
+  }
+
   void _onAbonoChanged() {
     if (mounted) setState(() {});
   }

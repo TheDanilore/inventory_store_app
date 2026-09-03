@@ -817,15 +817,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
     }
   }
 
-  List<Map<String, dynamic>>? _cachedFinancialAccounts;
-
   @override
   Future<Either<Failure, List<Map<String, dynamic>>>>
   getFinancialAccounts() async {
-    if (_cachedFinancialAccounts != null &&
-        _cachedFinancialAccounts!.isNotEmpty) {
-      return Right(_cachedFinancialAccounts!);
-    }
     try {
       final response = await _supabase
           .from('financial_accounts')
@@ -833,7 +827,6 @@ class OrdersRepositoryImpl implements OrdersRepository {
           .eq('is_active', true)
           .order('name');
       final accounts = List<Map<String, dynamic>>.from(response);
-      _cachedFinancialAccounts = accounts;
       return Right(accounts);
     } catch (e, st) {
       developer.log(
