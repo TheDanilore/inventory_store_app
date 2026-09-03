@@ -56,17 +56,12 @@ class OrderDetailBatchSheet {
     }
 
     if (!context.mounted) return;
-    final result = await showModalBottomSheet<List<BatchAssignmentModel>>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (_) => BatchEditSheet(
-            productName: item.productName ?? 'Producto',
-            variantLabel: item.variantLabel,
-            totalRequired: item.quantity,
-            batches: batches,
-          ),
+    final result = await BatchEditSheet.show(
+      context,
+      productName: item.productName ?? 'Producto',
+      variantLabel: item.variantLabel,
+      totalRequired: item.quantity,
+      batches: batches,
     );
 
     if (result != null && context.mounted) {

@@ -19,7 +19,6 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checko
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/payment_warehouse_account_card.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_cart_items_section.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_total_summary_section.dart';
-import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
 import 'package:inventory_store_app/core/widgets/batch_edit_sheet.dart';
@@ -239,25 +238,12 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
 
           if (!mounted) return;
 
-          final result = await showDialog<List<BatchAssignmentModel>>(
-            context: context,
-            builder:
-                (_) => Dialog(
-                  backgroundColor: Colors.transparent,
-                  insetPadding: const EdgeInsets.all(24),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: 500,
-                      maxHeight: 600,
-                    ),
-                    child: BatchEditSheet(
-                      productName: item.productName,
-                      variantLabel: item.variantLabel,
-                      totalRequired: item.quantity,
-                      batches: batches,
-                    ),
-                  ),
-                ),
+          final result = await BatchEditSheet.show(
+            context,
+            productName: item.productName,
+            variantLabel: item.variantLabel,
+            totalRequired: item.quantity,
+            batches: batches,
           );
 
           if (result != null && mounted) {

@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
 import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
-import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/admin_sale_client_section.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/admin_sale_points_section.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/payment_warehouse_account_card.dart';
@@ -314,17 +313,12 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
           }
 
           if (!mounted) return;
-          final result = await showModalBottomSheet<List<BatchAssignmentModel>>(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder:
-                (_) => BatchEditSheet(
-                  productName: item.productName,
-                  variantLabel: item.variantLabel,
-                  totalRequired: item.quantity,
-                  batches: batches,
-                ),
+          final result = await BatchEditSheet.show(
+            context,
+            productName: item.productName,
+            variantLabel: item.variantLabel,
+            totalRequired: item.quantity,
+            batches: batches,
           );
 
           if (result != null && mounted) {
