@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_product_card.dart';
@@ -8,6 +9,7 @@ class CatalogGridScrollView extends StatelessWidget {
   final List<ProductEntity> products;
   final int pageSize;
   final int currentPage;
+  final int? totalCount;
   final ValueChanged<int> onPageChanged;
   final void Function(ProductEntity) onSale;
   final Future<void> Function(ProductEntity) onToggleActive;
@@ -24,6 +26,7 @@ class CatalogGridScrollView extends StatelessWidget {
     required this.products,
     required this.pageSize,
     required this.currentPage,
+    this.totalCount,
     required this.onPageChanged,
     required this.onSale,
     required this.onToggleActive,
@@ -38,13 +41,12 @@ class CatalogGridScrollView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = products.length;
-    final totalPages = total == 0 ? 1 : (total / pageSize).ceil();
-    final safeCurrentPage =
-        currentPage >= totalPages ? totalPages - 1 : currentPage;
-    final start = safeCurrentPage * pageSize;
-    final end = (start + pageSize) > total ? total : (start + pageSize);
-    final pageItems = products.sublist(start, end);
+    // Si totalCount está disponible (remoto de Supabase), usarlo; de lo contrario fallback a products.length
+    final effectiveTotal = totalCount ?? products.length;
+    final totalPages = effectiveTotal == 0 ? 1 : (effectiveTotal / pageSize).ceil();
+    final start = effectiveTotal == 0 ? 0 : (currentPage * pageSize) + 1;
+    final end = math.min((currentPage + 1) * pageSize, effectiveTotal);
+    final pageItems = products;
 
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -57,7 +59,7 @@ class CatalogGridScrollView extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  'Mostrando ${total == 0 ? 0 : start + 1}-$end de $total',
+                  'Mostrando ${effectiveTotal == 0 ? 0 : start}-$end de $effectiveTotal',
                   style: const TextStyle(
                     fontSize: 13, // Aumentado a 13px (prominente)
                     fontWeight: FontWeight.w700,
@@ -66,7 +68,7 @@ class CatalogGridScrollView extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  'Pág. ${safeCurrentPage + 1} / $totalPages',
+                  'Pág. ${effectiveTotal == 0 ? 1 : currentPage + 1} / $totalPages',
                   style: const TextStyle(
                     fontSize: 11, // Reducido a 11px (secundario)
                     color: AppColors.textSecondary,

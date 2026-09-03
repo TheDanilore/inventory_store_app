@@ -241,7 +241,6 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                       ? _clienteCtrl.text.trim()
                       : null,
               paymentMethod: posCubit.state.paymentMethod,
-              onConfirm: () {},
             ),
       );
       if (confirmed != true) return;

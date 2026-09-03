@@ -166,6 +166,22 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         final cubit = context.read<AdminCatalogCubit>();
 
         final bodyContent = BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+          buildWhen:
+              (prev, current) =>
+                  prev.catalogState != current.catalogState ||
+                  prev.products != current.products ||
+                  prev.categories != current.categories ||
+                  prev.selectedCategoryId != current.selectedCategoryId ||
+                  prev.searchTerm != current.searchTerm ||
+                  prev.searchByIngredient != current.searchByIngredient ||
+                  prev.filterIsActive != current.filterIsActive ||
+                  prev.sortOption != current.sortOption ||
+                  prev.stockFilter != current.stockFilter ||
+                  prev.currentPage != current.currentPage ||
+                  prev.totalPages != current.totalPages ||
+                  prev.totalCount != current.totalCount ||
+                  prev.actionState != current.actionState ||
+                  prev.errorMessage != current.errorMessage,
           builder: (context, state) {
             const double fabsBottomPadding = 54;
 
@@ -322,8 +338,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   onRefresh: () async => cubit.refreshProducts(),
                   child: CatalogGridScrollView(
                     products: state.products,
-                    pageSize: 20,
+                    pageSize: AdminCatalogState.pageSize,
                     currentPage: state.currentPage,
+                    totalCount: state.totalCount,
                     onPageChanged: cubit.setPage,
                     onSale:
                         widget.onAddToCart ??

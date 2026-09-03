@@ -35,22 +35,23 @@ class CatalogHeader extends StatefulWidget {
 
 class _CatalogHeaderState extends State<CatalogHeader> {
   static final List<String> _searchHistory = [];
-  final FocusNode _searchFocusNode = FocusNode();
+  FocusNode? _internalFocusNode;
+  FocusNode get _searchFocusNode =>
+      widget.searchFocusNode ?? (_internalFocusNode ??= FocusNode());
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
 
   @override
   void initState() {
     super.initState();
-    widget.searchController.addListener(_onSearchTextChange);
     _searchFocusNode.addListener(_onFocusChange);
   }
 
   @override
   void dispose() {
     _hideOverlay();
-    widget.searchController.removeListener(_onSearchTextChange);
-    _searchFocusNode.dispose();
+    _searchFocusNode.removeListener(_onFocusChange);
+    _internalFocusNode?.dispose();
     super.dispose();
   }
 
@@ -60,10 +61,6 @@ class _CatalogHeaderState extends State<CatalogHeader> {
     } else {
       _hideOverlay();
     }
-  }
-
-  void _onSearchTextChange() {
-    // setState removed to prevent rebuilding the entire header on every keystroke
   }
 
   void _addToHistory(String term) {

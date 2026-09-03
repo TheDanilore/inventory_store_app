@@ -161,7 +161,6 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                       ? _clienteCtrl.text.trim()
                       : null,
               paymentMethod: posCubit.state.paymentMethod,
-              onConfirm: () {},
             ),
       );
 

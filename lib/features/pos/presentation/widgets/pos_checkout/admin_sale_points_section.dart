@@ -1,6 +1,7 @@
 // ─── POINTS SECTION ───────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class AdminSalePointsSection extends StatelessWidget {
@@ -114,6 +115,9 @@ class AdminSalePointsSection extends StatelessWidget {
                     child: TextField(
                       controller: pointsController,
                       keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -135,6 +139,9 @@ class AdminSalePointsSection extends StatelessWidget {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
+                      onChanged: (val) {
+                        onPointsChanged(int.tryParse(val) ?? 0);
+                      },
                       onSubmitted:
                           (val) => onPointsChanged(int.tryParse(val) ?? 0),
                       onTapOutside: (event) {

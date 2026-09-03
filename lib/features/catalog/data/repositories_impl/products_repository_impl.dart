@@ -1,5 +1,6 @@
 import 'dart:developer' as developer;
 import 'dart:typed_data';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/core/utils/isolate_utils.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
@@ -23,7 +24,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
   ProductsRepositoryImpl(this._supabase);
 
   Either<Failure, T> _handleError<T>(Object e, [StackTrace? st]) {
-    developer.log('ProductsRepositoryImpl Error', error: e, stackTrace: st);
+    LoggerService.e('Error en ProductsRepositoryImpl', tag: 'PRODUCTS_REPO', error: e, stackTrace: st);
     if (e is PostgrestException) {
       if (e.code == '23503') {
         return left(
@@ -134,20 +135,22 @@ class ProductsRepositoryImpl implements ProductsRepository {
       }
 
       if (stockFilter != null && stockFilter != CatalogStockFilter.all) {
-        final summaryRes = await _supabase
+        var stockQuery = _supabase
             .from('product_stock_summary')
-            .select('product_id, total_stock');
+            .select('product_id');
+
+        if (stockFilter == CatalogStockFilter.inStock) {
+          stockQuery = stockQuery.gt('total_stock', 0);
+        } else if (stockFilter == CatalogStockFilter.outOfStock) {
+          stockQuery = stockQuery.eq('total_stock', 0);
+        }
+
+        final summaryRes = await stockQuery;
         final matchingIds = <String>{};
         for (final row in List<Map<String, dynamic>>.from(summaryRes)) {
           final pid = row['product_id'] as String?;
-          final stock = (row['total_stock'] as num?)?.toInt() ?? 0;
           if (pid != null) {
-            if (stockFilter == CatalogStockFilter.inStock && stock > 0) {
-              matchingIds.add(pid);
-            } else if (stockFilter == CatalogStockFilter.outOfStock &&
-                stock == 0) {
-              matchingIds.add(pid);
-            }
+            matchingIds.add(pid);
           }
         }
         if (matchingIds.isEmpty) {

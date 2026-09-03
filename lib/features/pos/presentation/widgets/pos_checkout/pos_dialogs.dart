@@ -5,14 +5,14 @@ class PosConfirmationDialog extends StatelessWidget {
   final double totalFinal;
   final String? clienteName;
   final String paymentMethod;
-  final VoidCallback onConfirm;
+  final VoidCallback? onConfirm;
 
   const PosConfirmationDialog({
     super.key,
     required this.totalFinal,
     this.clienteName,
     required this.paymentMethod,
-    required this.onConfirm,
+    this.onConfirm,
   });
 
   @override
@@ -42,7 +42,7 @@ class PosConfirmationDialog extends StatelessWidget {
         ElevatedButton(
           onPressed: () {
             Navigator.pop(context, true);
-            onConfirm();
+            onConfirm?.call();
           },
           style: ElevatedButton.styleFrom(backgroundColor: AppColors.teal),
           child: const Text('Confirmar', style: TextStyle(color: Colors.white)),

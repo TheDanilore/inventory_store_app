@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -138,59 +137,74 @@ class _AdminProductCardState extends State<AdminProductCard> {
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(AppColors.radius),
                         ),
-                        child: Opacity(
-                          opacity: isDesactivado ? 0.45 : 1.0,
-                          child:
-                              widget.product.images.isNotEmpty
-                                  ? CachedNetworkImage(
-                                    imageUrl:
-                                        widget.product.images
-                                            .firstWhere(
-                                              (img) => img.isMain,
-                                              orElse:
-                                                  () =>
-                                                      widget
-                                                          .product
-                                                          .images
-                                                          .first,
-                                            )
-                                            .imageUrl,
-                                    fit: BoxFit.cover,
-                                    placeholder:
-                                        (_, _) => ColoredBox(
-                                          color: const Color(0xFFF1F5F9),
-                                          child: Center(
-                                            child: SizedBox(
-                                              width: 24,
-                                              height: 24,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color:
-                                                    Theme.of(
-                                                      context,
-                                                    ).colorScheme.primary,
+                        child: ColorFiltered(
+                          colorFilter:
+                              isAgotado
+                                  ? ColorFilter.mode(
+                                    Colors.grey.shade400,
+                                    BlendMode.saturation,
+                                  )
+                                  : const ColorFilter.mode(
+                                    Colors.transparent,
+                                    BlendMode.dst,
+                                  ),
+                          child: Opacity(
+                            opacity:
+                                isDesactivado
+                                    ? 0.45
+                                    : (isAgotado ? 0.75 : 1.0),
+                            child:
+                                widget.product.images.isNotEmpty
+                                    ? CachedNetworkImage(
+                                      imageUrl:
+                                          widget.product.images
+                                              .firstWhere(
+                                                (img) => img.isMain,
+                                                orElse:
+                                                    () =>
+                                                        widget
+                                                            .product
+                                                            .images
+                                                            .first,
+                                              )
+                                              .imageUrl,
+                                      fit: BoxFit.cover,
+                                      placeholder:
+                                          (_, _) => ColoredBox(
+                                            color: const Color(0xFFF1F5F9),
+                                            child: Center(
+                                              child: SizedBox(
+                                                width: 24,
+                                                height: 24,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color:
+                                                      Theme.of(
+                                                        context,
+                                                      ).colorScheme.primary,
+                                                ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                    errorWidget:
-                                        (_, _, _) => const ColoredBox(
-                                          color: Color(0xFFF1F5F9),
-                                          child: Icon(
-                                            Icons.image_not_supported_rounded,
-                                            size: 40,
-                                            color: AppColors.textMuted,
+                                      errorWidget:
+                                          (_, _, _) => const ColoredBox(
+                                            color: Color(0xFFF1F5F9),
+                                            child: Icon(
+                                              Icons.image_not_supported_rounded,
+                                              size: 40,
+                                              color: AppColors.textMuted,
+                                            ),
                                           ),
-                                        ),
-                                  )
-                                  : const ColoredBox(
-                                    color: Color(0xFFF1F5F9),
-                                    child: Icon(
-                                      Icons.image_not_supported_rounded,
-                                      size: 40,
-                                      color: AppColors.textMuted,
+                                    )
+                                    : const ColoredBox(
+                                      color: Color(0xFFF1F5F9),
+                                      child: Icon(
+                                        Icons.image_not_supported_rounded,
+                                        size: 40,
+                                        color: AppColors.textMuted,
+                                      ),
                                     ),
-                                  ),
+                          ),
                         ),
                       ),
 
@@ -216,43 +230,37 @@ class _AdminProductCardState extends State<AdminProductCard> {
                             ),
                           ),
                         )
-                      // Overlay INACTIVO
+                      // Overlay INACTIVO (sin blur que cause jank o distorsión)
                       else if (isDesactivado)
                         Positioned.fill(
                           child: ClipRRect(
                             borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(AppColors.radius),
                             ),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                              child: ColoredBox(
-                                color: Colors.white.withValues(alpha: 0.3),
-                                child: const Center(
-                                  child: _StatusBadge(
-                                    label: 'INACTIVO',
-                                    color: Color(0xFFEF4444),
-                                  ),
+                            child: ColoredBox(
+                              color: Colors.white.withValues(alpha: 0.45),
+                              child: const Center(
+                                child: _StatusBadge(
+                                  label: 'INACTIVO',
+                                  color: Color(0xFFEF4444),
                                 ),
                               ),
                             ),
                           ),
                         )
-                      // Overlay AGOTADO
+                      // Overlay AGOTADO (imagen nítida reconocible + badge de alto contraste)
                       else if (isAgotado)
                         Positioned.fill(
                           child: ClipRRect(
                             borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(AppColors.radius),
                             ),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                              child: ColoredBox(
-                                color: Colors.white.withValues(alpha: 0.3),
-                                child: const Center(
-                                  child: _StatusBadge(
-                                    label: 'AGOTADO',
-                                    color: Color(0xFF64748B),
-                                  ),
+                            child: ColoredBox(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              child: const Center(
+                                child: _StatusBadge(
+                                  label: 'AGOTADO',
+                                  color: Color(0xFF334155),
                                 ),
                               ),
                             ),
@@ -455,10 +463,21 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color,
+        color: color.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.40),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.25),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Text(
         label,

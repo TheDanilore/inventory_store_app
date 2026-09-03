@@ -69,12 +69,8 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   }
 
   void _onSearchChanged(String val) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        context.read<AdminCatalogCubit>().setSearchTerm(val);
-      }
-    });
+    // AdminCatalogCubit.setSearchTerm gestiona su propio debounce de 500ms de manera óptima.
+    context.read<AdminCatalogCubit>().setSearchTerm(val);
   }
 
   @override
@@ -386,8 +382,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
     return CatalogGridScrollView(
       products: state.products,
-      pageSize: 20,
+      pageSize: AdminCatalogState.pageSize,
       currentPage: state.currentPage,
+      totalCount: state.totalCount,
       onPageChanged: cubit.setPage,
       onSale: _irAVenta,
       onToggleActive:
