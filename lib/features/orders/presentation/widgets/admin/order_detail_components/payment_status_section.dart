@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_section_card.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -56,6 +57,26 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
     if (widget.accounts.isNotEmpty) {
       _selectedAccount = widget.accounts.first;
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkCashShift();
+    });
+  }
+
+  Future<void> _checkCashShift() async {
+    if (!mounted) return;
+    if (_selectedAccount != null && _selectedAccount!['type'] == 'CAJA') {
+      final shiftId =
+          await context.read<OrderDetailCubit>().getActiveCashShift();
+      if (mounted) {
+        setState(() {
+          _activeShift = shiftId != null ? {'id': shiftId} : null;
+        });
+      }
+    } else {
+      if (_activeShift != null && mounted) {
+        setState(() => _activeShift = null);
+      }
+    }
   }
 
   @override
@@ -68,6 +89,7 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
     setState(() {
       _selectedAccount = account;
     });
+    await _checkCashShift();
   }
 
   IconData _iconForType(String type) {
@@ -165,7 +187,13 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
           );
         }
       }
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Excepción al registrar abono en orden ${widget.orderId}',
+        tag: 'PAYMENT_STATUS_SECTION',
+        error: e,
+        stackTrace: st,
+      );
       if (mounted) {
         AppSnackbar.show(
           context,
@@ -269,10 +297,8 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
             ],
           ),
 
-          // Sección de abono (solo crédito pendiente)
-          if (widget.paymentMethod == 'CRÉDITO' &&
-              pendingAmount > 0 &&
-              widget.creditInfo != null) ...[
+          // Sección de abono (crédito con saldo pendiente)
+          if (widget.paymentMethod == 'CRÉDITO' && pendingAmount > 0) ...[
             const SizedBox(height: 14),
             const Divider(height: 1),
             const SizedBox(height: 14),
@@ -300,6 +326,7 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                       setState(() => _selectedQuickAmount = '50.00');
                       _abonoCtrl.text = '50.00';
                       _validarEntrada('50.00', fromQuick: true);
+                      _formKey.currentState?.validate();
                     },
                   ),
                 if (pendingAmount >= 100)
@@ -310,6 +337,7 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                       setState(() => _selectedQuickAmount = '100.00');
                       _abonoCtrl.text = '100.00';
                       _validarEntrada('100.00', fromQuick: true);
+                      _formKey.currentState?.validate();
                     },
                   ),
                 if (pendingAmount >= 200)
@@ -320,6 +348,7 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                       setState(() => _selectedQuickAmount = '200.00');
                       _abonoCtrl.text = '200.00';
                       _validarEntrada('200.00', fromQuick: true);
+                      _formKey.currentState?.validate();
                     },
                   ),
                 _AbonoQuickChip(
@@ -332,6 +361,7 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                     setState(() => _selectedQuickAmount = v);
                     _abonoCtrl.text = v;
                     _validarEntrada(v, fromQuick: true);
+                    _formKey.currentState?.validate();
                   },
                 ),
               ],
@@ -347,7 +377,7 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                   decimal: true,
                 ),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
                 ],
                 onChanged: (v) {
                   _validarEntrada(v);

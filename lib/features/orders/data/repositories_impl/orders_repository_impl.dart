@@ -5,6 +5,7 @@ import 'dart:developer' as developer;
 import 'package:fpdart/fpdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
@@ -940,18 +941,21 @@ class OrdersRepositoryImpl implements OrdersRepository {
       if (rpcResp != null && rpcResp['success'] == true) {
         return const Right(null);
       } else {
+        final errorMsg = rpcResp is Map
+            ? (rpcResp['error'] ?? rpcResp.toString())
+            : rpcResp?.toString() ?? 'Error desconocido';
         return Left(
           ServerFailure(
-            message: 'El RPC falló o no devolvió éxito. Resp: $rpcResp',
+            message: 'Error al registrar abono: $errorMsg',
           ),
         );
       }
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error en registerCreditPayment',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(message: 'Error al registrar pago en base de datos: $e'),

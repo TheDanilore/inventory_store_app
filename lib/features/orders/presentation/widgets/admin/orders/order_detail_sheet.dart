@@ -83,6 +83,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
 
   final TextEditingController _pointsUsedCtrl = TextEditingController();
   final TextEditingController _manualNameCtrl = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   bool _isEditing = false;
 
   @override
@@ -97,6 +98,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
   void dispose() {
     _pointsUsedCtrl.dispose();
     _manualNameCtrl.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -375,6 +377,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                             ),
                           )
                           : ListView(
+                            controller: _scrollController,
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                             children: [
                               // HEADER
@@ -881,47 +884,131 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                           ),
                                 ),
                               )
-                            else if (state.isCompleted)
-                              Expanded(
-                                flex: 5,
-                                child: ElevatedButton.icon(
-                                  onPressed:
-                                      state.isReturning ? null : _confirmReturn,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red.shade50,
-                                    foregroundColor: Colors.red.shade700,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
+                            else if (state.isCompleted) ...[
+                              if (order.paymentMethod == 'CRÉDITO' &&
+                                  (order.totalAmount - order.amountPaid) >
+                                      0.01) ...[
+                                Expanded(
+                                  flex: 6,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      _scrollController.animateTo(
+                                        350.0,
+                                        duration: const Duration(
+                                          milliseconds: 400,
+                                        ),
+                                        curve: Curves.easeInOut,
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.teal,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      side: BorderSide(
-                                        color: Colors.red.shade200,
+                                    icon: const Icon(
+                                      Icons.payments_rounded,
+                                      size: 18,
+                                    ),
+                                    label: Text(
+                                      'Abonar (S/ ${(order.totalAmount - order.amountPaid).toStringAsFixed(2)})',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
-                                  icon:
-                                      state.isReturning
-                                          ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.red,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  flex: 4,
+                                  child: OutlinedButton.icon(
+                                    onPressed:
+                                        state.isReturning
+                                            ? null
+                                            : _confirmReturn,
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.red.shade700,
+                                      side: BorderSide(
+                                        color: Colors.red.shade200,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    icon:
+                                        state.isReturning
+                                            ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.red,
+                                              ),
+                                            )
+                                            : const Icon(
+                                              Icons.assignment_return_rounded,
+                                              size: 18,
                                             ),
-                                          )
-                                          : const Icon(
-                                            Icons.assignment_return_rounded,
-                                          ),
-                                  label: const Text(
-                                    'Devolución',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
+                                    label: const Text(
+                                      'Devolución',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              )
+                              ] else
+                                Expanded(
+                                  flex: 5,
+                                  child: ElevatedButton.icon(
+                                    onPressed:
+                                        state.isReturning
+                                            ? null
+                                            : _confirmReturn,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red.shade50,
+                                      foregroundColor: Colors.red.shade700,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(
+                                          color: Colors.red.shade200,
+                                        ),
+                                      ),
+                                    ),
+                                    icon:
+                                        state.isReturning
+                                            ? const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.red,
+                                              ),
+                                            )
+                                            : const Icon(
+                                              Icons.assignment_return_rounded,
+                                            ),
+                                    label: const Text(
+                                      'Devolución',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ]
                             else
                               Expanded(
                                 flex: 5,

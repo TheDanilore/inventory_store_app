@@ -1,5 +1,7 @@
-import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_usecase.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
@@ -25,6 +27,10 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
   final CheckActiveCashShiftUc checkActiveCashShiftUc;
   final RegisterCreditPaymentUc registerCreditPaymentUc;
   final ProcessReturnUc processReturnUc;
+  final GetCreditAccountByCustomerUseCase? getCreditAccountByCustomerUseCase;
+
+  GetCreditAccountByCustomerUseCase get _creditAccountUc =>
+      getCreditAccountByCustomerUseCase ?? sl<GetCreditAccountByCustomerUseCase>();
 
   OrderDetailCubit({
     required this.getOrderDetailsUc,
@@ -35,6 +41,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     required this.checkActiveCashShiftUc,
     required this.registerCreditPaymentUc,
     required this.processReturnUc,
+    this.getCreditAccountByCustomerUseCase,
   }) : super(const OrderDetailState());
 
   static const String _creditPaymentMethod = 'CRÉDITO';
@@ -71,10 +78,10 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
 
       await orderResult.fold<Future<void>>(
         (failure) async {
-          developer.log(
+          LoggerService.e(
             'Error al cargar orden ($orderId)',
+            tag: 'ORDER_DETAIL_CUBIT',
             error: failure.message,
-            name: 'OrderDetailCubit',
           );
           emit(
             state.copyWith(
@@ -92,19 +99,26 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
                   ? getProfileByIdUc(customerId)
                   : Future.value(null);
 
+          final creditFuture =
+              (customerId != null && customerId.isNotEmpty)
+                  ? _creditAccountUc(customerId)
+                  : Future.value(null);
+
           final secondaryResults = await Future.wait([
             getFinancialAccountsUc(),
             profileFuture,
+            creditFuture,
           ]);
 
           final accountsResult = secondaryResults[0] as dynamic;
           final profileResult = secondaryResults[1] as dynamic;
+          final creditResult = secondaryResults[2] as dynamic;
 
           final accountsData = accountsResult.fold((l) {
-            developer.log(
+            LoggerService.w(
               'Error en accounts',
+              tag: 'ORDER_DETAIL_CUBIT',
               error: l.message,
-              name: 'OrderDetailCubit',
             );
             return <Map<String, dynamic>>[];
           }, (r) => r as List<Map<String, dynamic>>);
@@ -112,15 +126,26 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
           List<Map<String, dynamic>> profilesData = [];
           if (profileResult != null) {
             profileResult.fold(
-              (l) => developer.log(
+              (l) => LoggerService.w(
                 'Error en profile',
+                tag: 'ORDER_DETAIL_CUBIT',
                 error: l.message,
-                name: 'OrderDetailCubit',
               ),
               (r) {
                 if (r != null) profilesData = [r as Map<String, dynamic>];
               },
             );
+          }
+
+          Map<String, dynamic>? creditInfoData;
+          if (creditResult != null) {
+            creditInfoData = {
+              'id': creditResult.id,
+              'profile_id': creditResult.profileId,
+              'credit_limit': creditResult.creditLimit,
+              'current_debt': creditResult.currentDebt,
+              'is_active': creditResult.isActive,
+            };
           }
 
           emit(
@@ -135,16 +160,17 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
               pointsUsed: details.order.pointsUsed,
               pointsEarned: details.order.pointsEarned,
               paymentMethod: details.order.paymentMethod,
+              creditInfo: creditInfoData,
             ),
           );
         },
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error fatal en fetchData',
+        tag: 'ORDER_DETAIL_CUBIT',
         error: e,
         stackTrace: st,
-        name: 'OrderDetailCubit',
       );
       emit(
         state.copyWith(
@@ -159,34 +185,61 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
   Future<String?> getActiveCashShift() async {
     final result = await checkActiveCashShiftUc();
     return result.fold((l) {
-      developer.log(
+      LoggerService.w(
         'Error comprobando turno activo',
+        tag: 'ORDER_DETAIL_CUBIT',
         error: l.message,
-        name: 'OrderDetailCubit',
       );
       return null;
     }, (r) => r);
   }
 
-  void selectCustomer(String? customerId, double ratio, double earnRate) {
+  Future<void> selectCustomer(String? customerId, double ratio, double earnRate) async {
+    final validId =
+        (customerId != null && customerId.isNotEmpty) ? customerId : null;
     emit(
       state.copyWith(
-        selectedCustomerId:
-            (customerId != null && customerId.isNotEmpty) ? customerId : null,
+        selectedCustomerId: validId,
         creditInfo: null,
       ),
     );
     _recalculatePoints(ratio, earnRate);
+
+    if (validId != null) {
+      try {
+        final credit = await _creditAccountUc(validId);
+        if (credit != null && state.selectedCustomerId == validId) {
+          emit(
+            state.copyWith(
+              creditInfo: {
+                'id': credit.id,
+                'profile_id': credit.profileId,
+                'credit_limit': credit.creditLimit,
+                'current_debt': credit.currentDebt,
+                'is_active': credit.isActive,
+              },
+            ),
+          );
+        }
+      } catch (e, st) {
+        LoggerService.w(
+          'Error obteniendo línea de crédito para cliente $validId',
+          tag: 'ORDER_DETAIL_CUBIT',
+          error: e,
+          stackTrace: st,
+        );
+      }
+    }
   }
 
   Future<List<Map<String, dynamic>>> searchCustomers(String query) async {
     if (query.trim().isEmpty) return [];
     final result = await searchCustomersUc(query);
     return result.fold((l) {
-      developer.log(
+      LoggerService.w(
         'Error searching customers',
+        tag: 'ORDER_DETAIL_CUBIT',
         error: l.message,
-        name: 'OrderDetailCubit',
       );
       return [];
     }, (r) => r);
@@ -363,10 +416,9 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     String variantId,
     String warehouseId,
   ) async {
-    developer.log(
-      'WARNING: fetchAvailableBatches is mocked and currently returns an empty list. A proper UseCase must be implemented.',
-      name: 'OrderDetailCubit',
-      level: 900,
+    LoggerService.w(
+      'fetchAvailableBatches no implementado aún con UseCase.',
+      tag: 'ORDER_DETAIL_CUBIT',
     );
     // Mock for now until UseCase is created, or inject Supabase client later.
     // In Clean Architecture, this should be a UseCase!
@@ -389,10 +441,10 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
 
     return result.fold(
       (failure) {
-        developer.log(
+        LoggerService.e(
           'Error al procesar devolución',
+          tag: 'ORDER_DETAIL_CUBIT',
           error: failure.message,
-          name: 'OrderDetailCubit',
         );
         emit(state.copyWith(isReturning: false, errorMessage: failure.message));
         return false;

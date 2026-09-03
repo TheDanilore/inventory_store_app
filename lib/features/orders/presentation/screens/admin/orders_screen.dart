@@ -223,6 +223,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
           final isWide = constraints.maxWidth >= 800;
 
           return BlocBuilder<OrdersCubit, OrdersState>(
+            buildWhen:
+                (p, c) =>
+                    p.orders != c.orders ||
+                    p.isLoading != c.isLoading ||
+                    p.errorMessage != c.errorMessage ||
+                    p.isBackgroundLoading != c.isBackgroundLoading ||
+                    p.statusFilter != c.statusFilter ||
+                    p.paymentStatusFilter != c.paymentStatusFilter ||
+                    p.currentPage != c.currentPage ||
+                    p.totalPages != c.totalPages,
             builder: (context, state) {
               final cubit = context.read<OrdersCubit>();
 
