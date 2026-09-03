@@ -41,7 +41,6 @@ class PaymentStatusSection extends StatefulWidget {
 class _PaymentStatusSectionState extends State<PaymentStatusSection> {
   bool _isRegistering = false;
   final _abonoCtrl = TextEditingController();
-  String? _errorMessage;
   String? _selectedQuickAmount;
 
   // Cuenta financiera seleccionada para el abono
@@ -54,12 +53,17 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
   @override
   void initState() {
     super.initState();
+    _abonoCtrl.addListener(_onAbonoChanged);
     if (widget.accounts.isNotEmpty) {
       _selectedAccount = widget.accounts.first;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkCashShift();
     });
+  }
+
+  void _onAbonoChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _checkCashShift() async {
@@ -81,6 +85,7 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
 
   @override
   void dispose() {
+    _abonoCtrl.removeListener(_onAbonoChanged);
     _abonoCtrl.dispose();
     super.dispose();
   }
@@ -120,8 +125,9 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
 
   void _validarEntrada(String value, {bool fromQuick = false}) {
     if (!fromQuick && _selectedQuickAmount != null) {
-      setState(() => _selectedQuickAmount = null);
+      _selectedQuickAmount = null;
     }
+    if (mounted) setState(() {});
   }
 
   Future<void> _registrarAbono() async {
@@ -231,10 +237,13 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
         _selectedAccount!['type'] == 'CAJA' &&
         _activeShift == null;
 
+    final amountParsed = double.tryParse(_abonoCtrl.text.trim()) ?? 0.0;
+    final bool isAmountValid =
+        amountParsed > 0 && amountParsed <= (pendingAmount + 0.001);
+
     final bool isButtonEnabled =
         !_isRegistering &&
-        _abonoCtrl.text.trim().isNotEmpty &&
-        _errorMessage == null &&
+        isAmountValid &&
         _selectedAccount != null &&
         !cajaSinTurno;
 
@@ -409,9 +418,18 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                     color: Colors.grey.shade400,
                     fontSize: 13,
                   ),
-                  prefixIcon: Icon(
-                    Icons.attach_money_rounded,
-                    color: Colors.grey.shade500,
+                  prefixIconConstraints:
+                      const BoxConstraints(minWidth: 0, minHeight: 0),
+                  prefixIcon: const Padding(
+                    padding: EdgeInsets.only(left: 14, right: 8),
+                    child: Text(
+                      'S/',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.teal,
+                      ),
+                    ),
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),

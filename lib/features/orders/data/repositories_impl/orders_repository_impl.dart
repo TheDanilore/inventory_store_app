@@ -964,6 +964,44 @@ class OrdersRepositoryImpl implements OrdersRepository {
   }
 
   @override
+  Future<Either<Failure, List<BatchAssignmentModel>>> fetchBatchesForVariant(
+    String variantId,
+    String warehouseId,
+  ) async {
+    try {
+      final resp = await _supabase
+          .from('warehouse_stock_batches')
+          .select('id, batch_number, expiry_date, available_quantity')
+          .eq('variant_id', variantId)
+          .eq('warehouse_id', warehouseId)
+          .gt('available_quantity', 0)
+          .order('expiry_date', ascending: true, nullsFirst: false);
+
+      final batches = (resp as List).map((b) {
+        return BatchAssignmentModel(
+          batchId: b['id'] as String,
+          batchNumber: b['batch_number'] as String,
+          expiryDate: b['expiry_date'] != null
+              ? DateTime.tryParse(b['expiry_date'] as String)
+              : null,
+          available: (b['available_quantity'] as num).toInt(),
+          assigned: 0,
+        );
+      }).toList();
+
+      return Right(batches);
+    } catch (e, st) {
+      LoggerService.e(
+        'Error fetching batches for variant $variantId in warehouse $warehouseId',
+        tag: 'ORDERS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(ServerFailure(message: 'Error al consultar lotes: $e'));
+    }
+  }
+
+  @override
   Stream<Either<Failure, int>> watchPendingOrdersCount() {
     final controller = StreamController<Either<Failure, int>>.broadcast();
     RealtimeChannel? channel;

@@ -13,6 +13,7 @@ import 'package:inventory_store_app/features/orders/domain/usecases/register_cre
 import 'package:inventory_store_app/features/orders/domain/usecases/get_order_details_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/save_order_changes_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/process_return_uc.dart';
+import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_state.dart';
 
 import 'package:injectable/injectable.dart';
@@ -416,13 +417,31 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     String variantId,
     String warehouseId,
   ) async {
-    LoggerService.w(
-      'fetchAvailableBatches no implementado aún con UseCase.',
-      tag: 'ORDER_DETAIL_CUBIT',
-    );
-    // Mock for now until UseCase is created, or inject Supabase client later.
-    // In Clean Architecture, this should be a UseCase!
-    return [];
+    try {
+      final result = await sl<OrdersRepository>().fetchBatchesForVariant(
+        variantId,
+        warehouseId,
+      );
+      return result.fold(
+        (failure) {
+          LoggerService.e(
+            'Error al obtener lotes disponibles para variante $variantId',
+            tag: 'ORDER_DETAIL_CUBIT',
+            error: failure.message,
+          );
+          return [];
+        },
+        (batches) => batches,
+      );
+    } catch (e, st) {
+      LoggerService.e(
+        'Excepción al obtener lotes para variante $variantId',
+        tag: 'ORDER_DETAIL_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
+      return [];
+    }
   }
 
   Future<bool> processReturn(String? notes) async {

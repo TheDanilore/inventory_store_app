@@ -884,131 +884,47 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                           ),
                                 ),
                               )
-                            else if (state.isCompleted) ...[
-                              if (order.paymentMethod == 'CRÉDITO' &&
-                                  (order.totalAmount - order.amountPaid) >
-                                      0.01) ...[
-                                Expanded(
-                                  flex: 6,
-                                  child: ElevatedButton.icon(
-                                    onPressed: () {
-                                      _scrollController.animateTo(
-                                        350.0,
-                                        duration: const Duration(
-                                          milliseconds: 400,
-                                        ),
-                                        curve: Curves.easeInOut,
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.teal,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
+                            else if (state.isCompleted)
+                              Expanded(
+                                flex: 5,
+                                child: ElevatedButton.icon(
+                                  onPressed:
+                                      state.isReturning ? null : _confirmReturn,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red.shade50,
+                                    foregroundColor: Colors.red.shade700,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
                                     ),
-                                    icon: const Icon(
-                                      Icons.payments_rounded,
-                                      size: 18,
-                                    ),
-                                    label: Text(
-                                      'Abonar (S/ ${(order.totalAmount - order.amountPaid).toStringAsFixed(2)})',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  flex: 4,
-                                  child: OutlinedButton.icon(
-                                    onPressed:
-                                        state.isReturning
-                                            ? null
-                                            : _confirmReturn,
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.red.shade700,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
                                       side: BorderSide(
                                         color: Colors.red.shade200,
                                       ),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
                                     ),
-                                    icon:
-                                        state.isReturning
-                                            ? const SizedBox(
-                                              width: 18,
-                                              height: 18,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: Colors.red,
-                                              ),
-                                            )
-                                            : const Icon(
-                                              Icons.assignment_return_rounded,
-                                              size: 18,
+                                  ),
+                                  icon:
+                                      state.isReturning
+                                          ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.red,
                                             ),
-                                    label: const Text(
-                                      'Devolución',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                          )
+                                          : const Icon(
+                                            Icons.assignment_return_rounded,
+                                          ),
+                                  label: const Text(
+                                    'Devolución',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
-                              ] else
-                                Expanded(
-                                  flex: 5,
-                                  child: ElevatedButton.icon(
-                                    onPressed:
-                                        state.isReturning
-                                            ? null
-                                            : _confirmReturn,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red.shade50,
-                                      foregroundColor: Colors.red.shade700,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        side: BorderSide(
-                                          color: Colors.red.shade200,
-                                        ),
-                                      ),
-                                    ),
-                                    icon:
-                                        state.isReturning
-                                            ? const SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: Colors.red,
-                                              ),
-                                            )
-                                            : const Icon(
-                                              Icons.assignment_return_rounded,
-                                            ),
-                                    label: const Text(
-                                      'Devolución',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ]
+                              )
                             else
                               Expanded(
                                 flex: 5,

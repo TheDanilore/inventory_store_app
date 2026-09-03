@@ -102,4 +102,9 @@ abstract class OrdersRepository {
     required String notes,
     required String? shiftId,
   });
+
+  Future<Either<Failure, List<BatchAssignmentModel>>> fetchBatchesForVariant(
+    String variantId,
+    String warehouseId,
+  );
 }
