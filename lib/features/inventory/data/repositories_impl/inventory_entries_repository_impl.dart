@@ -39,6 +39,25 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
             )
             .toList();
 
+    // Resolver profile_id del usuario autenticado para salvaguarda en doble capa
+    String? profileId;
+    final currentUser = _supabase.auth.currentUser;
+    if (currentUser != null) {
+      try {
+        final profile = await _supabase
+            .from('profiles')
+            .select('id')
+            .eq('auth_user_id', currentUser.id)
+            .maybeSingle();
+        profileId = profile?['id'] as String?;
+      } catch (e) {
+        developer.log(
+          '[InventoryEntriesRepo] No se pudo resolver profile_id en cliente: $e',
+          name: 'InventoryEntriesRepositoryImpl',
+        );
+      }
+    }
+
     try {
       await _supabase.rpc(
         'process_inventory_entry_rpc',
@@ -54,6 +73,7 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           'p_document_date': documentDate?.toIso8601String().split('T').first,
           'p_notes': notes,
           'p_items': itemsJson,
+          'p_profile_id': profileId,
         },
       );
     } on PostgrestException catch (e, st) {
@@ -63,7 +83,15 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         stackTrace: st,
         name: 'InventoryEntriesRepositoryImpl',
       );
-      throw Exception(e.message);
+      String userFriendlyMessage = e.message;
+      if (e.code == '23503' && e.message.contains('account_movements_created_by_fkey')) {
+        userFriendlyMessage =
+            'No se pudo vincular el perfil del usuario autenticado para registrar el movimiento de cuenta. Vuelva a iniciar sesión.';
+      } else if (e.code == '23503') {
+        userFriendlyMessage =
+            'Uno de los registros relacionados (almacén, proveedor o cuenta) no existe o no es válido.';
+      }
+      throw Exception(userFriendlyMessage);
     } catch (e, st) {
       developer.log(
         '[InventoryEntriesRepo] createInventoryEntry unexpected error',

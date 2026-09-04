@@ -968,9 +968,11 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                 flex: 2,
                 child: TextFormField(
                   controller: _documentNumberCtrl,
+                  maxLength: 50,
                   textCapitalization: TextCapitalization.characters,
                   decoration: InputDecoration(
                     labelText: 'Número / Serie',
+                    counterText: '',
                     filled: true,
                     fillColor: AppColors.surface,
                     border: OutlineInputBorder(
