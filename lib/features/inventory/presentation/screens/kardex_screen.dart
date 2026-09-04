@@ -16,11 +16,15 @@ import 'dart:async';
 class KardexScreen extends StatefulWidget {
   final String? initialProductId;
   final String? initialProductName;
+  final String? initialVariantId;
+  final String? initialVariantName;
 
   const KardexScreen({
     super.key,
     this.initialProductId,
     this.initialProductName,
+    this.initialVariantId,
+    this.initialVariantName,
   });
 
   @override
@@ -43,6 +47,8 @@ class _KardexScreenState extends State<KardexScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<KardexCubit>().loadMovements(
         productId: widget.initialProductId,
+        variantId: widget.initialVariantId,
+        variantName: widget.initialVariantName,
         searchText: widget.initialProductName ?? '',
       );
     });
@@ -69,6 +75,11 @@ class _KardexScreenState extends State<KardexScreen> {
     _debounce = Timer(const Duration(milliseconds: 500), () {
       context.read<KardexCubit>().setSearchText(value);
     });
+  }
+
+  void _onSearchSubmitted(String value) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    context.read<KardexCubit>().setSearchText(value);
   }
 
   void _openExitScreen(BuildContext context) {
@@ -258,15 +269,31 @@ class _KardexScreenState extends State<KardexScreen> {
                                   Row(
                                     children: [
                                       Expanded(
-                                        child: _SearchField(
-                                          controller: _searchCtrl,
-                                          hint: 'Buscar producto...',
-                                          onChanged: _onSearchChanged,
-                                          onClear: () {
-                                            _searchCtrl.clear();
-                                            context
-                                                .read<KardexCubit>()
-                                                .clearProductFilter();
+                                        child: BlocBuilder<
+                                          KardexCubit,
+                                          KardexState
+                                        >(
+                                          builder: (context, state) {
+                                            final isSearching =
+                                                state is KardexLoaded &&
+                                                state.isSearching;
+                                            return _SearchField(
+                                              controller: _searchCtrl,
+                                              hint: 'Buscar producto...',
+                                              onChanged: _onSearchChanged,
+                                              onSubmitted: _onSearchSubmitted,
+                                              isLoading: isSearching,
+                                              onClear: () {
+                                                if (_debounce?.isActive ??
+                                                    false) {
+                                                  _debounce!.cancel();
+                                                }
+                                                _searchCtrl.clear();
+                                                context
+                                                    .read<KardexCubit>()
+                                                    .clearProductFilter();
+                                              },
+                                            );
                                           },
                                         ),
                                       ),
@@ -391,23 +418,63 @@ class _KardexScreenState extends State<KardexScreen> {
                           ),
                         ),
 
-                        // --- BANNER DE PRODUCTO FILTRADO ---
+                        // --- INDICADOR DE BÚSQUEDA NO DESTRUCTIVO ---
                         SliverToBoxAdapter(
                           child: BlocBuilder<KardexCubit, KardexState>(
                             builder: (context, state) {
-                              if (state is KardexLoaded && state.productId != null) {
+                              if (state is KardexLoaded && state.isSearching) {
+                                return const SizedBox(
+                                  height: 2,
+                                  child: LinearProgressIndicator(
+                                    backgroundColor: Colors.transparent,
+                                    color: AppColors.primary,
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+
+                        // --- BANNER DE PRODUCTO / VARIANTE FILTRADO ---
+                        SliverToBoxAdapter(
+                          child: BlocBuilder<KardexCubit, KardexState>(
+                            builder: (context, state) {
+                              if (state is KardexLoaded &&
+                                  (state.productId != null ||
+                                      state.variantId != null)) {
+                                final prodLabel = state.searchText.isNotEmpty
+                                    ? state.searchText
+                                    : (state.productId ?? 'Producto');
+                                final hasVariant = state.variantId != null;
+                                final variantLabel =
+                                    state.variantName != null &&
+                                            state.variantName!.isNotEmpty
+                                        ? state.variantName!
+                                        : (hasVariant
+                                            ? 'ID: ${state.variantId!.length > 8 ? state.variantId!.substring(0, 8) : state.variantId}...'
+                                            : '');
                                 return Padding(
-                                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    10,
+                                    16,
+                                    4,
+                                  ),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 14,
                                       vertical: 9,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.08),
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.08,
+                                      ),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: AppColors.primary.withValues(alpha: 0.25),
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.25,
+                                        ),
                                       ),
                                     ),
                                     child: Row(
@@ -419,17 +486,71 @@ class _KardexScreenState extends State<KardexScreen> {
                                         ),
                                         const SizedBox(width: 8),
                                         Expanded(
-                                          child: Text(
-                                            'Filtrando Kárdex para: ${state.searchText.isNotEmpty ? state.searchText : state.productId}',
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.textPrimary,
+                                          child: Text.rich(
+                                            TextSpan(
+                                              text: 'Filtrando Kárdex: ',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                              children: [
+                                                TextSpan(
+                                                  text: prodLabel,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color:
+                                                        AppColors.textPrimary,
+                                                  ),
+                                                ),
+                                                if (hasVariant) ...[
+                                                  const TextSpan(
+                                                    text: ' · Variante: ',
+                                                  ),
+                                                  TextSpan(
+                                                    text: variantLabel,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: AppColors.primary,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
                                             ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
+                                        if (hasVariant) ...[
+                                          InkWell(
+                                            onTap: () {
+                                              context
+                                                  .read<KardexCubit>()
+                                                  .clearVariantFilter();
+                                            },
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 4,
+                                                  ),
+                                              child: Text(
+                                                'Ver todas las variantes',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.blue.shade700,
+                                                  decoration:
+                                                      TextDecoration.underline,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                        ],
                                         InkWell(
                                           onTap: () {
                                             _searchCtrl.clear();
@@ -437,12 +558,14 @@ class _KardexScreenState extends State<KardexScreen> {
                                                 .read<KardexCubit>()
                                                 .clearProductFilter();
                                           },
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                           child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 6,
+                                                  vertical: 4,
+                                                ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: const [
@@ -453,7 +576,8 @@ class _KardexScreenState extends State<KardexScreen> {
                                                     fontWeight: FontWeight.w800,
                                                     color: AppColors.primary,
                                                     decoration:
-                                                        TextDecoration.underline,
+                                                        TextDecoration
+                                                            .underline,
                                                   ),
                                                 ),
                                                 SizedBox(width: 4),
@@ -501,7 +625,9 @@ class _KardexScreenState extends State<KardexScreen> {
                                     ),
                                   ),
                                 );
-                              } else if (isLoading && movements.isEmpty) {
+                              } else if ((isLoading ||
+                                      (loadedState?.isSearching ?? false)) &&
+                                  movements.isEmpty) {
                                 return const KardexSkeleton();
                               } else if (movements.isEmpty) {
                                 return const AppEmptyState(
@@ -667,13 +793,17 @@ class _SearchField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
   final ValueChanged<String> onChanged;
+  final ValueChanged<String>? onSubmitted;
   final VoidCallback onClear;
+  final bool isLoading;
 
   const _SearchField({
     required this.controller,
     required this.hint,
     required this.onChanged,
+    this.onSubmitted,
     required this.onClear,
+    this.isLoading = false,
   });
 
   @override
@@ -683,6 +813,7 @@ class _SearchField extends StatelessWidget {
       child: TextField(
         controller: controller,
         onChanged: onChanged,
+        onSubmitted: onSubmitted,
         style: const TextStyle(fontSize: 14),
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
@@ -696,17 +827,34 @@ class _SearchField extends StatelessWidget {
             size: 20,
             color: AppColors.textSecondary,
           ),
-          suffixIcon: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: controller,
-            builder: (context, value, child) {
-              return value.text.isNotEmpty
-                  ? IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 18),
-                    color: AppColors.textSecondary,
-                    onPressed: onClear,
-                  )
-                  : const SizedBox.shrink();
-            },
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isLoading)
+                const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: controller,
+                builder: (context, value, child) {
+                  return value.text.isNotEmpty && !isLoading
+                      ? IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                        color: AppColors.textSecondary,
+                        onPressed: onClear,
+                      )
+                      : const SizedBox.shrink();
+                },
+              ),
+            ],
           ),
           filled: true,
           fillColor: Colors.white,

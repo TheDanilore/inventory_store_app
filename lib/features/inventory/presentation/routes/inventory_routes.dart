@@ -87,11 +87,15 @@ class InventoryRoutes {
       builder: (context, state) {
         final productId = state.uri.queryParameters['productId'];
         final productName = state.uri.queryParameters['productName'];
+        final variantId = state.uri.queryParameters['variantId'];
+        final variantName = state.uri.queryParameters['variantName'];
         return BlocProvider(
           create: (_) => sl<KardexCubit>(),
           child: KardexScreen(
             initialProductId: productId,
             initialProductName: productName,
+            initialVariantId: variantId,
+            initialVariantName: variantName,
           ),
         );
       },

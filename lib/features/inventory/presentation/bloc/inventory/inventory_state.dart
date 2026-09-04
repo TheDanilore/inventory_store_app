@@ -41,6 +41,10 @@ class InventoryLoaded extends InventoryState {
   final int countProximo;
   final int countNormal;
 
+  /// Indicadores no-destructivos de carga en segundo plano (In-Place)
+  final bool isSearchingStock;
+  final bool isSearchingBatches;
+
   const InventoryLoaded({
     required this.stockItems,
     required this.batchItems,
@@ -61,6 +65,8 @@ class InventoryLoaded extends InventoryState {
     required this.countCritico,
     required this.countProximo,
     required this.countNormal,
+    this.isSearchingStock = false,
+    this.isSearchingBatches = false,
   });
 
   InventoryLoaded copyWith({
@@ -83,6 +89,8 @@ class InventoryLoaded extends InventoryState {
     int? countCritico,
     int? countProximo,
     int? countNormal,
+    bool? isSearchingStock,
+    bool? isSearchingBatches,
   }) {
     return InventoryLoaded(
       stockItems: stockItems ?? this.stockItems,
@@ -104,6 +112,8 @@ class InventoryLoaded extends InventoryState {
       countCritico: countCritico ?? this.countCritico,
       countProximo: countProximo ?? this.countProximo,
       countNormal: countNormal ?? this.countNormal,
+      isSearchingStock: isSearchingStock ?? this.isSearchingStock,
+      isSearchingBatches: isSearchingBatches ?? this.isSearchingBatches,
     );
   }
 
@@ -128,6 +138,8 @@ class InventoryLoaded extends InventoryState {
     countCritico,
     countProximo,
     countNormal,
+    isSearchingStock,
+    isSearchingBatches,
   ];
 }
 

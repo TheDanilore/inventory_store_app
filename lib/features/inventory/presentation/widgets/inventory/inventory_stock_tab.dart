@@ -39,9 +39,14 @@ class _InventoryStockTabState extends State<InventoryStockTab>
 
   void _onSearchChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () {
+    _debounce = Timer(const Duration(milliseconds: 500), () {
       context.read<InventoryCubit>().setStockSearch(value);
     });
+  }
+
+  void _onSearchSubmitted(String value) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    context.read<InventoryCubit>().setStockSearch(value);
   }
 
   void _openProductDetail(InventoryStockItem item) {
@@ -55,47 +60,21 @@ class _InventoryStockTabState extends State<InventoryStockTab>
     super.build(context);
     return BlocBuilder<InventoryCubit, InventoryState>(
       builder: (context, state) {
-        if (state is InventoryInitial ||
-            (state is InventoryLoading && state is! InventoryLoaded)) {
+        final cubitState = context.read<InventoryCubit>().state;
+        final loadedState = state is InventoryLoaded
+            ? state
+            : (cubitState is InventoryLoaded ? cubitState : null);
+
+        if (loadedState == null) {
+          if (state is InventoryError) {
+            return Center(child: Text('Error: ${state.message}'));
+          }
           return const Center(
             child: CircularProgressIndicator(color: AppColors.primary),
           );
         }
 
-        final loadedState =
-            state is InventoryLoaded
-                ? state
-                : (state is InventoryLoading
-                    ? context.read<InventoryCubit>().state as InventoryLoaded?
-                    : null);
-
-        if (loadedState == null && state is InventoryError) {
-          return Center(child: Text('Error: ${state.message}'));
-        }
-
-        final currentState =
-            loadedState ??
-            const InventoryLoaded(
-              stockItems: [],
-              batchItems: [],
-              currentStockPage: 0,
-              totalStockPages: 1,
-              stockSearchText: '',
-              stockCategoryFilter: 'Todos',
-              categories: ['Todos'],
-              globalTotalVariants: 0,
-              globalTotalStock: 0,
-              globalLowStockCount: 0,
-              globalTotalCost: 0.0,
-              currentBatchPage: 0,
-              totalBatchPages: 1,
-              batchSearchText: '',
-              batchStatusFilter: 'Todos',
-              countVencido: 0,
-              countCritico: 0,
-              countProximo: 0,
-              countNormal: 0,
-            );
+        final currentState = loadedState;
 
         return Focus(
           autofocus: true,
@@ -190,7 +169,10 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                       focusNode: _searchFocusNode,
                       hint: 'Buscar producto o SKU... (presiona /)',
                       onChanged: _onSearchChanged,
+                      onSubmitted: _onSearchSubmitted,
+                      isLoading: state.isSearchingStock,
                       onClear: () {
+                        if (_debounce?.isActive ?? false) _debounce!.cancel();
                         _searchCtrl.clear();
                         cubit.setStockSearch('');
                       },
@@ -252,20 +234,30 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(15),
-                child:
-                    isLoading && state.stockItems.isEmpty
-                        ? const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primary,
-                          ),
-                        )
-                        : state.stockItems.isEmpty
-                        ? const AppEmptyState(
-                          icon: Icons.inventory_2_outlined,
-                          title: 'Sin Resultados',
-                          message: 'No hay productos con stock disponible',
-                        )
-                        : LayoutBuilder(
+                child: Column(
+                  children: [
+                    if (state.isSearchingStock)
+                      const SizedBox(
+                        height: 2,
+                        child: LinearProgressIndicator(
+                          backgroundColor: Colors.transparent,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    Expanded(
+                      child: (isLoading || state.isSearchingStock) && state.stockItems.isEmpty
+                          ? const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
+                            ),
+                          )
+                          : state.stockItems.isEmpty
+                          ? const AppEmptyState(
+                            icon: Icons.inventory_2_outlined,
+                            title: 'Sin Resultados',
+                            message: 'No hay productos con stock disponible',
+                          )
+                          : LayoutBuilder(
                           builder: (context, constraints) {
                             return SingleChildScrollView(
                               scrollDirection: Axis.vertical,
@@ -561,7 +553,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                                 .textSecondary,
                                                         onPressed:
                                                             () => context.push(
-                                                              '/admin/kardex?productId=${item.productId}&productName=${Uri.encodeComponent(item.productName)}',
+                                                              '/admin/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
                                                             ),
                                                         splashRadius: 16,
                                                       ),
@@ -597,6 +589,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                             );
                           },
                         ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -715,7 +710,10 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                     focusNode: _searchFocusNode,
                     hint: 'Buscar producto o SKU... (presiona /)',
                     onChanged: _onSearchChanged,
+                    onSubmitted: _onSearchSubmitted,
+                    isLoading: state.isSearchingStock,
                     onClear: () {
+                      if (_debounce?.isActive ?? false) _debounce!.cancel();
                       _searchCtrl.clear();
                       cubit.setStockSearch('');
                     },
@@ -757,6 +755,18 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           ),
         ),
 
+        // ── Indicador no destructivo de búsqueda ──
+        if (state.isSearchingStock)
+          const SliverToBoxAdapter(
+            child: SizedBox(
+              height: 2,
+              child: LinearProgressIndicator(
+                backgroundColor: Colors.transparent,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+
         // ── Resumen Resultados ──
         if (!isLoading && state.stockItems.isNotEmpty)
           SliverToBoxAdapter(
@@ -787,7 +797,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           ),
 
         // ── Lista Principal ──
-        if (isLoading && state.stockItems.isEmpty)
+        if ((isLoading || state.isSearchingStock) && state.stockItems.isEmpty)
           const SliverPadding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverToBoxAdapter(child: _InventoryStockSkeleton()),
@@ -946,16 +956,20 @@ class _SearchField extends StatelessWidget {
   final FocusNode? focusNode;
   final String hint;
   final ValueChanged<String> onChanged;
+  final ValueChanged<String>? onSubmitted;
   final VoidCallback onClear;
   final VoidCallback onScan;
+  final bool isLoading;
 
   const _SearchField({
     required this.controller,
     this.focusNode,
     required this.hint,
     required this.onChanged,
+    this.onSubmitted,
     required this.onClear,
     required this.onScan,
+    this.isLoading = false,
   });
 
   @override
@@ -964,6 +978,7 @@ class _SearchField extends StatelessWidget {
       controller: controller,
       focusNode: focusNode,
       onChanged: onChanged,
+      onSubmitted: onSubmitted,
       style: const TextStyle(fontSize: 13.5),
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
@@ -980,12 +995,31 @@ class _SearchField extends StatelessWidget {
         suffixIcon: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (controller.text.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.close_rounded, size: 18),
-                color: AppColors.textSecondary,
-                onPressed: onClear,
+            if (isLoading)
+              const Padding(
+                padding: EdgeInsets.only(right: 6),
+                child: SizedBox(
+                  width: 15,
+                  height: 15,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, val, _) {
+                if (val.text.isNotEmpty && !isLoading) {
+                  return IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    color: AppColors.textSecondary,
+                    onPressed: onClear,
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
               color: AppColors.primary,

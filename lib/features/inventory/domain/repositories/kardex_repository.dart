@@ -9,6 +9,7 @@ abstract class KardexRepository {
     String typeFilter = 'ALL',
     String searchText = '',
     String? productId,
+    String? variantId,
     int page = 0,
     int pageSize = 12,
   });
@@ -19,5 +20,6 @@ abstract class KardexRepository {
     String typeFilter = 'ALL',
     String searchText = '',
     String? productId,
+    String? variantId,
   });
 }

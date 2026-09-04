@@ -17,6 +17,7 @@ class KardexRepositoryImpl implements KardexRepository {
     String typeFilter = 'ALL',
     String searchText = '',
     String? productId,
+    String? variantId,
   }) {
     if (startDate != null) {
       query = query.gte('created_at', startDate.toIso8601String());
@@ -39,8 +40,10 @@ class KardexRepositoryImpl implements KardexRepository {
       query = query.not('order_id', 'is', null).eq('reason', 'RETURN');
     }
 
-    // Filtrado estricto por producto indexado
-    if (productId != null && productId.isNotEmpty) {
+    // Filtrado estricto por variante (índice directo O(1)) y/o producto
+    if (variantId != null && variantId.isNotEmpty) {
+      query = query.eq('variant_id', variantId);
+    } else if (productId != null && productId.isNotEmpty) {
       query = query.eq('product_variants.product_id', productId);
     } else if (searchText.isNotEmpty) {
       // Usamos el filtro de tabla foránea soportado por PostgREST para ilike.
@@ -58,6 +61,7 @@ class KardexRepositoryImpl implements KardexRepository {
     String typeFilter = 'ALL',
     String searchText = '',
     String? productId,
+    String? variantId,
     int page = 0,
     int pageSize = 12,
   }) async {
@@ -82,6 +86,7 @@ class KardexRepositoryImpl implements KardexRepository {
       typeFilter: typeFilter,
       searchText: searchText,
       productId: productId,
+      variantId: variantId,
     );
 
     final start = page * pageSize;
@@ -110,6 +115,7 @@ class KardexRepositoryImpl implements KardexRepository {
     String typeFilter = 'ALL',
     String searchText = '',
     String? productId,
+    String? variantId,
   }) async {
     var query = _supabase.from('inventory_movements').select('''
       *,
@@ -132,6 +138,7 @@ class KardexRepositoryImpl implements KardexRepository {
       typeFilter: typeFilter,
       searchText: searchText,
       productId: productId,
+      variantId: variantId,
     );
 
     final response = await query.order('created_at', ascending: false);

@@ -12,6 +12,12 @@ class KardexMovementEntity extends Equatable {
   final double totalCost;
   final String variantId;
   final String warehouseId;
+  final String? productName;
+  final String? attrsText;
+  final String? sku;
+  final String? imageUrl;
+  final String? warehouseName;
+  final String? batchNumber;
 
   const KardexMovementEntity({
     required this.id,
@@ -25,6 +31,12 @@ class KardexMovementEntity extends Equatable {
     required this.totalCost,
     required this.variantId,
     required this.warehouseId,
+    this.productName,
+    this.attrsText,
+    this.sku,
+    this.imageUrl,
+    this.warehouseName,
+    this.batchNumber,
   });
 
   @override
@@ -40,5 +52,11 @@ class KardexMovementEntity extends Equatable {
     totalCost,
     variantId,
     warehouseId,
+    productName,
+    attrsText,
+    sku,
+    imageUrl,
+    warehouseName,
+    batchNumber,
   ];
 }

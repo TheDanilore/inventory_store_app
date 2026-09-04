@@ -1,11 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
+import 'package:inventory_store_app/features/inventory/domain/usecases/get_batches_paginated_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_general_stock_metrics_usecase.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_general_stock_paginated_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_batch_metrics_usecase.dart';
-import 'package:inventory_store_app/features/inventory/domain/usecases/get_batches_paginated_usecase.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_state.dart';
 
 @injectable
@@ -109,7 +110,7 @@ class InventoryCubit extends Cubit<InventoryState> {
     final currentState = _getLoadedState();
     final targetPage = page ?? currentState.currentStockPage;
 
-    emit(const InventoryLoading());
+    emit(currentState.copyWith(isSearchingStock: true));
     try {
       final totalStockCount = await _getGeneralStockPaginated.getTotalCount(
         search: currentState.stockSearchText,
@@ -132,10 +133,12 @@ class InventoryCubit extends Cubit<InventoryState> {
           currentStockPage: validPage,
           totalStockPages: totalPages,
           stockItems: stockItems,
+          isSearchingStock: false,
         ),
       );
     } catch (e) {
-      emit(InventoryError(e.toString()));
+      final stateNow = _getLoadedState();
+      emit(stateNow.copyWith(isSearchingStock: false));
     }
   }
 
@@ -149,19 +152,32 @@ class InventoryCubit extends Cubit<InventoryState> {
 
   void setStockSearch(String text) {
     final currentState = _getLoadedState();
-    emit(currentState.copyWith(stockSearchText: text, currentStockPage: 0));
+    emit(currentState.copyWith(
+      stockSearchText: text,
+      currentStockPage: 0,
+      isSearchingStock: true,
+    ));
     fetchStockPage(page: 0);
   }
 
   void setStockCategory(String cat) {
     final currentState = _getLoadedState();
-    emit(currentState.copyWith(stockCategoryFilter: cat, currentStockPage: 0));
+    emit(currentState.copyWith(
+      stockCategoryFilter: cat,
+      currentStockPage: 0,
+      isSearchingStock: true,
+    ));
     fetchStockPage(page: 0);
   }
 
   Future<void> initBatchesTab() async {
     final currentState = _getLoadedState();
-    emit(const InventoryLoading());
+    if (currentState.batchItems.isEmpty) {
+      emit(const InventoryLoading());
+    } else {
+      emit(currentState.copyWith(isSearchingBatches: true));
+    }
+
     try {
       final metrics = await _getBatchMetrics(
         search: currentState.batchSearchText,
@@ -182,8 +198,9 @@ class InventoryCubit extends Cubit<InventoryState> {
         statusFilter: currentState.batchStatusFilter,
       );
 
+      final updatedState = _getLoadedState();
       emit(
-        currentState.copyWith(
+        updatedState.copyWith(
           countVencido: metrics['vencido'] ?? 0,
           countCritico: metrics['critico'] ?? 0,
           countProximo: metrics['proximo'] ?? 0,
@@ -191,6 +208,7 @@ class InventoryCubit extends Cubit<InventoryState> {
           currentBatchPage: 0,
           totalBatchPages: totalPages,
           batchItems: batchItems,
+          isSearchingBatches: false,
         ),
       );
     } catch (e) {
@@ -202,7 +220,7 @@ class InventoryCubit extends Cubit<InventoryState> {
     final currentState = _getLoadedState();
     final targetPage = page ?? currentState.currentBatchPage;
 
-    emit(const InventoryLoading());
+    emit(currentState.copyWith(isSearchingBatches: true));
     try {
       final totalBatchCount = await _getBatchesPaginated.getTotalCount(
         search: currentState.batchSearchText,
@@ -225,10 +243,12 @@ class InventoryCubit extends Cubit<InventoryState> {
           currentBatchPage: validPage,
           totalBatchPages: totalPages,
           batchItems: batchItems,
+          isSearchingBatches: false,
         ),
       );
     } catch (e) {
-      emit(InventoryError(e.toString()));
+      final stateNow = _getLoadedState();
+      emit(stateNow.copyWith(isSearchingBatches: false));
     }
   }
 
@@ -242,12 +262,38 @@ class InventoryCubit extends Cubit<InventoryState> {
 
   void setBatchSearch(String text) async {
     final currentState = _getLoadedState();
-    emit(currentState.copyWith(batchSearchText: text, currentBatchPage: 0));
+    emit(currentState.copyWith(
+      batchSearchText: text,
+      currentBatchPage: 0,
+      isSearchingBatches: true,
+    ));
 
-    // Al buscar, se actualizan las metricas ademas de la pagina
-    emit(const InventoryLoading());
     try {
-      final metrics = await _getBatchMetrics(search: text);
+      final metricsFuture = _getBatchMetrics(search: text);
+      final totalBatchCountFuture = _getBatchesPaginated.getTotalCount(
+        search: text,
+        statusFilter: currentState.batchStatusFilter,
+      );
+      final batchItemsFuture = _getBatchesPaginated(
+        page: 0,
+        pageSize: _batchPageSize,
+        search: text,
+        statusFilter: currentState.batchStatusFilter,
+      );
+
+      final results = await Future.wait([
+        metricsFuture,
+        totalBatchCountFuture,
+        batchItemsFuture,
+      ]);
+
+      final metrics = results[0] as Map<String, int>;
+      final totalBatchCount = results[1] as int;
+      final batchItems = results[2] as List<InventoryBatchItem>;
+
+      final totalPages =
+          totalBatchCount == 0 ? 1 : (totalBatchCount / _batchPageSize).ceil();
+
       final updatedState = _getLoadedState();
       emit(
         updatedState.copyWith(
@@ -255,17 +301,25 @@ class InventoryCubit extends Cubit<InventoryState> {
           countCritico: metrics['critico'] ?? 0,
           countProximo: metrics['proximo'] ?? 0,
           countNormal: metrics['normal'] ?? 0,
+          currentBatchPage: 0,
+          totalBatchPages: totalPages,
+          batchItems: batchItems,
+          isSearchingBatches: false,
         ),
       );
-      await fetchBatchPage(page: 0);
     } catch (e) {
-      emit(InventoryError(e.toString()));
+      final updatedState = _getLoadedState();
+      emit(updatedState.copyWith(isSearchingBatches: false));
     }
   }
 
   void setBatchStatus(String status) {
     final currentState = _getLoadedState();
-    emit(currentState.copyWith(batchStatusFilter: status, currentBatchPage: 0));
+    emit(currentState.copyWith(
+      batchStatusFilter: status,
+      currentBatchPage: 0,
+      isSearchingBatches: true,
+    ));
     fetchBatchPage(page: 0);
   }
 }

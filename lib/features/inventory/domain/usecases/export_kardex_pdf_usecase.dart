@@ -14,6 +14,7 @@ class ExportKardexPdfUseCase {
     String typeFilter = 'ALL',
     String searchText = '',
     String? productId,
+    String? variantId,
   }) async {
     final movements = await repository.getAllKardexMovements(
       startDate: startDate,
@@ -21,6 +22,7 @@ class ExportKardexPdfUseCase {
       typeFilter: typeFilter,
       searchText: searchText,
       productId: productId,
+      variantId: variantId,
     );
 
     await KardexPdfGenerator.exportKardexToPdf(

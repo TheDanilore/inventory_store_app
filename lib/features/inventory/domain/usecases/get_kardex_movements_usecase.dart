@@ -15,6 +15,7 @@ class GetKardexMovementsUseCase {
     String typeFilter = 'ALL',
     String searchText = '',
     String? productId,
+    String? variantId,
     int page = 0,
     int pageSize = 12,
   }) {
@@ -24,6 +25,7 @@ class GetKardexMovementsUseCase {
       typeFilter: typeFilter,
       searchText: searchText,
       productId: productId,
+      variantId: variantId,
       page: page,
       pageSize: pageSize,
     );

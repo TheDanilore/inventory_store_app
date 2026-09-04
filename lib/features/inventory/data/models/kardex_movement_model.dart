@@ -122,6 +122,12 @@ class KardexMovementModel {
       totalCost: movement.totalCost ?? 0.0,
       variantId: movement.variantId,
       warehouseId: movement.warehouseId,
+      productName: productName,
+      attrsText: attrsText,
+      sku: sku,
+      imageUrl: imageUrl,
+      warehouseName: warehouseName,
+      batchNumber: batchNumber,
     );
   }
 }

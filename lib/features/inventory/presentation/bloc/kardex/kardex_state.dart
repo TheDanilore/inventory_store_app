@@ -19,10 +19,13 @@ class KardexLoaded extends KardexState {
   final String typeFilter;
   final String searchText;
   final String? productId;
+  final String? variantId;
+  final String? variantName;
   final int currentPage;
   final int totalCount;
   final int totalPages;
   final bool isExporting;
+  final bool isSearching;
 
   const KardexLoaded({
     required this.movements,
@@ -31,10 +34,13 @@ class KardexLoaded extends KardexState {
     required this.typeFilter,
     required this.searchText,
     this.productId,
+    this.variantId,
+    this.variantName,
     required this.currentPage,
     required this.totalCount,
     required this.totalPages,
     required this.isExporting,
+    this.isSearching = false,
   });
 
   KardexLoaded copyWith({
@@ -44,11 +50,15 @@ class KardexLoaded extends KardexState {
     String? typeFilter,
     String? searchText,
     String? productId,
+    String? variantId,
+    String? variantName,
     bool clearProductId = false,
+    bool clearVariantId = false,
     int? currentPage,
     int? totalCount,
     int? totalPages,
     bool? isExporting,
+    bool? isSearching,
     bool clearDateRange = false,
   }) {
     return KardexLoaded(
@@ -58,10 +68,13 @@ class KardexLoaded extends KardexState {
       typeFilter: typeFilter ?? this.typeFilter,
       searchText: searchText ?? this.searchText,
       productId: clearProductId ? null : (productId ?? this.productId),
+      variantId: (clearProductId || clearVariantId) ? null : (variantId ?? this.variantId),
+      variantName: (clearProductId || clearVariantId) ? null : (variantName ?? this.variantName),
       currentPage: currentPage ?? this.currentPage,
       totalCount: totalCount ?? this.totalCount,
       totalPages: totalPages ?? this.totalPages,
       isExporting: isExporting ?? this.isExporting,
+      isSearching: isSearching ?? this.isSearching,
     );
   }
 
@@ -73,10 +86,13 @@ class KardexLoaded extends KardexState {
     typeFilter,
     searchText,
     productId,
+    variantId,
+    variantName,
     currentPage,
     totalCount,
     totalPages,
     isExporting,
+    isSearching,
   ];
 }
 

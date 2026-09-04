@@ -472,7 +472,7 @@ class InventoryBatchDetailPane extends StatelessWidget {
         ElevatedButton.icon(
           onPressed: () {
             context.push(
-              '/admin/kardex?productId=${batch.productId}&productName=${Uri.encodeComponent(batch.productName ?? '')}',
+              '/admin/kardex?productId=${batch.productId}&variantId=${batch.variantId}&productName=${Uri.encodeComponent(batch.productName ?? '')}&variantName=${Uri.encodeComponent(batch.variantAttrs ?? batch.sku ?? '')}',
             );
           },
           icon: const Icon(Icons.receipt_long_rounded, size: 18),
