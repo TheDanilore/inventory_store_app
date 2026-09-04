@@ -1,8 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_state.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_stock_card.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -20,6 +23,7 @@ class InventoryStockTab extends StatefulWidget {
 class _InventoryStockTabState extends State<InventoryStockTab>
     with AutomaticKeepAliveClientMixin {
   final _searchCtrl = TextEditingController();
+  final _searchFocusNode = FocusNode();
   Timer? _debounce;
 
   @override
@@ -28,43 +32,22 @@ class _InventoryStockTabState extends State<InventoryStockTab>
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _searchFocusNode.dispose();
     _debounce?.cancel();
     super.dispose();
   }
 
   void _onSearchChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
+    _debounce = Timer(const Duration(milliseconds: 400), () {
       context.read<InventoryCubit>().setStockSearch(value);
     });
   }
 
-  Future<void> _fetchProductAndSelect(String productId) async {
-    // Aquí idealmente usamos un servicio para cargar el ProductModel completo por ID.
-    // Como el InventoryStockItem tiene datos parciales, delegaremos esto
-    // creando un mock provisional de ProductModel o buscando en un ProductCubit,
-    // pero como InventoryStockItem tiene productId, podemos llamar al Cubit para obtener el producto.
-    // Wait, el cubit de inventario tiene `stockItems` pero no son `ProductModel`.
-    // Para simplificar, ProductDetailScreen requiere un ProductModel completo.
-    // Vamos a buscar el producto usando el InventoryCubit o un servicio.
-    try {
-      // NOTE: This functionality should probably be moved to a UseCase
-      // or handled differently in the Cubit. For now we will assume the selected product
-      // logic is simplified or we fetch it from the catalog module's repository directly.
-      // Final Implementation requires fetching ProductModel, which is out of scope of this tab.
-      // To not break the code, we just simulate loading for now:
-      if (mounted) {
-        setState(() {
-          //_selectedProduct = null; // Update logic later if needed
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error al cargar producto: $e')));
-      }
-    }
+  void _openProductDetail(InventoryStockItem item) {
+    context.push(
+      '/admin/product/${item.productId}?variantId=${item.variantId}',
+    );
   }
 
   @override
@@ -73,16 +56,17 @@ class _InventoryStockTabState extends State<InventoryStockTab>
     return BlocBuilder<InventoryCubit, InventoryState>(
       builder: (context, state) {
         if (state is InventoryInitial ||
-            state is InventoryLoading && state is! InventoryLoaded) {
-          return const Center(child: CircularProgressIndicator());
+            (state is InventoryLoading && state is! InventoryLoaded)) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          );
         }
 
         final loadedState =
             state is InventoryLoaded
                 ? state
                 : (state is InventoryLoading
-                    ? context.read<InventoryCubit>().state
-                        as InventoryLoaded? // Try to get previous loaded state
+                    ? context.read<InventoryCubit>().state as InventoryLoaded?
                     : null);
 
         if (loadedState == null && state is InventoryError) {
@@ -113,20 +97,40 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               countNormal: 0,
             );
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final isDesktop = constraints.maxWidth >= 900;
-
-            if (isDesktop) {
-              return _buildDesktopLayout(
-                currentState,
-                state is InventoryLoading,
-                cubit: context.read<InventoryCubit>(),
-              );
+        return Focus(
+          autofocus: true,
+          onKeyEvent: (node, event) {
+            if (event is KeyDownEvent) {
+              if (event.logicalKey == LogicalKeyboardKey.slash &&
+                  !_searchFocusNode.hasFocus) {
+                _searchFocusNode.requestFocus();
+                return KeyEventResult.handled;
+              }
+              if (event.logicalKey == LogicalKeyboardKey.escape) {
+                if (_searchCtrl.text.isNotEmpty) {
+                  _searchCtrl.clear();
+                  context.read<InventoryCubit>().setStockSearch('');
+                  return KeyEventResult.handled;
+                }
+              }
             }
-
-            return _buildListContent(currentState, state is InventoryLoading);
+            return KeyEventResult.ignored;
           },
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 900;
+
+              if (isDesktop) {
+                return _buildDesktopLayout(
+                  currentState,
+                  state is InventoryLoading,
+                  cubit: context.read<InventoryCubit>(),
+                );
+              }
+
+              return _buildListContent(currentState, state is InventoryLoading);
+            },
+          ),
         );
       },
     );
@@ -142,57 +146,49 @@ class _InventoryStockTabState extends State<InventoryStockTab>
       children: [
         // ── Métricas y Filtros ──
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Métricas responsive usando Wrap
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
+              // Métricas responsive con diseño alineado a Linear
+              Row(
                 children: [
-                  SizedBox(
-                    width: 200,
-                    child: _MetricCard(
-                      label: 'Valor Inv.',
-                      value: 'S/ ${state.globalTotalCost.toStringAsFixed(2)}',
-                      icon: Icons.monetization_on_rounded,
-                      color: AppColors.primary,
-                    ),
+                  _MetricCard(
+                    label: 'Valor Total del Inv.',
+                    value: 'S/ ${state.globalTotalCost.toStringAsFixed(2)}',
+                    icon: Icons.monetization_on_rounded,
+                    color: AppColors.primary,
                   ),
-                  SizedBox(
-                    width: 200,
-                    child: _MetricCard(
-                      label: 'Stock total',
-                      value: '${state.globalTotalStock}',
-                      icon: Icons.inventory_rounded,
-                      color: AppColors.teal,
-                    ),
+                  const SizedBox(width: 12),
+                  _MetricCard(
+                    label: 'Stock Total',
+                    value: '${state.globalTotalStock} uds.',
+                    icon: Icons.inventory_rounded,
+                    color: AppColors.teal,
                   ),
-                  SizedBox(
-                    width: 200,
-                    child: _MetricCard(
-                      label: 'Bajo stock',
-                      value: '${state.globalLowStockCount}',
-                      icon: Icons.warning_amber_rounded,
-                      color:
-                          state.globalLowStockCount > 0
-                              ? AppColors.warning
-                              : AppColors.success,
-                      highlight: state.globalLowStockCount > 0,
-                    ),
+                  const SizedBox(width: 12),
+                  _MetricCard(
+                    label: 'Productos Bajo Stock',
+                    value: '${state.globalLowStockCount}',
+                    icon: Icons.warning_amber_rounded,
+                    color:
+                        state.globalLowStockCount > 0
+                            ? AppColors.warning
+                            : AppColors.success,
+                    highlight: state.globalLowStockCount > 0,
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              // Buscador y Categorías
+              const SizedBox(height: 14),
+              // Buscador y Categorías en una sola línea
               Row(
                 children: [
                   Expanded(
-                    flex: 3,
+                    flex: 4,
                     child: _SearchField(
                       controller: _searchCtrl,
-                      hint: 'Buscar producto o SKU...',
+                      focusNode: _searchFocusNode,
+                      hint: 'Buscar producto o SKU... (presiona /)',
                       onChanged: _onSearchChanged,
                       onClear: () {
                         _searchCtrl.clear();
@@ -211,9 +207,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                     ),
                   ),
                   if (state.categories.isNotEmpty) ...[
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 14),
                     Expanded(
-                      flex: 7,
+                      flex: 6,
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
@@ -240,7 +236,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           ),
         ),
 
-        // ── Tabla de Datos ──
+        // ── Tabla de Datos de Alta Densidad ──
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -248,24 +244,21 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AppColors.border.withValues(alpha: 0.5),
+                  color: AppColors.border.withValues(alpha: 0.8),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 24,
-                    spreadRadius: -4,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+                boxShadow: AppColors.cardShadow(opacity: 0.02),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                borderRadius: BorderRadius.circular(15),
                 child:
                     isLoading && state.stockItems.isEmpty
-                        ? const Center(child: CircularProgressIndicator())
+                        ? const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
+                          ),
+                        )
                         : state.stockItems.isEmpty
                         ? const AppEmptyState(
                           icon: Icons.inventory_2_outlined,
@@ -285,12 +278,12 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                   child: DataTable(
                                     headingRowColor: WidgetStateProperty.all(
                                       AppColors.background.withValues(
-                                        alpha: 0.5,
+                                        alpha: 0.7,
                                       ),
                                     ),
-                                    dataRowMinHeight: 68,
-                                    dataRowMaxHeight: 68,
-                                    columnSpacing: 24,
+                                    dataRowMinHeight: 64,
+                                    dataRowMaxHeight: 64,
+                                    columnSpacing: 20,
                                     showBottomBorder: true,
                                     columns: const [
                                       DataColumn(
@@ -298,6 +291,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                           'Producto',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w700,
+                                            fontSize: 12.5,
                                             color: AppColors.textSecondary,
                                           ),
                                         ),
@@ -307,24 +301,37 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                           'SKU / Categoría',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w700,
+                                            fontSize: 12.5,
                                             color: AppColors.textSecondary,
                                           ),
                                         ),
                                       ),
                                       DataColumn(
                                         label: Text(
-                                          'Costo / Precio',
+                                          'Costo / Venta',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w700,
+                                            fontSize: 12.5,
                                             color: AppColors.textSecondary,
                                           ),
                                         ),
                                       ),
                                       DataColumn(
                                         label: Text(
-                                          'Stock',
+                                          'Disponibilidad',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w700,
+                                            fontSize: 12.5,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Text(
+                                          'Acciones',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12.5,
                                             color: AppColors.textSecondary,
                                           ),
                                         ),
@@ -343,59 +350,60 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                   )) {
                                                     return AppColors.primary
                                                         .withValues(
-                                                          alpha: 0.04,
+                                                          alpha: 0.03,
                                                         );
                                                   }
                                                   return null;
                                                 }),
-                                            onSelectChanged: (_) {
-                                              _fetchProductAndSelect(
-                                                item.productId,
-                                              );
-                                            },
                                             cells: [
                                               DataCell(
-                                                Row(
-                                                  children: [
-                                                    _buildAvatar(
-                                                      item.imageUrl,
-                                                      size: 44,
-                                                    ),
-                                                    const SizedBox(width: 14),
-                                                    Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment
-                                                              .center,
-                                                      children: [
-                                                        Text(
-                                                          item.productName,
-                                                          style: const TextStyle(
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                            fontSize: 14,
-                                                            color:
-                                                                AppColors
-                                                                    .textPrimary,
-                                                          ),
-                                                        ),
-                                                        if (item
-                                                            .attrsText
-                                                            .isNotEmpty)
+                                                InkWell(
+                                                  onTap:
+                                                      () =>
+                                                          _openProductDetail(item),
+                                                  child: Row(
+                                                    children: [
+                                                      _buildAvatar(
+                                                        item.imageUrl,
+                                                        size: 42,
+                                                      ),
+                                                      const SizedBox(width: 12),
+                                                      Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .center,
+                                                        children: [
                                                           Text(
-                                                            item.attrsText,
+                                                            item.productName,
                                                             style: const TextStyle(
-                                                              fontSize: 12,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              fontSize: 13.5,
                                                               color:
                                                                   AppColors
-                                                                      .textSecondary,
+                                                                      .textPrimary,
                                                             ),
                                                           ),
-                                                      ],
-                                                    ),
-                                                  ],
+                                                          if (item
+                                                              .attrsText
+                                                              .isNotEmpty)
+                                                            Text(
+                                                              item.attrsText,
+                                                              style: const TextStyle(
+                                                                fontSize: 11.5,
+                                                                color:
+                                                                    AppColors
+                                                                        .textSecondary,
+                                                              ),
+                                                            ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                               DataCell(
@@ -412,7 +420,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                           : 'Sin SKU',
                                                       style: const TextStyle(
                                                         fontWeight:
-                                                            FontWeight.w500,
+                                                            FontWeight.w600,
+                                                        fontSize: 12.5,
+                                                        fontFamily: 'monospace',
                                                         color:
                                                             AppColors
                                                                 .textPrimary,
@@ -421,7 +431,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                     Text(
                                                       item.category,
                                                       style: const TextStyle(
-                                                        fontSize: 12,
+                                                        fontSize: 11.5,
                                                         color:
                                                             AppColors
                                                                 .textSecondary,
@@ -438,19 +448,20 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                       MainAxisAlignment.center,
                                                   children: [
                                                     Text(
-                                                      'S/ ${item.unitCost.toStringAsFixed(2)}',
+                                                      'Costo: S/ ${item.unitCost.toStringAsFixed(2)}',
                                                       style: const TextStyle(
                                                         color:
                                                             AppColors
                                                                 .textSecondary,
-                                                        fontSize: 13,
+                                                        fontSize: 11.5,
                                                       ),
                                                     ),
                                                     Text(
-                                                      'S/ ${item.salePrice.toStringAsFixed(2)}',
+                                                      'Venta: S/ ${item.salePrice.toStringAsFixed(2)}',
                                                       style: const TextStyle(
                                                         fontWeight:
-                                                            FontWeight.w600,
+                                                            FontWeight.w700,
+                                                        fontSize: 13,
                                                         color:
                                                             AppColors
                                                                 .textPrimary,
@@ -463,8 +474,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                 Container(
                                                   padding:
                                                       const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 6,
+                                                        horizontal: 10,
+                                                        vertical: 4,
                                                       ),
                                                   decoration: BoxDecoration(
                                                     color:
@@ -473,26 +484,31 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                                 .withValues(
                                                                   alpha: 0.1,
                                                                 )
-                                                            : AppColors.success
+                                                            : AppColors.teal
                                                                 .withValues(
                                                                   alpha: 0.1,
                                                                 ),
                                                     borderRadius:
                                                         BorderRadius.circular(
-                                                          20,
+                                                          8,
                                                         ),
                                                     border: Border.all(
                                                       color:
                                                           isLowStock
                                                               ? AppColors
                                                                   .warning
-                                                              : AppColors
-                                                                  .success,
+                                                                  .withValues(
+                                                                    alpha: 0.25,
+                                                                  )
+                                                              : AppColors.teal
+                                                                  .withValues(
+                                                                    alpha: 0.25,
+                                                                  ),
                                                     ),
                                                   ),
                                                   child: Row(
                                                     mainAxisSize:
-                                                        MainAxisSize.min,
+                                                      MainAxisSize.min,
                                                     children: [
                                                       Icon(
                                                         isLowStock
@@ -500,30 +516,76 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                                 .warning_amber_rounded
                                                             : Icons
                                                                 .check_circle_outline_rounded,
-                                                        size: 14,
+                                                        size: 13,
                                                         color:
                                                             isLowStock
                                                                 ? AppColors
                                                                     .warning
                                                                 : AppColors
-                                                                    .success,
+                                                                    .tealDark,
                                                       ),
                                                       const SizedBox(width: 4),
                                                       Text(
-                                                        '${item.stock}',
+                                                        '${item.stock} uds.',
                                                         style: TextStyle(
                                                           fontWeight:
-                                                              FontWeight.bold,
+                                                              FontWeight.w800,
+                                                          fontSize: 12,
                                                           color:
                                                               isLowStock
                                                                   ? AppColors
                                                                       .warning
                                                                   : AppColors
-                                                                      .success,
+                                                                      .tealDark,
                                                         ),
                                                       ),
                                                     ],
                                                   ),
+                                                ),
+                                              ),
+                                              DataCell(
+                                                Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Tooltip(
+                                                      message: 'Ver en Kárdex',
+                                                      child: IconButton(
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .receipt_long_rounded,
+                                                          size: 17,
+                                                        ),
+                                                        color:
+                                                            AppColors
+                                                                .textSecondary,
+                                                        onPressed:
+                                                            () => context.push(
+                                                              '/admin/kardex',
+                                                            ),
+                                                        splashRadius: 16,
+                                                      ),
+                                                    ),
+                                                    Tooltip(
+                                                      message:
+                                                          'Ficha de Producto',
+                                                      child: IconButton(
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .open_in_new_rounded,
+                                                          size: 17,
+                                                        ),
+                                                        color:
+                                                            AppColors.primary,
+                                                        onPressed:
+                                                            () =>
+                                                                _openProductDetail(
+                                                                  item,
+                                                                ),
+                                                        splashRadius: 16,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ],
@@ -540,34 +602,21 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           ),
         ),
 
-        // ── Paginación ──
+        // ── Paginación Inferior ──
         if (!isLoading && state.totalStockPages > 1)
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -4),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              top: false,
-              child: AdminPageBlocks(
-                currentPage: state.currentStockPage,
-                totalPages: state.totalStockPages,
-                onPageChanged: (page) => cubit.setStockPage(page),
-              ),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            child: AdminPageBlocks(
+              currentPage: state.currentStockPage,
+              totalPages: state.totalStockPages,
+              onPageChanged: (page) => cubit.setStockPage(page),
             ),
           ),
       ],
     );
   }
 
-  Widget _buildAvatar(String? imageUrl, {double size = 44}) {
+  Widget _buildAvatar(String? imageUrl, {double size = 42}) {
     if (imageUrl != null && imageUrl.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
@@ -581,10 +630,6 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                 width: size,
                 height: size,
                 color: AppColors.background,
-                child: const Icon(
-                  Icons.image_outlined,
-                  color: AppColors.border,
-                ),
               ),
           errorWidget:
               (context, url, error) => Container(
@@ -603,19 +648,20 @@ class _InventoryStockTabState extends State<InventoryStockTab>
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.1),
+        color: AppColors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.border),
       ),
       child: const Icon(
         Icons.inventory_2_outlined,
         color: AppColors.primary,
-        size: 24,
+        size: 20,
       ),
     );
   }
 
   Widget _buildListContent(InventoryLoaded state, bool isLoading) {
+    final cubit = context.read<InventoryCubit>();
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -625,35 +671,29 @@ class _InventoryStockTabState extends State<InventoryStockTab>
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
               children: [
-                Expanded(
-                  child: _MetricCard(
-                    label: 'Valor Inv.',
-                    value: 'S/ ${state.globalTotalCost.toStringAsFixed(2)}',
-                    icon: Icons.monetization_on_rounded,
-                    color: AppColors.primary,
-                  ),
+                _MetricCard(
+                  label: 'Valor Inv.',
+                  value: 'S/ ${state.globalTotalCost.toStringAsFixed(2)}',
+                  icon: Icons.monetization_on_rounded,
+                  color: AppColors.primary,
                 ),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: _MetricCard(
-                    label: 'Stock total',
-                    value: '${state.globalTotalStock}',
-                    icon: Icons.inventory_rounded,
-                    color: AppColors.teal,
-                  ),
+                _MetricCard(
+                  label: 'Stock total',
+                  value: '${state.globalTotalStock}',
+                  icon: Icons.inventory_rounded,
+                  color: AppColors.teal,
                 ),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: _MetricCard(
-                    label: 'Bajo stock',
-                    value: '${state.globalLowStockCount}',
-                    icon: Icons.warning_amber_rounded,
-                    color:
-                        state.globalLowStockCount > 0
-                            ? AppColors.warning
-                            : AppColors.success,
-                    highlight: state.globalLowStockCount > 0,
-                  ),
+                _MetricCard(
+                  label: 'Bajo stock',
+                  value: '${state.globalLowStockCount}',
+                  icon: Icons.warning_amber_rounded,
+                  color:
+                      state.globalLowStockCount > 0
+                          ? AppColors.warning
+                          : AppColors.success,
+                  highlight: state.globalLowStockCount > 0,
                 ),
               ],
             ),
@@ -666,17 +706,18 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           delegate: _StickyStockFiltersDelegate(
             child: Container(
               color: AppColors.background,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _SearchField(
                     controller: _searchCtrl,
-                    hint: 'Buscar producto o SKU...',
+                    focusNode: _searchFocusNode,
+                    hint: 'Buscar producto o SKU... (presiona /)',
                     onChanged: _onSearchChanged,
                     onClear: () {
                       _searchCtrl.clear();
-                      context.read<InventoryCubit>().setStockSearch('');
+                      cubit.setStockSearch('');
                     },
                     onScan: () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -690,7 +731,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                     },
                   ),
                   if (state.categories.isNotEmpty) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -703,10 +744,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                 child: _CategoryPill(
                                   label: cat,
                                   isSelected: isSelected,
-                                  onTap:
-                                      () => context
-                                          .read<InventoryCubit>()
-                                          .setStockCategory(cat),
+                                  onTap: () => cubit.setStockCategory(cat),
                                 ),
                               );
                             }).toList(),
@@ -723,20 +761,20 @@ class _InventoryStockTabState extends State<InventoryStockTab>
         if (!isLoading && state.stockItems.isNotEmpty)
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Resultados',
-                    style: TextStyle(
-                      fontSize: 14,
+                  Text(
+                    'Productos (${state.stockItems.length})',
+                    style: const TextStyle(
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),
                   Text(
-                    '${(state.currentStockPage * 8) + 1}–${((state.currentStockPage * 8) + state.stockItems.length)}',
+                    'Página ${state.currentStockPage + 1} de ${state.totalStockPages}',
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
@@ -769,14 +807,17 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               16,
               0,
               16,
-              state.totalStockPages > 1 ? 100 : 16,
+              state.totalStockPages > 1 ? 90 : 16,
             ),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, i) {
                 final item = state.stockItems[i];
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: InventoryStockCard(item: item),
+                  child: InventoryStockCard(
+                    item: item,
+                    onTap: () => _openProductDetail(item),
+                  ),
                 );
               }, childCount: state.stockItems.length),
             ),
@@ -790,8 +831,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               child: AdminPageBlocks(
                 currentPage: state.currentStockPage,
                 totalPages: state.totalStockPages,
-                onPageChanged:
-                    (page) => context.read<InventoryCubit>().setStockPage(page),
+                onPageChanged: (page) => cubit.setStockPage(page),
               ),
             ),
           ),
@@ -801,18 +841,17 @@ class _InventoryStockTabState extends State<InventoryStockTab>
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// DELEGATES
+// DELEGATES & WIDGETS
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _StickyStockFiltersDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
-
   _StickyStockFiltersDelegate({required this.child});
 
   @override
-  double get minExtent => 130.0;
+  double get minExtent => 110.0;
   @override
-  double get maxExtent => 130.0;
+  double get maxExtent => 110.0;
 
   @override
   Widget build(
@@ -824,14 +863,8 @@ class _StickyStockFiltersDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  bool shouldRebuild(_StickyStockFiltersDelegate oldDelegate) {
-    return true;
-  }
+  bool shouldRebuild(_StickyStockFiltersDelegate oldDelegate) => true;
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-// WIDGETS AUXILIARES
-// ══════════════════════════════════════════════════════════════════════════════
 
 class _MetricCard extends StatelessWidget {
   final String label;
@@ -850,60 +883,59 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors:
-              highlight
-                  ? [color.withValues(alpha: 0.9), color]
-                  : [
-                    color.withValues(alpha: 0.15),
-                    color.withValues(alpha: 0.05),
-                  ],
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: highlight ? color : AppColors.border,
+            width: highlight ? 1.5 : 1,
+          ),
+          boxShadow: AppColors.cardShadow(opacity: 0.02),
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: highlight ? color : color.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: highlight ? Colors.white : color),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color:
-                        highlight
-                            ? Colors.white.withValues(alpha: 0.9)
-                            : color.withValues(alpha: 0.9),
-                    fontWeight: FontWeight.w700,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
               ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: highlight ? Colors.white : color,
-              height: 1,
+              child: Icon(icon, size: 16, color: color),
             ),
-          ),
-        ],
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: highlight ? color : AppColors.textPrimary,
+                      height: 1.1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -911,6 +943,7 @@ class _MetricCard extends StatelessWidget {
 
 class _SearchField extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final String hint;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
@@ -918,6 +951,7 @@ class _SearchField extends StatelessWidget {
 
   const _SearchField({
     required this.controller,
+    this.focusNode,
     required this.hint,
     required this.onChanged,
     required this.onClear,
@@ -928,8 +962,9 @@ class _SearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       onChanged: onChanged,
-      style: const TextStyle(fontSize: 14),
+      style: const TextStyle(fontSize: 13.5),
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
         hintText: hint,
@@ -939,7 +974,7 @@ class _SearchField extends StatelessWidget {
         ),
         prefixIcon: const Icon(
           Icons.search_rounded,
-          size: 20,
+          size: 19,
           color: AppColors.textSecondary,
         ),
         suffixIcon: Row(
@@ -952,7 +987,7 @@ class _SearchField extends StatelessWidget {
                 onPressed: onClear,
               ),
             IconButton(
-              icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
+              icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
               color: AppColors.primary,
               onPressed: onScan,
             ),
@@ -961,20 +996,20 @@ class _SearchField extends StatelessWidget {
         filled: true,
         fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
+          horizontal: 14,
+          vertical: 12,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.primary),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
       ),
     );
@@ -1000,8 +1035,8 @@ class _CategoryPill extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           decoration: BoxDecoration(
             color:
                 isSelected
@@ -1012,14 +1047,14 @@ class _CategoryPill extends StatelessWidget {
               color:
                   isSelected
                       ? AppColors.primary
-                      : AppColors.primary.withValues(alpha: 0.1),
+                      : AppColors.primary.withValues(alpha: 0.12),
             ),
           ),
           child: Center(
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12.5,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                 color: isSelected ? Colors.white : AppColors.primary,
               ),
@@ -1040,40 +1075,31 @@ class _InventoryStockSkeleton extends StatelessWidget {
       padding: EdgeInsets.zero,
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
-      itemCount: 6,
+      itemCount: 5,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (_, _) {
         return Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
             children: [
-              const AppShimmer(width: 56, height: 56, borderRadius: 12),
+              const AppShimmer(width: 48, height: 48, borderRadius: 10),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
-                    AppShimmer(width: 150, height: 16, borderRadius: 4),
+                    AppShimmer(width: 140, height: 16, borderRadius: 4),
                     SizedBox(height: 6),
-                    AppShimmer(width: 100, height: 12, borderRadius: 4),
-                    SizedBox(height: 6),
-                    AppShimmer(width: 80, height: 12, borderRadius: 4),
+                    AppShimmer(width: 90, height: 12, borderRadius: 4),
                   ],
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: const [
-                  AppShimmer(width: 60, height: 24, borderRadius: 12),
-                  SizedBox(height: 8),
-                  AppShimmer(width: 40, height: 14, borderRadius: 4),
-                ],
-              ),
+              const AppShimmer(width: 60, height: 22, borderRadius: 8),
             ],
           ),
         );
