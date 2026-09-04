@@ -140,13 +140,52 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          entry.supplierName ?? 'Sin proveedor',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                entry.supplierName ?? 'Sin proveedor',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            if (entry.paymentMode != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: entry.paymentMode == 'CRÉDITO'
+                                      ? Colors.purple.shade50
+                                      : AppColors.teal.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: entry.paymentMode == 'CRÉDITO'
+                                        ? Colors.purple.shade200
+                                        : AppColors.teal.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  entry.paymentMode == 'CONTADO'
+                                      ? 'Al Contado'
+                                      : entry.paymentMode == 'CRÉDITO'
+                                          ? 'Al Crédito'
+                                          : entry.paymentMode!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: entry.paymentMode == 'CRÉDITO'
+                                        ? Colors.purple.shade700
+                                        : AppColors.teal,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         const Divider(height: 20, color: AppColors.border),
 
@@ -203,20 +242,118 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                             ),
                           ],
                         ),
+
+                        if (entry.documentNumber != null &&
+                            entry.documentNumber!.trim().isNotEmpty) ...[
+                          const Divider(height: 20, color: AppColors.border),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'COMPROBANTE FÍSICO',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textSecondary,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${entry.documentType} · ${entry.documentNumber}',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (entry.documentDate != null)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Text(
+                                      'FECHA EMISIÓN',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.textSecondary,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      DateFormat('dd/MM/yyyy', 'es')
+                                          .format(entry.documentDate!),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ],
+
+                        if (entry.notes != null &&
+                            entry.notes!.trim().isNotEmpty) ...[
+                          const Divider(height: 20, color: AppColors.border),
+                          const Text(
+                            'NOTAS',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            entry.notes!.trim(),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+
                         const Divider(height: 20, color: AppColors.border),
 
-                        // Total con animación de conteo
+                        // Total con animación de conteo y conteo de productos
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'TOTAL ENTRADA',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textSecondary,
-                                letterSpacing: 0.3,
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'TOTAL ENTRADA',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textSecondary,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  entry.itemCount > 0
+                                      ? '${entry.itemCount} producto${entry.itemCount != 1 ? 's' : ''} (${entry.totalQuantity % 1 == 0 ? entry.totalQuantity.toInt() : entry.totalQuantity.toStringAsFixed(1)} uds.)'
+                                      : '0 productos',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
                             TweenAnimationBuilder<double>(
                               tween: Tween(begin: 0, end: entry.totalAmount),

@@ -228,10 +228,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
   }) async {
     try {
       var query = _supabase.from('inventory_entries').select('''
-          id, created_at, notes, total_amount,
+          id, created_at, notes, total_amount, payment_mode, status,
           document_type, document_number, document_date, purchase_order_id,
           warehouses!inner(name),
-          suppliers(name)
+          suppliers(name),
+          inventory_entry_items(quantity, unit_cost)
         ''');
 
       if (searchQuery != null && searchQuery.isNotEmpty) {

@@ -17,6 +17,9 @@ class InventoryEntryModel {
   final String? warehouseName;
   final String? supplierName;
   final int itemCount;
+  final double totalQuantity;
+  final String? paymentMode;
+  final String? status;
 
   InventoryEntryModel({
     required this.id,
@@ -33,6 +36,9 @@ class InventoryEntryModel {
     this.warehouseName,
     this.supplierName,
     this.itemCount = 0,
+    this.totalQuantity = 0.0,
+    this.paymentMode,
+    this.status,
   });
 
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
@@ -40,6 +46,12 @@ class InventoryEntryModel {
     final wh = json['warehouses'] as Map<String, dynamic>?;
     final sup = json['suppliers'] as Map<String, dynamic>?;
     final itemsList = json['inventory_entry_items'] as List?;
+
+    final double totalQty = itemsList?.fold<double>(
+          0.0,
+          (sum, item) => sum + ((item['quantity'] as num?)?.toDouble() ?? 0.0),
+        ) ??
+        ((json['total_quantity'] as num?)?.toDouble() ?? 0.0);
 
     return InventoryEntryModel(
       id: json['id'] as String,
@@ -62,6 +74,9 @@ class InventoryEntryModel {
       warehouseName: wh?['name'] as String?,
       supplierName: sup?['name'] as String?,
       itemCount: itemsList?.length ?? (json['item_count'] as int? ?? 0),
+      totalQuantity: totalQty,
+      paymentMode: json['payment_mode'] as String?,
+      status: json['status'] as String?,
     );
   }
 
@@ -78,6 +93,8 @@ class InventoryEntryModel {
       'document_number': documentNumber,
       if (documentDate != null)
         'document_date': documentDate!.toIso8601String().split('T').first,
+      if (paymentMode != null) 'payment_mode': paymentMode,
+      if (status != null) 'status': status,
       'created_by': createdBy,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
     };
@@ -99,6 +116,9 @@ class InventoryEntryModel {
     String? warehouseName,
     String? supplierName,
     int? itemCount,
+    double? totalQuantity,
+    String? paymentMode,
+    String? status,
   }) {
     return InventoryEntryModel(
       id: id ?? this.id,
@@ -115,6 +135,9 @@ class InventoryEntryModel {
       warehouseName: warehouseName ?? this.warehouseName,
       supplierName: supplierName ?? this.supplierName,
       itemCount: itemCount ?? this.itemCount,
+      totalQuantity: totalQuantity ?? this.totalQuantity,
+      paymentMode: paymentMode ?? this.paymentMode,
+      status: status ?? this.status,
     );
   }
 
@@ -134,6 +157,9 @@ class InventoryEntryModel {
       warehouseName: entity.warehouseName,
       supplierName: entity.supplierName,
       itemCount: entity.itemCount,
+      totalQuantity: entity.totalQuantity,
+      paymentMode: entity.paymentMode,
+      status: entity.status,
     );
   }
 
@@ -153,6 +179,9 @@ class InventoryEntryModel {
       warehouseName: warehouseName,
       supplierName: supplierName,
       itemCount: itemCount,
+      totalQuantity: totalQuantity,
+      paymentMode: paymentMode,
+      status: status,
     );
   }
 }

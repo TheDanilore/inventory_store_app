@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -27,6 +28,7 @@ class InventoryEntriesScreen extends StatefulWidget {
 
 class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   final _searchCtrl = TextEditingController();
+  Timer? _searchDebounce;
   bool _hasDraft = false;
   InventoryEntryEntity? _selectedEntry; // State for Master-Detail
 
@@ -55,6 +57,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -199,6 +202,29 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             );
 
         final isLoading = state is InventoryEntriesLoading;
+
+        // Sincronización automática de selección en vista Master-Detail (Tablet/Desktop)
+        if (loadedState != null && loadedState.entries.isNotEmpty) {
+          final found = loadedState.entries
+              .where((e) => e.id == _selectedEntry?.id)
+              .firstOrNull;
+          final target = found ?? loadedState.entries.first;
+          if (_selectedEntry != target) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _selectedEntry != target) {
+                setState(() => _selectedEntry = target);
+              }
+            });
+          }
+        } else if (loadedState != null &&
+            loadedState.entries.isEmpty &&
+            _selectedEntry != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _selectedEntry != null) {
+              setState(() => _selectedEntry = null);
+            }
+          });
+        }
 
         return AdminLayout(
           title: 'Historial de Entradas',
@@ -387,8 +413,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             child: Row(
               children: [
                 _SummaryChip(
-                  label: 'Página actual',
-                  value: '${state.entries.length}',
+                  label: 'Entradas (pág)',
+                  value: '${state.entries.length} de ${state.totalCount}',
                   icon: Icons.move_to_inbox_rounded,
                   color: AppColors.primary,
                 ),
@@ -422,12 +448,27 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                         child: _SearchField(
                           controller: _searchCtrl,
                           hint: 'Buscar proveedor o comprobante...',
-                          onChanged: (v) {},
-                          onSubmitted:
-                              (v) => context
-                                  .read<InventoryEntriesCubit>()
-                                  .setSearchQuery(v),
+                          onChanged: (v) {
+                            _searchDebounce?.cancel();
+                            _searchDebounce = Timer(
+                              const Duration(milliseconds: 350),
+                              () {
+                                if (mounted) {
+                                  context
+                                      .read<InventoryEntriesCubit>()
+                                      .setSearchQuery(v);
+                                }
+                              },
+                            );
+                          },
+                          onSubmitted: (v) {
+                            _searchDebounce?.cancel();
+                            context
+                                .read<InventoryEntriesCubit>()
+                                .setSearchQuery(v);
+                          },
                           onClear: () {
+                            _searchDebounce?.cancel();
                             _searchCtrl.clear();
                             context
                                 .read<InventoryEntriesCubit>()
@@ -723,7 +764,9 @@ class _EntryCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${entry.itemCount} producto${entry.itemCount != 1 ? 's' : ''}',
+                          entry.itemCount > 0
+                              ? '${entry.itemCount} producto${entry.itemCount != 1 ? 's' : ''} (${entry.totalQuantity % 1 == 0 ? entry.totalQuantity.toInt() : entry.totalQuantity.toStringAsFixed(1)} uds.)'
+                              : '0 productos',
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -742,11 +785,24 @@ class _EntryCard extends StatelessWidget {
                     _Pill(
                       icon: Icons.warehouse_rounded,
                       label: entry.warehouseName ?? 'Sin almacén',
-                      color:
-                          AppColors
-                              .textPrimary, // Texto más oscuro para contraste
+                      color: AppColors.textPrimary,
                       bgColor: Colors.grey.shade200,
                     ),
+                    if (entry.paymentMode != null)
+                      _Pill(
+                        icon: Icons.payments_rounded,
+                        label: entry.paymentMode == 'CONTADO'
+                            ? 'Contado'
+                            : entry.paymentMode == 'CRÉDITO'
+                                ? 'Crédito'
+                                : entry.paymentMode!,
+                        color: entry.paymentMode == 'CRÉDITO'
+                            ? Colors.purple.shade700
+                            : AppColors.teal,
+                        bgColor: entry.paymentMode == 'CRÉDITO'
+                            ? Colors.purple.shade400.withValues(alpha: 0.15)
+                            : AppColors.teal.withValues(alpha: 0.15),
+                      ),
                     if (hasDoc)
                       _Pill(
                         icon: Icons.receipt_long_rounded,

@@ -15,6 +15,9 @@ class InventoryEntryEntity extends Equatable {
   final String? warehouseName;
   final String? supplierName;
   final int itemCount;
+  final double totalQuantity;
+  final String? paymentMode;
+  final String? status;
 
   const InventoryEntryEntity({
     required this.id,
@@ -31,6 +34,9 @@ class InventoryEntryEntity extends Equatable {
     this.warehouseName,
     this.supplierName,
     required this.itemCount,
+    this.totalQuantity = 0.0,
+    this.paymentMode,
+    this.status,
   });
 
   @override
@@ -49,5 +55,8 @@ class InventoryEntryEntity extends Equatable {
     warehouseName,
     supplierName,
     itemCount,
+    totalQuantity,
+    paymentMode,
+    status,
   ];
 }
