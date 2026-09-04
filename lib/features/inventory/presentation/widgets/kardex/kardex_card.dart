@@ -6,8 +6,16 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 class KardexCard extends StatelessWidget {
   final KardexMovementEntity item;
   final bool isLast;
+  final bool isSelected;
+  final VoidCallback? onTap;
 
-  const KardexCard({super.key, required this.item, this.isLast = false});
+  const KardexCard({
+    super.key,
+    required this.item,
+    this.isLast = false,
+    this.isSelected = false,
+    this.onTap,
+  });
 
   Widget _buildBadge(String type) {
     final upperType = type.toUpperCase();
@@ -139,14 +147,26 @@ class KardexCard extends StatelessWidget {
             child: Container(
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.04)
+                    : AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-                boxShadow: AppColors.cardShadow(),
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : AppColors.border,
+                  width: isSelected ? 1.5 : 1.0,
+                ),
+                boxShadow: AppColors.cardShadow(
+                  opacity: isSelected ? 0.08 : 0.03,
+                ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(14.0),
-                child: Column(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14.0),
+                    child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Header de la card: Fecha + Badge de Tipo
@@ -315,9 +335,11 @@ class KardexCard extends StatelessWidget {
               ),
             ),
           ),
-        ],
+        ),
       ),
-    );
+    ],
+  ),
+);
   }
 
   String _formatDate(DateTime date) {
