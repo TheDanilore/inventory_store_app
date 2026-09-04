@@ -1191,237 +1191,8 @@ $$;
 ALTER FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."process_inventory_entry_rpc"("p_warehouse_id" "uuid", "p_supplier_id" "uuid", "p_purchase_order_id" "uuid", "p_payment_mode" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_document_type" "text", "p_document_number" "text", "p_document_date" "date", "p_notes" "text", "p_items" "jsonb") RETURNS "uuid"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-  v_entry_id UUID;
-  v_total_amount DECIMAL(12, 2) := 0;
-  v_account_type TEXT;
-  v_current_balance DECIMAL(12, 2);
-  v_stock_batch_id UUID;
-  v_previous_stock DECIMAL(12, 2);
-  v_new_stock DECIMAL(12, 2);
-  v_supplier_credit_id UUID;
-  v_current_debt DECIMAL(12, 2);
-  v_supplier_name TEXT;
-  item JSONB;
-  v_item_qty DECIMAL(12, 2);
-  v_item_cost DECIMAL(12, 2);
-  v_item_subtotal DECIMAL(12, 2);
-  v_user_id UUID;
-BEGIN
-  -- Obtener el ID del usuario actual (si se llama desde cliente autenticado)
-  v_user_id := auth.uid();
-  IF v_user_id IS NULL THEN
-     -- Para uso en backend o testing si auth.uid() falla
-     -- v_user_id := ... (Opcional)
-  END IF;
-
-  -- 1. Calcular el monto total del ingreso
-  FOR item IN SELECT * FROM jsonb_array_elements(p_items)
-  LOOP
-    v_total_amount := v_total_amount + ((item->>'quantity')::DECIMAL * (item->>'unitCost')::DECIMAL);
-  END LOOP;
-
-  -- 2. Validaciones Financieras y Débitos (SOLO si no viene de una orden de compra)
-  IF p_purchase_order_id IS NULL THEN
-    
-    -- Pago al CONTADO
-    IF p_payment_mode = 'CONTADO' THEN
-      IF p_account_id IS NULL THEN
-        RAISE EXCEPTION 'Debe proporcionar una cuenta para pagos al contado.';
-      END IF;
-
-      -- SELECT FOR UPDATE previene condiciones de carrera
-      SELECT type, balance INTO v_account_type, v_current_balance
-      FROM public.financial_accounts
-      WHERE id = p_account_id
-      FOR UPDATE;
-
-      IF NOT FOUND THEN
-        RAISE EXCEPTION 'La cuenta financiera no existe.';
-      END IF;
-
-      -- Verificar saldo suficiente
-      IF v_current_balance < v_total_amount THEN
-        RAISE EXCEPTION 'Saldo insuficiente en la cuenta financiera.';
-      END IF;
-
-      -- VALIDACIÓN ATÓMICA DE TURNO (ignora el parámetro de cliente)
-      IF v_account_type = 'CAJA' THEN
-        SELECT id INTO p_active_shift_id
-        FROM cash_shifts
-        WHERE account_id = p_account_id AND status = 'OPEN'
-        FOR UPDATE;
-        
-        IF NOT FOUND THEN
-          RAISE EXCEPTION 'La caja seleccionada no tiene un turno abierto para realizar el pago al contado.';
-        END IF;
-      ELSE
-        p_active_shift_id := NULL;
-      END IF;
-
-      -- Actualizar Saldo
-      UPDATE public.financial_accounts
-      SET balance = balance - v_total_amount,
-          updated_at = NOW()
-      WHERE id = p_account_id;
-
-      -- Obtener nombre de proveedor para glosa
-      v_supplier_name := '';
-      IF p_supplier_id IS NOT NULL THEN
-         SELECT name INTO v_supplier_name FROM public.suppliers WHERE id = p_supplier_id;
-      END IF;
-
-      -- Registrar movimiento bancario/caja
-      INSERT INTO public.account_movements (
-        account_id, shift_id, movement_type, amount, description, reference_type, reference_id, created_by
-      ) VALUES (
-        p_account_id, p_active_shift_id, 'EXPENSE', v_total_amount, 
-        'Compra de inventario' || CASE WHEN v_supplier_name != '' THEN ' · ' || v_supplier_name ELSE '' END,
-        'inventory_entry', NULL, v_user_id
-      ) RETURNING id INTO item; -- Reusamos item solo temporalmente si se requiere;
-
-    -- Pago a CRÉDITO
-    ELSIF p_payment_mode = 'CRÉDITO' THEN
-      IF p_supplier_id IS NULL THEN
-        RAISE EXCEPTION 'Debe seleccionar un proveedor para compras a crédito.';
-      END IF;
-
-      SELECT id, current_debt INTO v_supplier_credit_id, v_current_debt
-      FROM public.supplier_credits
-      WHERE supplier_id = p_supplier_id
-      FOR UPDATE;
-
-      IF v_supplier_credit_id IS NULL THEN
-        -- Crear nuevo crédito si no existe
-        INSERT INTO public.supplier_credits (supplier_id, current_debt, created_by)
-        VALUES (p_supplier_id, v_total_amount, v_user_id)
-        RETURNING id INTO v_supplier_credit_id;
-      ELSE
-        -- Actualizar deuda existente
-        UPDATE public.supplier_credits
-        SET current_debt = current_debt + v_total_amount,
-            updated_at = NOW()
-        WHERE id = v_supplier_credit_id;
-      END IF;
-
-      -- El supplier_credit_movement se insertará después de crear la entrada para enlazarlo a la nota.
-    END IF;
-  END IF;
-
-  -- 3. Crear Registro Cabecera (inventory_entries)
-  INSERT INTO public.inventory_entries (
-    warehouse_id, supplier_id, purchase_order_id, payment_mode, 
-    account_id, shift_id, document_type, document_number, document_date, 
-    total_amount, notes, status, created_by
-  ) VALUES (
-    p_warehouse_id, p_supplier_id, p_purchase_order_id, p_payment_mode,
-    p_account_id, p_active_shift_id, p_document_type, p_document_number, p_document_date,
-    v_total_amount, p_notes, 'COMPLETED', v_user_id
-  ) RETURNING id INTO v_entry_id;
-
-  -- Actualizar el account_movement con el reference_id de la entrada
-  IF p_purchase_order_id IS NULL AND p_payment_mode = 'CONTADO' THEN
-      UPDATE public.account_movements 
-      SET reference_id = v_entry_id 
-      WHERE reference_type = 'inventory_entry' AND reference_id IS NULL AND created_by = v_user_id
-      -- Nota: Para mejor precisión, podríamos haber insertado el movimiento DESPUÉS de la entrada.
-      -- Esto asume una transacción rápida.
-      ;
-  END IF;
-
-  IF p_purchase_order_id IS NULL AND p_payment_mode = 'CRÉDITO' THEN
-      INSERT INTO public.supplier_credit_movements (
-          supplier_credit_id, movement_type, amount, notes, created_by
-      ) VALUES (
-          v_supplier_credit_id, 'CHARGE', v_total_amount, 'Compra a crédito — Entrada #' || v_entry_id, v_user_id
-      );
-  END IF;
-
-  -- 4. Procesar Items: inventory_entry_items, Kárdex, Batches
-  FOR item IN SELECT * FROM jsonb_array_elements(p_items)
-  LOOP
-    v_item_qty := (item->>'quantity')::DECIMAL;
-    v_item_cost := (item->>'unitCost')::DECIMAL;
-    v_item_subtotal := v_item_qty * v_item_cost;
-
-    -- Insertar item
-    INSERT INTO public.inventory_entry_items (
-      entry_id, product_id, variant_id, batch_number, expiry_date, quantity, unit_cost
-    ) VALUES (
-      v_entry_id, 
-      (item->>'productId')::UUID, 
-      (item->>'variantId')::UUID, 
-      item->>'batchNumber', 
-      (item->>'expiryDate')::DATE,
-      v_item_qty, 
-      v_item_cost
-    );
-
-    -- Actualizar o Crear Batch de Stock
-    SELECT id, available_quantity INTO v_stock_batch_id, v_previous_stock
-    FROM public.warehouse_stock_batches
-    WHERE variant_id = (item->>'variantId')::UUID 
-      AND warehouse_id = p_warehouse_id 
-      AND batch_number = (item->>'batchNumber')
-    FOR UPDATE;
-
-    IF v_stock_batch_id IS NOT NULL THEN
-      v_new_stock := v_previous_stock + v_item_qty;
-      UPDATE public.warehouse_stock_batches
-      SET available_quantity = v_new_stock,
-          updated_at = NOW(),
-          updated_by = v_user_id
-      WHERE id = v_stock_batch_id;
-    ELSE
-      v_previous_stock := 0;
-      v_new_stock := v_item_qty;
-      
-      INSERT INTO public.warehouse_stock_batches (
-        variant_id, warehouse_id, product_id, supplier_id, batch_number, expiry_date,
-        available_quantity, created_by, updated_by
-      ) VALUES (
-        (item->>'variantId')::UUID, p_warehouse_id, (item->>'productId')::UUID, p_supplier_id,
-        item->>'batchNumber', (item->>'expiryDate')::DATE, v_new_stock, v_user_id, v_user_id
-      ) RETURNING id INTO v_stock_batch_id;
-    END IF;
-
-    -- Actualizar Costo Unitario de la Variante
-    UPDATE public.product_variants
-    SET unit_cost = v_item_cost,
-        updated_by = v_user_id
-    WHERE id = (item->>'variantId')::UUID;
-
-    -- Registrar Movimiento en Kárdex (inventory_movements)
-    INSERT INTO public.inventory_movements (
-      variant_id, warehouse_id, stock_batch_id, inventory_entry_id, quantity,
-      previous_stock, new_stock, unit_cost, total_cost, reason, notes, created_by
-    ) VALUES (
-      (item->>'variantId')::UUID, p_warehouse_id, v_stock_batch_id, v_entry_id, v_item_qty,
-      v_previous_stock, v_new_stock, v_item_cost, v_item_subtotal, 'ENTRY', p_notes, v_user_id
-    );
-
-  END LOOP;
-
-  -- 5. Sincronizar Orden de Compra si existe
-  IF p_purchase_order_id IS NOT NULL THEN
-    -- El RPC de recepción ya hace todo internamente!
-    PERFORM public.sync_purchase_order_reception_rpc(p_purchase_order_id);
-  END IF;
-
-  RETURN v_entry_id;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."process_inventory_entry_rpc"("p_warehouse_id" "uuid", "p_supplier_id" "uuid", "p_purchase_order_id" "uuid", "p_payment_mode" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_document_type" "text", "p_document_number" "text", "p_document_date" "date", "p_notes" "text", "p_items" "jsonb") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."process_inventory_entry_rpc"("p_warehouse_id" "uuid", "p_supplier_id" "uuid", "p_purchase_order_id" "uuid", "p_payment_mode" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_document_type" "text", "p_document_number" "text", "p_document_date" "date", "p_notes" "text", "p_items" "jsonb", "p_profile_id" "uuid" DEFAULT NULL::"uuid") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'auth'
     AS $$
 DECLARE
   v_entry_id UUID;
@@ -1439,8 +1210,9 @@ DECLARE
   v_item_cost DECIMAL(12, 2);
   v_item_subtotal DECIMAL(12, 2);
   v_user_id UUID;
+  v_movement_id UUID; -- Variable tipada UUID para evitar conflicto con JSONB
 BEGIN
-  -- 0. RESOLVER EL ID DE PERFIL DEL USUARIO (Para evitar error de foreign key en account_movements e inventory_entries)
+  -- 0. RESOLVER EL ID DE PERFIL DEL USUARIO
   v_user_id := p_profile_id;
   IF v_user_id IS NULL THEN
      SELECT id INTO v_user_id
@@ -1469,7 +1241,7 @@ BEGIN
         RAISE EXCEPTION 'Debe proporcionar una cuenta para pagos al contado.';
       END IF;
 
-      -- SELECT FOR UPDATE previene condiciones de carrera
+      -- Bloqueo FOR UPDATE para consistencia de saldo
       SELECT type, balance INTO v_account_type, v_current_balance
       FROM public.financial_accounts
       WHERE id = p_account_id
@@ -1479,7 +1251,6 @@ BEGIN
         RAISE EXCEPTION 'La cuenta financiera no existe.';
       END IF;
 
-      -- Verificar saldo suficiente
       IF v_current_balance < v_total_amount THEN
         RAISE EXCEPTION 'Saldo insuficiente en la cuenta financiera.';
       END IF;
@@ -1487,7 +1258,7 @@ BEGIN
       -- VALIDACIÓN ATÓMICA DE TURNO
       IF v_account_type = 'CAJA' THEN
         SELECT id INTO p_active_shift_id
-        FROM cash_shifts
+        FROM public.cash_shifts
         WHERE account_id = p_account_id AND status = 'OPEN'
         FOR UPDATE;
         
@@ -1504,20 +1275,20 @@ BEGIN
           updated_at = NOW()
       WHERE id = p_account_id;
 
-      -- Obtener nombre de proveedor para glosa
+      -- Glosa de proveedor
       v_supplier_name := '';
       IF p_supplier_id IS NOT NULL THEN
          SELECT name INTO v_supplier_name FROM public.suppliers WHERE id = p_supplier_id;
       END IF;
 
-      -- Registrar movimiento bancario/caja con v_user_id resuelto
+      -- Registrar movimiento contable
       INSERT INTO public.account_movements (
         account_id, shift_id, movement_type, amount, description, reference_type, reference_id, created_by
       ) VALUES (
         p_account_id, p_active_shift_id, 'EXPENSE', v_total_amount, 
         'Compra de inventario' || CASE WHEN v_supplier_name != '' THEN ' · ' || v_supplier_name ELSE '' END,
         'inventory_entry', NULL, v_user_id
-      ) RETURNING id INTO item;
+      ) RETURNING id INTO v_movement_id;
 
     -- Pago a CRÉDITO
     ELSIF p_payment_mode = 'CRÉDITO' THEN
@@ -1554,11 +1325,11 @@ BEGIN
     v_total_amount, p_notes, 'COMPLETED', v_user_id
   ) RETURNING id INTO v_entry_id;
 
-  -- Actualizar el account_movement con el reference_id de la entrada
-  IF p_purchase_order_id IS NULL AND p_payment_mode = 'CONTADO' THEN
+  -- 3.1 Actualizar el movimiento contable unívocamente por su ID primario
+  IF p_purchase_order_id IS NULL AND p_payment_mode = 'CONTADO' AND v_movement_id IS NOT NULL THEN
       UPDATE public.account_movements 
       SET reference_id = v_entry_id 
-      WHERE reference_type = 'inventory_entry' AND reference_id IS NULL AND created_by = v_user_id;
+      WHERE id = v_movement_id;
   END IF;
 
   IF p_purchase_order_id IS NULL AND p_payment_mode = 'CRÉDITO' THEN
@@ -3941,7 +3712,11 @@ CREATE TABLE IF NOT EXISTS "public"."inventory_entries" (
     "document_type" "text" DEFAULT 'NINGUNO'::"text",
     "document_number" "text",
     "document_date" "date",
-    "total_amount" numeric DEFAULT 0 NOT NULL
+    "total_amount" numeric DEFAULT 0 NOT NULL,
+    "payment_mode" "text" DEFAULT 'CONTADO'::"text",
+    "account_id" "uuid",
+    "shift_id" "uuid",
+    "status" "text" DEFAULT 'COMPLETED'::"text"
 );
 
 
@@ -4707,6 +4482,14 @@ CREATE INDEX "idx_customer_locations_profile_id" ON "public"."customer_locations
 
 
 
+CREATE INDEX "idx_inventory_entries_account_id" ON "public"."inventory_entries" USING "btree" ("account_id");
+
+
+
+CREATE INDEX "idx_inventory_entries_shift_id" ON "public"."inventory_entries" USING "btree" ("shift_id");
+
+
+
 CREATE INDEX "idx_inventory_movements_created_by" ON "public"."inventory_movements" USING "btree" ("created_by");
 
 
@@ -5149,12 +4932,22 @@ ALTER TABLE ONLY "public"."inventory_movements"
 
 
 ALTER TABLE ONLY "public"."inventory_entries"
+    ADD CONSTRAINT "inventory_entries_account_id_fkey" FOREIGN KEY ("account_id") REFERENCES "public"."financial_accounts"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."inventory_entries"
     ADD CONSTRAINT "inventory_entries_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id");
 
 
 
 ALTER TABLE ONLY "public"."inventory_entries"
     ADD CONSTRAINT "inventory_entries_purchase_order_id_fkey" FOREIGN KEY ("purchase_order_id") REFERENCES "public"."purchase_orders"("id");
+
+
+
+ALTER TABLE ONLY "public"."inventory_entries"
+    ADD CONSTRAINT "inventory_entries_shift_id_fkey" FOREIGN KEY ("shift_id") REFERENCES "public"."cash_shifts"("id") ON DELETE SET NULL;
 
 
 
@@ -6236,12 +6029,6 @@ GRANT ALL ON FUNCTION "public"."import_catalog_batch"("payload" "jsonb", "p_ware
 GRANT ALL ON FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."process_inventory_entry_rpc"("p_warehouse_id" "uuid", "p_supplier_id" "uuid", "p_purchase_order_id" "uuid", "p_payment_mode" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_document_type" "text", "p_document_number" "text", "p_document_date" "date", "p_notes" "text", "p_items" "jsonb") TO "anon";
-GRANT ALL ON FUNCTION "public"."process_inventory_entry_rpc"("p_warehouse_id" "uuid", "p_supplier_id" "uuid", "p_purchase_order_id" "uuid", "p_payment_mode" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_document_type" "text", "p_document_number" "text", "p_document_date" "date", "p_notes" "text", "p_items" "jsonb") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."process_inventory_entry_rpc"("p_warehouse_id" "uuid", "p_supplier_id" "uuid", "p_purchase_order_id" "uuid", "p_payment_mode" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_document_type" "text", "p_document_number" "text", "p_document_date" "date", "p_notes" "text", "p_items" "jsonb") TO "service_role";
 
 
 

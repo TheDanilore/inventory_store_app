@@ -1007,8 +1007,10 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
           TextFormField(
             controller: _notesCtrl,
             maxLines: 3,
+            maxLength: 300,
             decoration: InputDecoration(
               labelText: 'Notas adicionales (Opcional)',
+              counterText: '',
               filled: true,
               fillColor: AppColors.background,
               border: OutlineInputBorder(

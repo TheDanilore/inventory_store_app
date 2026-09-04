@@ -90,6 +90,9 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
       } else if (e.code == '23503') {
         userFriendlyMessage =
             'Uno de los registros relacionados (almacén, proveedor o cuenta) no existe o no es válido.';
+      } else if (e.code == '42703') {
+        userFriendlyMessage =
+            'Error de sincronización en base de datos: columna faltante en entradas de inventario. Aplique la migración SQL requerida.';
       }
       throw Exception(userFriendlyMessage);
     } catch (e, st) {
