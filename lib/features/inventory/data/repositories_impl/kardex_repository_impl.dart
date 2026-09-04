@@ -18,6 +18,7 @@ class KardexRepositoryImpl implements KardexRepository {
     String searchText = '',
     String? productId,
     String? variantId,
+    String? batchId,
   }) {
     if (startDate != null) {
       query = query.gte('created_at', startDate.toIso8601String());
@@ -38,6 +39,11 @@ class KardexRepositoryImpl implements KardexRepository {
       query = query.not('order_id', 'is', null).neq('reason', 'RETURN');
     } else if (typeFilter == 'RETURN') {
       query = query.not('order_id', 'is', null).eq('reason', 'RETURN');
+    }
+
+    // Filtrado estricto por lote (índice directo O(1))
+    if (batchId != null && batchId.isNotEmpty) {
+      query = query.eq('stock_batch_id', batchId);
     }
 
     // Filtrado estricto por variante (índice directo O(1)) y/o producto
@@ -62,6 +68,7 @@ class KardexRepositoryImpl implements KardexRepository {
     String searchText = '',
     String? productId,
     String? variantId,
+    String? batchId,
     int page = 0,
     int pageSize = 12,
   }) async {
@@ -87,6 +94,7 @@ class KardexRepositoryImpl implements KardexRepository {
       searchText: searchText,
       productId: productId,
       variantId: variantId,
+      batchId: batchId,
     );
 
     final start = page * pageSize;
@@ -116,6 +124,7 @@ class KardexRepositoryImpl implements KardexRepository {
     String searchText = '',
     String? productId,
     String? variantId,
+    String? batchId,
   }) async {
     var query = _supabase.from('inventory_movements').select('''
       *,
@@ -139,11 +148,13 @@ class KardexRepositoryImpl implements KardexRepository {
       searchText: searchText,
       productId: productId,
       variantId: variantId,
+      batchId: batchId,
     );
 
     final response = await query.order('created_at', ascending: false);
+    final dataList = response as List;
 
-    return (response as List)
+    return dataList
         .map((row) => KardexMovementModel.fromSupabaseRow(row).toEntity())
         .toList();
   }

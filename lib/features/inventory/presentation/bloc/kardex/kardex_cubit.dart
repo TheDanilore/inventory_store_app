@@ -24,10 +24,13 @@ class KardexCubit extends Cubit<KardexState> {
     String? productId,
     String? variantId,
     String? variantName,
+    String? batchId,
+    String? batchNumber,
     int? page,
     bool clearDateRange = false,
     bool clearProductId = false,
     bool clearVariantId = false,
+    bool clearBatchId = false,
   }) async {
     try {
       final currentState = state is KardexLoaded ? state as KardexLoaded : null;
@@ -40,6 +43,10 @@ class KardexCubit extends Cubit<KardexState> {
           (clearProductId || clearVariantId) ? null : (variantId ?? currentState?.variantId);
       final currentVariantName =
           (clearProductId || clearVariantId) ? null : (variantName ?? currentState?.variantName);
+      final currentBatchId =
+          (clearProductId || clearVariantId || clearBatchId) ? null : (batchId ?? currentState?.batchId);
+      final currentBatchNumber =
+          (clearProductId || clearVariantId || clearBatchId) ? null : (batchNumber ?? currentState?.batchNumber);
       final currentPage = page ?? currentState?.currentPage ?? 0;
       final currentStartDate =
           clearDateRange ? null : (startDate ?? currentState?.startDate);
@@ -54,6 +61,8 @@ class KardexCubit extends Cubit<KardexState> {
             productId: currentProductId,
             variantId: currentVariantId,
             variantName: currentVariantName,
+            batchId: currentBatchId,
+            batchNumber: currentBatchNumber,
             currentPage: currentPage,
             startDate: currentStartDate,
             endDate: currentEndDate,
@@ -71,6 +80,7 @@ class KardexCubit extends Cubit<KardexState> {
         searchText: currentSearchText,
         productId: currentProductId,
         variantId: currentVariantId,
+        batchId: currentBatchId,
         page: currentPage,
         pageSize: pageSize,
       );
@@ -89,6 +99,8 @@ class KardexCubit extends Cubit<KardexState> {
           productId: currentProductId,
           variantId: currentVariantId,
           variantName: currentVariantName,
+          batchId: currentBatchId,
+          batchNumber: currentBatchNumber,
           currentPage: currentPage,
           totalCount: count,
           totalPages: totalPages,
@@ -130,7 +142,7 @@ class KardexCubit extends Cubit<KardexState> {
     if (state is KardexLoaded && (state as KardexLoaded).searchText == text) {
       return;
     }
-    // Si el usuario borra la búsqueda o escribe texto libre, limpiamos el productId y variantId
+    // Si el usuario borra la búsqueda o escribe texto libre, limpiamos el productId, variantId y batchId
     final clearProd = text.isEmpty ||
         (state is KardexLoaded && (state as KardexLoaded).searchText != text);
     loadMovements(
@@ -138,6 +150,7 @@ class KardexCubit extends Cubit<KardexState> {
       page: 0,
       clearProductId: clearProd,
       clearVariantId: clearProd,
+      clearBatchId: clearProd,
     );
   }
 
@@ -147,6 +160,7 @@ class KardexCubit extends Cubit<KardexState> {
       page: 0,
       clearProductId: true,
       clearVariantId: true,
+      clearBatchId: true,
     );
   }
 
@@ -154,6 +168,14 @@ class KardexCubit extends Cubit<KardexState> {
     loadMovements(
       page: 0,
       clearVariantId: true,
+      clearBatchId: true,
+    );
+  }
+
+  void clearBatchFilter() {
+    loadMovements(
+      page: 0,
+      clearBatchId: true,
     );
   }
 
@@ -185,6 +207,7 @@ class KardexCubit extends Cubit<KardexState> {
         searchText: currentState.searchText,
         productId: currentState.productId,
         variantId: currentState.variantId,
+        batchId: currentState.batchId,
       );
       emit(currentState.copyWith(isExporting: false));
     } catch (e, st) {

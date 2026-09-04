@@ -16,6 +16,7 @@ class GetKardexMovementsUseCase {
     String searchText = '',
     String? productId,
     String? variantId,
+    String? batchId,
     int page = 0,
     int pageSize = 12,
   }) {
@@ -26,6 +27,7 @@ class GetKardexMovementsUseCase {
       searchText: searchText,
       productId: productId,
       variantId: variantId,
+      batchId: batchId,
       page: page,
       pageSize: pageSize,
     );

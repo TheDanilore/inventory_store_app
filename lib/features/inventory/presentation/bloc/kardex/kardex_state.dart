@@ -21,6 +21,8 @@ class KardexLoaded extends KardexState {
   final String? productId;
   final String? variantId;
   final String? variantName;
+  final String? batchId;
+  final String? batchNumber;
   final int currentPage;
   final int totalCount;
   final int totalPages;
@@ -36,6 +38,8 @@ class KardexLoaded extends KardexState {
     this.productId,
     this.variantId,
     this.variantName,
+    this.batchId,
+    this.batchNumber,
     required this.currentPage,
     required this.totalCount,
     required this.totalPages,
@@ -52,8 +56,11 @@ class KardexLoaded extends KardexState {
     String? productId,
     String? variantId,
     String? variantName,
+    String? batchId,
+    String? batchNumber,
     bool clearProductId = false,
     bool clearVariantId = false,
+    bool clearBatchId = false,
     int? currentPage,
     int? totalCount,
     int? totalPages,
@@ -70,6 +77,8 @@ class KardexLoaded extends KardexState {
       productId: clearProductId ? null : (productId ?? this.productId),
       variantId: (clearProductId || clearVariantId) ? null : (variantId ?? this.variantId),
       variantName: (clearProductId || clearVariantId) ? null : (variantName ?? this.variantName),
+      batchId: (clearProductId || clearVariantId || clearBatchId) ? null : (batchId ?? this.batchId),
+      batchNumber: (clearProductId || clearVariantId || clearBatchId) ? null : (batchNumber ?? this.batchNumber),
       currentPage: currentPage ?? this.currentPage,
       totalCount: totalCount ?? this.totalCount,
       totalPages: totalPages ?? this.totalPages,
@@ -88,6 +97,8 @@ class KardexLoaded extends KardexState {
     productId,
     variantId,
     variantName,
+    batchId,
+    batchNumber,
     currentPage,
     totalCount,
     totalPages,

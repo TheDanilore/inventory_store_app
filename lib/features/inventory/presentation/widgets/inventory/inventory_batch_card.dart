@@ -396,7 +396,7 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
     switch (value) {
       case 'kardex':
         context.push(
-          '/admin/kardex?productId=${widget.batch.productId}&variantId=${widget.batch.variantId}&productName=${Uri.encodeComponent(widget.batch.productName ?? '')}&variantName=${Uri.encodeComponent(widget.batch.variantAttrs ?? widget.batch.sku ?? '')}',
+          '/admin/kardex?productId=${widget.batch.productId}&variantId=${widget.batch.variantId}&batchId=${widget.batch.id}&batchNumber=${Uri.encodeComponent(widget.batch.batchNumber)}&productName=${Uri.encodeComponent(widget.batch.productName ?? '')}&variantName=${Uri.encodeComponent(widget.batch.variantAttrs ?? widget.batch.sku ?? '')}',
         );
         break;
       case 'product':

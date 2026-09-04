@@ -10,6 +10,7 @@ abstract class KardexRepository {
     String searchText = '',
     String? productId,
     String? variantId,
+    String? batchId,
     int page = 0,
     int pageSize = 12,
   });
@@ -21,5 +22,6 @@ abstract class KardexRepository {
     String searchText = '',
     String? productId,
     String? variantId,
+    String? batchId,
   });
 }

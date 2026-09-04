@@ -18,6 +18,8 @@ class KardexScreen extends StatefulWidget {
   final String? initialProductName;
   final String? initialVariantId;
   final String? initialVariantName;
+  final String? initialBatchId;
+  final String? initialBatchNumber;
 
   const KardexScreen({
     super.key,
@@ -25,6 +27,8 @@ class KardexScreen extends StatefulWidget {
     this.initialProductName,
     this.initialVariantId,
     this.initialVariantName,
+    this.initialBatchId,
+    this.initialBatchNumber,
   });
 
   @override
@@ -49,6 +53,8 @@ class _KardexScreenState extends State<KardexScreen> {
         productId: widget.initialProductId,
         variantId: widget.initialVariantId,
         variantName: widget.initialVariantName,
+        batchId: widget.initialBatchId,
+        batchNumber: widget.initialBatchNumber,
         searchText: widget.initialProductName ?? '',
       );
     });
@@ -436,17 +442,20 @@ class _KardexScreenState extends State<KardexScreen> {
                           ),
                         ),
 
-                        // --- BANNER DE PRODUCTO / VARIANTE FILTRADO ---
+                        // --- BANNER DE PRODUCTO / VARIANTE / LOTE FILTRADO ---
                         SliverToBoxAdapter(
                           child: BlocBuilder<KardexCubit, KardexState>(
                             builder: (context, state) {
                               if (state is KardexLoaded &&
                                   (state.productId != null ||
-                                      state.variantId != null)) {
+                                      state.variantId != null ||
+                                      state.batchId != null)) {
                                 final prodLabel = state.searchText.isNotEmpty
                                     ? state.searchText
                                     : (state.productId ?? 'Producto');
                                 final hasVariant = state.variantId != null;
+                                final hasBatch = state.batchId != null ||
+                                    state.batchNumber != null;
                                 final variantLabel =
                                     state.variantName != null &&
                                             state.variantName!.isNotEmpty
@@ -454,6 +463,12 @@ class _KardexScreenState extends State<KardexScreen> {
                                         : (hasVariant
                                             ? 'ID: ${state.variantId!.length > 8 ? state.variantId!.substring(0, 8) : state.variantId}...'
                                             : '');
+                                final batchLabel = state.batchNumber != null &&
+                                        state.batchNumber!.isNotEmpty
+                                    ? state.batchNumber!
+                                    : (hasBatch
+                                        ? 'ID: ${state.batchId!.length > 8 ? state.batchId!.substring(0, 8) : state.batchId}...'
+                                        : '');
                                 return Padding(
                                   padding: const EdgeInsets.fromLTRB(
                                     16,
@@ -516,12 +531,55 @@ class _KardexScreenState extends State<KardexScreen> {
                                                     ),
                                                   ),
                                                 ],
+                                                if (hasBatch) ...[
+                                                  const TextSpan(
+                                                    text: ' · Lote: ',
+                                                  ),
+                                                  TextSpan(
+                                                    text: batchLabel,
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color:
+                                                          Colors.purple.shade700,
+                                                    ),
+                                                  ),
+                                                ],
                                               ],
                                             ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
+                                        if (hasBatch) ...[
+                                          InkWell(
+                                            onTap: () {
+                                              context
+                                                  .read<KardexCubit>()
+                                                  .clearBatchFilter();
+                                            },
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 4,
+                                                  ),
+                                              child: Text(
+                                                'Ver todos los lotes',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.purple.shade700,
+                                                  decoration:
+                                                      TextDecoration.underline,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                        ],
                                         if (hasVariant) ...[
                                           InkWell(
                                             onTap: () {

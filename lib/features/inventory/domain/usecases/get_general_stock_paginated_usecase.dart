@@ -13,22 +13,26 @@ class GetGeneralStockPaginatedUseCase {
     required int pageSize,
     String search = '',
     String categoryName = 'Todos',
+    String? warehouseId,
   }) {
     return _repository.getGeneralStockPaginated(
       page: page,
       pageSize: pageSize,
       search: search,
       categoryName: categoryName,
+      warehouseId: warehouseId,
     );
   }
 
   Future<int> getTotalCount({
     String search = '',
     String categoryName = 'Todos',
+    String? warehouseId,
   }) {
     return _repository.getTotalGeneralStockCount(
       search: search,
       categoryName: categoryName,
+      warehouseId: warehouseId,
     );
   }
 }

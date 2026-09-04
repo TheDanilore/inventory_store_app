@@ -53,7 +53,7 @@ class _InventoryScreenState extends State<InventoryScreen>
 
           return Column(
             children: [
-              // ── Header Segmented Pill Bar (Estilo Stripe / Linear) ──
+              // ── Header Segmented Pill Bar & Warehouse Selector ──
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -65,82 +65,108 @@ class _InventoryScreenState extends State<InventoryScreen>
                     ),
                   ),
                 ),
-                child: Center(
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 440),
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: TabBar(
-                      controller: _tabController,
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      indicator: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: AppColors.cardShadow(opacity: 0.04),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isCompact = constraints.maxWidth < 740;
+                    final tabBarWidget = Container(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
                       ),
-                      dividerColor: Colors.transparent,
-                      labelColor: AppColors.textPrimary,
-                      unselectedLabelColor: AppColors.textSecondary,
-                      labelStyle: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        letterSpacing: 0.1,
-                      ),
-                      unselectedLabelStyle: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                      tabs: [
-                        const Tab(
-                          height: 36,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.inventory_2_rounded, size: 16),
-                              SizedBox(width: 8),
-                              Text('Stock General'),
-                            ],
-                          ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        indicator: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: AppColors.cardShadow(opacity: 0.04),
                         ),
-                        Tab(
-                          height: 36,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.event_busy_rounded, size: 16),
-                              const SizedBox(width: 8),
-                              const Text('Estado de Lotes'),
-                              if (urgentCount > 0) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 1.5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.danger,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    '$urgentCount',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
+                        dividerColor: Colors.transparent,
+                        labelColor: AppColors.textPrimary,
+                        unselectedLabelColor: AppColors.textSecondary,
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          letterSpacing: 0.1,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        tabs: [
+                          const Tab(
+                            height: 36,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.inventory_2_rounded, size: 16),
+                                SizedBox(width: 8),
+                                Text('Stock General'),
+                              ],
+                            ),
+                          ),
+                          Tab(
+                            height: 36,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.event_busy_rounded, size: 16),
+                                const SizedBox(width: 8),
+                                const Text('Estado de Lotes'),
+                                if (urgentCount > 0) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 1.5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.danger,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '$urgentCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
+                        ],
+                      ),
+                    );
+
+                    final warehouseSelector = _WarehouseSelector(
+                      state: state is InventoryLoaded ? state : null,
+                    );
+
+                    if (isCompact) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Center(child: tabBarWidget),
+                          const SizedBox(height: 8),
+                          warehouseSelector,
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        tabBarWidget,
+                        warehouseSelector,
                       ],
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
 
@@ -157,6 +183,102 @@ class _InventoryScreenState extends State<InventoryScreen>
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _WarehouseSelector extends StatelessWidget {
+  final InventoryLoaded? state;
+
+  const _WarehouseSelector({this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final warehouses = state?.warehouses ?? [];
+    final selectedId = state?.selectedWarehouseId;
+
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.warehouse_outlined,
+            size: 18,
+            color: selectedId != null ? AppColors.primary : AppColors.textSecondary,
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'Almacén:',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(width: 6),
+          DropdownButtonHideUnderline(
+            child: DropdownButton<String?>(
+              value: selectedId,
+              icon: const Icon(
+                Icons.arrow_drop_down_rounded,
+                color: AppColors.textSecondary,
+                size: 20,
+              ),
+              borderRadius: BorderRadius.circular(10),
+              dropdownColor: AppColors.surface,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text(
+                    'Todos los almacenes',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ...warehouses.map((wh) {
+                  return DropdownMenuItem<String?>(
+                    value: wh.id,
+                    child: Text(
+                      wh.name,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                }),
+              ],
+              onChanged: (newWarehouseId) {
+                String whName = 'Todos los almacenes';
+                if (newWarehouseId != null) {
+                  final found = warehouses.where((w) => w.id == newWarehouseId);
+                  if (found.isNotEmpty) {
+                    whName = found.first.name;
+                  }
+                }
+                context.read<InventoryCubit>().setWarehouseFilter(
+                  newWarehouseId,
+                  whName,
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -13,22 +13,26 @@ class GetBatchesPaginatedUseCase {
     required int pageSize,
     String search = '',
     String statusFilter = 'Todos',
+    String? warehouseId,
   }) {
     return _repository.getBatchesPaginated(
       page: page,
       pageSize: pageSize,
       search: search,
       statusFilter: statusFilter,
+      warehouseId: warehouseId,
     );
   }
 
   Future<int> getTotalCount({
     String search = '',
     String statusFilter = 'Todos',
+    String? warehouseId,
   }) {
     return _repository.getTotalBatchesCount(
       search: search,
       statusFilter: statusFilter,
+      warehouseId: warehouseId,
     );
   }
 }

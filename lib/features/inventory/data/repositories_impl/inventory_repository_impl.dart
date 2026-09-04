@@ -9,13 +9,13 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   /// Retorna las métricas globales para Stock (Stock total, Variantes, Low stock)
   @override
-  Future<Map<String, dynamic>> getGeneralStockMetrics() async {
+  Future<Map<String, dynamic>> getGeneralStockMetrics({String? warehouseId}) async {
     final response = await _supabase
         .from('product_variants')
         .select('''
       id, reorder_point, unit_cost,
       products!inner(stock_control, is_active),
-      warehouse_stock_batches(available_quantity)
+      warehouse_stock_batches(available_quantity, warehouse_id)
     ''')
         .eq('is_active', true)
         .eq('products.is_active', true);
@@ -35,6 +35,9 @@ class InventoryRepositoryImpl implements InventoryRepository {
       int variantStock = 0;
       final batches = raw['warehouse_stock_batches'] as List? ?? [];
       for (final b in batches) {
+        if (warehouseId != null && warehouseId.isNotEmpty) {
+          if (b['warehouse_id'] != warehouseId) continue;
+        }
         variantStock += (b['available_quantity'] as num?)?.toInt() ?? 0;
       }
 
@@ -72,6 +75,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     required int pageSize,
     String search = '',
     String categoryName = 'Todos',
+    String? warehouseId,
   }) async {
     final from = page * pageSize;
     final to = from + pageSize - 1;
@@ -189,29 +193,37 @@ class InventoryRepositoryImpl implements InventoryRepository {
       // Lotes
       final batchesRaw = variant['warehouse_stock_batches'] as List? ?? [];
       final batches =
-          batchesRaw.map((b) {
-            final m = Map<String, dynamic>.from(b as Map);
-            final wh = m['warehouses'] as Map<String, dynamic>?;
-            final sup = m['suppliers'] as Map<String, dynamic>?;
-            return InventoryBatchItem(
-              id: m['id'] as String,
-              batchNumber: m['batch_number'] as String? ?? 'DEFAULT',
-              expiryDate: m['expiry_date'] as String?,
-              availableQuantity:
-                  (m['available_quantity'] as num?)?.toInt() ?? 0,
-              warehouseId: m['warehouse_id'] as String,
-              warehouseName: wh?['name'] as String?,
-              supplierId: m['supplier_id'] as String?,
-              supplierName: sup?['name'] as String?,
-              variantId: variantId,
-              productId: prod['id'] as String,
-              productName: prod['name'] as String,
-              variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
-              sku: variant['sku'] as String?,
-              usesBatches: usesBatches,
-              imageUrl: finalImageUrl,
-            );
-          }).toList();
+          batchesRaw
+              .where((b) {
+                if (warehouseId != null && warehouseId.isNotEmpty) {
+                  return (b as Map)['warehouse_id'] == warehouseId;
+                }
+                return true;
+              })
+              .map((b) {
+                final m = Map<String, dynamic>.from(b as Map);
+                final wh = m['warehouses'] as Map<String, dynamic>?;
+                final sup = m['suppliers'] as Map<String, dynamic>?;
+                return InventoryBatchItem(
+                  id: m['id'] as String,
+                  batchNumber: m['batch_number'] as String? ?? 'DEFAULT',
+                  expiryDate: m['expiry_date'] as String?,
+                  availableQuantity:
+                      (m['available_quantity'] as num?)?.toInt() ?? 0,
+                  warehouseId: m['warehouse_id'] as String,
+                  warehouseName: wh?['name'] as String?,
+                  supplierId: m['supplier_id'] as String?,
+                  supplierName: sup?['name'] as String?,
+                  variantId: variantId,
+                  productId: prod['id'] as String,
+                  productName: prod['name'] as String,
+                  variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
+                  sku: variant['sku'] as String?,
+                  usesBatches: usesBatches,
+                  imageUrl: finalImageUrl,
+                );
+              })
+              .toList();
 
       int stock = 0;
       if (stockControl) {
@@ -254,6 +266,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     required int pageSize,
     String search = '',
     String statusFilter = 'Todos',
+    String? warehouseId,
   }) async {
     final from = page * pageSize;
     final to = from + pageSize - 1;
@@ -270,6 +283,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
     ''')
         .gt('available_quantity', 0)
         .eq('products.uses_batches', true);
+
+    if (warehouseId != null && warehouseId.isNotEmpty) {
+      query = query.eq('warehouse_id', warehouseId);
+    }
 
     if (search.isNotEmpty) {
       final matchingProducts = await _supabase
@@ -301,13 +318,14 @@ class InventoryRepositoryImpl implements InventoryRepository {
     final plus90 =
         DateTime(now.year, now.month, now.day + 90).toIso8601String();
 
-    if (statusFilter == 'vencido') {
+    final sf = statusFilter.toLowerCase();
+    if (sf == 'vencido') {
       query = query.lt('expiry_date', today);
-    } else if (statusFilter == 'critico') {
+    } else if (sf == 'crítico' || sf == 'critico') {
       query = query.gte('expiry_date', today).lte('expiry_date', plus30);
-    } else if (statusFilter == 'proximo') {
+    } else if (sf == 'próximo' || sf == 'proximo') {
       query = query.gt('expiry_date', plus30).lte('expiry_date', plus90);
-    } else if (statusFilter == 'normal') {
+    } else if (sf == 'normal') {
       query = query.gt('expiry_date', plus90);
     }
 
@@ -385,7 +403,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   /// Retorna conteos globales para los estados de lotes, respetando la búsqueda actual.
   @override
-  Future<Map<String, int>> getBatchMetrics({String search = ''}) async {
+  Future<Map<String, int>> getBatchMetrics({
+    String search = '',
+    String? warehouseId,
+  }) async {
     var query = _supabase
         .from('warehouse_stock_batches')
         .select('''
@@ -394,6 +415,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
     ''')
         .gt('available_quantity', 0)
         .eq('products.uses_batches', true);
+
+    if (warehouseId != null && warehouseId.isNotEmpty) {
+      query = query.eq('warehouse_id', warehouseId);
+    }
 
     if (search.isNotEmpty) {
       final matchingProducts = await _supabase
@@ -458,6 +483,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
   Future<int> getTotalGeneralStockCount({
     String search = '',
     String categoryName = 'Todos',
+    String? warehouseId,
   }) async {
     var query = _supabase
         .from('product_variants')
@@ -507,6 +533,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
   Future<int> getTotalBatchesCount({
     String search = '',
     String statusFilter = 'Todos',
+    String? warehouseId,
   }) async {
     var query = _supabase
         .from('warehouse_stock_batches')
@@ -516,6 +543,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
     ''')
         .gt('available_quantity', 0)
         .eq('products.uses_batches', true);
+
+    if (warehouseId != null && warehouseId.isNotEmpty) {
+      query = query.eq('warehouse_id', warehouseId);
+    }
 
     if (search.isNotEmpty) {
       final matchingProducts = await _supabase
@@ -547,13 +578,14 @@ class InventoryRepositoryImpl implements InventoryRepository {
     final plus90 =
         DateTime(now.year, now.month, now.day + 90).toIso8601String();
 
-    if (statusFilter == 'Vencido') {
+    final sf = statusFilter.toLowerCase();
+    if (sf == 'vencido') {
       query = query.lt('expiry_date', today);
-    } else if (statusFilter == 'Crítico') {
+    } else if (sf == 'crítico' || sf == 'critico') {
       query = query.gte('expiry_date', today).lte('expiry_date', plus30);
-    } else if (statusFilter == 'Próximo') {
+    } else if (sf == 'próximo' || sf == 'proximo') {
       query = query.gt('expiry_date', plus30).lte('expiry_date', plus90);
-    } else if (statusFilter == 'Normal') {
+    } else if (sf == 'normal') {
       query = query.gt('expiry_date', plus90);
     }
 

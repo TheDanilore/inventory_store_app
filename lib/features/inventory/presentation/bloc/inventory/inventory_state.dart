@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
 
 abstract class InventoryState extends Equatable {
   const InventoryState();
@@ -25,6 +26,10 @@ class InventoryLoaded extends InventoryState {
   final String stockSearchText;
   final String stockCategoryFilter;
   final List<String> categories;
+
+  final List<WarehouseEntity> warehouses;
+  final String? selectedWarehouseId;
+  final String selectedWarehouseName;
 
   final int globalTotalVariants;
   final int globalTotalStock;
@@ -53,6 +58,9 @@ class InventoryLoaded extends InventoryState {
     required this.stockSearchText,
     required this.stockCategoryFilter,
     required this.categories,
+    this.warehouses = const [],
+    this.selectedWarehouseId,
+    this.selectedWarehouseName = 'Todos los almacenes',
     required this.globalTotalVariants,
     required this.globalTotalStock,
     required this.globalLowStockCount,
@@ -77,6 +85,10 @@ class InventoryLoaded extends InventoryState {
     String? stockSearchText,
     String? stockCategoryFilter,
     List<String>? categories,
+    List<WarehouseEntity>? warehouses,
+    String? selectedWarehouseId,
+    String? selectedWarehouseName,
+    bool clearWarehouseId = false,
     int? globalTotalVariants,
     int? globalTotalStock,
     int? globalLowStockCount,
@@ -100,6 +112,13 @@ class InventoryLoaded extends InventoryState {
       stockSearchText: stockSearchText ?? this.stockSearchText,
       stockCategoryFilter: stockCategoryFilter ?? this.stockCategoryFilter,
       categories: categories ?? this.categories,
+      warehouses: warehouses ?? this.warehouses,
+      selectedWarehouseId:
+          clearWarehouseId ? null : (selectedWarehouseId ?? this.selectedWarehouseId),
+      selectedWarehouseName:
+          clearWarehouseId
+              ? 'Todos los almacenes'
+              : (selectedWarehouseName ?? this.selectedWarehouseName),
       globalTotalVariants: globalTotalVariants ?? this.globalTotalVariants,
       globalTotalStock: globalTotalStock ?? this.globalTotalStock,
       globalLowStockCount: globalLowStockCount ?? this.globalLowStockCount,
@@ -126,6 +145,9 @@ class InventoryLoaded extends InventoryState {
     stockSearchText,
     stockCategoryFilter,
     categories,
+    warehouses,
+    selectedWarehouseId,
+    selectedWarehouseName,
     globalTotalVariants,
     globalTotalStock,
     globalLowStockCount,

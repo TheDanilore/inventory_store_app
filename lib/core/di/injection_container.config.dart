@@ -498,6 +498,7 @@ import '../../features/users/presentation/bloc/user_form/user_form_cubit.dart'
     as _i833;
 import '../../features/users/presentation/bloc/users/users_cubit.dart' as _i451;
 import '../network/network_cubit.dart' as _i11;
+import '../services/logger_service.dart' as _i141;
 import 'register_module.dart' as _i291;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -517,6 +518,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i895.SendWhatsAppOrderUc>(() => _i895.SendWhatsAppOrderUc());
     gh.lazySingleton<_i454.SupabaseClient>(() => registerModule.supabase);
     gh.lazySingleton<_i11.NetworkCubit>(() => _i11.NetworkCubit());
+    gh.lazySingleton<_i141.LoggerService>(() => const _i141.LoggerService());
     gh.lazySingleton<_i1021.ExportCustomersPdfUseCase>(
       () => _i1021.ExportCustomersPdfUseCase(),
     );
@@ -1206,6 +1208,16 @@ extension GetItInjectableX on _i174.GetIt {
         appConfigRepository: gh<_i257.AppConfigRepository>(),
       ),
     );
+    gh.factory<_i148.InventoryCubit>(
+      () => _i148.InventoryCubit(
+        getGeneralStockMetrics: gh<_i226.GetGeneralStockMetricsUseCase>(),
+        getCategories: gh<_i700.GetCategoriesUC>(),
+        getGeneralStockPaginated: gh<_i285.GetGeneralStockPaginatedUseCase>(),
+        getBatchMetrics: gh<_i581.GetBatchMetricsUseCase>(),
+        getBatchesPaginated: gh<_i544.GetBatchesPaginatedUseCase>(),
+        getWarehouses: gh<_i71.GetWarehousesUseCase>(),
+      ),
+    );
     gh.factory<_i851.CustomerCreditListCubit>(
       () => _i851.CustomerCreditListCubit(
         gh<_i749.GetCreditAccountsUseCase>(),
@@ -1572,15 +1584,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i41.SidebarBadgeCubit>(
       () => _i41.SidebarBadgeCubit(gh<_i981.WatchPendingOrdersCountUc>()),
     );
-    gh.factory<_i148.InventoryCubit>(
-      () => _i148.InventoryCubit(
-        getGeneralStockMetrics: gh<_i226.GetGeneralStockMetricsUseCase>(),
-        getCategories: gh<_i700.GetCategoriesUC>(),
-        getGeneralStockPaginated: gh<_i285.GetGeneralStockPaginatedUseCase>(),
-        getBatchMetrics: gh<_i581.GetBatchMetricsUseCase>(),
-        getBatchesPaginated: gh<_i544.GetBatchesPaginatedUseCase>(),
-      ),
-    );
     gh.factory<_i129.AttributesCubit>(
       () => _i129.AttributesCubit(
         getAttributesUC: gh<_i487.GetAttributesUC>(),
@@ -1628,14 +1631,6 @@ extension GetItInjectableX on _i174.GetIt {
         getProductStockUC: gh<_i958.GetProductStockUC>(),
       ),
     );
-    gh.factory<_i991.CustomerCatalogCubit>(
-      () => _i991.CustomerCatalogCubit(
-        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
-        getProductsUC: gh<_i222.GetProductsUC>(),
-        getProductStockUC: gh<_i958.GetProductStockUC>(),
-        catalogRepository: gh<_i540.CatalogSearchRepository>(),
-      ),
-    );
     gh.factory<_i808.OrderDetailCubit>(
       () => _i808.OrderDetailCubit(
         getOrderDetailsUc: gh<_i93.GetOrderDetailsUc>(),
@@ -1646,6 +1641,16 @@ extension GetItInjectableX on _i174.GetIt {
         checkActiveCashShiftUc: gh<_i864.CheckActiveCashShiftUc>(),
         registerCreditPaymentUc: gh<_i956.RegisterCreditPaymentUc>(),
         processReturnUc: gh<_i2.ProcessReturnUc>(),
+        getCreditAccountByCustomerUseCase:
+            gh<_i749.GetCreditAccountByCustomerUseCase>(),
+      ),
+    );
+    gh.factory<_i991.CustomerCatalogCubit>(
+      () => _i991.CustomerCatalogCubit(
+        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
+        getProductsUC: gh<_i222.GetProductsUC>(),
+        getProductStockUC: gh<_i958.GetProductStockUC>(),
+        catalogRepository: gh<_i540.CatalogSearchRepository>(),
       ),
     );
     gh.factory<_i421.CustomerWishlistCubit>(
