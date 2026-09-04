@@ -8,6 +8,7 @@ class InventoryEntryFormState extends Equatable {
   final List<WarehouseEntity> warehouses;
   final List<SupplierEntity> suppliers;
   final List<FinancialAccountEntity> accounts;
+  final Map<String, String> activeShiftsByAccount;
 
   final String? selectedWarehouseId;
   final String? selectedSupplierId;
@@ -30,6 +31,7 @@ class InventoryEntryFormState extends Equatable {
     this.warehouses = const [],
     this.suppliers = const [],
     this.accounts = const [],
+    this.activeShiftsByAccount = const {},
     this.selectedWarehouseId,
     this.selectedSupplierId,
     this.documentType = 'NINGUNO',
@@ -50,6 +52,7 @@ class InventoryEntryFormState extends Equatable {
     List<WarehouseEntity>? warehouses,
     List<SupplierEntity>? suppliers,
     List<FinancialAccountEntity>? accounts,
+    Map<String, String>? activeShiftsByAccount,
     String? selectedWarehouseId,
     String? selectedSupplierId,
     String? documentType,
@@ -68,11 +71,14 @@ class InventoryEntryFormState extends Equatable {
     bool clearDocumentDate = false,
     bool clearSelectedSupplierId = false,
     bool clearSelectedAccountId = false,
+    bool clearActiveShiftId = false,
   }) {
     return InventoryEntryFormState(
       warehouses: warehouses ?? this.warehouses,
       suppliers: suppliers ?? this.suppliers,
       accounts: accounts ?? this.accounts,
+      activeShiftsByAccount:
+          activeShiftsByAccount ?? this.activeShiftsByAccount,
       selectedWarehouseId: selectedWarehouseId ?? this.selectedWarehouseId,
       selectedSupplierId:
           clearSelectedSupplierId
@@ -89,7 +95,8 @@ class InventoryEntryFormState extends Equatable {
               ? null
               : (selectedAccountId ?? this.selectedAccountId),
       purchaseOrderId: purchaseOrderId ?? this.purchaseOrderId,
-      activeShiftId: activeShiftId ?? this.activeShiftId,
+      activeShiftId:
+          clearActiveShiftId ? null : (activeShiftId ?? this.activeShiftId),
       items: items ?? this.items,
       isLoading: isLoading ?? this.isLoading,
       isSaving: isSaving ?? this.isSaving,
@@ -103,6 +110,7 @@ class InventoryEntryFormState extends Equatable {
     warehouses,
     suppliers,
     accounts,
+    activeShiftsByAccount,
     selectedWarehouseId,
     selectedSupplierId,
     documentType,

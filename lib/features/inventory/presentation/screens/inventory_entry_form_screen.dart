@@ -293,12 +293,15 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                 prev.warehouses != curr.warehouses ||
                 prev.suppliers != curr.suppliers ||
                 prev.accounts != curr.accounts ||
+                prev.activeShiftsByAccount != curr.activeShiftsByAccount ||
+                prev.activeShiftId != curr.activeShiftId ||
                 prev.selectedWarehouseId != curr.selectedWarehouseId ||
                 prev.selectedSupplierId != curr.selectedSupplierId ||
                 prev.paymentMode != curr.paymentMode ||
                 prev.documentType != curr.documentType ||
                 prev.documentDate != curr.documentDate ||
-                prev.selectedAccountId != curr.selectedAccountId,
+                prev.selectedAccountId != curr.selectedAccountId ||
+                prev.items != curr.items,
         builder: (context, state) {
           final cubit = context.read<InventoryEntryFormCubit>();
           if (cubit.state.isLoading) {
@@ -651,10 +654,25 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     InventoryEntryFormCubit cubit,
   ) {
     final isCredit = cubit.state.paymentMode == 'CRÉDITO';
-    final selectedAccId =
-        cubit.state.accounts.any((a) => a.id == cubit.state.selectedAccountId)
-            ? cubit.state.selectedAccountId
-            : null;
+    final selectedAcc =
+        cubit.state.accounts
+            .where((a) => a.id == cubit.state.selectedAccountId)
+            .firstOrNull;
+    final selectedAccId = selectedAcc?.id;
+
+    final isCaja = selectedAcc?.type.toUpperCase() == 'CAJA';
+    final hasOpenShift =
+        selectedAccId != null &&
+        cubit.state.activeShiftsByAccount.containsKey(selectedAccId);
+
+    final totalAmount = cubit.state.items.fold<double>(
+      0.0,
+      (sum, item) => sum + (item.quantity * item.unitCost),
+    );
+    final isInsufficientBalance =
+        selectedAcc != null &&
+        cubit.state.items.isNotEmpty &&
+        selectedAcc.balance < totalAmount;
 
     return _SectionCard(
       highlightColor: isCredit ? Colors.purple.shade50 : null,
@@ -718,45 +736,181 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                 cubit.state.paymentMode == 'CONTADO'
                     ? Padding(
                       padding: const EdgeInsets.only(top: 16),
-                      child: DropdownButtonFormField<String>(
-                        key: ValueKey(
-                          'acc_${selectedAccId}_${cubit.state.accounts.length}',
-                        ),
-                        initialValue: selectedAccId,
-                        isExpanded: true,
-                        icon: const Icon(Icons.expand_more_rounded),
-                        decoration: _dropdownDecoration(
-                          'Cuenta a debitar',
-                          icon: Icons.account_balance_wallet_rounded,
-                        ),
-                        hint: const Text(
-                          'Seleccione cuenta a debitar',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 14,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          DropdownButtonFormField<String>(
+                            key: ValueKey(
+                              'acc_${selectedAccId}_${cubit.state.accounts.length}',
+                            ),
+                            initialValue: selectedAccId,
+                            isExpanded: true,
+                            icon: const Icon(Icons.expand_more_rounded),
+                            decoration: _dropdownDecoration(
+                              'Cuenta a debitar',
+                              icon: Icons.account_balance_wallet_rounded,
+                            ),
+                            hint: const Text(
+                              'Seleccione cuenta a debitar',
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 14,
+                              ),
+                            ),
+                            items:
+                                cubit.state.accounts.map((acc) {
+                                  return DropdownMenuItem(
+                                    value: acc.id,
+                                    child: Text(
+                                      '${acc.name} (Saldo: S/ ${acc.balance.toStringAsFixed(2)})',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                            onChanged: cubit.setAccount,
+                            validator: (val) {
+                              if (cubit.state.paymentMode == 'CONTADO') {
+                                if (val == null || val.isEmpty) {
+                                  return 'Seleccione la cuenta a debitar';
+                                }
+                                final acc =
+                                    cubit.state.accounts
+                                        .where((a) => a.id == val)
+                                        .firstOrNull;
+                                if (acc != null &&
+                                    acc.type.toUpperCase() == 'CAJA' &&
+                                    !cubit.state.activeShiftsByAccount
+                                        .containsKey(acc.id)) {
+                                  return 'La caja seleccionada no tiene un turno abierto';
+                                }
+                              }
+                              return null;
+                            },
                           ),
-                        ),
-                        items:
-                            cubit.state.accounts.map((acc) {
-                              return DropdownMenuItem(
-                                value: acc.id,
-                                child: Text(
-                                  '${acc.name} (Saldo: S/ ${acc.balance.toStringAsFixed(2)})',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
+                          if (selectedAcc != null &&
+                              isCaja &&
+                              !hasOpenShift) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.warning.withValues(
+                                  alpha: 0.08,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.warning.withValues(
+                                    alpha: 0.35,
                                   ),
                                 ),
-                              );
-                            }).toList(),
-                        onChanged: cubit.setAccount,
-                        validator: (val) {
-                          if (cubit.state.paymentMode == 'CONTADO' &&
-                              (val == null || val.isEmpty)) {
-                            return 'Seleccione la cuenta a debitar';
-                          }
-                          return null;
-                        },
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: AppColors.warning,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Caja sin turno abierto ("${selectedAcc.name}")',
+                                          style: const TextStyle(
+                                            color: AppColors.warning,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        const Text(
+                                          'Debes abrir un turno de caja para registrar pagos al contado.',
+                                          style: TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Refrescar estado de turnos',
+                                    icon: const Icon(
+                                      Icons.refresh_rounded,
+                                      size: 18,
+                                      color: AppColors.warning,
+                                    ),
+                                    onPressed: () => cubit.refreshCashShifts(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else if (selectedAcc != null &&
+                              isCaja &&
+                              hasOpenShift) ...[
+                            const SizedBox(height: 8),
+                            const Row(
+                              children: [
+                                Icon(
+                                  Icons.check_circle_rounded,
+                                  color: AppColors.success,
+                                  size: 16,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Turno de caja abierto y disponible',
+                                  style: TextStyle(
+                                    color: AppColors.success,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (isInsufficientBalance) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.danger.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.danger.withValues(
+                                    alpha: 0.35,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.error_outline_rounded,
+                                    color: AppColors.danger,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Saldo insuficiente en "${selectedAcc.name}". Disponible: S/ ${selectedAcc.balance.toStringAsFixed(2)} · Requerido: S/ ${totalAmount.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        color: AppColors.danger,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     )
                     : const SizedBox.shrink(),

@@ -48,7 +48,7 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           'p_purchase_order_id': purchaseOrderId,
           'p_payment_mode': paymentMode,
           'p_account_id': accountId,
-          'p_active_shift_id': null, // Validation moved to server RPC
+          'p_active_shift_id': activeShiftId,
           'p_document_type': documentType,
           'p_document_number': documentNumber,
           'p_document_date': documentDate?.toIso8601String().split('T').first,
@@ -280,6 +280,31 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         name: 'InventoryEntriesRepositoryImpl',
       );
       rethrow;
+    }
+  }
+
+  @override
+  Future<Map<String, String>> getOpenCashShifts() async {
+    try {
+      final res = await _supabase
+          .from('cash_shifts')
+          .select('id, account_id')
+          .eq('status', 'OPEN');
+      final Map<String, String> shifts = {};
+      for (final item in (res as List)) {
+        if (item['account_id'] != null && item['id'] != null) {
+          shifts[item['account_id'] as String] = item['id'] as String;
+        }
+      }
+      return shifts;
+    } catch (e, st) {
+      developer.log(
+        'getOpenCashShifts error',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntriesRepositoryImpl',
+      );
+      return {};
     }
   }
 }

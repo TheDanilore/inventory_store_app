@@ -72,6 +72,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
         getActiveWarehouses.call(),
         getActiveSuppliers.call(),
         getActiveAccounts.call(page: 0, pageSize: 100),
+        createInventoryEntry.repository.getOpenCashShifts(),
       ]);
 
       final warehouses = futures[0] as List<WarehouseEntity>;
@@ -92,6 +93,8 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       final rawAccounts = futures[2] as List<FinancialAccountEntity>;
       final accounts = rawAccounts.where((a) => a.isActive).toList();
 
+      final activeShiftsByAccount = futures[3] as Map<String, String>;
+
       // ── auto-select warehouse if only one ────────────────────────────────
       String? initialWarehouseId =
           prefillWarehouseId ?? state.selectedWarehouseId;
@@ -109,13 +112,20 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
         initialAccountId = cashAccount.id;
       }
 
+      final initialActiveShiftId =
+          initialAccountId != null
+              ? activeShiftsByAccount[initialAccountId]
+              : null;
+
       emit(
         state.copyWith(
           warehouses: warehouses,
           suppliers: suppliers,
           accounts: accounts,
+          activeShiftsByAccount: activeShiftsByAccount,
           selectedWarehouseId: initialWarehouseId,
           selectedAccountId: initialAccountId,
+          activeShiftId: initialActiveShiftId,
         ),
       );
 
@@ -179,14 +189,44 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
   }
 
   void setAccount(String? id) {
+    final shiftId = id != null ? state.activeShiftsByAccount[id] : null;
     emit(
-      state.copyWith(selectedAccountId: id, clearSelectedAccountId: id == null),
+      state.copyWith(
+        selectedAccountId: id,
+        activeShiftId: shiftId,
+        clearSelectedAccountId: id == null,
+        clearActiveShiftId: shiftId == null,
+      ),
     );
     _scheduleSaveDraft();
   }
 
   void setActiveShiftId(String? id) {
     emit(state.copyWith(activeShiftId: id));
+  }
+
+  Future<void> refreshCashShifts() async {
+    try {
+      final shifts = await createInventoryEntry.repository.getOpenCashShifts();
+      final shiftId =
+          state.selectedAccountId != null
+              ? shifts[state.selectedAccountId]
+              : null;
+      emit(
+        state.copyWith(
+          activeShiftsByAccount: shifts,
+          activeShiftId: shiftId,
+          clearActiveShiftId: shiftId == null,
+        ),
+      );
+    } catch (e, st) {
+      developer.log(
+        'refreshCashShifts error',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntryFormCubit',
+      );
+    }
   }
 
   void addItem(InventoryEntryItemEntity item) {
@@ -236,17 +276,52 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     }
 
     if (state.purchaseOrderId == null) {
-      if (state.paymentMode == 'CONTADO' && state.selectedAccountId == null) {
-        emit(
-          state.copyWith(
-            errorMessage: 'Seleccione la cuenta financiera para pagar',
-          ),
+      if (state.paymentMode == 'CONTADO') {
+        if (state.selectedAccountId == null) {
+          emit(
+            state.copyWith(
+              errorMessage: 'Seleccione la cuenta financiera para pagar',
+            ),
+          );
+          return false;
+        }
+
+        final selectedAcc = state.accounts.firstWhere(
+          (a) => a.id == state.selectedAccountId,
+          orElse: () => state.accounts.first,
         );
-        return false;
+
+        // Validación de Turno de Caja Abierto
+        if (selectedAcc.type.toUpperCase() == 'CAJA') {
+          final hasOpenShift =
+              state.activeShiftsByAccount.containsKey(selectedAcc.id);
+          if (!hasOpenShift) {
+            emit(
+              state.copyWith(
+                errorMessage:
+                    'La caja seleccionada ("${selectedAcc.name}") no tiene un turno abierto. Debe abrir un turno de caja para realizar pagos al contado.',
+              ),
+            );
+            return false;
+          }
+        }
+
+        // Validación de Saldo Suficiente
+        final totalAmount = state.items.fold<double>(
+          0.0,
+          (sum, item) => sum + (item.quantity * item.unitCost),
+        );
+        if (state.items.isNotEmpty && selectedAcc.balance < totalAmount) {
+          emit(
+            state.copyWith(
+              errorMessage:
+                  'Saldo insuficiente en "${selectedAcc.name}". Saldo disponible: S/ ${selectedAcc.balance.toStringAsFixed(2)} - Total requerido: S/ ${totalAmount.toStringAsFixed(2)}',
+            ),
+          );
+          return false;
+        }
       }
-      // Nota: Eliminamos la validación en cliente del estado del turno ('CAJA') y del saldo.
-      // Ahora se delega 100% al RPC/Trigger de Supabase para garantizar integridad atómica
-      // y prevenir condiciones de carrera según reglas de QA.
+
       if (state.paymentMode == 'CRÉDITO' && state.selectedSupplierId == null) {
         emit(
           state.copyWith(
