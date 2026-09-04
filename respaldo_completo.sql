@@ -385,6 +385,7 @@ ALTER FUNCTION "public"."clear_cloud_cart_rpc"("p_user_id" "uuid") OWNER TO "pos
 
 CREATE OR REPLACE FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
     AS $$
 DECLARE
     v_po_id UUID;
@@ -399,6 +400,7 @@ DECLARE
     v_shift_status TEXT;
     v_real_debt NUMERIC;
     v_po_debt NUMERIC;
+    v_item_subtotal NUMERIC;
 BEGIN
     -- 0. Extraer Profile ID (Auditoría) si no se provee
     IF p_profile_id IS NULL THEN
@@ -436,12 +438,15 @@ BEGIN
             v_real_debt := GREATEST(v_current_debt, v_po_debt);
 
             IF v_credit_limit > 0 AND (v_real_debt + p_total_amount) > v_credit_limit THEN
-                RETURN jsonb_build_object('success', false, 'error', 'Límite de crédito excedido. Disponible: S/ ' || ROUND((v_credit_limit - v_real_debt), 2) || ', Monto de la orden: S/ ' || ROUND(p_total_amount, 2));
+                RETURN jsonb_build_object(
+                    'success', false, 
+                    'error', 'Límite de crédito excedido. Disponible: S/ ' || ROUND((v_credit_limit - v_real_debt), 2) || ', Monto de la orden: S/ ' || ROUND(p_total_amount, 2)
+                );
             END IF;
         END IF;
     END IF;
 
-    -- 2. Validar saldo suficiente y turno de caja abierto (PAID)
+    -- 2. Validar saldo suficiente y turno de caja abierto si es PAID
     IF p_payment_status = 'PAID' THEN
         IF p_account_id IS NULL THEN
             RETURN jsonb_build_object('success', false, 'error', 'Debe seleccionar una cuenta origen para registrar el pago.');
@@ -457,11 +462,13 @@ BEGIN
         END IF;
 
         IF v_acc_balance < p_total_amount THEN
-            RETURN jsonb_build_object('success', false, 'error', 'Saldo insuficiente en la cuenta "' || v_acc_name || '". Saldo disponible: S/ ' || ROUND(v_acc_balance, 2) || ', Monto a pagar: S/ ' || ROUND(p_total_amount, 2));
+            RETURN jsonb_build_object(
+                'success', false, 
+                'error', 'Saldo insuficiente en la cuenta "' || v_acc_name || '". Saldo disponible: S/ ' || ROUND(v_acc_balance, 2) || ', Monto a pagar: S/ ' || ROUND(p_total_amount, 2)
+            );
         END IF;
 
         IF v_acc_type = 'CAJA' THEN
-            -- Autodetectar turno de caja abierto si no viene provisto
             IF p_active_shift_id IS NULL THEN
                 SELECT id INTO p_active_shift_id 
                 FROM public.cash_shifts 
@@ -485,7 +492,7 @@ BEGIN
         supplier_id, supplier_name, warehouse_id, total_amount, 
         payment_method, payment_status, due_date, document_date, 
         document_type, document_number, notes, created_by, status,
-        amount_paid -- Pre-llenar si es pagado al instante
+        amount_paid
     ) VALUES (
         p_supplier_id, p_supplier_name, p_warehouse_id, p_total_amount, 
         p_payment_method, p_payment_status, p_due_date, p_document_date, 
@@ -493,27 +500,37 @@ BEGIN
         CASE WHEN p_payment_status = 'PAID' THEN p_total_amount ELSE 0 END
     ) RETURNING id INTO v_po_id;
 
-    -- 4. Inserción de los Ítems
+    -- 4. Inserción de los Ítems (Mapeo a net_cost y subtotal, con NULLIF seguro para variant_id)
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
     LOOP
+        v_item_subtotal := ((v_item->>'quantity')::NUMERIC * (v_item->>'unit_cost')::NUMERIC);
+
         INSERT INTO public.purchase_order_items (
-            purchase_order_id, product_id, variant_id, quantity_ordered, 
-            unit_cost, subtotal, batch_number, expiry_date
+            purchase_order_id, 
+            product_id, 
+            variant_id, 
+            quantity_ordered, 
+            unit_cost, 
+            net_cost,
+            subtotal, 
+            batch_number, 
+            expiry_date
         ) VALUES (
             v_po_id, 
             (v_item->>'product_id')::UUID, 
-            (v_item->>'variant_id')::UUID, 
+            NULLIF(v_item->>'variant_id', '')::UUID, 
             (v_item->>'quantity')::NUMERIC, 
             (v_item->>'unit_cost')::NUMERIC, 
-            ((v_item->>'quantity')::NUMERIC * (v_item->>'unit_cost')::NUMERIC),
-            v_item->>'batch_number', 
-            CASE WHEN (v_item->>'expiry_date') IS NOT NULL 
+            v_item_subtotal,
+            v_item_subtotal,
+            COALESCE(v_item->>'batch_number', 'DEFAULT'), 
+            CASE WHEN (v_item->>'expiry_date') IS NOT NULL AND (v_item->>'expiry_date') != ''
                  THEN (v_item->>'expiry_date')::DATE 
                  ELSE NULL END
         );
     END LOOP;
 
-    -- 5. Operaciones Financieras / Movimientos
+    -- 5. Operaciones Financieras / Movimientos (Corregido a account_movements)
     IF p_payment_status = 'PAID' THEN
         -- Descontar saldo de la cuenta
         UPDATE public.financial_accounts
@@ -521,10 +538,9 @@ BEGIN
             updated_at = NOW()
         WHERE id = p_account_id;
 
-        -- Registrar movimiento (ajustar tabla si el esquema de movimientos se llama diferente)
-        -- EJ: financial_movements o cash_movements
-        INSERT INTO public.cash_movements (
-            account_id, shift_id, type, amount, description, reference_type, reference_id, created_by
+        -- Registrar movimiento en la tabla real account_movements
+        INSERT INTO public.account_movements (
+            account_id, shift_id, movement_type, amount, description, reference_type, reference_id, created_by
         ) VALUES (
             p_account_id, p_active_shift_id, 'EXPENSE', p_total_amount, 
             'Pago OC #' || left(v_po_id::text, 8), 
@@ -538,7 +554,7 @@ BEGIN
             updated_at = NOW()
         WHERE id = v_credit_id;
 
-        -- Registrar cargo
+        -- Registrar cargo en supplier_credit_movements
         INSERT INTO public.supplier_credit_movements (
             supplier_credit_id, movement_type, amount, purchase_order_id, notes, created_by
         ) VALUES (
@@ -550,7 +566,6 @@ BEGIN
     RETURN jsonb_build_object('success', true, 'purchase_order_id', v_po_id);
 
 EXCEPTION WHEN OTHERS THEN
-    -- Ante cualquier error de restricción, stock, nulos, etc, se lanza excepción y PostgreSQL hace ROLLBACK
     RETURN jsonb_build_object('success', false, 'error', SQLERRM, 'detail', SQLSTATE);
 END;
 $$;
@@ -3991,6 +4006,7 @@ CREATE TABLE IF NOT EXISTS "public"."purchase_order_items" (
     "batch_number" "text" DEFAULT 'DEFAULT'::"text",
     "expiry_date" "date",
     "created_at" timestamp with time zone DEFAULT "now"(),
+    "subtotal" numeric DEFAULT 0,
     CONSTRAINT "purchase_order_items_quantity_ordered_check" CHECK (("quantity_ordered" > (0)::numeric)),
     CONSTRAINT "purchase_order_items_unit_cost_check" CHECK (("unit_cost" >= (0)::numeric))
 );
