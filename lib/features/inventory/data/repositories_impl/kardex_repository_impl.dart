@@ -16,6 +16,7 @@ class KardexRepositoryImpl implements KardexRepository {
     DateTime? endDate,
     String typeFilter = 'ALL',
     String searchText = '',
+    String? productId,
   }) {
     if (startDate != null) {
       query = query.gte('created_at', startDate.toIso8601String());
@@ -38,7 +39,10 @@ class KardexRepositoryImpl implements KardexRepository {
       query = query.not('order_id', 'is', null).eq('reason', 'RETURN');
     }
 
-    if (searchText.isNotEmpty) {
+    // Filtrado estricto por producto indexado
+    if (productId != null && productId.isNotEmpty) {
+      query = query.eq('product_variants.product_id', productId);
+    } else if (searchText.isNotEmpty) {
       // Usamos el filtro de tabla foránea soportado por PostgREST para ilike.
       query = query.ilike('product_variants.products.name', '%$searchText%');
     }
@@ -53,6 +57,7 @@ class KardexRepositoryImpl implements KardexRepository {
     DateTime? endDate,
     String typeFilter = 'ALL',
     String searchText = '',
+    String? productId,
     int page = 0,
     int pageSize = 12,
   }) async {
@@ -61,10 +66,12 @@ class KardexRepositoryImpl implements KardexRepository {
       warehouses!inner(name),
       warehouse_stock_batches(batch_number),
       product_variants!inner(
+        id,
+        product_id,
         sku,
         variant_attribute_values(attribute_values(value)),
         product_images(image_url, is_main, variant_id),
-        products!inner(name, uses_batches, product_images(image_url, is_main, variant_id))
+        products!inner(id, name, uses_batches, product_images(image_url, is_main, variant_id))
       )
     ''');
 
@@ -74,6 +81,7 @@ class KardexRepositoryImpl implements KardexRepository {
       endDate: endDate,
       typeFilter: typeFilter,
       searchText: searchText,
+      productId: productId,
     );
 
     final start = page * pageSize;
@@ -101,16 +109,19 @@ class KardexRepositoryImpl implements KardexRepository {
     DateTime? endDate,
     String typeFilter = 'ALL',
     String searchText = '',
+    String? productId,
   }) async {
     var query = _supabase.from('inventory_movements').select('''
       *,
       warehouses!inner(name),
       warehouse_stock_batches(batch_number),
       product_variants!inner(
+        id,
+        product_id,
         sku,
         variant_attribute_values(attribute_values(value)),
         product_images(image_url, is_main, variant_id),
-        products!inner(name, uses_batches, product_images(image_url, is_main, variant_id))
+        products!inner(id, name, uses_batches, product_images(image_url, is_main, variant_id))
       )
     ''');
 
@@ -120,6 +131,7 @@ class KardexRepositoryImpl implements KardexRepository {
       endDate: endDate,
       typeFilter: typeFilter,
       searchText: searchText,
+      productId: productId,
     );
 
     final response = await query.order('created_at', ascending: false);

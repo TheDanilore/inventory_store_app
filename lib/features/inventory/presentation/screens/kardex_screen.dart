@@ -14,7 +14,14 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'dart:async';
 
 class KardexScreen extends StatefulWidget {
-  const KardexScreen({super.key});
+  final String? initialProductId;
+  final String? initialProductName;
+
+  const KardexScreen({
+    super.key,
+    this.initialProductId,
+    this.initialProductName,
+  });
 
   @override
   State<KardexScreen> createState() => _KardexScreenState();
@@ -29,8 +36,15 @@ class _KardexScreenState extends State<KardexScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialProductName != null &&
+        widget.initialProductName!.isNotEmpty) {
+      _searchCtrl.text = widget.initialProductName!;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<KardexCubit>().loadMovements();
+      context.read<KardexCubit>().loadMovements(
+        productId: widget.initialProductId,
+        searchText: widget.initialProductName ?? '',
+      );
     });
     _scrollController.addListener(() {
       if (_scrollController.offset > 10 && _isFabExtended.value) {
@@ -252,7 +266,7 @@ class _KardexScreenState extends State<KardexScreen> {
                                             _searchCtrl.clear();
                                             context
                                                 .read<KardexCubit>()
-                                                .setSearchText('');
+                                                .clearProductFilter();
                                           },
                                         ),
                                       ),
@@ -374,6 +388,91 @@ class _KardexScreenState extends State<KardexScreen> {
                                 ],
                               ),
                             ),
+                          ),
+                        ),
+
+                        // --- BANNER DE PRODUCTO FILTRADO ---
+                        SliverToBoxAdapter(
+                          child: BlocBuilder<KardexCubit, KardexState>(
+                            builder: (context, state) {
+                              if (state is KardexLoaded && state.productId != null) {
+                                return Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 9,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.08),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: AppColors.primary.withValues(alpha: 0.25),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.inventory_2_rounded,
+                                          size: 16,
+                                          color: AppColors.primary,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Filtrando Kárdex para: ${state.searchText.isNotEmpty ? state.searchText : state.productId}',
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        InkWell(
+                                          onTap: () {
+                                            _searchCtrl.clear();
+                                            context
+                                                .read<KardexCubit>()
+                                                .clearProductFilter();
+                                          },
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: const [
+                                                Text(
+                                                  'Ver todo',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: AppColors.primary,
+                                                    decoration:
+                                                        TextDecoration.underline,
+                                                  ),
+                                                ),
+                                                SizedBox(width: 4),
+                                                Icon(
+                                                  Icons.close_rounded,
+                                                  size: 14,
+                                                  color: AppColors.primary,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
                           ),
                         ),
 

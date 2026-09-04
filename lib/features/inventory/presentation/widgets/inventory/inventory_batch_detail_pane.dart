@@ -471,7 +471,9 @@ class InventoryBatchDetailPane extends StatelessWidget {
         // CTA 1: Ver Kárdex
         ElevatedButton.icon(
           onPressed: () {
-            context.push('/admin/kardex');
+            context.push(
+              '/admin/kardex?productId=${batch.productId}&productName=${Uri.encodeComponent(batch.productName ?? '')}',
+            );
           },
           icon: const Icon(Icons.receipt_long_rounded, size: 18),
           label: const Text('Ver Movimientos en Kárdex'),

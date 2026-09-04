@@ -18,6 +18,7 @@ class KardexLoaded extends KardexState {
   final DateTime? endDate;
   final String typeFilter;
   final String searchText;
+  final String? productId;
   final int currentPage;
   final int totalCount;
   final int totalPages;
@@ -29,6 +30,7 @@ class KardexLoaded extends KardexState {
     this.endDate,
     required this.typeFilter,
     required this.searchText,
+    this.productId,
     required this.currentPage,
     required this.totalCount,
     required this.totalPages,
@@ -41,6 +43,8 @@ class KardexLoaded extends KardexState {
     DateTime? endDate,
     String? typeFilter,
     String? searchText,
+    String? productId,
+    bool clearProductId = false,
     int? currentPage,
     int? totalCount,
     int? totalPages,
@@ -53,6 +57,7 @@ class KardexLoaded extends KardexState {
       endDate: clearDateRange ? null : (endDate ?? this.endDate),
       typeFilter: typeFilter ?? this.typeFilter,
       searchText: searchText ?? this.searchText,
+      productId: clearProductId ? null : (productId ?? this.productId),
       currentPage: currentPage ?? this.currentPage,
       totalCount: totalCount ?? this.totalCount,
       totalPages: totalPages ?? this.totalPages,
@@ -67,6 +72,7 @@ class KardexLoaded extends KardexState {
     endDate,
     typeFilter,
     searchText,
+    productId,
     currentPage,
     totalCount,
     totalPages,

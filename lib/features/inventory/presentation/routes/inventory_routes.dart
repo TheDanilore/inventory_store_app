@@ -84,11 +84,17 @@ class InventoryRoutes {
     ),
     GoRoute(
       path: '/admin/kardex',
-      builder:
-          (context, state) => BlocProvider(
-            create: (_) => sl<KardexCubit>(),
-            child: const KardexScreen(),
+      builder: (context, state) {
+        final productId = state.uri.queryParameters['productId'];
+        final productName = state.uri.queryParameters['productName'];
+        return BlocProvider(
+          create: (_) => sl<KardexCubit>(),
+          child: KardexScreen(
+            initialProductId: productId,
+            initialProductName: productName,
           ),
+        );
+      },
     ),
     GoRoute(
       path: '/admin/warehouses',

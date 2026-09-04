@@ -21,14 +21,18 @@ class KardexCubit extends Cubit<KardexState> {
     DateTime? endDate,
     String? typeFilter,
     String? searchText,
+    String? productId,
     int? page,
     bool clearDateRange = false,
+    bool clearProductId = false,
   }) async {
     try {
       final currentState = state is KardexLoaded ? state as KardexLoaded : null;
 
       final currentTypeFilter = typeFilter ?? currentState?.typeFilter ?? 'ALL';
       final currentSearchText = searchText ?? currentState?.searchText ?? '';
+      final currentProductId =
+          clearProductId ? null : (productId ?? currentState?.productId);
       final currentPage = page ?? currentState?.currentPage ?? 0;
       final currentStartDate =
           clearDateRange ? null : (startDate ?? currentState?.startDate);
@@ -42,6 +46,7 @@ class KardexCubit extends Cubit<KardexState> {
         endDate: currentEndDate,
         typeFilter: currentTypeFilter,
         searchText: currentSearchText,
+        productId: currentProductId,
         page: currentPage,
         pageSize: pageSize,
       );
@@ -57,6 +62,7 @@ class KardexCubit extends Cubit<KardexState> {
           endDate: currentEndDate,
           typeFilter: currentTypeFilter,
           searchText: currentSearchText,
+          productId: currentProductId,
           currentPage: currentPage,
           totalCount: count,
           totalPages: totalPages,
@@ -93,7 +99,22 @@ class KardexCubit extends Cubit<KardexState> {
     if (state is KardexLoaded && (state as KardexLoaded).searchText == text) {
       return;
     }
-    loadMovements(searchText: text, page: 0);
+    // Si el usuario borra la búsqueda o escribe texto libre, limpiamos el productId
+    final clearProd = text.isEmpty ||
+        (state is KardexLoaded && (state as KardexLoaded).searchText != text);
+    loadMovements(
+      searchText: text,
+      page: 0,
+      clearProductId: clearProd,
+    );
+  }
+
+  void clearProductFilter() {
+    loadMovements(
+      searchText: '',
+      page: 0,
+      clearProductId: true,
+    );
   }
 
   void changePage(int newPage) {
@@ -122,6 +143,7 @@ class KardexCubit extends Cubit<KardexState> {
         endDate: currentState.endDate,
         typeFilter: currentState.typeFilter,
         searchText: currentState.searchText,
+        productId: currentState.productId,
       );
       emit(currentState.copyWith(isExporting: false));
     } catch (e, st) {

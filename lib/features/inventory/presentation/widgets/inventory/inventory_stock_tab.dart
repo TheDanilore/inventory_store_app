@@ -561,7 +561,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                                 .textSecondary,
                                                         onPressed:
                                                             () => context.push(
-                                                              '/admin/kardex',
+                                                              '/admin/kardex?productId=${item.productId}&productName=${Uri.encodeComponent(item.productName)}',
                                                             ),
                                                         splashRadius: 16,
                                                       ),

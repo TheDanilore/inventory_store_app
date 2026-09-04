@@ -8,6 +8,7 @@ abstract class KardexRepository {
     DateTime? endDate,
     String typeFilter = 'ALL',
     String searchText = '',
+    String? productId,
     int page = 0,
     int pageSize = 12,
   });
@@ -17,5 +18,6 @@ abstract class KardexRepository {
     DateTime? endDate,
     String typeFilter = 'ALL',
     String searchText = '',
+    String? productId,
   });
 }
