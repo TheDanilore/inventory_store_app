@@ -1,12 +1,14 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
-import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_warehouses_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_active_suppliers_uc.dart';
@@ -27,6 +29,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
   final GetPurchaseOrderByIdUseCase getPurchaseOrderById;
 
   static const _draftKey = 'inventory_entry_draft';
+  Timer? _draftTimer;
 
   InventoryEntryFormCubit({
     required this.getActiveWarehouses,
@@ -35,6 +38,12 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     required this.createInventoryEntry,
     required this.getPurchaseOrderById,
   }) : super(const InventoryEntryFormState());
+
+  @override
+  Future<void> close() {
+    _draftTimer?.cancel();
+    return super.close();
+  }
 
   Future<void> init({
     String? purchaseOrderId,
@@ -62,53 +71,42 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       final futures = await Future.wait([
         getActiveWarehouses.call(),
         getActiveSuppliers.call(),
-        getActiveAccounts.call(page: 1, pageSize: 100),
+        getActiveAccounts.call(page: 0, pageSize: 100),
       ]);
 
-      var warehouses = <WarehouseModel>[];
-      var suppliers = <SupplierEntity>[];
-      var accounts = <FinancialAccountModel>[];
+      final warehouses = futures[0] as List<WarehouseEntity>;
 
-      // Warehouses
-      (futures[0] as Either<dynamic, dynamic>).fold(
-        (l) => developer.log(
-          'warehouses error: ${l.message}',
-          name: 'InventoryEntryFormCubit',
-        ),
-        (r) {
-          warehouses = r as List<WarehouseModel>;
+      final suppliersResult =
+          futures[1] as Either<Failure, List<SupplierEntity>>;
+      final suppliers = suppliersResult.fold(
+        (l) {
+          developer.log(
+            'suppliers error: ${l.message}',
+            name: 'InventoryEntryFormCubit',
+          );
+          return <SupplierEntity>[];
         },
+        (r) => r,
       );
 
-      // Suppliers
-      (futures[1] as Either<dynamic, dynamic>).fold(
-        (l) => developer.log(
-          'suppliers error: ${l.message}',
-          name: 'InventoryEntryFormCubit',
-        ),
-        (r) {
-          suppliers = r as List<SupplierEntity>;
-        },
-      );
-
-      // Accounts
-      (futures[2] as Either<dynamic, dynamic>).fold(
-        (l) => developer.log(
-          'accounts error: ${l.message}',
-          name: 'InventoryEntryFormCubit',
-        ),
-        (r) {
-          accounts =
-              (r as List<FinancialAccountModel>)
-                  .where((a) => a.isActive)
-                  .toList();
-        },
-      );
+      final rawAccounts = futures[2] as List<FinancialAccountEntity>;
+      final accounts = rawAccounts.where((a) => a.isActive).toList();
 
       // ── auto-select warehouse if only one ────────────────────────────────
-      String? initialWarehouseId = prefillWarehouseId;
+      String? initialWarehouseId =
+          prefillWarehouseId ?? state.selectedWarehouseId;
       if (initialWarehouseId == null && warehouses.length == 1) {
         initialWarehouseId = warehouses.first.id;
+      }
+
+      // ── auto-select account for CONTADO if none selected ─────────────────
+      String? initialAccountId = state.selectedAccountId;
+      if (initialAccountId == null && accounts.isNotEmpty) {
+        final cashAccount = accounts.firstWhere(
+          (a) => a.type.toUpperCase() == 'CAJA',
+          orElse: () => accounts.first,
+        );
+        initialAccountId = cashAccount.id;
       }
 
       emit(
@@ -116,7 +114,8 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
           warehouses: warehouses,
           suppliers: suppliers,
           accounts: accounts,
-          selectedWarehouseId: initialWarehouseId ?? state.selectedWarehouseId,
+          selectedWarehouseId: initialWarehouseId,
+          selectedAccountId: initialAccountId,
         ),
       );
 
@@ -138,7 +137,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
         stackTrace: st,
         name: 'InventoryEntryFormCubit',
       );
-      emit(state.copyWith(errorMessage: 'Error cargando datos.'));
+      emit(state.copyWith(errorMessage: 'Error cargando datos: $e'));
     } finally {
       emit(state.copyWith(isLoading: false));
     }
@@ -146,7 +145,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
   void setWarehouse(String? id) {
     emit(state.copyWith(selectedWarehouseId: id));
-    _saveDraft();
+    _scheduleSaveDraft();
   }
 
   void setSupplier(String? id) {
@@ -156,34 +155,34 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
         clearSelectedSupplierId: id == null,
       ),
     );
-    _saveDraft();
+    _scheduleSaveDraft();
   }
 
   void setDocumentType(String type) {
     emit(state.copyWith(documentType: type));
-    _saveDraft();
+    _scheduleSaveDraft();
   }
 
   void setDocumentNumber(String? num) {
     emit(state.copyWith(documentNumber: num, clearDocumentNumber: num == null));
-    _saveDraft();
+    _scheduleSaveDraft();
   }
 
   void setDocumentDate(DateTime? date) {
     emit(state.copyWith(documentDate: date, clearDocumentDate: date == null));
-    _saveDraft();
+    _scheduleSaveDraft();
   }
 
   void setPaymentMode(String mode) {
     emit(state.copyWith(paymentMode: mode));
-    _saveDraft();
+    _scheduleSaveDraft();
   }
 
   void setAccount(String? id) {
     emit(
       state.copyWith(selectedAccountId: id, clearSelectedAccountId: id == null),
     );
-    _saveDraft();
+    _scheduleSaveDraft();
   }
 
   void setActiveShiftId(String? id) {
@@ -203,7 +202,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       newItems.add(item);
     }
     emit(state.copyWith(items: newItems));
-    _saveDraft();
+    _scheduleSaveDraft();
   }
 
   void updateItemQuantity(int index, double newQty) {
@@ -211,7 +210,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     final newItems = List<InventoryEntryItemEntity>.from(state.items);
     newItems[index] = newItems[index].copyWith(quantity: newQty);
     emit(state.copyWith(items: newItems));
-    _saveDraft();
+    _scheduleSaveDraft();
   }
 
   void updateItemCost(int index, double newCost) {
@@ -219,14 +218,14 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     final newItems = List<InventoryEntryItemEntity>.from(state.items);
     newItems[index] = newItems[index].copyWith(unitCost: newCost);
     emit(state.copyWith(items: newItems));
-    _saveDraft();
+    _scheduleSaveDraft();
   }
 
   void removeItem(int index) {
     final newItems = List<InventoryEntryItemEntity>.from(state.items);
     newItems.removeAt(index);
     emit(state.copyWith(items: newItems));
-    _saveDraft();
+    _scheduleSaveDraft();
   }
 
   bool validate(String activeShiftId) {
@@ -319,6 +318,14 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
         );
       }
     }
+  }
+
+  void _scheduleSaveDraft() {
+    if (state.purchaseOrderId != null) return;
+    _draftTimer?.cancel();
+    _draftTimer = Timer(const Duration(milliseconds: 500), () {
+      _saveDraft();
+    });
   }
 
   Future<void> _saveDraft() async {
@@ -417,6 +424,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
   }
 
   Future<void> clearDraft() async {
+    _draftTimer?.cancel();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_draftKey);
     emit(state.copyWith(items: []));

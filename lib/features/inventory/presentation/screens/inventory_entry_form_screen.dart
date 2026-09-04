@@ -41,6 +41,7 @@ class InventoryEntryFormScreen extends StatefulWidget {
 }
 
 class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _documentNumberCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
@@ -59,19 +60,22 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       _documentNumberCtrl.text = widget.prefillDocumentNumber!;
     }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final cubit = context.read<InventoryEntryFormCubit>();
-
-      await cubit.init(
-        purchaseOrderId: widget.purchaseOrderId,
-        prefillItems: widget.prefillItems,
-        prefillSupplierId: widget.prefillSupplierId,
-        prefillWarehouseId: widget.prefillWarehouseId,
-        prefillDocumentType: widget.prefillDocumentType,
-        prefillDocumentNumber: widget.prefillDocumentNumber,
-        prefillDocumentDate: widget.prefillDocumentDate,
-      );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
     });
+  }
+
+  void _loadInitialData() {
+    final cubit = context.read<InventoryEntryFormCubit>();
+    cubit.init(
+      purchaseOrderId: widget.purchaseOrderId,
+      prefillItems: widget.prefillItems,
+      prefillSupplierId: widget.prefillSupplierId,
+      prefillWarehouseId: widget.prefillWarehouseId,
+      prefillDocumentType: widget.prefillDocumentType,
+      prefillDocumentNumber: widget.prefillDocumentNumber,
+      prefillDocumentDate: widget.prefillDocumentDate,
+    );
   }
 
   @override
@@ -126,9 +130,19 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
 
     cubit.setDocumentNumber(_documentNumberCtrl.text.trim());
 
+    if (!mounted) return;
+
+    if (_formKey.currentState != null && !_formKey.currentState!.validate()) {
+      AppSnackbar.show(
+        context,
+        message: 'Por favor complete los campos obligatorios del formulario',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
     final activeShiftId = cubit.state.activeShiftId ?? "";
 
-    if (!mounted) return;
     if (!cubit.validate(activeShiftId)) {
       AppSnackbar.show(
         context,
@@ -275,6 +289,10 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             (prev, curr) =>
                 prev.isLoading != curr.isLoading ||
                 prev.isSaving != curr.isSaving ||
+                prev.errorMessage != curr.errorMessage ||
+                prev.warehouses != curr.warehouses ||
+                prev.suppliers != curr.suppliers ||
+                prev.accounts != curr.accounts ||
                 prev.selectedWarehouseId != curr.selectedWarehouseId ||
                 prev.selectedSupplierId != curr.selectedSupplierId ||
                 prev.paymentMode != curr.paymentMode ||
@@ -295,6 +313,67 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             );
           }
 
+          if (!cubit.state.isLoading &&
+              cubit.state.errorMessage.isNotEmpty &&
+              cubit.state.warehouses.isEmpty) {
+            return AdminLayout(
+              title:
+                  widget.purchaseOrderId != null
+                      ? 'Recepción de Orden'
+                      : 'Nueva Entrada Manual',
+              showBackButton: true,
+              showProfileButton: false,
+              showDrawerButton: false,
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: AppColors.danger,
+                        size: 56,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Error al cargar catálogos',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        cubit.state.errorMessage,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: _loadInitialData,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Reintentar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+
           return AdminLayout(
             title:
                 widget.purchaseOrderId != null
@@ -310,9 +389,11 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                         color: AppColors.primary,
                       ),
                     )
-                    : LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isWide = constraints.maxWidth >= 900;
+                    : Form(
+                        key: _formKey,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isWide = constraints.maxWidth >= 900;
 
                         if (isWide) {
                           return Row(
@@ -430,6 +511,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                         );
                       },
                     ),
+                  ),
           );
         },
       ),
@@ -519,8 +601,18 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
               'Almacén Destino',
               icon: Icons.warehouse_rounded,
             ),
+            hint: const Text(
+              'Seleccione almacén destino',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+            ),
             items: warehouseItems,
             onChanged: cubit.setWarehouse,
+            validator: (val) {
+              if (val == null || val.isEmpty) {
+                return 'Debe seleccionar un almacén destino';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String?>(
@@ -534,8 +626,19 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
               'Proveedor (Opcional)',
               icon: Icons.local_shipping_rounded,
             ),
+            hint: const Text(
+              'Seleccione proveedor (opcional)',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+            ),
             items: supplierItems,
             onChanged: cubit.setSupplier,
+            validator: (val) {
+              if (cubit.state.paymentMode == 'CRÉDITO' &&
+                  (val == null || val.isEmpty)) {
+                return 'Debe seleccionar un proveedor para compras al crédito';
+              }
+              return null;
+            },
           ),
         ],
       ),
@@ -626,6 +729,13 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                           'Cuenta a debitar',
                           icon: Icons.account_balance_wallet_rounded,
                         ),
+                        hint: const Text(
+                          'Seleccione cuenta a debitar',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 14,
+                          ),
+                        ),
                         items:
                             cubit.state.accounts.map((acc) {
                               return DropdownMenuItem(
@@ -640,6 +750,13 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                               );
                             }).toList(),
                         onChanged: cubit.setAccount,
+                        validator: (val) {
+                          if (cubit.state.paymentMode == 'CONTADO' &&
+                              (val == null || val.isEmpty)) {
+                            return 'Seleccione la cuenta a debitar';
+                          }
+                          return null;
+                        },
                       ),
                     )
                     : const SizedBox.shrink(),
