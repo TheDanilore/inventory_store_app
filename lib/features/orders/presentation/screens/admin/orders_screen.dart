@@ -147,7 +147,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
               color: AppColors.background,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            child: OrderDetailSheet(order: order),
+            child: OrderDetailSheet(
+              order: order,
+              onOrderUpdated: (updated) {
+                if (mounted) {
+                  context.read<OrdersCubit>().updateOrderInList(updated);
+                }
+              },
+            ),
           ),
     );
 
@@ -349,6 +356,19 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                     order: currentSelectedOrder,
                                     isEmbedded: true,
                                     onPop: _onOrderEmbeddedPop,
+                                    onOrderUpdated: (updated) {
+                                      if (mounted) {
+                                        context
+                                            .read<OrdersCubit>()
+                                            .updateOrderInList(updated);
+                                        setState(() {
+                                          _selectedOrder = updated;
+                                        });
+                                        context
+                                            .read<OrdersCubit>()
+                                            .loadOrders(background: true);
+                                      }
+                                    },
                                   ),
                                 ),
                       ),

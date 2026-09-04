@@ -88,6 +88,15 @@ class OrdersCubit extends Cubit<OrdersState> {
     );
   }
 
+  void updateOrderInList(OrderEntity updatedOrder) {
+    final index = state.orders.indexWhere((o) => o.id == updatedOrder.id);
+    if (index != -1) {
+      final updatedOrders = List<OrderEntity>.from(state.orders);
+      updatedOrders[index] = updatedOrder;
+      emit(state.copyWith(orders: updatedOrders));
+    }
+  }
+
   void goToPage(int page) {
     if (page < 0 || page >= state.totalPages || page == state.currentPage) {
       return;

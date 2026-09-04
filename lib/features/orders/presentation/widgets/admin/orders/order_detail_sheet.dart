@@ -35,12 +35,14 @@ class OrderDetailSheet extends StatelessWidget {
   final OrderEntity order;
   final bool isEmbedded;
   final ValueChanged<bool>? onPop;
+  final ValueChanged<OrderEntity>? onOrderUpdated;
 
   const OrderDetailSheet({
     super.key,
     required this.order,
     this.isEmbedded = false,
     this.onPop,
+    this.onOrderUpdated,
   });
 
   @override
@@ -55,6 +57,7 @@ class OrderDetailSheet extends StatelessWidget {
         order: order,
         isEmbedded: isEmbedded,
         onPop: onPop,
+        onOrderUpdated: onOrderUpdated,
       ),
     );
   }
@@ -64,11 +67,13 @@ class _OrderDetailSheetContent extends StatefulWidget {
   final OrderEntity order;
   final bool isEmbedded;
   final ValueChanged<bool>? onPop;
+  final ValueChanged<OrderEntity>? onOrderUpdated;
 
   const _OrderDetailSheetContent({
     required this.order,
     this.isEmbedded = false,
     this.onPop,
+    this.onOrderUpdated,
   });
 
   @override
@@ -164,6 +169,10 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
     if (!mounted) return;
 
     if (result) {
+      final updated = context.read<OrderDetailCubit>().state.order;
+      if (updated != null) {
+        widget.onOrderUpdated?.call(updated);
+      }
       AppSnackbar.show(
         context,
         message: 'Cambios guardados correctamente',
@@ -185,6 +194,10 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
     final result = await context.read<OrderDetailCubit>().processReturn(notes);
     if (!mounted) return;
     if (result) {
+      final updated = context.read<OrderDetailCubit>().state.order;
+      if (updated != null) {
+        widget.onOrderUpdated?.call(updated);
+      }
       AppSnackbar.show(
         context,
         message: 'Devolución procesada con éxito',
@@ -548,13 +561,15 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                     accounts: state.accounts,
                                     customerId: state.selectedCustomerId,
                                     pointsEarned: state.pointsEarned,
-                                    onPaymentRegistered: () {
-                                      context
-                                          .read<OrderDetailCubit>()
-                                          .setWasModified();
-                                      context
-                                          .read<OrderDetailCubit>()
-                                          .fetchData(widget.order.id);
+                                    onPaymentRegistered: () async {
+                                      final cubit =
+                                          context.read<OrderDetailCubit>();
+                                      cubit.setWasModified();
+                                      await cubit.fetchData(widget.order.id);
+                                      final updated = cubit.state.order;
+                                      if (updated != null) {
+                                        widget.onOrderUpdated?.call(updated);
+                                      }
                                     },
                                     isLoyaltyEnabled:
                                         config.loyaltyGlobalEnabled,
