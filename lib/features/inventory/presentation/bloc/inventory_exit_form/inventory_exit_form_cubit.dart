@@ -62,16 +62,31 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
     }
   }
 
+  Timer? _draftDebounceTimer;
+
+  @override
+  Future<void> close() {
+    _draftDebounceTimer?.cancel();
+    return super.close();
+  }
+
+  void _scheduleSaveDraft() {
+    _draftDebounceTimer?.cancel();
+    _draftDebounceTimer = Timer(const Duration(milliseconds: 400), () {
+      _saveDraft();
+    });
+  }
+
   void selectWarehouse(String? id) {
     if (id != null && id != state.selectedWarehouseId) {
       emit(state.copyWith(selectedWarehouseId: id, items: []));
-      unawaited(_saveDraft());
+      _scheduleSaveDraft();
     }
   }
 
   void selectReason(String reason) {
     emit(state.copyWith(selectedReason: reason));
-    unawaited(_saveDraft());
+    _scheduleSaveDraft();
   }
 
   void addItem(ExitItemUI newItem) {
@@ -88,14 +103,14 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
       newItems.add(newItem);
     }
     emit(state.copyWith(items: newItems));
-    unawaited(_saveDraft());
+    _scheduleSaveDraft();
   }
 
   void removeItem(int index) {
     final newItems = List<ExitItemUI>.from(state.items);
     newItems.removeAt(index);
     emit(state.copyWith(items: newItems));
-    unawaited(_saveDraft());
+    _scheduleSaveDraft();
   }
 
   void updateQuantity(int index, double newQuantity) {
@@ -103,13 +118,34 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
       final newItems = List<ExitItemUI>.from(state.items);
       newItems[index].quantity = newQuantity;
       emit(state.copyWith(items: newItems));
-      unawaited(_saveDraft());
+      _scheduleSaveDraft();
     }
   }
 
   Future<void> saveExit(String? notes) async {
     if (state.selectedWarehouseId == null || state.items.isEmpty) return;
 
+    // Validación estricta de lotes requeridos
+    for (final item in state.items) {
+      final batchNumber = item.selectedBatch?['batch_number'] as String?;
+      final batchId = item.selectedBatch?['id'] as String?;
+      if (item.product.usesBatches &&
+          (batchId == null ||
+              batchNumber == null ||
+              batchNumber == 'DEFAULT' ||
+              batchNumber.trim().isEmpty)) {
+        emit(
+          state.copyWith(
+            errorMessage:
+                'El producto "${item.product.name}" requiere un lote válido seleccionado.',
+            isSaving: false,
+          ),
+        );
+        return;
+      }
+    }
+
+    _draftDebounceTimer?.cancel();
     emit(state.copyWith(isSaving: true, errorMessage: '', isSuccess: false));
 
     try {
@@ -160,6 +196,7 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
   }
 
   Future<void> clearDraft() async {
+    _draftDebounceTimer?.cancel();
     emit(state.copyWith(items: [], errorMessage: ''));
     await _draftService.clearDraft();
   }

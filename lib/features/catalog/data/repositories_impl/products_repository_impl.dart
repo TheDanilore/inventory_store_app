@@ -1353,9 +1353,10 @@ class ProductsRepositoryImpl implements ProductsRepository {
     try {
       final response = await _supabase
           .from('warehouse_stock_batches')
-          .select('batch_number, expiry_date, available_quantity')
+          .select('id, batch_number, expiry_date, available_quantity')
           .eq('variant_id', variantId)
           .eq('warehouse_id', warehouseId)
+          .gt('available_quantity', 0)
           .order('expiry_date', ascending: true, nullsFirst: false)
           .order('created_at', ascending: true);
       return right(List<Map<String, dynamic>>.from(response));

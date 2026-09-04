@@ -508,39 +508,37 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                               ),
                               const SizedBox(width: 16),
                               Expanded(
-                                child: TextField(
-                                  readOnly: true,
-                                  controller: TextEditingController(
-                                    text: displayCost.toStringAsFixed(2),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
                                   ),
-                                  style: textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w800,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.background,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: AppColors.border),
                                   ),
-                                  decoration: InputDecoration(
-                                    labelText: 'Costo Unitario (S/)',
-                                    labelStyle: textTheme.bodyMedium?.copyWith(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    filled: true,
-                                    fillColor: AppColors.background,
-                                    prefixText: 'S/ ',
-                                    prefixStyle: textTheme.titleMedium
-                                        ?.copyWith(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Costo Unitario (S/)',
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: AppColors.textSecondary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'S/ ${displayCost.toStringAsFixed(2)}',
+                                        style: textTheme.titleMedium?.copyWith(
                                           fontWeight: FontWeight.w800,
                                           color: AppColors.textPrimary,
                                         ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: const BorderSide(
-                                        color: AppColors.border,
                                       ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: const BorderSide(
-                                        color: AppColors.border,
-                                      ),
-                                    ),
+                                    ],
                                   ),
                                 ),
                               ),

@@ -203,102 +203,141 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       return;
     }
 
+    // Validación estricta de lotes requeridos antes de confirmar
+    for (final item in cubit.state.items) {
+      final batchNumber = item.selectedBatch?['batch_number'] as String?;
+      final batchId = item.selectedBatch?['id'] as String?;
+      if (item.product.usesBatches &&
+          (batchId == null ||
+              batchNumber == null ||
+              batchNumber == 'DEFAULT' ||
+              batchNumber.trim().isEmpty)) {
+        AppSnackbar.show(
+          context,
+          message:
+              'El producto "${item.product.name}" requiere un lote válido seleccionado.',
+          type: SnackbarType.warning,
+        );
+        return;
+      }
+    }
+
     // Modal de Confirmación Estricta (CONFIRMAR)
     final confirmCtrl = TextEditingController();
     bool isConfirmed = false;
+    bool isDialogProcessing = false;
     final formKey = GlobalKey<FormState>();
 
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder:
-          (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            title: const Row(
-              children: [
-                Icon(Icons.warning_rounded, color: AppColors.danger, size: 28),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Confirmar Salida Múltiple',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.danger,
-                    ),
+          (ctx) => StatefulBuilder(
+            builder:
+                (dialogCtx, setDialogState) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                ),
-              ],
-            ),
-            content: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Estás a punto de confirmar una pérdida valorizada de S/ ${cubit.state.totalLossCost.toStringAsFixed(2)}. Esto impactará directamente el inventario físico.',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Para autorizar, escribe la palabra CONFIRMAR:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: confirmCtrl,
-                    textCapitalization: TextCapitalization.characters,
-                    validator: (value) {
-                      if (value == null || value.trim() != 'CONFIRMAR') {
-                        return 'Debes escribir CONFIRMAR correctamente';
-                      }
-                      return null;
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'CONFIRMAR',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  title: const Row(
+                    children: [
+                      Icon(
+                        Icons.warning_rounded,
+                        color: AppColors.danger,
+                        size: 28,
                       ),
-                      filled: true,
-                      fillColor: AppColors.background,
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Confirmar Salida Múltiple',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  content: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Estás a punto de confirmar una pérdida valorizada de S/ ${cubit.state.totalLossCost.toStringAsFixed(2)}. Esto impactará directamente el inventario físico.',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Para autorizar, escribe la palabra CONFIRMAR:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: confirmCtrl,
+                          textCapitalization: TextCapitalization.characters,
+                          validator: (value) {
+                            if (value == null || value.trim() != 'CONFIRMAR') {
+                              return 'Debes escribir CONFIRMAR correctamente';
+                            }
+                            return null;
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'CONFIRMAR',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            filled: true,
+                            fillColor: AppColors.background,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: AppColors.textSecondary),
+                  actions: [
+                    TextButton(
+                      onPressed:
+                          isDialogProcessing
+                              ? null
+                              : () => Navigator.pop(ctx),
+                      child: const Text(
+                        'Cancelar',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.danger,
+                      ),
+                      onPressed:
+                          isDialogProcessing
+                              ? null
+                              : () {
+                                if (formKey.currentState?.validate() ?? false) {
+                                  setDialogState(
+                                    () => isDialogProcessing = true,
+                                  );
+                                  isConfirmed = true;
+                                  Navigator.pop(ctx);
+                                }
+                              },
+                      child: const Text(
+                        'Autorizar',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.danger,
-                ),
-                onPressed: () {
-                  if (formKey.currentState?.validate() ?? false) {
-                    isConfirmed = true;
-                    Navigator.pop(ctx);
-                  }
-                },
-                child: const Text(
-                  'Autorizar',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
           ),
     );
 
@@ -331,6 +370,14 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<InventoryExitFormCubit, InventoryExitFormState>(
+      buildWhen:
+          (previous, current) =>
+              previous.isLoading != current.isLoading ||
+              previous.isSaving != current.isSaving ||
+              previous.selectedWarehouseId != current.selectedWarehouseId ||
+              previous.selectedReason != current.selectedReason ||
+              previous.items != current.items ||
+              previous.warehouses != current.warehouses,
       builder: (context, state) {
         final cubit = context.read<InventoryExitFormCubit>();
 
@@ -356,7 +403,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
               if (context.canPop()) {
                 context.pop(result);
               } else {
-                context.go('/admin/kardex');
+                context.go('/admin/inventory-exits');
               }
               return;
             }
@@ -409,13 +456,13 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
               if (context.canPop()) {
                 context.pop(result);
               } else {
-                context.go('/admin/kardex');
+                context.go('/admin/inventory-exits');
               }
             } else if (action == 'draft') {
               if (context.canPop()) {
                 context.pop(result);
               } else {
-                context.go('/admin/kardex');
+                context.go('/admin/inventory-exits');
               }
             }
           },
@@ -424,83 +471,132 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             showBackButton: true,
             showProfileButton: false,
             showDrawerButton: false,
-            body:
-                state.isSaving
-                    ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.danger),
-                    )
-                    : LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isWide = constraints.maxWidth >= 900;
+            body: IgnorePointer(
+              ignoring: state.isSaving,
+              child: Stack(
+                children: [
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth >= 900;
 
-                        if (isWide) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Izquierda: Datos de Origen y Justificación
-                              Expanded(
-                                flex: 5,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border(
-                                      right: BorderSide(
-                                        color: Colors.grey.shade200,
-                                      ),
-                                    ),
-                                  ),
-                                  child: SingleChildScrollView(
-                                    padding: const EdgeInsets.all(24.0),
-                                    child: _buildGeneralInfoSection(
-                                      context,
-                                      state,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              // Derecha: Productos y Botón Guardar
-                              Expanded(
-                                flex: 4,
-                                child: Column(
-                                  children: [
-                                    Expanded(
-                                      child: SingleChildScrollView(
-                                        padding: const EdgeInsets.all(24.0),
-                                        child: _buildProductsSection(
-                                          context,
-                                          state,
-                                        ),
-                                      ),
-                                    ),
-                                    _buildStickySaveButton(context, state),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          );
-                        }
-
-                        // Móvil
-                        return Column(
+                      if (isWide) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // Izquierda: Datos de Origen y Justificación
                             Expanded(
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildGeneralInfoSection(context, state),
-                                    const SizedBox(height: 16),
-                                    _buildProductsSection(context, state),
-                                    const SizedBox(height: 24),
-                                  ],
+                              flex: 5,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    right: BorderSide(
+                                      color: Colors.grey.shade200,
+                                    ),
+                                  ),
+                                ),
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: _buildGeneralInfoSection(
+                                    context,
+                                    state,
+                                  ),
                                 ),
                               ),
                             ),
-                            _buildStickySaveButton(context, state),
+                            // Derecha: Productos y Botón Guardar
+                            Expanded(
+                              flex: 4,
+                              child: Column(
+                                children: [
+                                  Expanded(
+                                    child: SingleChildScrollView(
+                                      padding: const EdgeInsets.all(24.0),
+                                      child: _buildProductsSection(
+                                        context,
+                                        state,
+                                      ),
+                                    ),
+                                  ),
+                                  _buildStickySaveButton(context, state),
+                                ],
+                              ),
+                            ),
                           ],
                         );
-                      },
+                      }
+
+                      // Móvil
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildGeneralInfoSection(context, state),
+                                  const SizedBox(height: 16),
+                                  _buildProductsSection(context, state),
+                                  const SizedBox(height: 24),
+                                ],
+                              ),
+                            ),
+                          ),
+                          _buildStickySaveButton(context, state),
+                        ],
+                      );
+                    },
+                  ),
+                  if (state.isSaving)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 18,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: AppColors.danger,
+                                  ),
+                                ),
+                                SizedBox(width: 14),
+                                Text(
+                                  'Procesando salida de inventario...',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
+                ],
+              ),
+            ),
           ),
         );
       },
@@ -967,16 +1063,35 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             Expanded(
               child: ElevatedButton.icon(
                 onPressed:
-                    state.items.isEmpty ? null : () => _saveExit(context),
-                icon: const Icon(Icons.output_rounded),
-                label: const Text(
-                  'Confirmar Salida',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    (state.items.isEmpty || state.isSaving)
+                        ? null
+                        : () => _saveExit(context),
+                icon:
+                    state.isSaving
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Icon(Icons.output_rounded),
+                label: Text(
+                  state.isSaving ? 'Guardando salida...' : 'Confirmar Salida',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   backgroundColor: AppColors.danger,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.danger.withValues(
+                    alpha: 0.5,
+                  ),
+                  disabledForegroundColor: Colors.white70,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),

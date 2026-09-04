@@ -502,7 +502,7 @@ class _KardexScreenState extends State<KardexScreen> {
                     return _SearchInput(
                       controller: _searchCtrl,
                       focusNode: _searchFocusNode,
-                      hint: 'Buscar producto, variante o SKU... (Atajo: /)',
+                      hint: 'Buscar producto, variante o SKU...',
                       isLoading: isSearching,
                       onChanged: _onSearchChanged,
                       onSubmitted: _onSearchSubmitted,
