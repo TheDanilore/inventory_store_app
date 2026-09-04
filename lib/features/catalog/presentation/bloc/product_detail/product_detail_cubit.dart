@@ -82,10 +82,15 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
       ),
       (loadedProduct) {
         product = loadedProduct;
+        final effectiveVariantId = initialVariantId ??
+            (loadedProduct != null && loadedProduct.productVariants.isNotEmpty
+                ? loadedProduct.productVariants.first.id
+                : null);
+        this.initialVariantId = effectiveVariantId;
         emit(
           state.copyWith(
             product: loadedProduct,
-            selectedVariantId: initialVariantId,
+            selectedVariantId: effectiveVariantId,
           ),
         );
         _initData();
@@ -100,9 +105,18 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
   }) {
     this.product = product;
     this.isAdmin = isAdmin;
-    this.initialVariantId = initialVariantId;
+    final effectiveVariantId = initialVariantId ??
+        (product.productVariants.isNotEmpty
+            ? product.productVariants.first.id
+            : null);
+    this.initialVariantId = effectiveVariantId;
 
-    emit(state.copyWith(product: product, selectedVariantId: initialVariantId));
+    emit(
+      state.copyWith(
+        product: product,
+        selectedVariantId: effectiveVariantId,
+      ),
+    );
 
     _initData();
   }
@@ -229,8 +243,12 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
         );
       }
 
+      final resolvedVariantId = state.selectedVariantId ??
+          (variants.isNotEmpty ? variants.first.id : null);
+
       emit(
         state.copyWith(
+          selectedVariantId: resolvedVariantId,
           warehouseStocks: extraData.stocks,
           batchesList: extraData.batches,
           images: images,

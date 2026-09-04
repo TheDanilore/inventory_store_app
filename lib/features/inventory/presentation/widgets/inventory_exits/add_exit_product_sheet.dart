@@ -51,9 +51,16 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
   }
 
   void _onProductSelected(ProductModel? p) {
+    ProductVariantModel? autoSelectedVariant;
+    if (p != null && p.productVariants.isNotEmpty) {
+      if (p.productVariants.length == 1) {
+        autoSelectedVariant = p.productVariants.first;
+      }
+    }
+
     setState(() {
       _selectedProduct = p;
-      _selectedVariant = null;
+      _selectedVariant = autoSelectedVariant;
       _selectedBatch = null;
       _quantity = 1;
       _quantityError = null;
@@ -208,6 +215,16 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
               message: state.errorMessage!,
               type: SnackbarType.error,
             );
+          }
+          if (state.availableVariants.isNotEmpty && _selectedVariant == null) {
+            if (state.availableVariants.length == 1) {
+              setState(() {
+                _selectedVariant = state.availableVariants.first;
+              });
+              if (_selectedProduct?.usesBatches == true) {
+                _cubit.loadBatches(_selectedVariant!.id, widget.warehouseId);
+              }
+            }
           }
         },
         builder: (context, state) {

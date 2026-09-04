@@ -66,15 +66,23 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   }
 
   Future<void> _onProductChanged(ProductModel? val) async {
+    ProductVariantModel? autoSelectedVariant;
+    if (val != null && val.productVariants.isNotEmpty) {
+      if (val.productVariants.length == 1) {
+        autoSelectedVariant = val.productVariants.first;
+      }
+    }
+
     setState(() {
       _selectedProduct = val;
-      _selectedVariant = null;
+      _selectedVariant = autoSelectedVariant;
       _quantity = 1;
       _batchCtrl.clear();
       _batchSearchCtrl.clear();
       _expiryDate = null;
       if (val != null) {
-        _costCtrl.text = (val.defaultVariant?.unitCost ?? 0).toStringAsFixed(2);
+        final cost = _effectiveCost(variant: autoSelectedVariant, product: val);
+        _costCtrl.text = cost.toStringAsFixed(2);
       } else {
         _costCtrl.clear();
       }
@@ -209,12 +217,16 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
 
     final variantToUse =
         _selectedVariant ??
-        ProductVariantModel(
-          id: '',
-          productId: _selectedProduct!.id,
-          sku: null,
-          salePrice: null,
-        );
+        (state.availableVariants.isNotEmpty
+            ? state.availableVariants.first
+            : (_selectedProduct!.productVariants.isNotEmpty
+                ? _selectedProduct!.productVariants.first
+                : ProductVariantModel(
+                  id: '',
+                  productId: _selectedProduct!.id,
+                  sku: null,
+                  salePrice: null,
+                )));
 
     Navigator.pop(
       context,
@@ -222,7 +234,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
         productId: _selectedProduct!.id,
         productName: _selectedProduct!.name,
         variantId: variantToUse.id,
-        variantLabel: _selectedVariant?.label ?? 'Variante Única',
+        variantLabel: _selectedVariant?.label ?? variantToUse.label,
         imageUrl: _resolveCurrentImageUrl(),
         usesBatches: usesBatches,
         quantity: _quantity,
@@ -245,6 +257,35 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
               message: state.errorMessage!,
               type: SnackbarType.error,
             );
+          }
+
+          if (state.availableVariants.isNotEmpty && _selectedVariant == null) {
+            if (state.availableVariants.length == 1) {
+              setState(() {
+                _selectedVariant = state.availableVariants.first;
+                final cost = _effectiveCost(
+                  variant: _selectedVariant,
+                  product: _selectedProduct,
+                );
+                if (cost > 0) {
+                  _costCtrl.text = cost.toStringAsFixed(2);
+                }
+              });
+            } else {
+              final currentCost =
+                  double.tryParse(_costCtrl.text.trim()) ?? 0.0;
+              if (currentCost <= 0.0) {
+                final suggestedCost = _effectiveCost(
+                  variant: state.availableVariants.first,
+                  product: _selectedProduct,
+                );
+                if (suggestedCost > 0) {
+                  setState(() {
+                    _costCtrl.text = suggestedCost.toStringAsFixed(2);
+                  });
+                }
+              }
+            }
           }
         },
         builder: (context, state) {

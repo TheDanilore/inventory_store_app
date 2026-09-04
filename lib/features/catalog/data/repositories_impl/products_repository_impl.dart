@@ -1332,7 +1332,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
     try {
       final res = await _supabase
           .from('products')
-          .select('id, name, uses_batches, product_images!left(image_url)')
+          .select(
+            'id, name, uses_batches, product_images!left(image_url), product_variants(id, product_id, sku, unit_cost, sale_price, is_active)',
+          )
           .eq('is_active', true)
           .ilike('name', '%$term%')
           .eq('product_images.is_main', true)

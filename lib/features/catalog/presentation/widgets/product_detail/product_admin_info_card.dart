@@ -14,10 +14,7 @@ class ProductAdminInfoCard extends StatelessWidget {
     if (!cubit.isAdmin) return const SizedBox.shrink();
 
     final product = cubit.product!;
-    final cost =
-        (state.selectedVariant?.unitCost ?? 0) > 0
-            ? state.selectedVariant!.unitCost!
-            : 0.0;
+    final cost = state.effectiveCost;
     final wPrice = state.baseWholesalePrice;
     final int rPoint =
         state.selectedVariant?.reorderPoint ??

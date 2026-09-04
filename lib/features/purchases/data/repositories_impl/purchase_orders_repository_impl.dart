@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:injectable/injectable.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -262,9 +263,14 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       // 3. Ejecución atómica mediante RPC en Supabase
       final itemsJson =
           items.map((item) {
+            final rawVariantId = item.variantId?.toString().trim();
+            final safeVariantId =
+                (rawVariantId != null && rawVariantId.isNotEmpty)
+                    ? rawVariantId
+                    : null;
             return {
               'product_id': item.productId,
-              'variant_id': item.variantId,
+              'variant_id': safeVariantId,
               'quantity': item.quantity,
               'unit_cost': item.unitCost,
               'batch_number': item.batchNumber,
@@ -308,21 +314,21 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         ),
       );
     } on PostgrestException catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] createPurchaseOrder PostgrestException: $e',
+      LoggerService.e(
+        'createPurchaseOrder PostgrestException: ${e.message}',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(
         ServerFailure(message: 'Error de base de datos: ${e.message}'),
       );
     } catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] createPurchaseOrder unexpected error: $e',
+      LoggerService.e(
+        'createPurchaseOrder unexpected error: $e',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(ServerFailure(message: e.toString()));
     }

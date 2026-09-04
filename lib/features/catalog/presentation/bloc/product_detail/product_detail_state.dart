@@ -126,6 +126,17 @@ class ProductDetailState extends Equatable {
     return null;
   }
 
+  double get effectiveCost {
+    final vCost = selectedVariant?.unitCost;
+    if (vCost != null && vCost > 0) return vCost;
+    if (variants.isNotEmpty) {
+      for (final v in variants) {
+        if ((v.unitCost ?? 0) > 0) return v.unitCost!;
+      }
+    }
+    return product?.defaultVariant?.unitCost ?? 0.0;
+  }
+
   double get baseSalePrice {
     final vSale = selectedVariant?.salePrice;
     if (vSale != null && vSale > 0) return vSale;
