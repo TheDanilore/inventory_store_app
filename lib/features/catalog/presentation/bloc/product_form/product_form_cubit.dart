@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:inventory_store_app/core/utils/isolate_utils.dart';
 import 'dart:typed_data';
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:injectable/injectable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -182,8 +182,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             throw Exception('El servidor no devolvió el detalle del producto.');
           }
         } catch (e, st) {
-          developer.log(
+          LoggerService.e(
             'ProductFormCubit: Error crítico al hidratar detalle por ID: $effectiveId. Se aborta para evitar corrupción de datos.',
+            tag: 'PRODUCT_FORM_CUBIT',
             error: e,
             stackTrace: st,
           );
@@ -553,6 +554,23 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       return;
     }
 
+    if (_ingredientsEnabled) {
+      final sourceIngredients =
+          _ingredientRows.isNotEmpty ? _ingredientRows : ingredients;
+      final hasIncomplete = sourceIngredients.any(
+        (r) => r.ingredientId == null || r.ingredientId!.trim().isEmpty,
+      );
+      if (sourceIngredients.isEmpty || hasIncomplete) {
+        emit(
+          state.copyWith(
+            snackError:
+                'Completa o elimina los componentes activos no seleccionados.',
+          ),
+        );
+        return;
+      }
+    }
+
     _isSaving = true;
     _syncState();
 
@@ -627,8 +645,11 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             );
           }).toList();
 
+      final sourceIngredients =
+          _ingredientRows.isNotEmpty ? _ingredientRows : ingredients;
+
       final ingredientsPayload =
-          ingredients
+          sourceIngredients
               .where((r) => r.ingredientId != null && r.name.trim().isNotEmpty)
               .map(
                 (row) => IngredientPayload(
@@ -674,7 +695,12 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         },
       );
     } catch (e, st) {
-      developer.log('Error saving product', error: e, stackTrace: st);
+      LoggerService.e(
+        'Error saving product',
+        tag: 'PRODUCT_FORM_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
       emit(state.copyWith(snackError: _parseNetworkError(e)));
     } finally {
       _isSaving = false;
@@ -735,8 +761,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         return bytesOriginales;
       });
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error crítico comprimiendo imagen',
+        tag: 'PRODUCT_FORM_CUBIT',
         error: e,
         stackTrace: st,
       );

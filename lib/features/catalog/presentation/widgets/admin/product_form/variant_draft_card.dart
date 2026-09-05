@@ -102,6 +102,45 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
   }
 
   @override
+  void didUpdateWidget(VariantDraftCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.draft.sku != oldWidget.draft.sku &&
+        widget.draft.sku != skuCtrl.text) {
+      skuCtrl.text = widget.draft.sku;
+    }
+    if (widget.draft.barcode != oldWidget.draft.barcode &&
+        widget.draft.barcode != barcodeCtrl.text) {
+      barcodeCtrl.text = widget.draft.barcode;
+    }
+    if (widget.draft.price != oldWidget.draft.price &&
+        widget.draft.price != priceCtrl.text) {
+      priceCtrl.text = widget.draft.price;
+    }
+    if (widget.draft.wholesalePrice != oldWidget.draft.wholesalePrice &&
+        widget.draft.wholesalePrice != wholesalePriceCtrl.text) {
+      wholesalePriceCtrl.text = widget.draft.wholesalePrice;
+    }
+    if (widget.draft.wholesaleMinQuantity !=
+            oldWidget.draft.wholesaleMinQuantity &&
+        widget.draft.wholesaleMinQuantity != wholesaleMinQuantityCtrl.text) {
+      wholesaleMinQuantityCtrl.text = widget.draft.wholesaleMinQuantity;
+    }
+    if (widget.draft.reorderPoint != oldWidget.draft.reorderPoint &&
+        widget.draft.reorderPoint != reorderPointCtrl.text) {
+      reorderPointCtrl.text = widget.draft.reorderPoint;
+    }
+    if (widget.draft.unitCost != oldWidget.draft.unitCost &&
+        widget.draft.unitCost != unitCostCtrl.text) {
+      unitCostCtrl.text = widget.draft.unitCost;
+    }
+    if (widget.draft.selectedAttributes !=
+        oldWidget.draft.selectedAttributes) {
+      _selectedAttributes.clear();
+      _parseInitialAttributes();
+    }
+  }
+
+  @override
   void dispose() {
     skuCtrl.dispose();
     barcodeCtrl.dispose();
@@ -557,13 +596,14 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                               const Icon(Icons.error),
                                     ),
                                     onDelete: () {
-                                      setState(() {
-                                        widget.onUpdate(
-                                          widget.draft.copyWith(
-                                            urlsExistentes: [],
-                                          ),
-                                        );
-                                      });
+                                      widget.onUpdate(
+                                        widget.draft.copyWith(
+                                          urlsExistentes: [],
+                                          nuevasImagenes: [],
+                                          clearExternalImageUrl: true,
+                                        ),
+                                      );
+                                      if (mounted) setState(() {});
                                     },
                                   ),
                                 if (widget.draft.externalImageUrl != null)
@@ -578,13 +618,14 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                           const Icon(Icons.broken_image, color: Colors.red),
                                     ),
                                     onDelete: () {
-                                      setState(() {
-                                        widget.onUpdate(
-                                          widget.draft.copyWith(
-                                            externalImageUrl: null,
-                                          ),
-                                        );
-                                      });
+                                      widget.onUpdate(
+                                        widget.draft.copyWith(
+                                          urlsExistentes: [],
+                                          nuevasImagenes: [],
+                                          clearExternalImageUrl: true,
+                                        ),
+                                      );
+                                      if (mounted) setState(() {});
                                     },
                                   ),
                                 if (widget.draft.nuevasImagenes.isNotEmpty)
@@ -594,13 +635,14 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                       fit: BoxFit.cover,
                                     ),
                                     onDelete: () {
-                                      setState(() {
-                                        widget.onUpdate(
-                                          widget.draft.copyWith(
-                                            nuevasImagenes: [],
-                                          ),
-                                        );
-                                      });
+                                      widget.onUpdate(
+                                        widget.draft.copyWith(
+                                          urlsExistentes: [],
+                                          nuevasImagenes: [],
+                                          clearExternalImageUrl: true,
+                                        ),
+                                      );
+                                      if (mounted) setState(() {});
                                     },
                                   ),
                               ],
@@ -921,7 +963,9 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
         externalImageUrl: url,
         urlsExistentes: [], // Limpiar otras
         nuevasImagenes: [],
+        clearExternalImageUrl: false,
       ));
+      if (mounted) setState(() {});
     }
   }
 

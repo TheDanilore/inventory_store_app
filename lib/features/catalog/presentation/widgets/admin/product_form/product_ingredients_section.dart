@@ -160,7 +160,12 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
                     ),
                     Switch.adaptive(
                       value: state.ingredientsEnabled,
-                      onChanged: cubit.setIngredientsEnabled,
+                      onChanged: (val) {
+                        cubit.setIngredientsEnabled(val);
+                        if (val && cubit.state.ingredientRows.isEmpty) {
+                          cubit.addIngredientRow();
+                        }
+                      },
                       activeThumbColor: AppColors.primary,
                     ),
                   ],
@@ -213,6 +218,7 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
                                   final unitCtrl = _unitControllers[row.id]!;
 
                                   return Container(
+                                    key: ValueKey(row.id),
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
@@ -251,6 +257,7 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
                                                             result['name']
                                                                 as String,
                                                       ),
+                                                      syncState: true,
                                                     );
                                                   }
                                                 },
@@ -311,6 +318,7 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
                                                           row.copyWith(
                                                             concentration: val,
                                                           ),
+                                                          syncState: true,
                                                         ),
                                                 decoration: InputDecoration(
                                                   labelText:
@@ -340,6 +348,7 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
                                                           row.copyWith(
                                                             unit: val,
                                                           ),
+                                                          syncState: true,
                                                         ),
                                                 decoration: InputDecoration(
                                                   labelText: 'Unidad de medida',

@@ -545,7 +545,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                       onPickImage: () => cubit.pickVariantImage(index),
                       onUpdate:
                           (newDraft) =>
-                              cubit.updateVariantDraft(index, newDraft),
+                              cubit.updateVariantDraft(index, newDraft, syncState: true),
                     );
                   }, childCount: state.variantDrafts.length),
                 ),
@@ -676,7 +676,9 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
               );
             },
             onPickImage: () => cubit.pickVariantImage(index),
-            onUpdate: (newDraft) => cubit.updateVariantDraft(index, newDraft),
+            onUpdate:
+                (newDraft) =>
+                    cubit.updateVariantDraft(index, newDraft, syncState: true),
           );
         }),
         const SizedBox(height: 8),

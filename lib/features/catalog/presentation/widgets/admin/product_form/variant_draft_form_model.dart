@@ -79,6 +79,7 @@ class VariantDraftFormModel {
     List<Uint8List>? nuevasImagenes,
     List<String>? urlsExistentes,
     String? externalImageUrl,
+    bool clearExternalImageUrl = false,
   }) {
     return VariantDraftFormModel(
       id: id ?? this.id,
@@ -94,7 +95,10 @@ class VariantDraftFormModel {
       isActive: isActive ?? this.isActive,
       nuevasImagenes: nuevasImagenes ?? List.of(this.nuevasImagenes),
       urlsExistentes: urlsExistentes ?? List.of(this.urlsExistentes),
-      externalImageUrl: externalImageUrl ?? this.externalImageUrl,
+      externalImageUrl:
+          clearExternalImageUrl
+              ? null
+              : (externalImageUrl ?? this.externalImageUrl),
     );
   }
 
