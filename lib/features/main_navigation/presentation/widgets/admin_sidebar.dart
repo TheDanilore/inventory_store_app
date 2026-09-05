@@ -267,13 +267,19 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     routePath: '/admin/business-info',
                   ),
                 ),
-                _buildSidebarTile(
-                  context,
-                  const AdminSidebarItem(
-                    icon: Icons.stars_rounded,
-                    title: 'Puntos y Monedas',
-                    routePath: '/admin/points-settings',
-                  ),
+                BlocSelector<AppConfigCubit, AppConfigState, bool>(
+                  selector: (s) => s.businessInfo?.loyaltyGlobalEnabled ?? true,
+                  builder: (context, loyaltyEnabled) {
+                    if (!loyaltyEnabled) return const SizedBox.shrink();
+                    return _buildSidebarTile(
+                      context,
+                      const AdminSidebarItem(
+                        icon: Icons.stars_rounded,
+                        title: 'Puntos y Monedas',
+                        routePath: '/admin/points-settings',
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

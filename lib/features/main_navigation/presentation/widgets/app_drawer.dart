@@ -376,17 +376,24 @@ class AppDrawer extends StatelessWidget {
                     ),
                   ),
 
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.stars_rounded,
-                      title: 'Puntos y Monedas',
-                      routePath: '/admin/points-settings',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/admin/points-settings');
-                      },
-                    ),
+                  BlocSelector<AppConfigCubit, AppConfigState, bool>(
+                    selector:
+                        (s) => s.businessInfo?.loyaltyGlobalEnabled ?? true,
+                    builder: (context, loyaltyEnabled) {
+                      if (!loyaltyEnabled) return const SizedBox.shrink();
+                      return _buildItem(
+                        context,
+                        _DrawerItem(
+                          icon: Icons.stars_rounded,
+                          title: 'Puntos y Monedas',
+                          routePath: '/admin/points-settings',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/admin/points-settings');
+                          },
+                        ),
+                      );
+                    },
                   ),
                 ],
               ],

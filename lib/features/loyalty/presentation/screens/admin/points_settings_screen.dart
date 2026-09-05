@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
@@ -373,22 +374,68 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
             margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.red.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red.shade200),
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFFECACA)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               children: [
-                Icon(Icons.warning_rounded, color: Colors.red.shade700),
-                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.lock_outline_rounded,
+                    color: Color(0xFFDC2626),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
                 Expanded(
-                  child: Text(
-                    'El módulo de Lealtad está desactivado globalmente. '
-                    'Estos ajustes no tendrán efecto hasta que lo actives en '
-                    'Información del Negocio.',
-                    style: TextStyle(
-                      color: Colors.red.shade900,
-                      fontWeight: FontWeight.w600,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Módulo de Fidelidad Desactivado Globalmente',
+                        style: TextStyle(
+                          color: Color(0xFF991B1B),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Los puntos y recompensas están inactivos para toda la app. Para habilitar los minijuegos y tasas de acumulación, activa el sistema en Información del Negocio.',
+                        style: TextStyle(
+                          color: Color(0xFFB91C1C),
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: () => context.go('/admin/business-info'),
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                  label: const Text('Ir a Negocio'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDC2626),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                 ),
@@ -396,13 +443,19 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
             ),
           ),
         Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth >= 800) {
-                return _buildWideLayout(isSaving);
-              }
-              return _buildMobileLayout(isSaving);
-            },
+          child: AbsorbPointer(
+            absorbing: isDisabled,
+            child: Opacity(
+              opacity: isDisabled ? 0.6 : 1.0,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth >= 800) {
+                    return _buildWideLayout(isSaving, isDisabled: isDisabled);
+                  }
+                  return _buildMobileLayout(isSaving, isDisabled: isDisabled);
+                },
+              ),
+            ),
           ),
         ),
       ],
@@ -410,7 +463,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
   }
 
   // ── Vista Ancha (≥800px): NavigationRail + contenido ──────────
-  Widget _buildWideLayout(bool isSaving) {
+  Widget _buildWideLayout(bool isSaving, {bool isDisabled = false}) {
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
@@ -433,13 +486,14 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
                     children: [
                       Builder(
                         builder: (context) {
-                          if (_selectedIndex == 0) return _buildSystemTab(isSaving);
-                          if (_selectedIndex == 1) return _buildLimitsTab(isSaving);
-                          return _buildPrizesTab(isSaving);
+                          final disabled = isSaving || isDisabled;
+                          if (_selectedIndex == 0) return _buildSystemTab(disabled);
+                          if (_selectedIndex == 1) return _buildLimitsTab(disabled);
+                          return _buildPrizesTab(disabled);
                         },
                       ),
                       const SizedBox(height: 24),
-                      _buildSaveButton(isSaving),
+                      _buildSaveButton(isSaving, isDisabled: isDisabled),
                     ],
                   ),
                 ),
@@ -452,7 +506,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
   }
 
   // ── Vista Móvil (<800px): TabBar fijo + TabBarView con scroll ─────────────
-  Widget _buildMobileLayout(bool isSaving) {
+  Widget _buildMobileLayout(bool isSaving, {bool isDisabled = false}) {
     return Column(
       children: [
         Material(
@@ -476,9 +530,9 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
           child: TabBarView(
             controller: _tabController,
             children: [
-              _buildTabScrollView(0, isSaving),
-              _buildTabScrollView(1, isSaving),
-              _buildTabScrollView(2, isSaving),
+              _buildTabScrollView(0, isSaving, isDisabled: isDisabled),
+              _buildTabScrollView(1, isSaving, isDisabled: isDisabled),
+              _buildTabScrollView(2, isSaving, isDisabled: isDisabled),
             ],
           ),
         ),
@@ -487,18 +541,19 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
   }
 
   /// Cada tab en mobile es un SingleChildScrollView independiente con su Form
-  Widget _buildTabScrollView(int index, bool isSaving) {
+  Widget _buildTabScrollView(int index, bool isSaving, {bool isDisabled = false}) {
+    final disabled = isSaving || isDisabled;
     return Form(
       key: _formsKeys[index],
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            if (index == 0) _buildSystemTab(isSaving),
-            if (index == 1) _buildLimitsTab(isSaving),
-            if (index == 2) _buildPrizesTab(isSaving),
+            if (index == 0) _buildSystemTab(disabled),
+            if (index == 1) _buildLimitsTab(disabled),
+            if (index == 2) _buildPrizesTab(disabled),
             const SizedBox(height: 32),
-            _buildSaveButton(isSaving),
+            _buildSaveButton(isSaving, isDisabled: isDisabled),
             const SizedBox(height: 24),
           ],
         ),
@@ -879,7 +934,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     );
   }
 
-  Widget _buildSaveButton(bool isSaving) {
+  Widget _buildSaveButton(bool isSaving, {bool isDisabled = false}) {
     return Align(
       alignment: Alignment.centerRight,
       child: SizedBox(
@@ -889,7 +944,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
           loading: isSaving,
           icon: const Icon(Icons.save_rounded, size: 18),
           onPressed:
-              isSaving
+              (isSaving || isDisabled)
                   ? null
                   : () => _saveSection(
                     _selectedIndex,

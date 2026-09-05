@@ -119,9 +119,11 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
           const SizedBox(height: 6),
           if (isLoyaltyEnabled || pointsEarned > 0)
             _buildRow(
-              (isCompleted && !isCredit)
+              !isLoyaltyEnabled
                   ? 'Monedas ganadas'
-                  : 'Pendientes de otorgar',
+                  : ((isCompleted && !isCredit)
+                      ? 'Monedas ganadas'
+                      : 'Pendientes de otorgar'),
               '$pointsEarned monedas',
             ),
         ],

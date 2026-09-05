@@ -326,7 +326,10 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
   Widget build(BuildContext context) {
     final config = context.watch<AppConfigCubit>();
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
-    final earningRate = config.getDouble('points_earning_rate', 0.03);
+    final earningRate =
+        config.loyaltyGlobalEnabled
+            ? config.getDouble('points_earning_rate', 0.03)
+            : 0.0;
 
     return BlocBuilder<OrderDetailCubit, OrderDetailState>(
       buildWhen:
