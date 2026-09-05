@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
-import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_credit_account_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_payment_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+enum SupplierAccountAction {
+  viewHistory,
+  pay,
+  edit,
+  toggleStatus,
+}
 
 class SupplierAccountOptionsSheet extends StatelessWidget {
   final SupplierCreditEntity account;
-  final VoidCallback onRefresh;
-  final Function(SupplierCreditEntity) onToggleStatus;
   final bool isDialog;
 
   const SupplierAccountOptionsSheet({
     super.key,
     required this.account,
-    required this.onRefresh,
-    required this.onToggleStatus,
     required this.isDialog,
   });
 
@@ -139,17 +139,7 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
           leading: const Icon(Icons.history_rounded, color: Colors.blue),
           title: const Text('Ver historial de movimientos'),
           onTap: () {
-            Navigator.pop(context);
-            context
-                .push(
-                  '/admin/supplier-credit-movements/${account.creditId}?name=${Uri.encodeComponent(account.supplierName)}&debt=${account.currentDebt}&limit=${account.creditLimit}',
-                  extra: {
-                    'supplierName': account.supplierName,
-                    'currentDebt': account.currentDebt,
-                    'creditLimit': account.creditLimit,
-                  },
-                )
-                .then((_) => onRefresh());
+            Navigator.pop(context, SupplierAccountAction.viewHistory);
           },
         ),
 
@@ -161,44 +151,14 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
             ),
             title: const Text('Pagar al proveedor (Amortizar)'),
             onTap: () {
-              Navigator.pop(context);
-              final modal = SupplierPaymentSheet(
-                account: account,
-                onPaymentSaved: onRefresh,
-                isDialog: isDialog,
-              );
-              if (isDialog) {
-                showDialog(context: context, builder: (_) => modal);
-              } else {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (_) => modal,
-                );
-              }
+              Navigator.pop(context, SupplierAccountAction.pay);
             },
           ),
         ListTile(
           leading: const Icon(Icons.edit_rounded, color: Colors.blue),
           title: const Text('Editar línea de crédito'),
           onTap: () {
-            Navigator.pop(context);
-            final modal = SupplierCreditAccountSheet(
-              accountToEdit: account,
-              onSaved: onRefresh,
-              isDialog: isDialog,
-            );
-            if (isDialog) {
-              showDialog(context: context, builder: (_) => modal);
-            } else {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => modal,
-              );
-            }
+            Navigator.pop(context, SupplierAccountAction.edit);
           },
         ),
         ListTile(
@@ -210,8 +170,7 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
             account.isActive ? 'Suspender crédito' : 'Reactivar crédito',
           ),
           onTap: () {
-            Navigator.pop(context);
-            onToggleStatus(account);
+            Navigator.pop(context, SupplierAccountAction.toggleStatus);
           },
         ),
       ],
@@ -260,3 +219,4 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
     );
   }
 }
+

@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_active_cash_shift_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_financial_accounts_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_pending_purchase_orders_usecase.dart';
@@ -30,6 +31,7 @@ class SupplierPaymentSheet extends StatefulWidget {
     required VoidCallback onPaymentSaved,
   }) {
     final isMobile = MediaQuery.of(context).size.width < 600;
+    final cubit = context.read<SupplierCreditsCubit>();
 
     if (isMobile) {
       return showModalBottomSheet<bool>(
@@ -37,20 +39,26 @@ class SupplierPaymentSheet extends StatefulWidget {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:
-            (_) => SupplierPaymentSheet(
-              account: account,
-              isDialog: false,
-              onPaymentSaved: onPaymentSaved,
+            (_) => BlocProvider.value(
+              value: cubit,
+              child: SupplierPaymentSheet(
+                account: account,
+                isDialog: false,
+                onPaymentSaved: onPaymentSaved,
+              ),
             ),
       );
     } else {
       return showDialog<bool>(
         context: context,
         builder:
-            (_) => SupplierPaymentSheet(
-              account: account,
-              isDialog: true,
-              onPaymentSaved: onPaymentSaved,
+            (_) => BlocProvider.value(
+              value: cubit,
+              child: SupplierPaymentSheet(
+                account: account,
+                isDialog: true,
+                onPaymentSaved: onPaymentSaved,
+              ),
             ),
       );
     }
@@ -81,6 +89,13 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
     _loadData();
   }
 
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _notesCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadData() async {
     await Future.wait([_loadPendingOrders(), _loadAccounts()]);
   }
@@ -97,7 +112,13 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
           _loadingOrders = false;
         });
       }
-    } catch (_) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error cargando pedidos pendientes para el proveedor ${widget.account.supplierId}',
+        tag: 'SUPPLIER_PAYMENT_SHEET',
+        error: e,
+        stackTrace: st,
+      );
       if (mounted) setState(() => _loadingOrders = false);
     }
   }
@@ -123,7 +144,13 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
           await _checkActiveShift(_selectedAccount!.id);
         }
       }
-    } catch (_) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error cargando cuentas financieras',
+        tag: 'SUPPLIER_PAYMENT_SHEET',
+        error: e,
+        stackTrace: st,
+      );
       if (mounted) setState(() => _loadingAccounts = false);
     }
   }
@@ -137,7 +164,13 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
           _activeShift = shift;
         });
       }
-    } catch (_) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error verificando turno activo para la cuenta $accountId',
+        tag: 'SUPPLIER_PAYMENT_SHEET',
+        error: e,
+        stackTrace: st,
+      );
       if (mounted) setState(() => _activeShift = null);
     }
   }
@@ -210,7 +243,15 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
     }
 
     // Validar saldo suficiente
-    final amount = double.parse(_amountCtrl.text.trim());
+    final amount = double.tryParse(_amountCtrl.text.trim());
+    if (amount == null || amount <= 0) {
+      AppSnackbar.show(
+        context,
+        message: 'Ingresa un monto válido mayor a 0.',
+        type: SnackbarType.error,
+      );
+      return;
+    }
     if (_selectedAccount!.balance < amount) {
       AppSnackbar.show(
         context,

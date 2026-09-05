@@ -1,8 +1,8 @@
-import 'dart:developer' as developer;
 import 'package:injectable/injectable.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 import 'package:inventory_store_app/features/purchases/domain/repositories/supplier_credits_repository.dart';
 import 'package:inventory_store_app/features/purchases/data/models/supplier_credit_models.dart'
@@ -58,22 +58,20 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
         );
       }
 
+      // ── Optimización de Data Egress: Filtrado nativo en Supabase antes de range ──
+      if (withDebtOnly) {
+        query = query.gt('current_debt', 0).eq('is_active', true);
+      }
+
       final response = await query
           .order('current_debt', ascending: false)
           .range(from, to)
           .count(CountOption.exact);
 
-      var list =
+      final list =
           (response.data as List).map((item) {
             return SupplierCreditModel.fromView(item);
           }).toList();
-
-      if (withDebtOnly) {
-        list =
-            list
-                .where((item) => item.currentDebt > 0 && item.isActive)
-                .toList();
-      }
 
       return Right((
         accounts: list,
@@ -87,11 +85,11 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
         },
       ));
     } catch (e, st) {
-      developer.log(
-        '[SupplierCreditsRepositoryImpl] fetchAccounts error: $e',
+      LoggerService.e(
+        'Error al obtener cuentas de crédito paginadas',
+        tag: 'SUPPLIER_CREDITS_REPO',
         error: e,
         stackTrace: st,
-        name: 'SupplierCreditsRepositoryImpl',
       );
       return Left(ServerFailure(message: e.toString()));
     }
@@ -112,11 +110,11 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
           .eq('id', creditId);
       return const Right(null);
     } catch (e, st) {
-      developer.log(
-        '[SupplierCreditsRepositoryImpl] toggleAccountStatus error: $e',
+      LoggerService.e(
+        'Error al alternar estado del crédito $creditId',
+        tag: 'SUPPLIER_CREDITS_REPO',
         error: e,
         stackTrace: st,
-        name: 'SupplierCreditsRepositoryImpl',
       );
       return Left(ServerFailure(message: e.toString()));
     }
@@ -154,11 +152,11 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
       }
       return const Right(null);
     } catch (e, st) {
-      developer.log(
-        '[SupplierCreditsRepositoryImpl] saveAccount error: $e',
+      LoggerService.e(
+        'Error al guardar cuenta de crédito para proveedor $supplierId',
+        tag: 'SUPPLIER_CREDITS_REPO',
         error: e,
         stackTrace: st,
-        name: 'SupplierCreditsRepositoryImpl',
       );
       return Left(ServerFailure(message: e.toString()));
     }
@@ -184,7 +182,13 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
               .take(6)
               .toList();
       return Right(list);
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error buscando proveedores con query: $query',
+        tag: 'SUPPLIER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -203,7 +207,13 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
               .where((id) => id != excludeSupplierId)
               .toSet();
       return Right(ids);
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error obteniendo IDs de proveedores con crédito existente',
+        tag: 'SUPPLIER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -220,7 +230,13 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
           .inFilter('payment_status', ['PENDING', 'PARTIAL'])
           .order('created_at', ascending: true);
       return Right(list);
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error obteniendo órdenes pendientes para el proveedor $supplierId',
+        tag: 'SUPPLIER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -254,7 +270,13 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
               return a.name.compareTo(b.name);
             });
       return Right(list);
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error obteniendo cuentas financieras activas',
+        tag: 'SUPPLIER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -272,7 +294,13 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
               .eq('status', 'OPEN')
               .maybeSingle();
       return Right(data);
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error obteniendo turno activo para la cuenta $accountId',
+        tag: 'SUPPLIER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -291,7 +319,13 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
         if (resp != null) return Right(resp['id'] as String);
       }
       return const Right(null);
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error obteniendo ID de perfil de administrador',
+        tag: 'SUPPLIER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -333,14 +367,27 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
       }
 
       return const Right(null);
-    } on PostgrestException catch (e) {
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en register_supplier_credit_payment_rpc: ${e.message}',
+        tag: 'SUPPLIER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
       return Left(
         ServerFailure(message: 'Error de base de datos: ${e.message}'),
       );
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado al registrar pago de crédito a proveedor',
+        tag: 'SUPPLIER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
       return Left(
         ServerFailure(message: 'Error inesperado al registrar el pago: $e'),
       );
     }
   }
 }
+

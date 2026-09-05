@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/supplier_credits/supplier_credits_cubit.dart';
@@ -13,6 +14,7 @@ import 'package:inventory_store_app/features/purchases/presentation/widgets/supp
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_credit_card.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_account_options_sheet.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_credit_account_sheet.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_payment_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class SupplierCreditsScreen extends StatefulWidget {
@@ -76,24 +78,105 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
     }
   }
 
-  void _openAccountOptions(BuildContext context, SupplierCreditEntity account) {
-    final isDesktop = MediaQuery.of(context).size.width >= 800;
+  Future<void> _openAccountOptions(
+    BuildContext screenContext,
+    SupplierCreditEntity account,
+  ) async {
+    final isDesktop = MediaQuery.of(screenContext).size.width >= 800;
     final modal = SupplierAccountOptionsSheet(
       account: account,
       isDialog: isDesktop,
-      onRefresh: () {
-        context.read<SupplierCreditsCubit>().loadAccounts();
-      },
-      onToggleStatus: (acc) async {
-        context.read<SupplierCreditsCubit>().toggleAccountStatus(acc);
-        if (context.mounted) {
+    );
+
+    final action = await (isDesktop
+        ? showDialog<SupplierAccountAction>(
+          context: screenContext,
+          builder: (_) => modal,
+        )
+        : showModalBottomSheet<SupplierAccountAction>(
+          context: screenContext,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => modal,
+        ));
+
+    if (!mounted || action == null) return;
+
+    switch (action) {
+      case SupplierAccountAction.viewHistory:
+        if (!mounted) return;
+        context.push(
+          '/admin/supplier-credit-movements/${account.creditId}?name=${Uri.encodeComponent(account.supplierName)}&debt=${account.currentDebt}&limit=${account.creditLimit}',
+          extra: {
+            'supplierName': account.supplierName,
+            'currentDebt': account.currentDebt,
+            'creditLimit': account.creditLimit,
+          },
+        ).then((_) {
+          if (mounted) {
+            context.read<SupplierCreditsCubit>().loadAccounts();
+          }
+        });
+        break;
+
+      case SupplierAccountAction.pay:
+        if (!mounted) return;
+        _openPaymentModal(account);
+        break;
+
+      case SupplierAccountAction.edit:
+        if (!mounted) return;
+        _openEditAccountModal(account);
+        break;
+
+      case SupplierAccountAction.toggleStatus:
+        if (!mounted) return;
+        await context.read<SupplierCreditsCubit>().toggleAccountStatus(account);
+        if (mounted) {
           AppSnackbar.show(
             context,
             message:
-                acc.isActive ? 'Crédito suspendido.' : 'Crédito reactivado.',
+                account.isActive ? 'Crédito suspendido.' : 'Crédito reactivado.',
             type: SnackbarType.success,
           );
         }
+        break;
+    }
+  }
+
+  void _openPaymentModal(SupplierCreditEntity account) {
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
+    final cubit = context.read<SupplierCreditsCubit>();
+    final modal = BlocProvider.value(
+      value: cubit,
+      child: SupplierPaymentSheet(
+        account: account,
+        isDialog: isDesktop,
+        onPaymentSaved: () {
+          cubit.loadAccounts(refresh: true);
+        },
+      ),
+    );
+
+    if (isDesktop) {
+      showDialog(context: context, builder: (_) => modal);
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => modal,
+      );
+    }
+  }
+
+  void _openEditAccountModal(SupplierCreditEntity account) {
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
+    final modal = SupplierCreditAccountSheet(
+      accountToEdit: account,
+      isDialog: isDesktop,
+      onSaved: () {
+        context.read<SupplierCreditsCubit>().loadAccounts(refresh: true);
       },
     );
 
@@ -164,6 +247,28 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                   state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
               stats = state.stats;
             } else if (state is SupplierCreditsError) {
+              accounts = state.currentAccounts;
+              withDebtOnly = state.withDebtOnly;
+              currentPage = state.currentPage;
+              totalPages =
+                  state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+              stats = state.stats;
+              errorMessage = state.message;
+            } else if (state is SupplierCreditSaving) {
+              accounts = state.currentAccounts;
+              withDebtOnly = state.withDebtOnly;
+              currentPage = state.currentPage;
+              totalPages =
+                  state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+              stats = state.stats;
+            } else if (state is SupplierCreditSaveSuccess) {
+              accounts = state.currentAccounts;
+              withDebtOnly = state.withDebtOnly;
+              currentPage = state.currentPage;
+              totalPages =
+                  state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+              stats = state.stats;
+            } else if (state is SupplierCreditSaveError) {
               accounts = state.currentAccounts;
               withDebtOnly = state.withDebtOnly;
               currentPage = state.currentPage;
