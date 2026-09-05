@@ -290,31 +290,26 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
     String accountId,
   ) async {
     try {
-      final profileId = await _getProfileId();
-      if (profileId == null) {
-         return left(const ServerFailure(message: 'Usuario no autenticado'));
-      }
-
       final shiftData =
           await _supabase
               .from('cash_shifts')
-              .select(
-                'id, status, account_id, opening_amount, opened_at',
-              ) // Campos mínimos necesarios + reales para integridad de auditoría
+              .select('''
+                id, status, opening_amount, expected_amount, actual_amount,
+                difference_amount, notes, opened_at, closed_at, account_id,
+                financial_accounts(id, name, type),
+                opened_by_profile:profiles!cash_shifts_opened_by_fkey(full_name),
+                closed_by_profile:profiles!cash_shifts_closed_by_fkey(full_name)
+              ''')
               .eq('account_id', accountId)
-              .eq('opened_by', profileId)
               .eq('status', 'OPEN')
               .maybeSingle();
 
       if (shiftData == null) return right(null);
 
-      final shift = CashShiftEntity(
-        id: shiftData['id'],
-        status: CashShiftStatus.fromString(shiftData['status']),
-        openingAmount: (shiftData['opening_amount'] as num).toDouble(),
-        openedAt: DateTime.parse(shiftData['opened_at'] as String),
-        accountId: shiftData['account_id'],
-      );
+      final shift =
+          CashShiftModel.fromJson(
+            Map<String, dynamic>.from(shiftData),
+          ).toEntity();
 
       return right(shift);
     } on PostgrestException catch (e, stack) {

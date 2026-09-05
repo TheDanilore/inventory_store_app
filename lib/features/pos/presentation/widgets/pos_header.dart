@@ -357,7 +357,10 @@ class PosHeader extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               isShiftOpen
-                  ? 'Turno Abierto • S/ ${activeShift!.openingAmount.toStringAsFixed(2)}'
+                  ? (activeShift?.openedByName != null &&
+                          activeShift!.openedByName!.isNotEmpty
+                      ? 'Turno Abierto (${activeShift.openedByName})'
+                      : 'Turno Abierto • S/ ${activeShift!.openingAmount.toStringAsFixed(2)}')
                   : 'Caja Cerrada • Abrir Turno',
               style: TextStyle(
                 fontSize: 13,
