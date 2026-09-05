@@ -85,6 +85,7 @@ class PosState extends Equatable {
     String? discountText,
     bool? isDiscountPercentage,
     bool clearClient = false,
+    bool clearActiveShift = false,
   }) {
     return PosState(
       isLoading: isLoading ?? this.isLoading,
@@ -102,7 +103,8 @@ class PosState extends Equatable {
       warehouses: warehouses ?? this.warehouses,
       accounts: accounts ?? this.accounts,
       status: status ?? this.status,
-      activeShift: activeShift ?? this.activeShift,
+      activeShift:
+          clearActiveShift ? null : (activeShift ?? this.activeShift),
       clientMatches: clientMatches ?? this.clientMatches,
       lastOrderId: lastOrderId ?? this.lastOrderId,
       creditInfo: clearClient ? null : (creditInfo ?? this.creditInfo),

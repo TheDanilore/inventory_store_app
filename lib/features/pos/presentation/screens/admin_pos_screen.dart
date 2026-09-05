@@ -135,17 +135,13 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
               type: SnackbarType.warning,
             );
           } else if (state.items.isNotEmpty) {
-            // Un item ha sido agregado exitosamente.
-            AppSnackbar.show(
-              context,
-              message: 'Item agregado al carrito',
-              type: SnackbarType.success,
-            );
+            // Un item ha sido agregado exitosamente: feedback táctil sin saturar con SnackBars
+            HapticFeedback.lightImpact();
           }
         },
         child: Scaffold(
           drawer: const PosOperationsDrawer(),
-          backgroundColor: const Color(0xFFF7F8FC),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: Builder(
             builder: (context) {
               final isDesktop = MediaQuery.of(context).size.width >= 800;

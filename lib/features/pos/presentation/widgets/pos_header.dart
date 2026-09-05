@@ -297,6 +297,7 @@ class PosHeader extends StatelessWidget {
   ) {
     final activeShift = posState.activeShift;
     return InkWell(
+      mouseCursor: SystemMouseCursors.click,
       onTap: () async {
         if (isShiftOpen) {
           final shiftsCubit = context.read<CashShiftsCubit>();
@@ -312,7 +313,13 @@ class PosHeader extends StatelessWidget {
             expectedAmount: expected,
           );
           if (closed == true && context.mounted) {
-            context.read<PosCubit>().initPosData(forceRefresh: true);
+            context.read<PosCubit>().clearActiveShift();
+            final selectedAccId = posState.selectedAccountId;
+            if (selectedAccId != null) {
+              context.read<PosCubit>().checkActiveShift(selectedAccId);
+            } else {
+              context.read<PosCubit>().initPosData(forceRefresh: true);
+            }
             context.read<CashShiftsCubit>().fetchShifts();
           }
         } else {
@@ -326,7 +333,12 @@ class PosHeader extends StatelessWidget {
                 cashAccounts, // Pasar estricto las cajas para que el Empty State lo maneje si no hay
           );
           if (opened == true && context.mounted) {
-            context.read<PosCubit>().initPosData(forceRefresh: true);
+            final selectedAccId = posState.selectedAccountId;
+            if (selectedAccId != null) {
+              context.read<PosCubit>().checkActiveShift(selectedAccId);
+            } else {
+              context.read<PosCubit>().initPosData(forceRefresh: true);
+            }
             context.read<CashShiftsCubit>().fetchShifts();
           }
         }
@@ -336,25 +348,40 @@ class PosHeader extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color:
-              isShiftOpen ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+              isShiftOpen
+                  ? AppColors.success.withValues(alpha: 0.1)
+                  : AppColors.error.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color:
                 isShiftOpen
-                    ? const Color(0xFF10B981).withValues(alpha: 0.3)
-                    : const Color(0xFFEF4444).withValues(alpha: 0.3),
+                    ? AppColors.success.withValues(alpha: 0.35)
+                    : AppColors.error.withValues(alpha: 0.3),
+            width: 1,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isShiftOpen ? Icons.lock_open_rounded : Icons.lock_clock_rounded,
-              size: 16,
-              color: isShiftOpen ? AppColors.success : AppColors.error,
-            ),
-            const SizedBox(width: 8),
+            if (isShiftOpen) ...[
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: AppColors.success,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ] else ...[
+              const Icon(
+                Icons.lock_clock_rounded,
+                size: 16,
+                color: AppColors.error,
+              ),
+              const SizedBox(width: 8),
+            ],
             Text(
               isShiftOpen
                   ? (activeShift?.openedByName != null &&
@@ -368,7 +395,7 @@ class PosHeader extends StatelessWidget {
                 color:
                     isShiftOpen
                         ? const Color(0xFF065F46)
-                        : const Color(0xFF991B1B),
+                        : AppColors.error,
               ),
             ),
           ],
@@ -452,6 +479,7 @@ class PosHeader extends StatelessWidget {
   }
 
   Widget _buildSearchBar(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
     return Container(
       height: 52, // Regla 48dp min, 52 es mejor para touch
       decoration: BoxDecoration(
@@ -491,7 +519,7 @@ class PosHeader extends StatelessWidget {
                 hintStyle: TextStyle(
                   color:
                       searchByIngredient
-                          ? const Color(0xFF6EE7B7)
+                          ? const Color(0xFF047857)
                           : AppColors.textMuted,
                   fontSize: 15,
                 ),
@@ -505,23 +533,53 @@ class PosHeader extends StatelessWidget {
                           : AppColors.textMuted,
                   size: 22,
                 ),
-                suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: searchController,
-                  builder: (context, value, child) {
-                    if (value.text.isEmpty) return const SizedBox.shrink();
-                    return IconButton(
-                      icon: const Icon(
-                        Icons.cancel_rounded,
-                        size: 20,
-                        color: AppColors.textMuted,
-                      ),
-                      onPressed: () {
-                        searchController.clear();
-                        onSearchChanged('');
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: searchController,
+                      builder: (context, value, child) {
+                        if (value.text.isEmpty) return const SizedBox.shrink();
+                        return IconButton(
+                          icon: const Icon(
+                            Icons.cancel_rounded,
+                            size: 20,
+                            color: AppColors.textMuted,
+                          ),
+                          onPressed: () {
+                            searchController.clear();
+                            onSearchChanged('');
+                          },
+                          tooltip: 'Borrar búsqueda',
+                        );
                       },
-                      tooltip: 'Borrar búsqueda',
-                    );
-                  },
+                    ),
+                    if (isDesktop)
+                      Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: 1,
+                          ),
+                        ),
+                        child: const Text(
+                          'F1',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 14),
@@ -532,6 +590,7 @@ class PosHeader extends StatelessWidget {
           Tooltip(
             message: 'Buscar por ingrediente activo',
             child: InkWell(
+              mouseCursor: SystemMouseCursors.click,
               onTap: () => onToggleIngredientSearch(!searchByIngredient),
               borderRadius: const BorderRadius.horizontal(
                 right: Radius.circular(16),

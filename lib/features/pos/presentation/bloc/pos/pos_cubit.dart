@@ -215,13 +215,17 @@ class PosCubit extends Cubit<PosState> {
     }
   }
 
+  void clearActiveShift() {
+    emit(state.copyWith(clearActiveShift: true));
+  }
+
   Future<void> checkActiveShift(String accountId) async {
     final account = state.accounts.firstWhere(
       (a) => a['id'] == accountId,
       orElse: () => <String, dynamic>{},
     );
     if (!PosCalculatorUtils.accountRequiresShift(account)) {
-      emit(state.copyWith(activeShift: null));
+      emit(state.copyWith(clearActiveShift: true));
       return;
     }
 
@@ -234,12 +238,16 @@ class PosCubit extends Cubit<PosState> {
             state.copyWith(
               status: PosStatus.error,
               errorMessage: 'Error verificando turno: ${failure.message}',
-              activeShift: null, // ensure null when failing
+              clearActiveShift: true, // ensure null when failing
             ),
           );
         },
         (shift) {
-          emit(state.copyWith(activeShift: shift)); // Can be null if closed
+          if (shift == null) {
+            emit(state.copyWith(clearActiveShift: true));
+          } else {
+            emit(state.copyWith(activeShift: shift));
+          }
         },
       );
     } catch (e, stack) {

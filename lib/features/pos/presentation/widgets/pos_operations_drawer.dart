@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
@@ -187,26 +189,45 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            context.go('/admin');
-                          },
-                          icon: const Icon(
-                            Icons.inventory_2_outlined,
-                            size: 16,
-                          ),
-                          label: const Text(
-                            'Inventario',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.textPrimary,
-                            side: const BorderSide(color: AppColors.border),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppColors.radiusSm,
+                        child: Tooltip(
+                          message:
+                              kIsWeb
+                                  ? 'Abrir Inventario en nueva pestaña'
+                                  : 'Ir a Inventario',
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              if (kIsWeb) {
+                                final uri = Uri.base.replace(
+                                  path: '/admin/inventory',
+                                  queryParameters: {},
+                                );
+                                await launchUrl(
+                                  uri,
+                                  webOnlyWindowName: '_blank',
+                                );
+                              } else {
+                                context.push('/admin/inventory');
+                              }
+                            },
+                            icon: Icon(
+                              kIsWeb
+                                  ? Icons.open_in_new_rounded
+                                  : Icons.inventory_2_outlined,
+                              size: 16,
+                            ),
+                            label: Text(
+                              kIsWeb ? 'Inventario ↗' : 'Inventario',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textPrimary,
+                              side: const BorderSide(color: AppColors.border),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppColors.radiusSm,
+                                ),
                               ),
                             ),
                           ),
