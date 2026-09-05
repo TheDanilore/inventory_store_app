@@ -1200,6 +1200,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
                 'display_order': i,
                 'is_main': isMain,
               };
+            } else if (item.externalImageUrl != null &&
+                item.externalImageUrl!.trim().isNotEmpty) {
+              return {
+                'image_url': item.externalImageUrl!.trim(),
+                'display_order': i,
+                'is_main': isMain,
+              };
             } else if (item.newBytes != null) {
               final fileName =
                   '${DateTime.now().millisecondsSinceEpoch}_p$i.jpg';

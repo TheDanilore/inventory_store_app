@@ -135,12 +135,17 @@ class _ProductDetailsSectionState extends State<ProductDetailsSection> {
                     final valueCtrl = _valueControllers[row.id]!;
 
                     return Row(
+                      key: ValueKey(row.id),
                       children: [
                         Expanded(
                           flex: 4,
                           child: TextField(
                             controller: keyCtrl,
-                            onChanged: (_) => cubit.markAsDirty(),
+                            onChanged:
+                                (val) => cubit.updateDetailRow(
+                                  idx,
+                                  row.copyWith(key: val),
+                                ),
                             decoration: InputDecoration(
                               hintText: 'Propiedad (ej: Material)',
                               contentPadding: const EdgeInsets.symmetric(
@@ -166,7 +171,11 @@ class _ProductDetailsSectionState extends State<ProductDetailsSection> {
                           flex: 5,
                           child: TextField(
                             controller: valueCtrl,
-                            onChanged: (_) => cubit.markAsDirty(),
+                            onChanged:
+                                (val) => cubit.updateDetailRow(
+                                  idx,
+                                  row.copyWith(value: val),
+                                ),
                             decoration: InputDecoration(
                               hintText: 'Valor (ej: Acero)',
                               contentPadding: const EdgeInsets.symmetric(

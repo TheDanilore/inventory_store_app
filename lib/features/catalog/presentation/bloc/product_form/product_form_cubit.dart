@@ -283,6 +283,18 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     _syncState();
   }
 
+  void updateDetailRow(
+    int index,
+    DetailModel updated, {
+    bool syncState = false,
+  }) {
+    final rows = List.of(_detailRows);
+    rows[index] = updated;
+    _detailRows = rows;
+    markAsDirty();
+    if (syncState) _syncState();
+  }
+
   // ── Ingredientes ─────────────────────────────────────────────────────────────
 
   void addIngredientRow() {
@@ -371,6 +383,26 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         snackMessage: snackMsg,
       ),
     );
+  }
+
+  /// Agrega una imagen a partir de una URL web externa.
+  void addImageUrl(String rawUrl) {
+    final url = rawUrl.trim();
+    if (url.isEmpty) return;
+
+    const maxImages = 5;
+    if (_formImages.length >= maxImages) {
+      emit(
+        state.copyWith(
+          snackMessage: 'Límite de imágenes alcanzado ($maxImages).',
+        ),
+      );
+      return;
+    }
+
+    _formImages = [..._formImages, FormImageItem(externalUrl: url)];
+    markAsDirty();
+    _syncState();
   }
 
   Future<void> removeImage(int index) async {
@@ -612,6 +644,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
               existingId: item.isExisting ? item.existing!.id : null,
               existingUrl: item.isExisting ? item.existing!.imageUrl : null,
               newBytes: item.newBytes,
+              externalImageUrl: item.externalUrl,
             );
           }).toList();
 

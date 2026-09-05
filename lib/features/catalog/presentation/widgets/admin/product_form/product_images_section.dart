@@ -51,11 +51,12 @@ class ProductImagesSection extends StatelessWidget {
                 final cubit = context.read<ProductFormCubit>();
                 return Row(
                   children: [
+                    // Botón Subir
                     InkWell(
                       onTap: state.isSaving ? null : () => cubit.pickImages(),
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        width: 100,
+                        width: 72,
                         height: double.infinity,
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.05),
@@ -70,14 +71,54 @@ class ProductImagesSection extends StatelessWidget {
                             Icon(
                               Icons.add_photo_alternate_rounded,
                               color: AppColors.primary,
-                              size: 32,
+                              size: 26,
                             ),
-                            SizedBox(height: 8),
+                            SizedBox(height: 6),
                             Text(
-                              'Agregar',
+                              'Subir',
                               style: TextStyle(
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Botón URL
+                    InkWell(
+                      onTap:
+                          state.isSaving
+                              ? null
+                              : () => _promptForImageUrl(context, cubit),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: 72,
+                        height: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.blueGrey.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.blueGrey.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.link_rounded,
+                              color: Colors.blueGrey,
+                              size: 26,
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'URL',
+                              style: TextStyle(
+                                color: Colors.blueGrey,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
                               ),
                             ),
                           ],
@@ -145,10 +186,29 @@ class ProductImagesSection extends StatelessWidget {
                                                   (context, url, error) =>
                                                       const Icon(Icons.error),
                                             )
-                                            : Image.memory(
-                                              item.newBytes!,
-                                              fit: BoxFit.cover,
-                                            ),
+                                            : item.isExternal
+                                                ? CachedNetworkImage(
+                                                  imageUrl: item.externalUrl!,
+                                                  fit: BoxFit.cover,
+                                                  placeholder:
+                                                      (
+                                                        context,
+                                                        url,
+                                                      ) => const Center(
+                                                        child:
+                                                            CircularProgressIndicator(),
+                                                      ),
+                                                  errorWidget:
+                                                      (context, url, error) =>
+                                                          const Icon(
+                                                            Icons.broken_image,
+                                                            color: Colors.red,
+                                                          ),
+                                                )
+                                                : Image.memory(
+                                                  item.newBytes!,
+                                                  fit: BoxFit.cover,
+                                                ),
                                   ),
                                   Positioned(
                                     top: 0,
@@ -263,5 +323,44 @@ class ProductImagesSection extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _promptForImageUrl(
+    BuildContext context,
+    ProductFormCubit cubit,
+  ) async {
+    String? url;
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        final ctrl = TextEditingController();
+        return AlertDialog(
+          title: const Text('Pegar URL de Imagen'),
+          content: TextField(
+            controller: ctrl,
+            decoration: const InputDecoration(
+              hintText: 'https://...',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                url = ctrl.text.trim();
+                Navigator.pop(ctx);
+              },
+              child: const Text('Aceptar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (url != null && url!.isNotEmpty) {
+      cubit.addImageUrl(url!);
+    }
   }
 }

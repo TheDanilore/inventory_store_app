@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -133,8 +134,15 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
         widget.draft.unitCost != unitCostCtrl.text) {
       unitCostCtrl.text = widget.draft.unitCost;
     }
-    if (widget.draft.selectedAttributes !=
-        oldWidget.draft.selectedAttributes) {
+    final currentCompleted = _selectedAttributes
+        .where((a) => a.attributeId != null && a.valueId != null)
+        .map((a) => '${a.attributeId}:${a.valueId}')
+        .toSet();
+    final newCompleted = widget.draft.selectedAttributes
+        .where((a) => a['attribute_id'] != null && a['value_id'] != null)
+        .map((a) => '${a['attribute_id']}:${a['value_id']}')
+        .toSet();
+    if (!setEquals(currentCompleted, newCompleted)) {
       _selectedAttributes.clear();
       _parseInitialAttributes();
     }
@@ -171,7 +179,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
         _AttributeSelection(attributeName: '', valueName: ''),
       );
     });
-    _synchronizeToDraft();
   }
 
   void _synchronizeToDraft() {
@@ -218,7 +225,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
         _selectedAttributes[index].valueId = null;
         _selectedAttributes[index].valueName = '';
       });
-      _synchronizeToDraft();
     }
   }
 

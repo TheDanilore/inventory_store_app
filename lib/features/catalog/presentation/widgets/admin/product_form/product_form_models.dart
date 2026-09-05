@@ -66,9 +66,16 @@ class FormImageItem {
   final ProductImageEntity? existing;
   final Uint8List? newBytes;
   final String? newName;
+  final String? externalUrl;
 
-  FormImageItem({String? id, this.existing, this.newBytes, this.newName})
-    : id = id ?? _generateId();
+  FormImageItem({
+    String? id,
+    this.existing,
+    this.newBytes,
+    this.newName,
+    this.externalUrl,
+  }) : id = id ?? _generateId();
 
   bool get isExisting => existing != null;
+  bool get isExternal => externalUrl != null && externalUrl!.trim().isNotEmpty;
 }
