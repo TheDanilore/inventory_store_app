@@ -42,18 +42,30 @@ class FinancialAccountsError extends FinancialAccountsState {
 
 /// Estado emitido mientras se guarda una cuenta (crear/editar).
 class FinancialAccountSaving extends FinancialAccountsState {
-  const FinancialAccountSaving();
+  final List<FinancialAccountEntity> previousAccounts;
+  const FinancialAccountSaving({this.previousAccounts = const []});
+
+  @override
+  List<Object?> get props => [previousAccounts];
 }
 
 class FinancialAccountSaved extends FinancialAccountsState {
-  const FinancialAccountSaved();
+  final List<FinancialAccountEntity> accounts;
+  const FinancialAccountSaved({this.accounts = const []});
+
+  @override
+  List<Object?> get props => [accounts];
 }
 
 class FinancialAccountSaveError extends FinancialAccountsState {
   final String message;
+  final List<FinancialAccountEntity> previousAccounts;
 
-  const FinancialAccountSaveError(this.message);
+  const FinancialAccountSaveError(
+    this.message, {
+    this.previousAccounts = const [],
+  });
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, previousAccounts];
 }

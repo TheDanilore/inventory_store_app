@@ -45,10 +45,14 @@ class _AccountsTabState extends State<AccountsTab> {
   Widget build(BuildContext context) {
     return BlocBuilder<FinancialAccountsCubit, FinancialAccountsState>(
       builder: (context, state) {
-        final accounts =
-            state is FinancialAccountsLoaded
-                ? state.accounts
-                : <FinancialAccountEntity>[];
+        final accounts = switch (state) {
+          FinancialAccountsLoaded(:final accounts) => accounts,
+          FinancialAccountSaving(:final previousAccounts) => previousAccounts,
+          FinancialAccountSaved(:final accounts) => accounts,
+          FinancialAccountSaveError(:final previousAccounts) =>
+            previousAccounts,
+          _ => <FinancialAccountEntity>[],
+        };
         final isLoading = state is FinancialAccountsLoading;
 
         final activeAccounts = accounts.where((a) => a.isActive).toList();

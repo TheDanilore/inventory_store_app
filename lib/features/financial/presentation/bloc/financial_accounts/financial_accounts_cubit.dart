@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/get_financial_accounts_usecase.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/save_financial_account_usecase.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_state.dart';
@@ -9,7 +10,7 @@ class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
   final GetFinancialAccountsUseCase _getAccounts;
   final SaveFinancialAccountUseCase _saveAccount;
 
-  static const int _pageSize = 10;
+  static const int _pageSize = 50;
   int _currentPage = 0;
   int _totalPages = 1;
 
@@ -69,7 +70,15 @@ class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
     required bool isActive,
     double? initialBalance,
   }) async {
-    emit(const FinancialAccountSaving());
+    final currentAccounts = switch (state) {
+      FinancialAccountsLoaded(:final accounts) => accounts,
+      FinancialAccountSaving(:final previousAccounts) => previousAccounts,
+      FinancialAccountSaved(:final accounts) => accounts,
+      FinancialAccountSaveError(:final previousAccounts) => previousAccounts,
+      _ => <FinancialAccountEntity>[],
+    };
+
+    emit(FinancialAccountSaving(previousAccounts: currentAccounts));
     try {
       await _saveAccount(
         accountId: accountId,
@@ -78,11 +87,17 @@ class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
         isActive: isActive,
         initialBalance: initialBalance,
       );
-      emit(const FinancialAccountSaved());
+      emit(FinancialAccountSaved(accounts: currentAccounts));
       // Refresca la lista en la misma página
       await fetchAccounts(page: _currentPage);
     } catch (e) {
-      emit(FinancialAccountSaveError(e.toString()));
+      emit(
+        FinancialAccountSaveError(
+          e.toString(),
+          previousAccounts: currentAccounts,
+        ),
+      );
+      rethrow;
     }
   }
 }

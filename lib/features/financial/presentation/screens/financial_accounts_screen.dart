@@ -124,18 +124,13 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
           ),
         ),
         Expanded(
-          child: AnimatedBuilder(
-            animation: _mobileTabController.animation!,
-            builder: (context, child) {
-              return TabBarView(
-                controller: _mobileTabController,
-                children: const [
-                  AccountsTab(),
-                  MovementsTab(),
-                  ShiftsTab(showOpenShiftButton: false),
-                ],
-              );
-            },
+          child: TabBarView(
+            controller: _mobileTabController,
+            children: const [
+              AccountsTab(),
+              MovementsTab(),
+              ShiftsTab(showOpenShiftButton: false),
+            ],
           ),
         ),
       ],

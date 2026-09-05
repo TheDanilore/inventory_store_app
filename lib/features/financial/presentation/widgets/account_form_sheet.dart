@@ -14,11 +14,16 @@ class AccountFormSheet extends StatefulWidget {
     BuildContext context, {
     FinancialAccountEntity? account,
   }) {
+    final cubit = context.read<FinancialAccountsCubit>();
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AccountFormSheet(account: account),
+      builder:
+          (_) => BlocProvider.value(
+            value: cubit,
+            child: AccountFormSheet(account: account),
+          ),
     );
   }
 
@@ -61,8 +66,9 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     setState(() => _saving = true);
 
     try {
+      final balanceText = _balanceCtrl.text.trim().replaceAll(',', '.');
       final balance =
-          double.tryParse(_balanceCtrl.text.replaceAll(',', '.')) ?? 0.0;
+          balanceText.isNotEmpty ? double.tryParse(balanceText) ?? 0.0 : 0.0;
 
       await context.read<FinancialAccountsCubit>().saveAccount(
         name: _nameCtrl.text.trim(),
@@ -78,7 +84,8 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: 'Error al guardar: $e',
+          message:
+              'Error al guardar cuenta: ${e.toString().replaceAll('Exception: ', '')}',
           type: SnackbarType.error,
         );
       }
@@ -122,9 +129,23 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
             TextFormField(
               controller: _nameCtrl,
               decoration: _inputDeco('Ej: Caja principal'),
-              textCapitalization: TextCapitalization.sentences,
-              validator:
-                  (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+              textCapitalization: TextCapitalization.words,
+              maxLength: 50,
+              buildCounter:
+                  (
+                    context, {
+                    required currentLength,
+                    required isFocused,
+                    maxLength,
+                  }) => null,
+              validator: (v) {
+                final trimmed = v?.trim() ?? '';
+                if (trimmed.isEmpty) return 'El nombre es obligatorio';
+                if (trimmed.length < 2) {
+                  return 'El nombre debe tener al menos 2 caracteres';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 14),
 
@@ -197,6 +218,15 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                 ],
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return null;
+                  final parsed = double.tryParse(v.trim().replaceAll(',', '.'));
+                  if (parsed == null) return 'Ingresa un número válido';
+                  if (parsed < 0) {
+                    return 'El balance inicial no puede ser negativo';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 14),
             ],
