@@ -7,6 +7,7 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/invento
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_state.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_stock_card.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_product_quick_view_sheet.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
@@ -52,6 +53,15 @@ class _InventoryStockTabState extends State<InventoryStockTab>
   void _openProductDetail(InventoryStockItem item) {
     context.push(
       '/admin/product/${item.productId}?variantId=${item.variantId}',
+    );
+  }
+
+  void _showQuickView(InventoryStockItem item, InventoryLoaded state) {
+    InventoryProductQuickViewSheet.show(
+      context,
+      item: item,
+      selectedWarehouseId: state.selectedWarehouseId,
+      selectedWarehouseName: state.selectedWarehouseName,
     );
   }
 
@@ -352,7 +362,10 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                 InkWell(
                                                   onTap:
                                                       () =>
-                                                          _openProductDetail(item),
+                                                          _showQuickView(
+                                                            item,
+                                                            state,
+                                                          ),
                                                   child: Row(
                                                     children: [
                                                       _buildAvatar(
@@ -550,6 +563,26 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                       MainAxisSize.min,
                                                   children: [
                                                     Tooltip(
+                                                      message:
+                                                          'Ficha Rápida y Variantes',
+                                                      child: IconButton(
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .visibility_outlined,
+                                                          size: 18,
+                                                        ),
+                                                        color:
+                                                            AppColors.primary,
+                                                        onPressed:
+                                                            () =>
+                                                                _showQuickView(
+                                                                  item,
+                                                                  state,
+                                                                ),
+                                                        splashRadius: 16,
+                                                      ),
+                                                    ),
+                                                    Tooltip(
                                                       message: 'Ver en Kárdex',
                                                       child: IconButton(
                                                         icon: const Icon(
@@ -569,7 +602,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                     ),
                                                     Tooltip(
                                                       message:
-                                                          'Ficha de Producto',
+                                                          'Ficha Completa de Producto',
                                                       child: IconButton(
                                                         icon: const Icon(
                                                           Icons
@@ -577,7 +610,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                           size: 17,
                                                         ),
                                                         color:
-                                                            AppColors.primary,
+                                                            AppColors.textSecondary,
                                                         onPressed:
                                                             () =>
                                                                 _openProductDetail(
@@ -839,7 +872,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                   padding: const EdgeInsets.only(bottom: 10),
                   child: InventoryStockCard(
                     item: item,
-                    onTap: () => _openProductDetail(item),
+                    onTap: () => _showQuickView(item, state),
                   ),
                 );
               }, childCount: state.stockItems.length),
