@@ -55,16 +55,53 @@ class _DrawerSubItem {
 // Widget principal
 // ---------------------------------------------------------------------------
 
-class AppDrawer extends StatelessWidget {
+/// Memoria de sesión estática para retener la posición de scroll
+/// y los grupos expandidos del Drawer móvil a través de navegaciones.
+class DrawerNavigationMemory {
+  static double scrollOffset = 0.0;
+  static final Set<String> expandedGroups = {};
+}
+
+class AppDrawer extends StatefulWidget {
   final bool isAdmin;
   const AppDrawer({super.key, this.isAdmin = false});
 
   @override
+  State<AppDrawer> createState() => _AppDrawerState();
+}
+
+class _AppDrawerState extends State<AppDrawer> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController(
+      initialScrollOffset: DrawerNavigationMemory.scrollOffset,
+    );
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      DrawerNavigationMemory.scrollOffset = _scrollController.offset;
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isAdmin = widget.isAdmin;
     return Drawer(
       backgroundColor: AppColors.background,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.horizontal(left: Radius.circular(24)),
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(28)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -72,15 +109,22 @@ class AppDrawer extends StatelessWidget {
           // ─────────────────────────────────────────
           // HEADER
           // ─────────────────────────────────────────
-          _DrawerHeader(isAdmin: isAdmin),
+          _DrawerHeader(isAdmin: widget.isAdmin),
 
           // ─────────────────────────────────────────
-          // CUERPO (scrollable)
+          // CUERPO (scrollable persistente)
           // ─────────────────────────────────────────
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              children: [
+            child: RawScrollbar(
+              controller: _scrollController,
+              thumbColor: AppColors.textMuted.withValues(alpha: 0.22),
+              radius: const Radius.circular(4),
+              thickness: 4,
+              padding: const EdgeInsets.only(right: 2),
+              child: ListView(
+                controller: _scrollController,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                children: [
                 _buildSectionTitle('MENÚ PRINCIPAL'),
                 _buildItem(
                   context,
@@ -399,6 +443,7 @@ class AppDrawer extends StatelessWidget {
               ],
             ),
           ),
+          ),
 
           // ─────────────────────────────────────────
           // PIE (perfil siempre visible)
@@ -419,52 +464,64 @@ class AppDrawer extends StatelessWidget {
     final active = _isItemActive(item.routePath, currentPath);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-      child: Container(
-        decoration: BoxDecoration(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: Material(
+        color:
+            active
+                ? AppColors.primary.withValues(alpha: 0.09)
+                : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          border:
-              active
-                  ? const Border(
-                    left: BorderSide(color: AppColors.primary, width: 4),
-                  )
-                  : null,
-        ),
-        child: ListTile(
-          leading: Icon(
-            item.icon,
-            color:
-                active
-                    ? AppColors.primary
-                    : AppColors.textSecondary.withValues(alpha: 0.8),
-            size: 22,
-          ),
-          title: Text(
-            item.title,
-            style: TextStyle(
-              color:
+          onTap: item.onTap,
+          splashColor: AppColors.primary.withValues(alpha: 0.12),
+          hoverColor: AppColors.primaryLight.withValues(alpha: 0.4),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 46),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border:
                   active
-                      ? AppColors.primary
-                      : AppColors.textPrimary.withValues(alpha: 0.9),
-              fontSize: 15,
-              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                      ? Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.18),
+                        width: 1,
+                      )
+                      : Border.all(color: Colors.transparent, width: 1),
+            ),
+            child: Row(
+              children: [
+                if (active)
+                  Container(
+                    width: 3.5,
+                    height: 18,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                Icon(
+                  item.icon,
+                  color: active ? AppColors.primary : AppColors.textSecondary,
+                  size: 21,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    item.title,
+                    style: TextStyle(
+                      color: active ? AppColors.primary : AppColors.textPrimary,
+                      fontSize: 14,
+                      letterSpacing: -0.2,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (item.trailing != null) item.trailing!,
+              ],
             ),
           ),
-          tileColor: active ? AppColors.primary.withValues(alpha: 0.1) : null,
-          trailing: item.trailing,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.horizontal(
-              right: const Radius.circular(12),
-              left:
-                  active ? const Radius.circular(8) : const Radius.circular(12),
-            ),
-          ),
-          splashColor: AppColors.primary.withValues(alpha: 0.15),
-          hoverColor: AppColors.primaryLight,
-          onTap: () {
-            if (item.onTap != null) item.onTap!();
-          },
-          dense: true,
         ),
       ),
     );
@@ -492,8 +549,6 @@ class _ExpandableDrawerGroup extends StatefulWidget {
 }
 
 class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
-  bool _isManuallyExpanded = false;
-
   bool _isItemActive(String routePath, String currentPath) {
     if (routePath.isEmpty) return false;
     if (currentPath == routePath) return true;
@@ -506,7 +561,13 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
   }
 
   void _toggle() {
-    setState(() => _isManuallyExpanded = !_isManuallyExpanded);
+    setState(() {
+      if (DrawerNavigationMemory.expandedGroups.contains(widget.item.title)) {
+        DrawerNavigationMemory.expandedGroups.remove(widget.item.title);
+      } else {
+        DrawerNavigationMemory.expandedGroups.add(widget.item.title);
+      }
+    });
   }
 
   @override
@@ -515,44 +576,69 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
     final hasActiveChild = widget.item.children.any(
       (sub) => _isItemActive(sub.routePath, currentPath),
     );
-    final isOpen = _isManuallyExpanded || hasActiveChild;
+    if (hasActiveChild) {
+      DrawerNavigationMemory.expandedGroups.add(widget.item.title);
+    }
+    final isOpen = DrawerNavigationMemory.expandedGroups.contains(
+      widget.item.title,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // ── Cabecera del grupo ──────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-          child: ListTile(
-            leading: Icon(
-              widget.item.icon,
-              color: AppColors.textSecondary,
-              size: 22,
-            ),
-            title: Text(
-              widget.item.title,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            trailing: AnimatedRotation(
-              turns: isOpen ? 0.5 : 0,
-              duration: const Duration(milliseconds: 220),
-              child: Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: isOpen ? AppColors.primary : AppColors.textSecondary,
-                size: 20,
-              ),
-            ),
-            shape: RoundedRectangleBorder(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
               borderRadius: BorderRadius.circular(12),
+              onTap: _toggle,
+              splashColor: AppColors.primary.withValues(alpha: 0.1),
+              hoverColor: AppColors.primaryLight.withValues(alpha: 0.4),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 46),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    Icon(
+                      widget.item.icon,
+                      color:
+                          hasActiveChild
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                      size: 21,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        widget.item.title,
+                        style: TextStyle(
+                          color:
+                              hasActiveChild
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
+                          fontSize: 14,
+                          letterSpacing: -0.2,
+                          fontWeight:
+                              hasActiveChild ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    AnimatedRotation(
+                      turns: isOpen ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 220),
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: isOpen ? AppColors.primary : AppColors.textSecondary,
+                        size: 20,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            splashColor: AppColors.primary.withValues(alpha: 0.1),
-            hoverColor: AppColors.primaryLight,
-            onTap: _toggle,
-            dense: true,
           ),
         ),
 
@@ -651,56 +737,66 @@ class _SubItemTile extends StatelessWidget {
         currentPath == item.routePath ||
         currentPath.startsWith('${item.routePath}/');
     return Padding(
-      padding: const EdgeInsets.only(left: 8, right: 0, top: 2, bottom: 2),
-      child: Container(
-        decoration: BoxDecoration(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      child: Material(
+        color:
+            active
+                ? AppColors.primary.withValues(alpha: 0.09)
+                : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
           borderRadius: BorderRadius.circular(10),
-          border:
-              active
-                  ? const Border(
-                    left: BorderSide(color: AppColors.primary, width: 3),
-                  )
-                  : null,
-        ),
-        child: ListTile(
-          leading: Icon(
-            item.icon,
-            color:
-                active
-                    ? AppColors.primary
-                    : AppColors.primary.withValues(alpha: 0.7),
-            size: 20,
-          ),
-          title: Text(
-            item.title,
-            style: TextStyle(
-              color:
+          onTap: item.onTap,
+          splashColor: AppColors.primary.withValues(alpha: 0.12),
+          hoverColor: AppColors.primaryLight.withValues(alpha: 0.4),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border:
                   active
-                      ? AppColors.primary
-                      : AppColors.textPrimary.withValues(alpha: 0.9),
-              fontSize: 14,
-              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                      ? Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.16),
+                        width: 1,
+                      )
+                      : Border.all(color: Colors.transparent, width: 1),
             ),
-          ),
-          tileColor: active ? AppColors.primary.withValues(alpha: 0.1) : null,
-          trailing: item.trailing,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.horizontal(
-              right: const Radius.circular(10),
-              left:
-                  active ? const Radius.circular(6) : const Radius.circular(10),
+            child: Row(
+              children: [
+                if (active)
+                  Container(
+                    width: 3,
+                    height: 16,
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                Icon(
+                  item.icon,
+                  color:
+                      active
+                          ? AppColors.primary
+                          : AppColors.primary.withValues(alpha: 0.7),
+                  size: 19,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    item.title,
+                    style: TextStyle(
+                      color: active ? AppColors.primary : AppColors.textPrimary,
+                      fontSize: 13.5,
+                      letterSpacing: -0.2,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (item.trailing != null) item.trailing!,
+              ],
             ),
-          ),
-          splashColor: AppColors.primary.withValues(alpha: 0.15),
-          hoverColor: AppColors.primaryLight,
-          onTap: () {
-            item.onTap();
-          },
-          dense: true,
-          minLeadingWidth: 20,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 0,
           ),
         ),
       ),

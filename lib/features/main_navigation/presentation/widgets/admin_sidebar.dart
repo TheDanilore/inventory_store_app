@@ -23,6 +23,13 @@ class AdminSidebarItem {
   });
 }
 
+/// Memoria de navegación estática para retener la posición exacta de scroll
+/// y los grupos expandidos a través de transiciones de ruta en el ERP.
+class SidebarNavigationMemory {
+  static double scrollOffset = 0.0;
+  static final Set<String> expandedGroups = {};
+}
+
 class AdminSidebar extends StatefulWidget {
   final bool isCollapsed;
   final VoidCallback onToggleCollapse;
@@ -38,6 +45,30 @@ class AdminSidebar extends StatefulWidget {
 }
 
 class _AdminSidebarState extends State<AdminSidebar> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController(
+      initialScrollOffset: SidebarNavigationMemory.scrollOffset,
+    );
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      SidebarNavigationMemory.scrollOffset = _scrollController.offset;
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final width = widget.isCollapsed ? 72.0 : 260.0;
@@ -58,11 +89,18 @@ class _AdminSidebarState extends State<AdminSidebar> {
           _buildBrandHeader(context),
           const Divider(height: 1, color: AppColors.border),
 
-          // ── Items List ─────────────────────────────────────────────
+          // ── Items List con Scroll Persistente y Barra Estilizada ─────
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              children: [
+            child: RawScrollbar(
+              controller: _scrollController,
+              thumbColor: AppColors.textMuted.withValues(alpha: 0.22),
+              radius: const Radius.circular(4),
+              thickness: 4,
+              padding: const EdgeInsets.only(right: 2),
+              child: ListView(
+                controller: _scrollController,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                children: [
                 if (!widget.isCollapsed) _buildSectionHeader('MENÚ PRINCIPAL'),
                 _buildSidebarTile(
                   context,
@@ -284,6 +322,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
               ],
             ),
           ),
+          ),
 
           // ── Collapse / Expand Footer Action ────────────────────────
           const Divider(height: 1, color: AppColors.border),
@@ -425,19 +464,31 @@ class _AdminSidebarState extends State<AdminSidebar> {
         final tile = Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           child: Material(
-            color:
-                isActive
-                    ? AppColors.primary.withValues(alpha: 0.1)
-                    : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(10),
               onTap: () => context.go(item.routePath),
-              hoverColor: AppColors.primaryLight,
-              child: Container(
-                height: 42,
+              hoverColor: AppColors.primaryLight.withValues(alpha: 0.4),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                height: 40,
+                decoration: BoxDecoration(
+                  color:
+                      isActive
+                          ? AppColors.primary.withValues(alpha: 0.09)
+                          : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  border:
+                      isActive
+                          ? Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.16),
+                            width: 1,
+                          )
+                          : Border.all(color: Colors.transparent, width: 1),
+                ),
                 padding: EdgeInsets.symmetric(
-                  horizontal: widget.isCollapsed ? 0 : 12,
+                  horizontal: widget.isCollapsed ? 0 : 10,
                 ),
                 child: ClipRect(
                   child: Row(
@@ -446,6 +497,17 @@ class _AdminSidebarState extends State<AdminSidebar> {
                             ? MainAxisAlignment.center
                             : MainAxisAlignment.start,
                     children: [
+                      // Linear / Stripe Active Indicator Bar
+                      if (!widget.isCollapsed && isActive)
+                        Container(
+                          width: 3.5,
+                          height: 18,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
                       Icon(
                         item.icon,
                         size: 20,
@@ -455,7 +517,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                                 : AppColors.textSecondary,
                       ),
                       if (!widget.isCollapsed) ...[
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             item.title,
@@ -463,8 +525,9 @@ class _AdminSidebarState extends State<AdminSidebar> {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 13,
+                              letterSpacing: -0.2,
                               fontWeight:
-                                  isActive ? FontWeight.w800 : FontWeight.w500,
+                                  isActive ? FontWeight.w700 : FontWeight.w500,
                               color:
                                   isActive
                                       ? AppColors.primary
@@ -483,7 +546,28 @@ class _AdminSidebarState extends State<AdminSidebar> {
         );
 
         if (widget.isCollapsed) {
-          return Tooltip(message: item.title, child: tile);
+          return Tooltip(
+            message: item.title,
+            preferBelow: false,
+            verticalOffset: 0,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F172A),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 8,
+                  offset: const Offset(2, 2),
+                ),
+              ],
+            ),
+            textStyle: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+            child: tile,
+          );
         }
         return tile;
       },
@@ -524,8 +608,6 @@ class _ExpandableSidebarGroup extends StatefulWidget {
 }
 
 class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
-  bool _isManuallyExpanded = false;
-
   bool _isItemActive(String routePath, String currentPath) {
     if (routePath.isEmpty) return false;
     if (currentPath == routePath) return true;
@@ -542,19 +624,31 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
     final tile = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: Material(
-        color:
-            isActive
-                ? AppColors.primary.withValues(alpha: 0.1)
-                : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
           onTap: () => context.go(item.routePath),
-          hoverColor: AppColors.primaryLight,
-          child: Container(
-            height: 42,
+          hoverColor: AppColors.primaryLight.withValues(alpha: 0.4),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            height: 38,
+            decoration: BoxDecoration(
+              color:
+                  isActive
+                      ? AppColors.primary.withValues(alpha: 0.09)
+                      : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              border:
+                  isActive
+                      ? Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.16),
+                        width: 1,
+                      )
+                      : Border.all(color: Colors.transparent, width: 1),
+            ),
             padding: EdgeInsets.symmetric(
-              horizontal: widget.isCollapsed ? 0 : 12,
+              horizontal: widget.isCollapsed ? 0 : 10,
             ),
             child: ClipRect(
               child: Row(
@@ -563,14 +657,24 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                         ? MainAxisAlignment.center
                         : MainAxisAlignment.start,
                 children: [
+                  if (!widget.isCollapsed && isActive)
+                    Container(
+                      width: 3.5,
+                      height: 16,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
                   Icon(
                     item.icon,
-                    size: 20,
+                    size: 19,
                     color:
                         isActive ? AppColors.primary : AppColors.textSecondary,
                   ),
                   if (!widget.isCollapsed) ...[
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         item.title,
@@ -578,8 +682,9 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 13,
+                          letterSpacing: -0.2,
                           fontWeight:
-                              isActive ? FontWeight.w800 : FontWeight.w500,
+                              isActive ? FontWeight.w700 : FontWeight.w500,
                           color:
                               isActive
                                   ? AppColors.primary
@@ -609,7 +714,13 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
     final hasActiveChild = widget.item.children.any(
       (sub) => _isItemActive(sub.routePath, currentPath),
     );
-    final isOpen = _isManuallyExpanded || hasActiveChild;
+    // Sincronizar persistencia: si tiene un hijo activo, se mantiene abierto
+    if (hasActiveChild) {
+      SidebarNavigationMemory.expandedGroups.add(widget.item.title);
+    }
+    final isOpen = SidebarNavigationMemory.expandedGroups.contains(
+      widget.item.title,
+    );
 
     if (widget.isCollapsed) {
       return PopupMenuButton<String>(
@@ -669,14 +780,25 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
             borderRadius: BorderRadius.circular(10),
             child: InkWell(
               borderRadius: BorderRadius.circular(10),
-              onTap:
-                  () => setState(
-                    () => _isManuallyExpanded = !_isManuallyExpanded,
-                  ),
-              hoverColor: AppColors.primaryLight,
+              onTap: () {
+                setState(() {
+                  if (SidebarNavigationMemory.expandedGroups.contains(
+                    widget.item.title,
+                  )) {
+                    SidebarNavigationMemory.expandedGroups.remove(
+                      widget.item.title,
+                    );
+                  } else {
+                    SidebarNavigationMemory.expandedGroups.add(
+                      widget.item.title,
+                    );
+                  }
+                });
+              },
+              hoverColor: AppColors.primaryLight.withValues(alpha: 0.4),
               child: Container(
-                height: 42,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Row(
                   children: [
                     Icon(
@@ -687,7 +809,7 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                               ? AppColors.primary
                               : AppColors.textSecondary,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         widget.item.title,
@@ -695,10 +817,9 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 13,
+                          letterSpacing: -0.2,
                           fontWeight:
-                              hasActiveChild
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
+                              hasActiveChild ? FontWeight.w700 : FontWeight.w500,
                           color:
                               hasActiveChild
                                   ? AppColors.primary
