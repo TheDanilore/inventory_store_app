@@ -73,7 +73,8 @@ class _UserFormContentState extends State<_UserFormContent> {
 
     if (_isEditing) {
       _docType = widget.existingUser?.documentType ?? 'DNI';
-      _role = widget.existingUser?.role ?? widget.initialRole ?? AppRoles.customer;
+      _role =
+          widget.existingUser?.role ?? widget.initialRole ?? AppRoles.customer;
       _isActive = widget.existingUser?.isActive ?? true;
     } else {
       _role = widget.initialRole ?? AppRoles.customer;
@@ -93,6 +94,51 @@ class _UserFormContentState extends State<_UserFormContent> {
   String? _required(String? value, String fieldName) {
     if (value == null || value.trim().isEmpty) return 'Ingresa $fieldName';
     return null;
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Ingresa el correo electrónico';
+    }
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(value.trim())) {
+      return 'Ingresa un formato de correo válido (ej: usuario@dominio.com)';
+    }
+    return null;
+  }
+
+  String? _validateDocument(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return null; // Número de documento opcional
+    }
+    final clean = value.trim();
+    if (_docType == 'DNI') {
+      if (clean.length != 8) return 'El DNI debe tener 8 dígitos';
+    } else if (_docType == 'RUC') {
+      if (clean.length != 11) return 'El RUC debe tener 11 dígitos';
+    } else if (clean.length < 4) {
+      return 'Mínimo 4 caracteres';
+    }
+    return null;
+  }
+
+  List<TextInputFormatter> get _documentFormatters {
+    if (_docType == 'DNI') {
+      return [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(8),
+      ];
+    } else if (_docType == 'RUC') {
+      return [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(11),
+      ];
+    } else {
+      return [
+        FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+        LengthLimitingTextInputFormatter(15),
+      ];
+    }
   }
 
   void _generatePassword() {
@@ -187,14 +233,16 @@ class _UserFormContentState extends State<_UserFormContent> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: _isEditing
-                              ? Colors.indigo.shade50
-                              : AppColors.primary.withValues(alpha: 0.06),
+                          color:
+                              _isEditing
+                                  ? Colors.indigo.shade50
+                                  : AppColors.primary.withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: _isEditing
-                                ? Colors.indigo.shade200
-                                : AppColors.primary.withValues(alpha: 0.2),
+                            color:
+                                _isEditing
+                                    ? Colors.indigo.shade200
+                                    : AppColors.primary.withValues(alpha: 0.2),
                           ),
                         ),
                         child: Row(
@@ -202,18 +250,22 @@ class _UserFormContentState extends State<_UserFormContent> {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: _isEditing
-                                    ? Colors.indigo.shade100
-                                    : AppColors.primary.withValues(alpha: 0.15),
+                                color:
+                                    _isEditing
+                                        ? Colors.indigo.shade100
+                                        : AppColors.primary.withValues(
+                                          alpha: 0.15,
+                                        ),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
                                 _isEditing
                                     ? Icons.edit_note_rounded
                                     : Icons.person_add_alt_1_rounded,
-                                color: _isEditing
-                                    ? Colors.indigo.shade800
-                                    : AppColors.primary,
+                                color:
+                                    _isEditing
+                                        ? Colors.indigo.shade800
+                                        : AppColors.primary,
                                 size: 24,
                               ),
                             ),
@@ -229,9 +281,10 @@ class _UserFormContentState extends State<_UserFormContent> {
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w700,
-                                      color: _isEditing
-                                          ? Colors.indigo.shade900
-                                          : AppColors.textPrimary,
+                                      color:
+                                          _isEditing
+                                              ? Colors.indigo.shade900
+                                              : AppColors.textPrimary,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
@@ -241,9 +294,10 @@ class _UserFormContentState extends State<_UserFormContent> {
                                         : 'El usuario se creará en el sistema con el rol preseleccionado.',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: _isEditing
-                                          ? Colors.indigo.shade700
-                                          : AppColors.textSecondary,
+                                      color:
+                                          _isEditing
+                                              ? Colors.indigo.shade700
+                                              : AppColors.textSecondary,
                                     ),
                                   ),
                                 ],
@@ -267,9 +321,10 @@ class _UserFormContentState extends State<_UserFormContent> {
                                   icon: Icons.person_outline_rounded,
                                   isSelected: _role == AppRoles.customer,
                                   color: AppColors.primary,
-                                  onTap: () => setState(
-                                    () => _role = AppRoles.customer,
-                                  ),
+                                  onTap:
+                                      () => setState(
+                                        () => _role = AppRoles.customer,
+                                      ),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -279,9 +334,10 @@ class _UserFormContentState extends State<_UserFormContent> {
                                   icon: Icons.badge_outlined,
                                   isSelected: _role == AppRoles.employee,
                                   color: Colors.orange.shade600,
-                                  onTap: () => setState(
-                                    () => _role = AppRoles.employee,
-                                  ),
+                                  onTap:
+                                      () => setState(
+                                        () => _role = AppRoles.employee,
+                                      ),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -291,9 +347,10 @@ class _UserFormContentState extends State<_UserFormContent> {
                                   icon: Icons.admin_panel_settings_outlined,
                                   isSelected: _role == AppRoles.admin,
                                   color: Colors.indigo,
-                                  onTap: () => setState(
-                                    () => _role = AppRoles.admin,
-                                  ),
+                                  onTap:
+                                      () => setState(
+                                        () => _role = AppRoles.admin,
+                                      ),
                                 ),
                               ),
                             ],
@@ -323,9 +380,10 @@ class _UserFormContentState extends State<_UserFormContent> {
                                           : 'Inactivo: acceso suspendido',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: _isActive
-                                            ? Colors.green.shade600
-                                            : Colors.red.shade600,
+                                        color:
+                                            _isActive
+                                                ? Colors.green.shade600
+                                                : Colors.red.shade600,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
@@ -334,7 +392,8 @@ class _UserFormContentState extends State<_UserFormContent> {
                                 Switch(
                                   value: _isActive,
                                   activeThumbColor: AppColors.primary,
-                                  onChanged: (v) => setState(() => _isActive = v),
+                                  onChanged:
+                                      (v) => setState(() => _isActive = v),
                                 ),
                               ],
                             ),
@@ -355,19 +414,19 @@ class _UserFormContentState extends State<_UserFormContent> {
                             icon: Icons.email_rounded,
                             keyboardType: TextInputType.emailAddress,
                             readOnly: _isEditing,
-                            suffixIcon: _isEditing
-                                ? Tooltip(
-                                    message: 'El correo electrónico no puede ser alterado',
-                                    child: Icon(
-                                      Icons.lock_rounded,
-                                      size: 18,
-                                      color: Colors.grey.shade400,
-                                    ),
-                                  )
-                                : null,
-                            validator: _isEditing
-                                ? null
-                                : (v) => _required(v, 'el correo electrónico'),
+                            suffixIcon:
+                                _isEditing
+                                    ? Tooltip(
+                                      message:
+                                          'El correo electrónico no puede ser alterado',
+                                      child: Icon(
+                                        Icons.lock_rounded,
+                                        size: 18,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                    )
+                                    : null,
+                            validator: _isEditing ? null : _validateEmail,
                           ),
                           const SizedBox(height: 16),
                           Row(
@@ -376,12 +435,14 @@ class _UserFormContentState extends State<_UserFormContent> {
                               Expanded(
                                 child: _CustomTextField(
                                   controller: _passwordCtrl,
-                                  label: _isEditing
-                                      ? 'Nueva Contraseña (Opcional)'
-                                      : 'Contraseña de Acceso',
-                                  hint: _isEditing
-                                      ? 'Dejar vacío para mantener la actual'
-                                      : 'Mínimo 6 caracteres',
+                                  label:
+                                      _isEditing
+                                          ? 'Nueva Contraseña (Opcional)'
+                                          : 'Contraseña de Acceso',
+                                  hint:
+                                      _isEditing
+                                          ? 'Dejar vacío para mantener la actual'
+                                          : 'Mínimo 6 caracteres',
                                   icon: Icons.vpn_key_rounded,
                                   obscureText: _obscurePassword,
                                   validator: (v) {
@@ -409,9 +470,12 @@ class _UserFormContentState extends State<_UserFormContent> {
                                       color: Colors.grey.shade500,
                                       size: 20,
                                     ),
-                                    onPressed: () => setState(
-                                      () => _obscurePassword = !_obscurePassword,
-                                    ),
+                                    onPressed:
+                                        () => setState(
+                                          () =>
+                                              _obscurePassword =
+                                                  !_obscurePassword,
+                                        ),
                                   ),
                                 ),
                               ),
@@ -472,6 +536,10 @@ class _UserFormContentState extends State<_UserFormContent> {
                             hint: 'Ej. 987654321 (Opcional)',
                             icon: Icons.phone_rounded,
                             keyboardType: TextInputType.phone,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(15),
+                            ],
                           ),
                           const SizedBox(height: 16),
                           const Text(
@@ -506,20 +574,21 @@ class _UserFormContentState extends State<_UserFormContent> {
                                       Icons.expand_more_rounded,
                                       color: Colors.grey.shade500,
                                     ),
-                                    items: ['DNI', 'RUC', 'CE', 'PAS'].map((
-                                      String value,
-                                    ) {
-                                      return DropdownMenuItem<String>(
-                                        value: value,
-                                        child: Text(
-                                          value,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
+                                    items:
+                                        ['DNI', 'RUC', 'CE', 'PAS'].map((
+                                          String value,
+                                        ) {
+                                          return DropdownMenuItem<String>(
+                                            value: value,
+                                            child: Text(
+                                              value,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
                                     onChanged: (val) {
                                       if (val != null) {
                                         setState(() => _docType = val);
@@ -532,8 +601,18 @@ class _UserFormContentState extends State<_UserFormContent> {
                               Expanded(
                                 child: _CustomTextField(
                                   controller: _docCtrl,
-                                  hint: 'Número de documento',
-                                  keyboardType: TextInputType.number,
+                                  hint:
+                                      _docType == 'DNI'
+                                          ? '8 dígitos'
+                                          : _docType == 'RUC'
+                                          ? '11 dígitos'
+                                          : 'N° de documento',
+                                  keyboardType:
+                                      (_docType == 'DNI' || _docType == 'RUC')
+                                          ? TextInputType.number
+                                          : TextInputType.text,
+                                  inputFormatters: _documentFormatters,
+                                  validator: _validateDocument,
                                 ),
                               ),
                             ],
@@ -569,7 +648,9 @@ class _UserFormContentState extends State<_UserFormContent> {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                 ),
                                 child: const Text(
                                   'Cancelar',
@@ -583,51 +664,57 @@ class _UserFormContentState extends State<_UserFormContent> {
                               child: ElevatedButton(
                                 onPressed: isLoading ? null : _onSave,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: _isEditing
-                                      ? Colors.indigo.shade700
-                                      : AppColors.primary,
+                                  backgroundColor:
+                                      _isEditing
+                                          ? Colors.indigo.shade700
+                                          : AppColors.primary,
                                   foregroundColor: Colors.white,
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                 ),
-                                child: isLoading
-                                    ? const SizedBox(
-                                        width: 22,
-                                        height: 22,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2.5,
-                                        ),
-                                      )
-                                    : Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            _isEditing
-                                                ? Icons.save_rounded
-                                                : Icons.person_add_rounded,
-                                            size: 19,
+                                child:
+                                    isLoading
+                                        ? const SizedBox(
+                                          width: 22,
+                                          height: 22,
+                                          child: CircularProgressIndicator(
                                             color: Colors.white,
+                                            strokeWidth: 2.5,
                                           ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            _isEditing
-                                                ? 'Guardar Cambios'
-                                                : (_role == AppRoles.admin
-                                                    ? 'Crear Administrador'
-                                                    : _role == AppRoles.employee
-                                                        ? 'Crear Empleado'
-                                                        : 'Crear Cliente'),
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w700,
+                                        )
+                                        : Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              _isEditing
+                                                  ? Icons.save_rounded
+                                                  : Icons.person_add_rounded,
+                                              size: 19,
+                                              color: Colors.white,
                                             ),
-                                          ),
-                                        ],
-                                      ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              _isEditing
+                                                  ? 'Guardar Cambios'
+                                                  : (_role == AppRoles.admin
+                                                      ? 'Crear Administrador'
+                                                      : _role ==
+                                                          AppRoles.employee
+                                                      ? 'Crear Empleado'
+                                                      : 'Crear Cliente'),
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                               ),
                             ),
                           ],
@@ -772,6 +859,7 @@ class _CustomTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
   final TextCapitalization textCapitalization;
+  final List<TextInputFormatter>? inputFormatters;
 
   const _CustomTextField({
     required this.controller,
@@ -784,6 +872,7 @@ class _CustomTextField extends StatelessWidget {
     this.suffixIcon,
     this.validator,
     this.textCapitalization = TextCapitalization.none,
+    this.inputFormatters,
   });
 
   @override
@@ -808,6 +897,7 @@ class _CustomTextField extends StatelessWidget {
           keyboardType: keyboardType,
           textCapitalization: textCapitalization,
           readOnly: readOnly,
+          inputFormatters: inputFormatters,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,

@@ -89,7 +89,12 @@ class UsersRepositoryImpl implements UsersRepository {
     required bool onlyActive,
   }) async {
     try {
-      var query = _supabase.from('profiles_with_email').select();
+      var query = _supabase
+          .from('profiles_with_email')
+          .select(
+            'id, full_name, email, phone, role, is_active, '
+            'document_type, document_number, wallet_balance, created_at',
+          );
 
       query = query.eq('role', role);
 
@@ -97,7 +102,7 @@ class UsersRepositoryImpl implements UsersRepository {
         query = query.eq('is_active', true);
       }
 
-      final term = searchQuery.trim();
+      final term = searchQuery.trim().replaceAll(RegExp(r'[,"]'), '');
       if (term.isNotEmpty) {
         query = query.or(
           'full_name.ilike.%$term%,phone.ilike.%$term%,document_number.ilike.%$term%,email.ilike.%$term%',

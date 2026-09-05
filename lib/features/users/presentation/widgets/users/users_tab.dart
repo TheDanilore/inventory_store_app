@@ -39,6 +39,8 @@ class UsersTab extends StatefulWidget {
 class _UsersTabState extends State<UsersTab>
     with AutomaticKeepAliveClientMixin {
   bool _hasFetched = false;
+  late final ScrollController _scrollController;
+  bool _createdLocalController = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -46,6 +48,12 @@ class _UsersTabState extends State<UsersTab>
   @override
   void initState() {
     super.initState();
+    if (widget.scrollController != null) {
+      _scrollController = widget.scrollController!;
+    } else {
+      _scrollController = ScrollController();
+      _createdLocalController = true;
+    }
     widget.tabController.addListener(_onTabChanged);
     // Fetch initial data if this is the active tab
     if (widget.tabController.index == widget.tabIndex) {
@@ -85,6 +93,9 @@ class _UsersTabState extends State<UsersTab>
   @override
   void dispose() {
     widget.tabController.removeListener(_onTabChanged);
+    if (_createdLocalController) {
+      _scrollController.dispose();
+    }
     super.dispose();
   }
 
@@ -146,20 +157,21 @@ class _UsersTabState extends State<UsersTab>
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (sheetCtx) => Container(
-          height: MediaQuery.of(sheetCtx).size.height * 0.88,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: UserDetailSheet(
-            userId: userId,
-            isSideSheet: false,
-            onUserUpdated: () {
-              context.read<UsersCubit>().fetchUsers();
-            },
-          ),
-        ),
+        builder:
+            (sheetCtx) => Container(
+              height: MediaQuery.of(sheetCtx).size.height * 0.88,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: UserDetailSheet(
+                userId: userId,
+                isSideSheet: false,
+                onUserUpdated: () {
+                  context.read<UsersCubit>().fetchUsers();
+                },
+              ),
+            ),
       );
     }
   }
@@ -167,10 +179,7 @@ class _UsersTabState extends State<UsersTab>
   void _onEditUser(BuildContext context, UserEntity user) {
     context.go(
       '/admin/users/form',
-      extra: {
-        'existingUser': user,
-        'initialRole': user.role,
-      },
+      extra: {'existingUser': user, 'initialRole': user.role},
     );
   }
 
@@ -238,9 +247,10 @@ class _UsersTabState extends State<UsersTab>
 
             // Contenido principal: Grid Desktop vs Lista Móvil
             Expanded(
-              child: isDesktop
-                  ? _buildDesktopTable(context, state)
-                  : _buildMobileList(context, state),
+              child:
+                  isDesktop
+                      ? _buildDesktopTable(context, state)
+                      : _buildMobileList(context, state),
             ),
 
             // Paginación
@@ -385,13 +395,14 @@ class _UsersTabState extends State<UsersTab>
             // Filas
             Expanded(
               child: ListView.separated(
-                controller: widget.scrollController,
+                controller: _scrollController,
                 itemCount: state.currentUsers.length,
-                separatorBuilder: (context, index) => const Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: Color(0xFFF1F5F9),
-                ),
+                separatorBuilder:
+                    (context, index) => const Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Color(0xFFF1F5F9),
+                    ),
                 itemBuilder: (context, index) {
                   final user = state.currentUsers[index];
                   return _DesktopTableRow(
@@ -401,9 +412,9 @@ class _UsersTabState extends State<UsersTab>
                     onEdit: () => _onEditUser(context, user),
                     onToggleActive: (val) {
                       context.read<UsersCubit>().toggleUserStatus(
-                            user.id,
-                            user.isActive,
-                          );
+                        user.id,
+                        user.isActive,
+                      );
                     },
                   );
                 },
@@ -418,7 +429,7 @@ class _UsersTabState extends State<UsersTab>
   /// Vista Móvil: Lista de Tarjetas Apple HIG
   Widget _buildMobileList(BuildContext context, UsersState state) {
     return ListView.builder(
-      controller: widget.scrollController,
+      controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       itemCount: state.currentUsers.length,
       itemBuilder: (context, index) {
@@ -462,258 +473,270 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
     final initial =
         user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?';
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: InkWell(
-        onTap: widget.onTap,
-        hoverColor: AppColors.primary.withValues(alpha: 0.02),
-        child: Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          color: _isHovered
-              ? AppColors.primary.withValues(alpha: 0.03)
-              : Colors.transparent,
-          child: Row(
-            children: [
-              // 1. Usuario (Avatar + Nombre)
-              Expanded(
-                flex: 3,
-                child: Row(
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: user.role == AppRoles.admin
-                            ? Colors.indigo.withValues(alpha: 0.12)
-                            : user.role == AppRoles.employee
-                                ? Colors.orange.withValues(alpha: 0.12)
-                                : AppColors.primary.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          initial,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: user.role == AppRoles.admin
-                                ? Colors.indigo.shade700
-                                : user.role == AppRoles.employee
-                                    ? Colors.orange.shade700
-                                    : AppColors.primary,
+    return RepaintBoundary(
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: InkWell(
+          onTap: widget.onTap,
+          hoverColor: AppColors.primary.withValues(alpha: 0.02),
+          child: Container(
+            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            color:
+                _isHovered
+                    ? AppColors.primary.withValues(alpha: 0.03)
+                    : Colors.transparent,
+            child: Row(
+              children: [
+                // 1. Usuario (Avatar + Nombre)
+                Expanded(
+                  flex: 3,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color:
+                              user.role == AppRoles.admin
+                                  ? Colors.indigo.withValues(alpha: 0.12)
+                                  : user.role == AppRoles.employee
+                                  ? Colors.orange.withValues(alpha: 0.12)
+                                  : AppColors.primary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            initial,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  user.role == AppRoles.admin
+                                      ? Colors.indigo.shade700
+                                      : user.role == AppRoles.employee
+                                      ? Colors.orange.shade700
+                                      : AppColors.primary,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        user.fullName,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // 2. Contacto (Email + Phone)
-              Expanded(
-                flex: 3,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (user.email != null && user.email!.isNotEmpty)
-                      Text(
-                        user.email!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      )
-                    else
-                      Text(
-                        'Sin correo',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade400,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    if (user.phone != null && user.phone!.isNotEmpty)
-                      Text(
-                        user.phone!,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-
-              // 3. Documento
-              Expanded(
-                flex: 2,
-                child: Text(
-                  user.documentNumber != null && user.documentNumber!.isNotEmpty
-                      ? '${user.documentType}: ${user.documentNumber}'
-                      : '—',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-
-              // 4. Rol
-              Expanded(
-                flex: 2,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: user.role == AppRoles.admin
-                          ? Colors.indigo.shade50
-                          : user.role == AppRoles.employee
-                              ? Colors.orange.shade50
-                              : AppColors.surface,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: user.role == AppRoles.admin
-                            ? Colors.indigo.shade200
-                            : user.role == AppRoles.employee
-                                ? Colors.orange.shade200
-                                : AppColors.border,
-                      ),
-                    ),
-                    child: Text(
-                      user.role == AppRoles.admin
-                          ? 'ADMIN'
-                          : user.role == AppRoles.employee
-                              ? 'EMPLEADO'
-                              : 'CLIENTE',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: user.role == AppRoles.admin
-                            ? Colors.indigo.shade700
-                            : user.role == AppRoles.employee
-                                ? Colors.orange.shade700
-                                : AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // 5. Puntos (Fidelidad)
-              if (widget.isLoyaltyEnabled)
-                Expanded(
-                  flex: 2,
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.stars_rounded,
-                        size: 15,
-                        color: Colors.amber.shade600,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${user.walletBalance}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.amber.shade800,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          user.fullName,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
                 ),
 
-              // 6. Estado (Micro-badge + switch)
-              Expanded(
-                flex: 2,
-                child: Row(
-                  children: [
-                    Container(
+                // 2. Contacto (Email + Phone)
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (user.email != null && user.email!.isNotEmpty)
+                        Text(
+                          user.email!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      else
+                        Text(
+                          'Sin correo',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade400,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      if (user.phone != null && user.phone!.isNotEmpty)
+                        Text(
+                          user.phone!,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // 3. Documento
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    user.documentNumber != null &&
+                            user.documentNumber!.isNotEmpty
+                        ? '${user.documentType}: ${user.documentNumber}'
+                        : '—',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+
+                // 4. Rol
+                Expanded(
+                  flex: 2,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
+                        horizontal: 8,
+                        vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: user.isActive
-                            ? Colors.green.shade50
-                            : Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(5),
+                        color:
+                            user.role == AppRoles.admin
+                                ? Colors.indigo.shade50
+                                : user.role == AppRoles.employee
+                                ? Colors.orange.shade50
+                                : AppColors.surface,
+                        borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                          color: user.isActive
-                              ? Colors.green.shade200
-                              : Colors.red.shade200,
+                          color:
+                              user.role == AppRoles.admin
+                                  ? Colors.indigo.shade200
+                                  : user.role == AppRoles.employee
+                                  ? Colors.orange.shade200
+                                  : AppColors.border,
                         ),
                       ),
                       child: Text(
-                        user.isActive ? 'ACTIVO' : 'INACTIVO',
+                        user.role == AppRoles.admin
+                            ? 'ADMIN'
+                            : user.role == AppRoles.employee
+                            ? 'EMPLEADO'
+                            : 'CLIENTE',
                         style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          color: user.isActive
-                              ? Colors.green.shade700
-                              : Colors.red.shade700,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color:
+                              user.role == AppRoles.admin
+                                  ? Colors.indigo.shade700
+                                  : user.role == AppRoles.employee
+                                  ? Colors.orange.shade700
+                                  : AppColors.textSecondary,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Transform.scale(
-                      scale: 0.6,
-                      child: CupertinoSwitch(
-                        value: user.isActive,
-                        activeTrackColor: Colors.green,
-                        onChanged: widget.onToggleActive,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
 
-              // 7. Acciones
-              SizedBox(
-                width: 100,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.visibility_outlined, size: 18),
-                      tooltip: 'Ver detalle lateral',
-                      splashRadius: 18,
-                      color: Colors.grey.shade600,
-                      onPressed: widget.onTap,
+                // 5. Puntos (Fidelidad)
+                if (widget.isLoyaltyEnabled)
+                  Expanded(
+                    flex: 2,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.stars_rounded,
+                          size: 15,
+                          color: Colors.amber.shade600,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${user.walletBalance}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.amber.shade800,
+                          ),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      tooltip: 'Editar usuario',
-                      splashRadius: 18,
-                      color: AppColors.primary,
-                      onPressed: widget.onEdit,
-                    ),
-                  ],
+                  ),
+
+                // 6. Estado (Micro-badge + switch)
+                Expanded(
+                  flex: 2,
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              user.isActive
+                                  ? Colors.green.shade50
+                                  : Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(5),
+                          border: Border.all(
+                            color:
+                                user.isActive
+                                    ? Colors.green.shade200
+                                    : Colors.red.shade200,
+                          ),
+                        ),
+                        child: Text(
+                          user.isActive ? 'ACTIVO' : 'INACTIVO',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color:
+                                user.isActive
+                                    ? Colors.green.shade700
+                                    : Colors.red.shade700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Transform.scale(
+                        scale: 0.6,
+                        child: CupertinoSwitch(
+                          value: user.isActive,
+                          activeTrackColor: Colors.green,
+                          onChanged: widget.onToggleActive,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+
+                // 7. Acciones
+                SizedBox(
+                  width: 100,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.visibility_outlined, size: 18),
+                        tooltip: 'Ver detalle lateral',
+                        splashRadius: 18,
+                        color: Colors.grey.shade600,
+                        onPressed: widget.onTap,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        tooltip: 'Editar usuario',
+                        splashRadius: 18,
+                        color: AppColors.primary,
+                        onPressed: widget.onEdit,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
