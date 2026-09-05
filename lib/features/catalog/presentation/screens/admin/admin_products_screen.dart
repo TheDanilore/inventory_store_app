@@ -3161,6 +3161,7 @@ class _ProductQuickViewContent extends StatelessWidget {
                       final v = variants[index];
                       return _VariantCardItem(
                         variant: v,
+                        index: index,
                         isSingleVariant: variants.length == 1,
                         productStock: product.totalStock,
                       );
@@ -3356,18 +3357,30 @@ class _ProductQuickViewContent extends StatelessWidget {
 
 class _VariantCardItem extends StatelessWidget {
   final ProductVariantEntity variant;
+  final int index;
   final bool isSingleVariant;
   final int productStock;
 
   const _VariantCardItem({
     required this.variant,
+    this.index = 0,
     required this.isSingleVariant,
     required this.productStock,
   });
 
   @override
   Widget build(BuildContext context) {
-    final label = variant.label;
+    String displayTitle;
+    if (variant.attributeValues.isNotEmpty) {
+      displayTitle = variant.label;
+    } else if (variant.sku != null && variant.sku!.trim().isNotEmpty) {
+      displayTitle = variant.sku!;
+    } else if (!isSingleVariant) {
+      displayTitle = 'Variante #${index + 1}';
+    } else {
+      displayTitle = 'Variante Estándar';
+    }
+
     final salePrice = variant.salePrice;
     final cost = variant.unitCost;
     final wholesalePrice = variant.wholesalePrice;
@@ -3399,19 +3412,22 @@ class _VariantCardItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  label,
+                  displayTitle,
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                if (sku != null && sku.isNotEmpty)
-                  Text(
-                    'SKU: $sku',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
+                if (sku != null && sku.isNotEmpty && displayTitle != sku)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      'SKU: $sku',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ),
               ],

@@ -278,144 +278,180 @@ class _KardexScreenState extends State<KardexScreen> {
                   if (isDesktop || isTablet)
                     _buildDesktopCommandBar(context, isDesktop),
 
-                  // ── Contenido Principal Scrollable ──
+                  // ── Contenido Principal Scrollable con Master-Detail Viewport-Sticky ──
                   Expanded(
-                    child: RefreshIndicator(
-                      color: AppColors.primary,
-                      onRefresh:
-                          () async => context
-                              .read<KardexCubit>()
-                              .loadMovements(page: 0),
-                      child: CustomScrollView(
-                        controller: _scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: [
-                          // Móvil: Header Sticky de Búsqueda y Chips
-                          if (!isDesktop && !isTablet)
-                            SliverPersistentHeader(
-                              pinned: true,
-                              delegate: _MobileKardexHeaderDelegate(
-                                child: _buildMobileControlHeader(context),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Columna Izquierda: Timeline / Ledger con Scroll Independiente
+                        Expanded(
+                          child: RefreshIndicator(
+                            color: AppColors.primary,
+                            onRefresh:
+                                () async => context
+                                    .read<KardexCubit>()
+                                    .loadMovements(page: 0),
+                            child: CustomScrollView(
+                              controller: _scrollController,
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              slivers: [
+                                // Móvil: Header Sticky de Búsqueda y Chips
+                                if (!isDesktop && !isTablet)
+                                  SliverPersistentHeader(
+                                    pinned: true,
+                                    delegate: _MobileKardexHeaderDelegate(
+                                      child: _buildMobileControlHeader(context),
+                                    ),
+                                  ),
+
+                                // Indicador de Búsqueda no destructivo
+                                SliverToBoxAdapter(
+                                  child: BlocBuilder<KardexCubit, KardexState>(
+                                    builder: (context, state) {
+                                      if (state is KardexLoaded &&
+                                          state.isSearching) {
+                                        return const SizedBox(
+                                          height: 2,
+                                          child: LinearProgressIndicator(
+                                            backgroundColor: Colors.transparent,
+                                            color: AppColors.primary,
+                                          ),
+                                        );
+                                      }
+                                      return const SizedBox.shrink();
+                                    },
+                                  ),
+                                ),
+
+                                // Banner de Filtro Activo (Producto / Variante / Lote)
+                                SliverToBoxAdapter(
+                                  child: BlocBuilder<KardexCubit, KardexState>(
+                                    builder: (context, state) {
+                                      if (state is KardexLoaded &&
+                                          (state.productId != null ||
+                                              state.variantId != null ||
+                                              state.batchId != null)) {
+                                        return _buildActiveFilterBanner(
+                                          context,
+                                          state,
+                                        );
+                                      }
+                                      return const SizedBox.shrink();
+                                    },
+                                  ),
+                                ),
+
+                                // Franja de KPIs en Vivo
+                                SliverToBoxAdapter(
+                                  child: BlocBuilder<KardexCubit, KardexState>(
+                                    builder: (context, state) {
+                                      if (state is KardexLoaded &&
+                                          state.movements.isNotEmpty) {
+                                        return Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            16,
+                                            12,
+                                            16,
+                                            8,
+                                          ),
+                                          child: KardexKpiStrip(
+                                            movements: state.movements,
+                                            totalCount: state.totalCount,
+                                          ),
+                                        );
+                                      }
+                                      return const SizedBox.shrink();
+                                    },
+                                  ),
+                                ),
+
+                                // Listado Principal
+                                SliverToBoxAdapter(
+                                  child: BlocBuilder<KardexCubit, KardexState>(
+                                    builder: (context, state) {
+                                      final isError = state is KardexError;
+                                      final isLoading =
+                                          state is KardexInitial ||
+                                          state is KardexLoading;
+                                      final loadedState =
+                                          state is KardexLoaded ? state : null;
+                                      final movements =
+                                          loadedState?.movements ?? [];
+
+                                      if (isError) {
+                                        return Padding(
+                                          padding: const EdgeInsets.all(40.0),
+                                          child: Center(
+                                            child: Text(
+                                              'Error al cargar el kárdex',
+                                              style: TextStyle(
+                                                color: AppColors.textSecondary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      } else if ((isLoading ||
+                                              (loadedState?.isSearching ??
+                                                  false)) &&
+                                          movements.isEmpty) {
+                                        return const KardexSkeleton();
+                                      } else if (movements.isEmpty) {
+                                        return const AppEmptyState(
+                                          icon: Icons.receipt_long_rounded,
+                                          title: 'Sin movimientos encontrados',
+                                          message:
+                                              'No se registran movimientos con los filtros y fechas seleccionadas.',
+                                        );
+                                      }
+
+                                      return Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          16,
+                                          8,
+                                          16,
+                                          24,
+                                        ),
+                                        child: _buildItemsListOrTable(
+                                          context,
+                                          movements: movements,
+                                          isDesktop: isDesktop,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Columna Derecha Desktop: Inspector Viewport-Sticky & Sincronizado
+                        if (isDesktop && _selectedMovement != null)
+                          Container(
+                            width: 390,
+                            margin: const EdgeInsets.fromLTRB(0, 10, 16, 16),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.border),
+                              boxShadow: AppColors.cardShadow(opacity: 0.05),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.all(16),
+                                child: KardexMovementInspectorDrawer(
+                                  item: _selectedMovement!,
+                                  onClose:
+                                      () => setState(
+                                        () => _selectedMovement = null,
+                                      ),
+                                ),
                               ),
                             ),
-
-                          // Indicador de Búsqueda no destructivo
-                          SliverToBoxAdapter(
-                            child: BlocBuilder<KardexCubit, KardexState>(
-                              builder: (context, state) {
-                                if (state is KardexLoaded &&
-                                    state.isSearching) {
-                                  return const SizedBox(
-                                    height: 2,
-                                    child: LinearProgressIndicator(
-                                      backgroundColor: Colors.transparent,
-                                      color: AppColors.primary,
-                                    ),
-                                  );
-                                }
-                                return const SizedBox.shrink();
-                              },
-                            ),
                           ),
-
-                          // Banner de Filtro Activo (Producto / Variante / Lote)
-                          SliverToBoxAdapter(
-                            child: BlocBuilder<KardexCubit, KardexState>(
-                              builder: (context, state) {
-                                if (state is KardexLoaded &&
-                                    (state.productId != null ||
-                                        state.variantId != null ||
-                                        state.batchId != null)) {
-                                  return _buildActiveFilterBanner(
-                                    context,
-                                    state,
-                                  );
-                                }
-                                return const SizedBox.shrink();
-                              },
-                            ),
-                          ),
-
-                          // Franja de KPIs en Vivo
-                          SliverToBoxAdapter(
-                            child: BlocBuilder<KardexCubit, KardexState>(
-                              builder: (context, state) {
-                                if (state is KardexLoaded &&
-                                    state.movements.isNotEmpty) {
-                                  return Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      12,
-                                      16,
-                                      8,
-                                    ),
-                                    child: KardexKpiStrip(
-                                      movements: state.movements,
-                                      totalCount: state.totalCount,
-                                    ),
-                                  );
-                                }
-                                return const SizedBox.shrink();
-                              },
-                            ),
-                          ),
-
-                          // Master-Detail / Listado Principal
-                          SliverToBoxAdapter(
-                            child: BlocBuilder<KardexCubit, KardexState>(
-                              builder: (context, state) {
-                                final isError = state is KardexError;
-                                final isLoading =
-                                    state is KardexInitial ||
-                                    state is KardexLoading;
-                                final loadedState =
-                                    state is KardexLoaded ? state : null;
-                                final movements = loadedState?.movements ?? [];
-
-                                if (isError) {
-                                  return Padding(
-                                    padding: const EdgeInsets.all(40.0),
-                                    child: Center(
-                                      child: Text(
-                                        'Error al cargar el kárdex',
-                                        style: TextStyle(
-                                          color: AppColors.textSecondary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                } else if ((isLoading ||
-                                        (loadedState?.isSearching ?? false)) &&
-                                    movements.isEmpty) {
-                                  return const KardexSkeleton();
-                                } else if (movements.isEmpty) {
-                                  return const AppEmptyState(
-                                    icon: Icons.receipt_long_rounded,
-                                    title: 'Sin movimientos encontrados',
-                                    message:
-                                        'No se registran movimientos con los filtros y fechas seleccionadas.',
-                                  );
-                                }
-
-                                return Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    8,
-                                    16,
-                                    24,
-                                  ),
-                                  child: _buildContentLayout(
-                                    context,
-                                    movements: movements,
-                                    isDesktop: isDesktop,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
 
@@ -1157,48 +1193,6 @@ class _KardexScreenState extends State<KardexScreen> {
     );
   }
 
-  Widget _buildContentLayout(
-    BuildContext context, {
-    required List<KardexMovementEntity> movements,
-    required bool isDesktop,
-  }) {
-    // Si estamos en Desktop con un movimiento seleccionado, aplicamos Split View (Master-Detail)
-    if (isDesktop && _selectedMovement != null) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: _buildItemsListOrTable(
-              context,
-              movements: movements,
-              isDesktop: isDesktop,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Container(
-            width: 380,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-              boxShadow: AppColors.cardShadow(opacity: 0.04),
-            ),
-            child: KardexMovementInspectorDrawer(
-              item: _selectedMovement!,
-              onClose: () => setState(() => _selectedMovement = null),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return _buildItemsListOrTable(
-      context,
-      movements: movements,
-      isDesktop: isDesktop,
-    );
-  }
 
   Widget _buildItemsListOrTable(
     BuildContext context, {

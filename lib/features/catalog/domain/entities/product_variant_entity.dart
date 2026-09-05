@@ -3,12 +3,27 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ima
 
 class ProductVariantEntity {
   String get label {
-    if (sku != null && sku!.isNotEmpty) {
+    if (attributeValues.isNotEmpty) {
+      return attributeValues
+          .map(
+            (av) =>
+                av.attributeName.isNotEmpty
+                    ? '${av.attributeName}: ${av.value}'
+                    : av.value,
+          )
+          .join(' / ');
+    }
+    if (sku != null && sku!.trim().isNotEmpty) {
       return sku!;
     }
+    return 'Variante Estándar';
+  }
+
+  String get shortLabel {
     if (attributeValues.isNotEmpty) {
       return attributeValues.map((av) => av.value).join(' / ');
     }
+    if (sku != null && sku!.trim().isNotEmpty) return sku!;
     return 'Variante Estándar';
   }
 
