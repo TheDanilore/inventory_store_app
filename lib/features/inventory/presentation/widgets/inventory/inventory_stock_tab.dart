@@ -341,7 +341,6 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                     ],
                                     rows:
                                         state.stockItems.map((item) {
-                                          final isLowStock = item.isLowStock;
                                           return DataRow(
                                             color:
                                                 WidgetStateProperty.resolveWith<
@@ -482,79 +481,63 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                 ),
                                               ),
                                               DataCell(
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
+                                                Builder(
+                                                  builder: (context) {
+                                                    final isOut = item.stock <= 0;
+                                                    final isLow = item.isLowStock;
+                                                    final Color badgeBg = isOut
+                                                        ? AppColors.danger.withValues(alpha: 0.08)
+                                                        : (isLow
+                                                            ? AppColors.warning.withValues(alpha: 0.1)
+                                                            : AppColors.teal.withValues(alpha: 0.1));
+                                                    final Color badgeBorder = isOut
+                                                        ? AppColors.danger.withValues(alpha: 0.25)
+                                                        : (isLow
+                                                            ? AppColors.warning.withValues(alpha: 0.25)
+                                                            : AppColors.teal.withValues(alpha: 0.25));
+                                                    final Color badgeColor = isOut
+                                                        ? AppColors.danger
+                                                        : (isLow ? AppColors.warningDark : AppColors.tealDark);
+                                                    final IconData badgeIcon = isOut
+                                                        ? Icons.highlight_off_rounded
+                                                        : (isLow
+                                                            ? Icons.warning_amber_rounded
+                                                            : Icons.check_circle_outline_rounded);
+
+                                                    return Container(
+                                                      padding: const EdgeInsets.symmetric(
                                                         horizontal: 9,
                                                         vertical: 3.5,
                                                       ),
-                                                  decoration: BoxDecoration(
-                                                    color:
-                                                        isLowStock
-                                                            ? AppColors.warning
-                                                                .withValues(
-                                                                  alpha: 0.1,
-                                                                )
-                                                            : AppColors.teal
-                                                                .withValues(
-                                                                  alpha: 0.1,
-                                                                ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
-                                                    border: Border.all(
-                                                      color:
-                                                          isLowStock
-                                                              ? AppColors
-                                                                  .warning
-                                                                  .withValues(
-                                                                    alpha: 0.25,
-                                                                  )
-                                                              : AppColors.teal
-                                                                  .withValues(
-                                                                    alpha: 0.25,
-                                                                  ),
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                      MainAxisSize.min,
-                                                    children: [
-                                                      Icon(
-                                                        isLowStock
-                                                            ? Icons
-                                                                .warning_amber_rounded
-                                                            : Icons
-                                                                .check_circle_outline_rounded,
-                                                        size: 13,
-                                                        color:
-                                                            isLowStock
-                                                                ? AppColors
-                                                                    .warning
-                                                                    : AppColors
-                                                                        .tealDark,
+                                                      decoration: BoxDecoration(
+                                                        color: badgeBg,
+                                                        borderRadius: BorderRadius.circular(8),
+                                                        border: Border.all(color: badgeBorder),
                                                       ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        '${item.stock} uds.',
-                                                        style: TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.w800,
-                                                          fontSize: 11.5,
-                                                          fontFeatures: const [
-                                                            FontFeature.tabularFigures(),
-                                                          ],
-                                                          color:
-                                                              isLowStock
-                                                                  ? AppColors
-                                                                      .warning
-                                                                  : AppColors
-                                                                      .tealDark,
-                                                        ),
+                                                      child: Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          Icon(
+                                                            badgeIcon,
+                                                            size: 13,
+                                                            color: badgeColor,
+                                                          ),
+                                                          const SizedBox(width: 4),
+                                                          Text(
+                                                            '${item.stock} uds.',
+                                                            style: TextStyle(
+                                                              fontWeight: FontWeight.w800,
+                                                              fontSize: 11.5,
+                                                              fontFeatures: const [
+                                                                FontFeature.tabularFigures(),
+                                                              ],
+                                                              color: badgeColor,
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
-                                                    ],
-                                                  ),
+                                                    );
+                                                  },
                                                 ),
                                               ),
                                               DataCell(
