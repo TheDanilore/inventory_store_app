@@ -9,6 +9,7 @@ import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
+import 'package:inventory_store_app/features/inventory/data/models/warehouse_stock_batch_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
@@ -1863,13 +1864,27 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                     ),
                   ),
                   const DataColumn(
-                    label: Text(
-                      'STOCK',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
+                    label: Tooltip(
+                      message: 'Disponibilidad consolidada en todos los almacenes',
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'STOCK TOTAL',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(
+                            Icons.info_outline_rounded,
+                            size: 13,
+                            color: AppColors.textMuted,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -2708,21 +2723,21 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     String text;
 
     if (isOut) {
-      bgColor = AppColors.dangerLight.withValues(alpha: 0.6);
+      bgColor = AppColors.danger.withValues(alpha: 0.08);
       textColor = AppColors.danger;
-      borderColor = AppColors.danger.withValues(alpha: 0.3);
-      iconData = Icons.error_outline_rounded;
+      borderColor = AppColors.danger.withValues(alpha: 0.25);
+      iconData = Icons.highlight_off_rounded;
       text = 'Agotado';
     } else if (isLow) {
-      bgColor = AppColors.warningLight.withValues(alpha: 0.6);
+      bgColor = AppColors.warning.withValues(alpha: 0.1);
       textColor = AppColors.warningDark;
       borderColor = AppColors.warning.withValues(alpha: 0.3);
       iconData = Icons.warning_amber_rounded;
       text = 'Bajo ($stock)';
     } else {
-      bgColor = AppColors.tealLight.withValues(alpha: 0.6);
+      bgColor = AppColors.teal.withValues(alpha: 0.1);
       textColor = AppColors.tealDark;
-      borderColor = AppColors.teal.withValues(alpha: 0.3);
+      borderColor = AppColors.teal.withValues(alpha: 0.25);
       iconData = Icons.check_circle_outline_rounded;
       text = '$stock unid.';
     }
@@ -2992,6 +3007,85 @@ class _ProductQuickViewContent extends StatelessWidget {
                   ),
                 ],
 
+                // ── Banner de Disponibilidad Consolidada y Acceso a Inventario ──
+                Container(
+                  margin: const EdgeInsets.only(top: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.warehouse_rounded,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Disponibilidad Consolidada',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                            Text(
+                              product.totalStock > 0
+                                  ? '${product.totalStock} unidades en almacenes de la empresa'
+                                  : 'Sin existencias en ningún almacén',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color:
+                                    product.totalStock > 0
+                                        ? AppColors.textPrimary
+                                        : AppColors.danger,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          context.push('/admin/inventory');
+                        },
+                        icon: const Icon(Icons.open_in_new_rounded, size: 12),
+                        label: const Text(
+                          'Ver en Inventario',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          side: const BorderSide(color: AppColors.primary),
+                          foregroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 const SizedBox(height: 18),
 
                 // Tarjeta de Métricas Financieras y Stock
@@ -3164,6 +3258,7 @@ class _ProductQuickViewContent extends StatelessWidget {
                         index: index,
                         isSingleVariant: variants.length == 1,
                         productStock: product.totalStock,
+                        batches: product.warehouseStockBatches,
                       );
                     },
                   ),
@@ -3291,22 +3386,26 @@ class _ProductQuickViewContent extends StatelessWidget {
 
     Color bgColor;
     Color textColor;
+    Color borderColor;
     IconData iconData;
     String text;
 
     if (isOut) {
-      bgColor = AppColors.dangerLight.withValues(alpha: 0.6);
+      bgColor = AppColors.danger.withValues(alpha: 0.08);
       textColor = AppColors.danger;
-      iconData = Icons.error_outline_rounded;
+      borderColor = AppColors.danger.withValues(alpha: 0.25);
+      iconData = Icons.highlight_off_rounded;
       text = 'Agotado';
     } else if (isLow) {
-      bgColor = AppColors.warningLight.withValues(alpha: 0.6);
+      bgColor = AppColors.warning.withValues(alpha: 0.1);
       textColor = AppColors.warningDark;
+      borderColor = AppColors.warning.withValues(alpha: 0.3);
       iconData = Icons.warning_amber_rounded;
       text = 'Bajo ($stock)';
     } else {
-      bgColor = AppColors.tealLight.withValues(alpha: 0.6);
+      bgColor = AppColors.teal.withValues(alpha: 0.1);
       textColor = AppColors.tealDark;
+      borderColor = AppColors.teal.withValues(alpha: 0.25);
       iconData = Icons.check_circle_outline_rounded;
       text = '$stock unid.';
     }
@@ -3316,6 +3415,7 @@ class _ProductQuickViewContent extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -3360,12 +3460,14 @@ class _VariantCardItem extends StatelessWidget {
   final int index;
   final bool isSingleVariant;
   final int productStock;
+  final List<WarehouseStockBatchModel>? batches;
 
   const _VariantCardItem({
     required this.variant,
     this.index = 0,
     required this.isSingleVariant,
     required this.productStock,
+    this.batches,
   });
 
   @override
@@ -3385,6 +3487,19 @@ class _VariantCardItem extends StatelessWidget {
     final cost = variant.unitCost;
     final wholesalePrice = variant.wholesalePrice;
     final sku = variant.sku;
+
+    // Calcular stock de la variante si hay lotes disponibles
+    final int variantStock;
+    if (batches != null && batches!.isNotEmpty) {
+      variantStock = batches!
+          .where((b) => b.variantId == variant.id)
+          .fold<double>(0, (s, b) => s + b.availableQuantity)
+          .toInt();
+    } else {
+      variantStock = isSingleVariant ? productStock : 0;
+    }
+
+    final isOut = variantStock <= 0;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -3411,13 +3526,42 @@ class _VariantCardItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  displayTitle,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        displayTitle,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Micro-chip de stock de variante
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isOut
+                                ? AppColors.danger.withValues(alpha: 0.08)
+                                : AppColors.teal.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        isOut ? 'Agotado' : '$variantStock unid.',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: isOut ? AppColors.danger : AppColors.tealDark,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 if (sku != null && sku.isNotEmpty && displayTitle != sku)
                   Padding(
