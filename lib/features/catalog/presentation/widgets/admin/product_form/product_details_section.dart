@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_state.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_form_models.dart';
@@ -92,16 +93,23 @@ class _ProductDetailsSectionState extends State<ProductDetailsSection> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Agrega detalles como Marca, Material, Medidas, etc.',
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
+                      'Especifica propiedades fijas como Marca, Material, Garantía, etc.',
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ),
                   TextButton.icon(
                     onPressed: cubit.addDetailRow,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Añadir detalle'),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text(
+                      'Añadir detalle',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    ),
                   ),
                 ],
               ),
@@ -110,17 +118,17 @@ class _ProductDetailsSectionState extends State<ProductDetailsSection> {
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
-                    vertical: 12,
+                    vertical: 14,
                     horizontal: 16,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.grey.shade200),
                   ),
                   child: Text(
-                    'Sin detalles adicionales',
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                    'Sin detalles adicionales. Agrega uno con el botón superior.',
+                    style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
                   ),
                 )
               else
@@ -148,23 +156,47 @@ class _ProductDetailsSectionState extends State<ProductDetailsSection> {
                                 ),
                             decoration: InputDecoration(
                               hintText: 'Propiedad (ej: Material)',
+                              hintStyle: TextStyle(
+                                color: Colors.grey.shade400,
+                                fontSize: 13,
+                              ),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 10,
                               ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.shade200),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.shade200),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                  color: AppColors.primary,
+                                  width: 1.5,
+                                ),
                               ),
                               isDense: true,
                             ),
-                            style: const TextStyle(fontSize: 13),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Text(
                             ':',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade500,
+                            ),
                           ),
                         ),
                         Expanded(
@@ -178,27 +210,51 @@ class _ProductDetailsSectionState extends State<ProductDetailsSection> {
                                 ),
                             decoration: InputDecoration(
                               hintText: 'Valor (ej: Acero)',
+                              hintStyle: TextStyle(
+                                color: Colors.grey.shade400,
+                                fontSize: 13,
+                              ),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 10,
                               ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.shade200),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.shade200),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                  color: AppColors.primary,
+                                  width: 1.5,
+                                ),
                               ),
                               isDense: true,
                             ),
                             style: const TextStyle(fontSize: 13),
                           ),
                         ),
+                        const SizedBox(width: 6),
                         IconButton(
                           onPressed: () => cubit.removeDetailRow(idx),
                           icon: Icon(
-                            Icons.remove_circle_outline,
+                            Icons.delete_outline_rounded,
                             color: Colors.red.shade400,
-                            size: 20,
+                            size: 19,
                           ),
+                          tooltip: 'Eliminar detalle',
                           padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          splashRadius: 16,
                         ),
                       ],
                     );

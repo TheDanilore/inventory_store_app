@@ -20,6 +20,7 @@ class AppTextField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final FocusNode? focusNode;
   final ValueChanged<String>? onFieldSubmitted;
+  final TextStyle? style;
 
   const AppTextField({
     super.key,
@@ -41,6 +42,7 @@ class AppTextField extends StatelessWidget {
     this.textInputAction,
     this.focusNode,
     this.onFieldSubmitted,
+    this.style,
   });
 
   @override
@@ -58,7 +60,7 @@ class AppTextField extends StatelessWidget {
       textCapitalization: textCapitalization,
       textInputAction: textInputAction,
       focusNode: focusNode,
-      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+      style: style ?? const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,

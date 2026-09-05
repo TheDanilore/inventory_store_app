@@ -72,6 +72,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
 
   void _onFieldChanged() {
     _syncAllToDraft();
+    if (mounted) setState(() {});
   }
 
   void _syncAllToDraft() {
@@ -457,6 +458,8 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                         color: AppColors.primary,
                                       ),
                                     ),
+                                    const Spacer(),
+                                    _buildMarginBadge(),
                                   ],
                                 ),
                                 const SizedBox(height: 12),
@@ -475,6 +478,13 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                             ),
                                         hintText: '0.00',
                                         prefixText: 'S/ ',
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          fontFeatures: [
+                                            FontFeature.tabularFigures(),
+                                          ],
+                                        ),
                                         inputFormatters: [
                                           FilteringTextInputFormatter.allow(
                                             RegExp(r'^\d+\.?\d{0,2}'),
@@ -494,6 +504,13 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                             ),
                                         hintText: '0.00',
                                         prefixText: 'S/ ',
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          fontFeatures: [
+                                            FontFeature.tabularFigures(),
+                                          ],
+                                        ),
                                         inputFormatters: [
                                           FilteringTextInputFormatter.allow(
                                             RegExp(r'^\d+\.?\d{0,2}'),
@@ -519,6 +536,13 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                             ),
                                         hintText: '0.00',
                                         prefixText: 'S/ ',
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          fontFeatures: [
+                                            FontFeature.tabularFigures(),
+                                          ],
+                                        ),
                                         inputFormatters: [
                                           FilteringTextInputFormatter.allow(
                                             RegExp(r'^\d+\.?\d{0,2}'),
@@ -534,6 +558,13 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                         icon: Icons.numbers_rounded,
                                         keyboardType: TextInputType.number,
                                         hintText: 'Ej: 10',
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          fontFeatures: [
+                                            FontFeature.tabularFigures(),
+                                          ],
+                                        ),
                                         inputFormatters: [
                                           FilteringTextInputFormatter
                                               .digitsOnly,
@@ -664,6 +695,63 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
     );
   }
 
+  Widget _buildMarginBadge() {
+    final cost = double.tryParse(unitCostCtrl.text);
+    final price = double.tryParse(priceCtrl.text);
+    if (cost == null || price == null || price <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    final marginPercent = ((price - cost) / price) * 100;
+    final isPositive = marginPercent > 0;
+    final isHealthy = marginPercent >= 25;
+
+    final color = isHealthy
+        ? AppColors.success
+        : isPositive
+            ? Colors.orange.shade700
+            : AppColors.error;
+
+    final bgColor = isHealthy
+        ? AppColors.success.withValues(alpha: 0.1)
+        : isPositive
+            ? Colors.orange.shade50
+            : AppColors.error.withValues(alpha: 0.1);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isHealthy
+                ? Icons.trending_up_rounded
+                : isPositive
+                    ? Icons.remove_rounded
+                    : Icons.warning_amber_rounded,
+            size: 13,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Margen: ${marginPercent >= 0 ? '+' : ''}${marginPercent.toStringAsFixed(1)}%',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: color,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDynamicAttributesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -732,50 +820,55 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                 children: [
                   Expanded(
                     flex: 4,
-                    child: GestureDetector(
-                      onTap: () => _pickAttributeKey(idx),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 11,
-                        ),
-                        decoration: BoxDecoration(
-                          color: hasKey ? Colors.white : Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(9),
-                          border: Border.all(
-                            color:
-                                hasKey
-                                    ? AppColors.primary.withValues(alpha: 0.5)
-                                    : Colors.grey.shade300,
+                    child: Material(
+                      color: hasKey ? Colors.white : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        onTap: () => _pickAttributeKey(idx),
+                        borderRadius: BorderRadius.circular(10),
+                        hoverColor: AppColors.primary.withValues(alpha: 0.04),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
                           ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                hasKey ? row.attributeName : 'Propiedad...',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color:
-                                      hasKey
-                                          ? AppColors.textPrimary
-                                          : Colors.grey.shade400,
-                                  fontWeight:
-                                      hasKey
-                                          ? FontWeight.w600
-                                          : FontWeight.normal,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color:
+                                  hasKey
+                                      ? AppColors.primary.withValues(alpha: 0.45)
+                                      : Colors.grey.shade300,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  hasKey ? row.attributeName : 'Propiedad...',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color:
+                                        hasKey
+                                            ? AppColors.textPrimary
+                                            : Colors.grey.shade400,
+                                    fontWeight:
+                                        hasKey
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            Icon(
-                              Icons.arrow_drop_down_rounded,
-                              size: 18,
-                              color: Colors.grey.shade400,
-                            ),
-                          ],
+                              Icon(
+                                Icons.arrow_drop_down_rounded,
+                                size: 20,
+                                color: hasKey ? AppColors.primary : Colors.grey.shade400,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -792,69 +885,71 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                   ),
                   Expanded(
                     flex: 5,
-                    child: GestureDetector(
-                      onTap: () => _pickAttributeValue(idx),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 11,
-                        ),
-                        decoration: BoxDecoration(
-                          color: hasValue ? Colors.white : Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(9),
-                          border: Border.all(
-                            color:
-                                hasValue
-                                    ? AppColors.primary.withValues(alpha: 0.5)
-                                    : Colors.grey.shade300,
+                    child: Material(
+                      color: hasValue ? Colors.white : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        onTap: () => _pickAttributeValue(idx),
+                        borderRadius: BorderRadius.circular(10),
+                        hoverColor: AppColors.primary.withValues(alpha: 0.04),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
                           ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                hasValue ? row.valueName : 'Valor...',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color:
-                                      hasValue
-                                          ? AppColors.textPrimary
-                                          : Colors.grey.shade400,
-                                  fontWeight:
-                                      hasValue
-                                          ? FontWeight.w600
-                                          : FontWeight.normal,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color:
+                                  hasValue
+                                      ? AppColors.primary.withValues(alpha: 0.45)
+                                      : Colors.grey.shade300,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  hasValue ? row.valueName : 'Valor...',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color:
+                                        hasValue
+                                            ? AppColors.textPrimary
+                                            : Colors.grey.shade400,
+                                    fontWeight:
+                                        hasValue
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            Icon(
-                              Icons.arrow_drop_down_rounded,
-                              size: 18,
-                              color: Colors.grey.shade400,
-                            ),
-                          ],
+                              Icon(
+                                Icons.arrow_drop_down_rounded,
+                                size: 20,
+                                color: hasValue ? AppColors.primary : Colors.grey.shade400,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () => _removeAttributeRow(idx),
-                    child: Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.remove_rounded,
-                        color: Colors.red.shade400,
-                        size: 16,
-                      ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    onPressed: () => _removeAttributeRow(idx),
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.red.shade400,
+                      size: 19,
                     ),
+                    tooltip: 'Eliminar propiedad',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    splashRadius: 16,
                   ),
                 ],
               );

@@ -433,21 +433,75 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Icon(
-                                Icons.save_rounded,
-                                size: 20,
-                                color: AppColors.primary,
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.save_rounded,
+                                    size: 20,
+                                    color: AppColors.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    isEdit
+                                        ? 'Guardar Cambios'
+                                        : 'Publicar Producto',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                isEdit
-                                    ? 'Guardar Cambios'
-                                    : 'Publicar Producto',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      cubit.hasUnsavedChanges
+                                          ? Colors.orange.shade50
+                                          : Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color:
+                                        cubit.hasUnsavedChanges
+                                            ? Colors.orange.shade200
+                                            : Colors.green.shade200,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        color:
+                                            cubit.hasUnsavedChanges
+                                                ? Colors.orange.shade600
+                                                : Colors.green.shade600,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      cubit.hasUnsavedChanges
+                                          ? 'Sin guardar'
+                                          : 'Al día',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color:
+                                            cubit.hasUnsavedChanges
+                                                ? Colors.orange.shade800
+                                                : Colors.green.shade800,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -461,6 +515,43 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                             onPressed: state.isSaving ? null : _guardar,
                             backgroundColor: AppColors.success,
                             foregroundColor: Colors.white,
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              TextButton(
+                                onPressed: _handleExit,
+                                child: const Text(
+                                  'Descartar',
+                                  style: TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Ctrl+S',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -592,23 +683,63 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
           bottom: 0,
           child: ClipRRect(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+              filter: ImageFilter.blur(sigmaX: 16.0, sigmaY: 16.0),
               child: Container(
                 padding: const EdgeInsets.only(
                   left: 16,
                   right: 16,
-                  top: 16,
-                  bottom: 32,
+                  top: 12,
+                  bottom: 24,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.surface.withValues(alpha: 0.85),
+                  color: AppColors.surface.withValues(alpha: 0.92),
                   border: Border(top: BorderSide(color: AppColors.border)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
                 ),
-                child: AppPrimaryButton(
-                  label: isEdit ? 'Actualizar Producto' : 'Guardar Producto',
-                  onPressed: state.isSaving ? null : _guardar,
-                  backgroundColor: AppColors.success,
-                  foregroundColor: Colors.white,
+                child: SafeArea(
+                  top: false,
+                  child: Row(
+                    children: [
+                      OutlinedButton(
+                        onPressed: _handleExit,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          side: BorderSide(color: Colors.grey.shade300),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppColors.radius,
+                            ),
+                          ),
+                        ),
+                        child: const Text(
+                          'Salir',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: AppPrimaryButton(
+                          label:
+                              isEdit
+                                  ? 'Actualizar Producto'
+                                  : 'Guardar Producto',
+                          onPressed: state.isSaving ? null : _guardar,
+                          backgroundColor: AppColors.success,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
