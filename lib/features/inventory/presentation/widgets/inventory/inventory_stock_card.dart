@@ -152,6 +152,9 @@ class InventoryStockCard extends StatelessWidget {
                                         color: stockColor,
                                         fontWeight: FontWeight.w900,
                                         fontSize: 14,
+                                        fontFeatures: const [
+                                          FontFeature.tabularFigures(),
+                                        ],
                                       ),
                                     ),
                                     const SizedBox(width: 3),
@@ -217,6 +220,9 @@ class InventoryStockCard extends StatelessWidget {
                                   style: TextStyle(
                                     fontWeight: FontWeight.w800,
                                     fontSize: 10,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
                                     color:
                                         item.margin >= 30
                                             ? AppColors.success
@@ -403,6 +409,7 @@ class _BatchMiniList extends StatelessWidget {
                         fontSize: 11,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
+                        fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
                     if (b.warehouseName != null) ...[
@@ -425,6 +432,7 @@ class _BatchMiniList extends StatelessWidget {
                         fontSize: 11,
                         color: expiryColor,
                         fontWeight: FontWeight.w700,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ],
@@ -457,6 +465,7 @@ class _PriceTag extends StatelessWidget {
           fontSize: 12,
           color: color,
           fontWeight: FontWeight.w800,
+          fontFeatures: const [FontFeature.tabularFigures()],
         ),
       ),
     );

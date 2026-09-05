@@ -286,7 +286,10 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                 child: _SearchField(
                   controller: _searchCtrl,
                   focusNode: _searchFocusNode,
-                  hint: 'Buscar por producto o lote... (presiona /)',
+                  hint:
+                      isTablet
+                          ? 'Buscar por producto o lote... (presiona /)'
+                          : 'Buscar por producto o lote...',
                   onChanged: _onSearchChanged,
                   onSubmitted: _onSearchSubmitted,
                   isLoading: state.isSearchingBatches,
@@ -407,9 +410,9 @@ class _StickyBatchesHeaderDelegate extends SliverPersistentHeaderDelegate {
   _StickyBatchesHeaderDelegate({required this.child});
 
   @override
-  double get minExtent => 68.0;
+  double get minExtent => 72.0;
   @override
-  double get maxExtent => 68.0;
+  double get maxExtent => 72.0;
 
   @override
   Widget build(
@@ -523,6 +526,7 @@ class _InteractiveMetricCard extends StatelessWidget {
                               ? color
                               : AppColors.textPrimary,
                       height: 1.1,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],

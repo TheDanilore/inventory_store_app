@@ -273,8 +273,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                         alpha: 0.7,
                                       ),
                                     ),
-                                    dataRowMinHeight: 64,
-                                    dataRowMaxHeight: 64,
+                                    dataRowMinHeight: 52,
+                                    dataRowMaxHeight: 52,
                                     columnSpacing: 20,
                                     showBottomBorder: true,
                                     columns: const [
@@ -357,7 +357,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                     children: [
                                                       _buildAvatar(
                                                         item.imageUrl,
-                                                        size: 42,
+                                                        size: 36,
                                                       ),
                                                       const SizedBox(width: 12),
                                                       Column(
@@ -374,7 +374,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                               fontWeight:
                                                                   FontWeight
                                                                       .w700,
-                                                              fontSize: 13.5,
+                                                              fontSize: 13,
                                                               color:
                                                                   AppColors
                                                                       .textPrimary,
@@ -386,7 +386,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                             Text(
                                                               item.attrsText,
                                                               style: const TextStyle(
-                                                                fontSize: 11.5,
+                                                                fontSize: 11,
                                                                 color:
                                                                     AppColors
                                                                         .textSecondary,
@@ -413,7 +413,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                       style: const TextStyle(
                                                         fontWeight:
                                                             FontWeight.w600,
-                                                        fontSize: 12.5,
+                                                        fontSize: 12,
                                                         fontFamily: 'monospace',
                                                         color:
                                                             AppColors
@@ -423,7 +423,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                     Text(
                                                       item.category,
                                                       style: const TextStyle(
-                                                        fontSize: 11.5,
+                                                        fontSize: 11,
                                                         color:
                                                             AppColors
                                                                 .textSecondary,
@@ -445,7 +445,10 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                         color:
                                                             AppColors
                                                                 .textSecondary,
-                                                        fontSize: 11.5,
+                                                        fontSize: 11,
+                                                        fontFeatures: [
+                                                          FontFeature.tabularFigures(),
+                                                        ],
                                                       ),
                                                     ),
                                                     Text(
@@ -453,10 +456,13 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                       style: const TextStyle(
                                                         fontWeight:
                                                             FontWeight.w700,
-                                                        fontSize: 13,
+                                                        fontSize: 12.5,
                                                         color:
                                                             AppColors
                                                                 .textPrimary,
+                                                        fontFeatures: [
+                                                          FontFeature.tabularFigures(),
+                                                        ],
                                                       ),
                                                     ),
                                                   ],
@@ -466,8 +472,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                 Container(
                                                   padding:
                                                       const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 4,
+                                                        horizontal: 9,
+                                                        vertical: 3.5,
                                                       ),
                                                   decoration: BoxDecoration(
                                                     color:
@@ -513,8 +519,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                             isLowStock
                                                                 ? AppColors
                                                                     .warning
-                                                                : AppColors
-                                                                    .tealDark,
+                                                                    : AppColors
+                                                                        .tealDark,
                                                       ),
                                                       const SizedBox(width: 4),
                                                       Text(
@@ -522,7 +528,10 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                         style: TextStyle(
                                                           fontWeight:
                                                               FontWeight.w800,
-                                                          fontSize: 12,
+                                                          fontSize: 11.5,
+                                                          fontFeatures: const [
+                                                            FontFeature.tabularFigures(),
+                                                          ],
                                                           color:
                                                               isLowStock
                                                                   ? AppColors
@@ -671,6 +680,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                   value: 'S/ ${state.globalTotalCost.toStringAsFixed(2)}',
                   icon: Icons.monetization_on_rounded,
                   color: AppColors.primary,
+                  isCompact: true,
                 ),
                 const SizedBox(width: 8),
                 _MetricCard(
@@ -678,6 +688,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                   value: '${state.globalTotalStock}',
                   icon: Icons.inventory_rounded,
                   color: AppColors.teal,
+                  isCompact: true,
                 ),
                 const SizedBox(width: 8),
                 _MetricCard(
@@ -689,6 +700,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                           ? AppColors.warning
                           : AppColors.success,
                   highlight: state.globalLowStockCount > 0,
+                  isCompact: true,
                 ),
               ],
             ),
@@ -699,6 +711,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
         SliverPersistentHeader(
           pinned: true,
           delegate: _StickyStockFiltersDelegate(
+            height: state.categories.isNotEmpty ? 116.0 : 68.0,
             child: Container(
               color: AppColors.background,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -708,7 +721,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                   _SearchField(
                     controller: _searchCtrl,
                     focusNode: _searchFocusNode,
-                    hint: 'Buscar producto o SKU... (presiona /)',
+                    hint: 'Buscar producto o SKU...',
                     onChanged: _onSearchChanged,
                     onSubmitted: _onSearchSubmitted,
                     isLoading: state.isSearchingStock,
@@ -855,13 +868,17 @@ class _InventoryStockTabState extends State<InventoryStockTab>
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _StickyStockFiltersDelegate extends SliverPersistentHeaderDelegate {
+  final double height;
   final Widget child;
-  _StickyStockFiltersDelegate({required this.child});
+  _StickyStockFiltersDelegate({
+    required this.height,
+    required this.child,
+  });
 
   @override
-  double get minExtent => 110.0;
+  double get minExtent => height;
   @override
-  double get maxExtent => 110.0;
+  double get maxExtent => height;
 
   @override
   Widget build(
@@ -873,7 +890,8 @@ class _StickyStockFiltersDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  bool shouldRebuild(_StickyStockFiltersDelegate oldDelegate) => true;
+  bool shouldRebuild(_StickyStockFiltersDelegate oldDelegate) =>
+      oldDelegate.height != height || oldDelegate.child != child;
 }
 
 class _MetricCard extends StatelessWidget {
@@ -882,6 +900,7 @@ class _MetricCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final bool highlight;
+  final bool isCompact;
 
   const _MetricCard({
     required this.label,
@@ -889,13 +908,17 @@ class _MetricCard extends StatelessWidget {
     required this.icon,
     required this.color,
     this.highlight = false,
+    this.isCompact = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        padding: EdgeInsets.symmetric(
+          horizontal: isCompact ? 8 : 14,
+          vertical: isCompact ? 9 : 11,
+        ),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(14),
@@ -908,14 +931,14 @@ class _MetricCard extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(7),
+              padding: EdgeInsets.all(isCompact ? 5 : 7),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, size: 16, color: color),
+              child: Icon(icon, size: isCompact ? 14 : 16, color: color),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: isCompact ? 6 : 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -923,8 +946,8 @@ class _MetricCard extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
-                      fontSize: 11,
+                    style: TextStyle(
+                      fontSize: isCompact ? 10 : 11,
                       color: AppColors.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
@@ -935,11 +958,14 @@ class _MetricCard extends StatelessWidget {
                   Text(
                     value,
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: isCompact ? 13 : 15,
                       fontWeight: FontWeight.w900,
                       color: highlight ? color : AppColors.textPrimary,
                       height: 1.1,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
