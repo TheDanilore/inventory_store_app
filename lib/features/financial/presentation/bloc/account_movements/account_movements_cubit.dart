@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/auth/domain/usecases/get_current_user_uc.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
 import 'package:inventory_store_app/features/financial/domain/repositories/account_movements_repository.dart';
@@ -8,7 +10,6 @@ import 'package:inventory_store_app/features/financial/domain/usecases/save_acco
 import 'package:inventory_store_app/features/financial/domain/usecases/transfer_funds_usecase.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/get_account_movement_totals_usecase.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements/account_movements_state.dart';
-import 'dart:developer' as developer;
 
 @injectable
 class AccountMovementsCubit extends Cubit<AccountMovementsState> {
@@ -22,6 +23,7 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
   int _currentPage = 0;
   int _totalPages = 1;
   MovementFilters _filters = const MovementFilters();
+  Timer? _searchDebounce;
 
   AccountMovementsCubit({
     required GetAccountMovementsUseCase getMovements,
@@ -42,24 +44,21 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
     emit(const AccountMovementsLoading());
     try {
       _currentPage = page;
-      final movements = await _getMovements(
+      final result = await _getMovements(
         filters: _filters,
         page: page,
         pageSize: _pageSize,
       );
 
-      if (movements.length < _pageSize && page == 0) {
-        _totalPages = 1;
-      } else if (movements.length < _pageSize) {
-        _totalPages = page + 1;
-      }
+      final totalPages = (result.totalCount / _pageSize).ceil();
+      _totalPages = totalPages > 0 ? totalPages : 1;
 
       // Calculamos totales con los mismos filtros activos desde la BD
       final totals = await _getTotals(filters: _filters);
 
       emit(
         AccountMovementsLoaded(
-          movements: movements,
+          movements: result.items,
           currentPage: _currentPage,
           totalPages: _totalPages,
           totalIncome: totals.totalIncome,
@@ -68,8 +67,9 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
         ),
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'AccountMovementsCubit.fetchMovements ERROR',
+        tag: 'ACCOUNT_MOVEMENTS_CUBIT',
         error: e,
         stackTrace: st,
       );
@@ -92,7 +92,7 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
       dateFrom: _filters.dateFrom,
       dateTo: _filters.dateTo,
     );
-    fetchMovements();
+    fetchMovements(page: 0);
   }
 
   void setFilterAccount(String accountId) {
@@ -103,7 +103,7 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
       dateFrom: _filters.dateFrom,
       dateTo: _filters.dateTo,
     );
-    fetchMovements();
+    fetchMovements(page: 0);
   }
 
   void setSearchText(String text) {
@@ -114,7 +114,10 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
       dateFrom: _filters.dateFrom,
       dateTo: _filters.dateTo,
     );
-    fetchMovements();
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      fetchMovements(page: 0);
+    });
   }
 
   void setDateRange(DateTime? from, DateTime? to) {
@@ -125,7 +128,7 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
       dateFrom: from,
       dateTo: to,
     );
-    fetchMovements();
+    fetchMovements(page: 0);
   }
 
   void setPage(int page) {
@@ -158,8 +161,9 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
       emit(const AccountMovementSaved());
       await fetchMovements(page: _currentPage);
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'AccountMovementsCubit.saveMovement ERROR',
+        tag: 'ACCOUNT_MOVEMENTS_CUBIT',
         error: e,
         stackTrace: st,
       );
@@ -191,12 +195,19 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
       emit(const AccountMovementSaved());
       await fetchMovements(page: _currentPage);
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'AccountMovementsCubit.transferFunds ERROR',
+        tag: 'ACCOUNT_MOVEMENTS_CUBIT',
         error: e,
         stackTrace: st,
       );
       emit(AccountMovementSaveError(e.toString()));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _searchDebounce?.cancel();
+    return super.close();
   }
 }

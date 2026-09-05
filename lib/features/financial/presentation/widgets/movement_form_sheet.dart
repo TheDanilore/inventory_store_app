@@ -81,19 +81,21 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
     return !openIds.contains(accountId);
   }
 
-  /// Retorna true si el formulario puede enviarse (no hay bloqueo por turno cerrado).
-  bool get _hasShiftBlocker {
-    if (_type == 'TRANSFER') {
-      return _isCajaWithoutShift(_sourceAccountId) ||
-          _isCajaWithoutShift(_destAccountId);
-    }
-    return _isCajaWithoutShift(_sourceAccountId);
-  }
+  bool get _isSourceCajaWithoutShift => _isCajaWithoutShift(_sourceAccountId);
+  bool get _isDestCajaWithoutShift =>
+      _type == 'TRANSFER' && _isCajaWithoutShift(_destAccountId);
+
+  /// Retorna true si hay un bloqueo por turno cerrado en alguna de las cuentas participantes.
+  bool get _hasShiftBlocker =>
+      _isSourceCajaWithoutShift || _isDestCajaWithoutShift;
 
   String _friendlyError(String rawMessage) {
     // Extraer texto limpio del RAISE EXCEPTION de PostgreSQL que viene en el estado
     final match = RegExp(r'message:\s*(.+?)(?:,|$)').firstMatch(rawMessage);
     if (match != null) return match.group(1)!.trim();
+    if (rawMessage.startsWith('Exception: ')) {
+      return rawMessage.substring(11).trim();
+    }
     return rawMessage;
   }
 
@@ -109,22 +111,80 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
       return;
     }
 
-    // Validación preventiva de turno de caja (guard pre-submit)
+    // Validación preventiva de turno de caja (guard pre-submit con mensaje contextual)
     if (_hasShiftBlocker) {
+      String msg;
+      if (_type == 'TRANSFER') {
+        if (_isSourceCajaWithoutShift && _isDestCajaWithoutShift) {
+          final sName =
+              _accounts
+                  .where((a) => a.id == _sourceAccountId)
+                  .firstOrNull
+                  ?.name ??
+              'origen';
+          final dName =
+              _accounts
+                  .where((a) => a.id == _destAccountId)
+                  .firstOrNull
+                  ?.name ??
+              'destino';
+          msg = 'Las cuentas "$sName" y "$dName" requieren turnos de caja abiertos.';
+        } else if (_isDestCajaWithoutShift) {
+          final dName =
+              _accounts
+                  .where((a) => a.id == _destAccountId)
+                  .firstOrNull
+                  ?.name ??
+              'destino';
+          msg = 'La cuenta destino "$dName" no tiene un turno de caja abierto.';
+        } else {
+          final sName =
+              _accounts
+                  .where((a) => a.id == _sourceAccountId)
+                  .firstOrNull
+                  ?.name ??
+              'origen';
+          msg = 'La cuenta origen "$sName" no tiene un turno de caja abierto.';
+        }
+      } else {
+        final sName =
+            _accounts
+                .where((a) => a.id == _sourceAccountId)
+                .firstOrNull
+                ?.name ??
+            'seleccionada';
+        msg = 'La cuenta "$sName" no tiene un turno de caja abierto.';
+      }
+
       AppSnackbar.show(
         context,
         message:
-            'Una de las cuentas seleccionadas es una caja sin turno abierto. Abre el turno desde el módulo de Punto de Venta antes de continuar.',
+            '$msg Abre el turno desde el módulo de Punto de Venta antes de continuar.',
         type: SnackbarType.warning,
       );
       return;
     }
 
-    setState(() => _saving = true);
-
     final amount =
         double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
     final description = _descCtrl.text.trim();
+
+    // Validación preventiva de saldo en cuenta origen
+    final sourceAccount =
+        _accounts.where((a) => a.id == _sourceAccountId).firstOrNull;
+    if (sourceAccount != null && (_type == 'EXPENSE' || _type == 'TRANSFER')) {
+      if (amount > sourceAccount.balance) {
+        AppSnackbar.show(
+          context,
+          message:
+              'Saldo insuficiente en "${sourceAccount.name}". Saldo disponible: S/ ${sourceAccount.balance.toStringAsFixed(2)}',
+          type: SnackbarType.warning,
+        );
+        return;
+      }
+    }
+
+    setState(() => _saving = true);
 
     if (_type == 'TRANSFER') {
       if (_destAccountId == null) {
@@ -163,6 +223,24 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
+
+    // Reactividad: si las cuentas cargan o actualizan, sincronizar _accounts
+    final accState = context.watch<FinancialAccountsCubit>().state;
+    if (accState is FinancialAccountsLoaded) {
+      final activeAccounts =
+          accState.accounts.where((a) => a.isActive).toList();
+      if (_accounts.isEmpty && activeAccounts.isNotEmpty) {
+        _accounts = activeAccounts;
+        _sourceAccountId ??= _accounts.first.id;
+        if (_accounts.length > 1) {
+          _destAccountId ??= _accounts[1].id;
+        } else {
+          _destAccountId ??= _accounts.first.id;
+        }
+      } else if (activeAccounts.isNotEmpty) {
+        _accounts = activeAccounts;
+      }
+    }
 
     if (_accounts.isEmpty) {
       return Container(
@@ -286,7 +364,9 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
               // ── Banner preventivo de turno de caja ─────────────────────────
               if (_hasShiftBlocker)
                 _ShiftWarningBanner(
-                  isTrasfer: _type == 'TRANSFER',
+                  isTransfer: _type == 'TRANSFER',
+                  isSourceBlocked: _isSourceCajaWithoutShift,
+                  isDestBlocked: _isDestCajaWithoutShift,
                   sourceAccountName:
                       _accounts
                           .where((a) => a.id == _sourceAccountId)
@@ -360,7 +440,10 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
                           )
                           : Text(
                             _hasShiftBlocker
-                                ? 'Sin turno de caja abierto'
+                                ? (_isDestCajaWithoutShift &&
+                                        !_isSourceCajaWithoutShift
+                                    ? 'Caja destino sin turno abierto'
+                                    : 'Sin turno de caja abierto')
                                 : 'Guardar movimiento',
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
@@ -391,22 +474,42 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
 
 // ── Banner de advertencia preventiva ─────────────────────────────────────────
 class _ShiftWarningBanner extends StatelessWidget {
-  final bool isTrasfer;
+  final bool isTransfer;
+  final bool isSourceBlocked;
+  final bool isDestBlocked;
   final String? sourceAccountName;
   final String? destAccountName;
 
   const _ShiftWarningBanner({
-    required this.isTrasfer,
+    required this.isTransfer,
+    required this.isSourceBlocked,
+    required this.isDestBlocked,
     this.sourceAccountName,
     this.destAccountName,
   });
 
   @override
   Widget build(BuildContext context) {
-    final name =
-        isTrasfer
-            ? (sourceAccountName ?? destAccountName ?? 'la caja seleccionada')
-            : (sourceAccountName ?? 'la caja seleccionada');
+    String message;
+    if (isTransfer) {
+      if (isSourceBlocked && isDestBlocked) {
+        final sName = sourceAccountName ?? 'la caja de origen';
+        final dName = destAccountName ?? 'la caja de destino';
+        message =
+            'Tanto la cuenta origen "$sName" como la destino "$dName" no tienen un turno de caja abierto.';
+      } else if (isDestBlocked) {
+        final dName = destAccountName ?? 'la caja de destino';
+        message =
+            'La cuenta destino "$dName" no tiene un turno de caja abierto.';
+      } else {
+        final sName = sourceAccountName ?? 'la caja de origen';
+        message =
+            'La cuenta origen "$sName" no tiene un turno de caja abierto.';
+      }
+    } else {
+      final sName = sourceAccountName ?? 'la caja seleccionada';
+      message = '"$sName" no tiene un turno de caja abierto.';
+    }
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -427,8 +530,7 @@ class _ShiftWarningBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              '⚠️  "$name" no tiene un turno de caja abierto. '
-              'Abre el turno desde el módulo de Punto de Venta antes de registrar este movimiento.',
+              '⚠️  $message Abre el turno desde el módulo de Punto de Venta antes de registrar este movimiento.',
               style: const TextStyle(
                 color: AppColors.warning,
                 fontSize: 12.5,
@@ -543,11 +645,26 @@ class _AccountSelector extends StatelessWidget {
                     children: [
                       Icon(typeIcon, size: 16, color: AppColors.textSecondary),
                       const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          a.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Text(
-                        a.name,
-                        style: const TextStyle(
+                        'S/ ${a.balance.toStringAsFixed(2)}',
+                        style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          fontSize: 12,
+                          color:
+                              a.balance >= 0
+                                  ? AppColors.textSecondary
+                                  : AppColors.danger,
                         ),
                       ),
                     ],

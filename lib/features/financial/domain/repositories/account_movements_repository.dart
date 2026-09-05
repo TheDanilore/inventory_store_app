@@ -25,12 +25,20 @@ class MovementTotals {
   const MovementTotals({required this.totalIncome, required this.totalExpense});
 }
 
+/// Resultado paginado de la consulta de movimientos.
+class MovementPageResult {
+  final List<AccountMovementEntity> items;
+  final int totalCount;
+
+  const MovementPageResult({required this.items, required this.totalCount});
+}
+
 /// Contrato abstracto para la persistencia de Movimientos de Cuenta.
 /// La capa de dominio depende de esta interfaz; la implementación concreta
 /// vive en data/repositories_impl/.
 abstract class AccountMovementsRepository {
-  /// Retorna una página de movimientos con filtros y paginación aplicados.
-  Future<List<AccountMovementEntity>> getMovements({
+  /// Retorna una página de movimientos junto con el total de registros encontrados.
+  Future<MovementPageResult> getMovements({
     required MovementFilters filters,
     required int page,
     required int pageSize,

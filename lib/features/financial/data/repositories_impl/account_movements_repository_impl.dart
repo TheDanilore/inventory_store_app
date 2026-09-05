@@ -1,9 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/financial/data/models/account_movement_model.dart';
-import 'package:inventory_store_app/features/financial/domain/entities/account_movement_entity.dart';
 import 'package:inventory_store_app/features/financial/domain/repositories/account_movements_repository.dart';
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 
 @LazySingleton(as: AccountMovementsRepository)
 class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
@@ -12,7 +11,7 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
   AccountMovementsRepositoryImpl(this._supabase);
 
   @override
-  Future<List<AccountMovementEntity>> getMovements({
+  Future<MovementPageResult> getMovements({
     required MovementFilters filters,
     required int page,
     required int pageSize,
@@ -35,7 +34,7 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
         .count(CountOption.exact);
 
     final data = response.data as List;
-    return data
+    final items = data
         .map(
           (e) =>
               AccountMovementModel.fromJson(
@@ -43,6 +42,8 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
               ).toEntity(),
         )
         .toList();
+    final totalCount = response.count;
+    return MovementPageResult(items: items, totalCount: totalCount);
   }
 
   @override
@@ -78,11 +79,11 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
         totalExpense: (res['totalExpense'] as num).toDouble(),
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'getMovementTotals error',
+        tag: 'ACCOUNT_MOVEMENTS_REPO',
         error: e,
         stackTrace: st,
-        name: 'AccountMovementsRepositoryImpl',
       );
       return const MovementTotals(totalIncome: 0, totalExpense: 0);
     }
@@ -110,11 +111,11 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
         },
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'registerManualMovement error',
+        tag: 'ACCOUNT_MOVEMENTS_REPO',
         error: e,
         stackTrace: st,
-        name: 'AccountMovementsRepositoryImpl',
       );
       rethrow;
     }
@@ -140,11 +141,11 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
         },
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'transferFunds error',
+        tag: 'ACCOUNT_MOVEMENTS_REPO',
         error: e,
         stackTrace: st,
-        name: 'AccountMovementsRepositoryImpl',
       );
       rethrow;
     }
