@@ -52,7 +52,7 @@ class _UserFormContentState extends State<_UserFormContent> {
 
   // Estados locales
   String _docType = 'DNI';
-  String _role = AppRoles.customer;
+  late String _role;
   bool _isActive = true;
   bool _obscurePassword = true;
 
@@ -73,7 +73,7 @@ class _UserFormContentState extends State<_UserFormContent> {
 
     if (_isEditing) {
       _docType = widget.existingUser?.documentType ?? 'DNI';
-      _role = widget.existingUser?.role ?? AppRoles.customer;
+      _role = widget.existingUser?.role ?? widget.initialRole ?? AppRoles.customer;
       _isActive = widget.existingUser?.isActive ?? true;
     } else {
       _role = widget.initialRole ?? AppRoles.customer;
@@ -134,6 +134,14 @@ class _UserFormContentState extends State<_UserFormContent> {
     );
   }
 
+  void _onCancel() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/admin/users');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<UserFormCubit, UserFormState>(
@@ -145,7 +153,9 @@ class _UserFormContentState extends State<_UserFormContent> {
             type: SnackbarType.success,
           );
           if (context.canPop()) {
-            context.pop(true); // Return true to indicate change
+            context.pop(true);
+          } else {
+            context.go('/admin/users');
           }
         } else if (state is UserFormError) {
           AppSnackbar.show(
@@ -163,74 +173,135 @@ class _UserFormContentState extends State<_UserFormContent> {
           showBackButton: true,
           showProfileButton: false,
           showDrawerButton: false,
-          body: Stack(
-            children: [
-              Form(
+          body: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 680),
+              child: Form(
                 key: _formKey,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 48),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (!_isEditing) ...[
-                        const Text(
-                          'Selecciona el Rol',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black87,
+                      // ─── BANNER SUPERIOR INFORMATIVO ──────────────
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: _isEditing
+                              ? Colors.indigo.shade50
+                              : AppColors.primary.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _isEditing
+                                ? Colors.indigo.shade200
+                                : AppColors.primary.withValues(alpha: 0.2),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Row(
+                        child: Row(
                           children: [
-                            Expanded(
-                              child: _RoleCard(
-                                title: 'Cliente',
-                                icon: Icons.person_outline_rounded,
-                                isSelected: _role == AppRoles.customer,
-                                color: AppColors.primary,
-                                onTap:
-                                    () => setState(
-                                      () => _role = AppRoles.customer,
-                                    ),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: _isEditing
+                                    ? Colors.indigo.shade100
+                                    : AppColors.primary.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                _isEditing
+                                    ? Icons.edit_note_rounded
+                                    : Icons.person_add_alt_1_rounded,
+                                color: _isEditing
+                                    ? Colors.indigo.shade800
+                                    : AppColors.primary,
+                                size: 24,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 14),
                             Expanded(
-                              child: _RoleCard(
-                                title: 'Empleado',
-                                icon: Icons.badge_outlined,
-                                isSelected: _role == AppRoles.employee,
-                                color: Colors.orange.shade600,
-                                onTap:
-                                    () => setState(
-                                      () => _role = AppRoles.employee,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _isEditing
+                                        ? 'Edición de Perfil de Usuario'
+                                        : 'Creación de Nuevo Usuario',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: _isEditing
+                                          ? Colors.indigo.shade900
+                                          : AppColors.textPrimary,
                                     ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _RoleCard(
-                                title: 'Admin',
-                                icon: Icons.admin_panel_settings_outlined,
-                                isSelected: _role == AppRoles.admin,
-                                color: Colors.indigo,
-                                onTap:
-                                    () =>
-                                        setState(() => _role = AppRoles.admin),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _isEditing
+                                        ? 'Modifica los datos personales y el rol de acceso.'
+                                        : 'El usuario se creará en el sistema con el rol preseleccionado.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: _isEditing
+                                          ? Colors.indigo.shade700
+                                          : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
-                      ],
+                      ),
+                      const SizedBox(height: 20),
 
-                      if (_isEditing) ...[
-                        _SectionCard(
-                          title: 'Estado del Usuario',
-                          icon: Icons.shield_rounded,
-                          children: [
+                      // ─── SELECTOR DE ROL ──────────────
+                      _SectionCard(
+                        title: 'Rol y Permisos',
+                        icon: Icons.shield_outlined,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _RoleCard(
+                                  title: 'Cliente',
+                                  icon: Icons.person_outline_rounded,
+                                  isSelected: _role == AppRoles.customer,
+                                  color: AppColors.primary,
+                                  onTap: () => setState(
+                                    () => _role = AppRoles.customer,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _RoleCard(
+                                  title: 'Empleado',
+                                  icon: Icons.badge_outlined,
+                                  isSelected: _role == AppRoles.employee,
+                                  color: Colors.orange.shade600,
+                                  onTap: () => setState(
+                                    () => _role = AppRoles.employee,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _RoleCard(
+                                  title: 'Admin',
+                                  icon: Icons.admin_panel_settings_outlined,
+                                  isSelected: _role == AppRoles.admin,
+                                  color: Colors.indigo,
+                                  onTap: () => setState(
+                                    () => _role = AppRoles.admin,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_isEditing) ...[
+                            const SizedBox(height: 16),
+                            const Divider(height: 1),
+                            const SizedBox(height: 16),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -238,23 +309,24 @@ class _UserFormContentState extends State<_UserFormContent> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
-                                      'Usuario activo',
+                                      'Estado de la Cuenta',
                                       style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
                                         color: Colors.black87,
                                       ),
                                     ),
+                                    const SizedBox(height: 2),
                                     Text(
                                       _isActive
-                                          ? 'Puede iniciar sesión'
-                                          : 'Acceso bloqueado',
+                                          ? 'Activo: puede iniciar sesión y operar'
+                                          : 'Inactivo: acceso suspendido',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color:
-                                            _isActive
-                                                ? Colors.green.shade600
-                                                : Colors.red.shade600,
+                                        color: _isActive
+                                            ? Colors.green.shade600
+                                            : Colors.red.shade600,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ],
@@ -262,16 +334,16 @@ class _UserFormContentState extends State<_UserFormContent> {
                                 Switch(
                                   value: _isActive,
                                   activeThumbColor: AppColors.primary,
-                                  onChanged:
-                                      (v) => setState(() => _isActive = v),
+                                  onChanged: (v) => setState(() => _isActive = v),
                                 ),
                               ],
                             ),
                           ],
-                        ),
-                        const SizedBox(height: 20),
-                      ],
+                        ],
+                      ),
+                      const SizedBox(height: 20),
 
+                      // ─── CREDENCIALES DE ACCESO ──────────────
                       _SectionCard(
                         title: 'Credenciales de Acceso',
                         icon: Icons.lock_person_rounded,
@@ -283,11 +355,19 @@ class _UserFormContentState extends State<_UserFormContent> {
                             icon: Icons.email_rounded,
                             keyboardType: TextInputType.emailAddress,
                             readOnly: _isEditing,
-                            validator:
-                                _isEditing
-                                    ? null
-                                    : (v) =>
-                                        _required(v, 'el correo electrónico'),
+                            suffixIcon: _isEditing
+                                ? Tooltip(
+                                    message: 'El correo electrónico no puede ser alterado',
+                                    child: Icon(
+                                      Icons.lock_rounded,
+                                      size: 18,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  )
+                                : null,
+                            validator: _isEditing
+                                ? null
+                                : (v) => _required(v, 'el correo electrónico'),
                           ),
                           const SizedBox(height: 16),
                           Row(
@@ -296,14 +376,12 @@ class _UserFormContentState extends State<_UserFormContent> {
                               Expanded(
                                 child: _CustomTextField(
                                   controller: _passwordCtrl,
-                                  label:
-                                      _isEditing
-                                          ? 'Nueva contraseña (opcional)'
-                                          : 'Contraseña temporal',
-                                  hint:
-                                      _isEditing
-                                          ? 'Dejar vacío para no cambiar'
-                                          : 'Mínimo 6 caracteres',
+                                  label: _isEditing
+                                      ? 'Nueva Contraseña (Opcional)'
+                                      : 'Contraseña de Acceso',
+                                  hint: _isEditing
+                                      ? 'Dejar vacío para mantener la actual'
+                                      : 'Mínimo 6 caracteres',
                                   icon: Icons.vpn_key_rounded,
                                   obscureText: _obscurePassword,
                                   validator: (v) {
@@ -331,58 +409,52 @@ class _UserFormContentState extends State<_UserFormContent> {
                                       color: Colors.grey.shade500,
                                       size: 20,
                                     ),
-                                    onPressed:
-                                        () => setState(
-                                          () =>
-                                              _obscurePassword =
-                                                  !_obscurePassword,
-                                        ),
-                                  ),
-                                ),
-                              ),
-                              if (!_isEditing) ...[
-                                const SizedBox(width: 8),
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 24),
-                                  child: Tooltip(
-                                    message: 'Generar y copiar',
-                                    child: ElevatedButton(
-                                      onPressed: _generatePassword,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.surface,
-                                        foregroundColor: AppColors.primary,
-                                        elevation: 0,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          side: BorderSide(
-                                            color: AppColors.primary.withValues(
-                                              alpha: 0.3,
-                                            ),
-                                          ),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 14,
-                                        ),
-                                      ),
-                                      child: const Icon(
-                                        Icons.password_rounded,
-                                        size: 20,
-                                      ),
+                                    onPressed: () => setState(
+                                      () => _obscurePassword = !_obscurePassword,
                                     ),
                                   ),
                                 ),
-                              ],
+                              ),
+                              const SizedBox(width: 8),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 24),
+                                child: Tooltip(
+                                  message: 'Generar clave segura y copiar',
+                                  child: ElevatedButton(
+                                    onPressed: _generatePassword,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.surface,
+                                      foregroundColor: AppColors.primary,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(
+                                          color: AppColors.primary.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                        ),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 14,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.password_rounded,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ],
                       ),
                       const SizedBox(height: 20),
 
+                      // ─── DATOS PERSONALES ──────────────
                       _SectionCard(
-                        title: 'Datos Personales',
+                        title: 'Datos Personales y Contacto',
                         icon: Icons.badge_rounded,
                         children: [
                           _CustomTextField(
@@ -390,13 +462,14 @@ class _UserFormContentState extends State<_UserFormContent> {
                             label: 'Nombre completo o Razón social',
                             hint: 'Ej. Juan Pérez',
                             textCapitalization: TextCapitalization.words,
+                            icon: Icons.person_rounded,
                             validator: (v) => _required(v, 'el nombre'),
                           ),
                           const SizedBox(height: 16),
                           _CustomTextField(
                             controller: _phoneCtrl,
-                            label: 'Teléfono',
-                            hint: 'Opcional',
+                            label: 'Teléfono o WhatsApp',
+                            hint: 'Ej. 987654321 (Opcional)',
                             icon: Icons.phone_rounded,
                             keyboardType: TextInputType.phone,
                           ),
@@ -433,21 +506,20 @@ class _UserFormContentState extends State<_UserFormContent> {
                                       Icons.expand_more_rounded,
                                       color: Colors.grey.shade500,
                                     ),
-                                    items:
-                                        ['DNI', 'RUC', 'CE', 'PAS'].map((
-                                          String value,
-                                        ) {
-                                          return DropdownMenuItem<String>(
-                                            value: value,
-                                            child: Text(
-                                              value,
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          );
-                                        }).toList(),
+                                    items: ['DNI', 'RUC', 'CE', 'PAS'].map((
+                                      String value,
+                                    ) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Text(
+                                          value,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
                                     onChanged: (val) {
                                       if (val != null) {
                                         setState(() => _docType = val);
@@ -468,81 +540,104 @@ class _UserFormContentState extends State<_UserFormContent> {
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, -4),
-                      ),
-                    ],
-                  ),
-                  child: SizedBox(
-                    height: 54,
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: isLoading ? null : _onSave,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            _isEditing ? Colors.indigo : AppColors.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                      const SizedBox(height: 28),
+
+                      // ─── BARRA DE ACCIÓN INTEGRADA (DESKTOP Y MÓVIL) ─────────
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 1,
+                              child: OutlinedButton(
+                                onPressed: isLoading ? null : _onCancel,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.grey.shade700,
+                                  side: BorderSide(color: Colors.grey.shade300),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                ),
+                                child: const Text(
+                                  'Cancelar',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 2,
+                              child: ElevatedButton(
+                                onPressed: isLoading ? null : _onSave,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _isEditing
+                                      ? Colors.indigo.shade700
+                                      : AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                ),
+                                child: isLoading
+                                    ? const SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2.5,
+                                        ),
+                                      )
+                                    : Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            _isEditing
+                                                ? Icons.save_rounded
+                                                : Icons.person_add_rounded,
+                                            size: 19,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            _isEditing
+                                                ? 'Guardar Cambios'
+                                                : (_role == AppRoles.admin
+                                                    ? 'Crear Administrador'
+                                                    : _role == AppRoles.employee
+                                                        ? 'Crear Empleado'
+                                                        : 'Crear Cliente'),
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child:
-                          isLoading
-                              ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                              : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    _isEditing
-                                        ? Icons.save_rounded
-                                        : Icons.person_add_rounded,
-                                    size: 20,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    _isEditing
-                                        ? 'Guardar cambios'
-                                        : (_role == AppRoles.admin
-                                            ? 'Crear Administrador'
-                                            : _role == AppRoles.employee
-                                            ? 'Crear Empleado'
-                                            : 'Crear Cliente'),
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                    ),
+                    ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         );
       },
@@ -567,14 +662,15 @@ class _RoleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
           color: isSelected ? color.withValues(alpha: 0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected ? color : Colors.grey.shade300,
             width: isSelected ? 2 : 1,
@@ -595,7 +691,7 @@ class _RoleCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: isSelected ? color : Colors.grey.shade600,
+                  color: isSelected ? color : Colors.grey.shade700,
                 ),
               ),
             ),
@@ -657,7 +753,7 @@ class _SectionCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           ...children,
         ],
       ),
@@ -715,7 +811,7 @@ class _CustomTextField extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: readOnly ? Colors.grey.shade500 : Colors.black87,
+            color: readOnly ? Colors.grey.shade600 : Colors.black87,
           ),
           decoration: InputDecoration(
             hintText: hint,

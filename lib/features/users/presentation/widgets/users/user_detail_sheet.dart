@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/users/presentation/bloc/user_detail/user_detail_cubit.dart';
 import 'package:inventory_store_app/features/users/presentation/bloc/user_detail/user_detail_state.dart';
@@ -13,26 +14,35 @@ import 'package:go_router/go_router.dart';
 class UserDetailSheet extends StatelessWidget {
   final String userId;
   final VoidCallback onUserUpdated;
+  final bool isSideSheet;
 
   const UserDetailSheet({
     super.key,
     required this.userId,
     required this.onUserUpdated,
+    this.isSideSheet = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<UserDetailCubit>()..fetchUser(userId),
-      child: _UserDetailContent(onUserUpdated: onUserUpdated),
+      child: _UserDetailContent(
+        onUserUpdated: onUserUpdated,
+        isSideSheet: isSideSheet,
+      ),
     );
   }
 }
 
 class _UserDetailContent extends StatefulWidget {
   final VoidCallback onUserUpdated;
+  final bool isSideSheet;
 
-  const _UserDetailContent({required this.onUserUpdated});
+  const _UserDetailContent({
+    required this.onUserUpdated,
+    required this.isSideSheet,
+  });
 
   @override
   State<_UserDetailContent> createState() => _UserDetailContentState();
@@ -58,7 +68,15 @@ class _UserDetailContentState extends State<_UserDetailContent> {
   }
 
   void _openEditForm(BuildContext context, UserDetailLoaded state) {
-    context.go('/admin/users/form', extra: {'existingUser': state.user});
+    final user = state.user;
+    Navigator.of(context).pop();
+    context.go(
+      '/admin/users/form',
+      extra: {
+        'existingUser': user,
+        'initialRole': user.role,
+      },
+    );
   }
 
   @override
@@ -101,9 +119,22 @@ class _UserDetailContentState extends State<_UserDetailContent> {
 
         if (state is UserDetailError) {
           return Center(
-            child: Text(
-              'Error al cargar: ${state.message}',
-              style: const TextStyle(color: Colors.red),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.red, size: 40),
+                const SizedBox(height: 12),
+                Text(
+                  'Error al cargar: ${state.message}',
+                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cerrar'),
+                ),
+              ],
             ),
           );
         }
@@ -125,24 +156,75 @@ class _UserDetailContentState extends State<_UserDetailContent> {
 
         return Column(
           children: [
+            // ─── CABECERA DRAWER EN DESKTOP ──────────────────────────────────
+            if (widget.isSideSheet)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade200),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.person_outline_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Ficha del Usuario',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      color: Colors.grey.shade500,
+                      tooltip: 'Cerrar (Esc)',
+                      splashRadius: 20,
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                padding: EdgeInsets.fromLTRB(
+                  widget.isSideSheet ? 24 : 20,
+                  widget.isSideSheet ? 20 : 16,
+                  widget.isSideSheet ? 24 : 20,
+                  24,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Handle
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(2),
+                    // Handle solo en BottomSheet móvil
+                    if (!widget.isSideSheet)
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
-                    ),
 
                     // ─── CABECERA DEL PERFIL + BOTÓN EDITAR ──────────
                     Row(
@@ -151,9 +233,10 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                           width: 64,
                           height: 64,
                           decoration: BoxDecoration(
-                            color:
-                                role == 'admin'
-                                    ? Colors.indigo.withValues(alpha: 0.1)
+                            color: role == AppRoles.admin
+                                ? Colors.indigo.withValues(alpha: 0.12)
+                                : role == AppRoles.employee
+                                    ? Colors.orange.withValues(alpha: 0.12)
                                     : AppColors.primary.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
@@ -163,9 +246,10 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w800,
-                                color:
-                                    role == 'admin'
-                                        ? Colors.indigo.shade700
+                                color: role == AppRoles.admin
+                                    ? Colors.indigo.shade700
+                                    : role == AppRoles.employee
+                                        ? Colors.orange.shade700
                                         : AppColors.primary,
                               ),
                             ),
@@ -185,7 +269,9 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                 ),
                               ),
                               const SizedBox(height: 6),
-                              Row(
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.symmetric(
@@ -193,49 +279,51 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color:
-                                          role == 'admin'
-                                              ? Colors.indigo.shade50
+                                      color: role == AppRoles.admin
+                                          ? Colors.indigo.shade50
+                                          : role == AppRoles.employee
+                                              ? Colors.orange.shade50
                                               : AppColors.surface,
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
-                                        color:
-                                            role == 'admin'
-                                                ? Colors.indigo.shade200
+                                        color: role == AppRoles.admin
+                                            ? Colors.indigo.shade200
+                                            : role == AppRoles.employee
+                                                ? Colors.orange.shade200
                                                 : AppColors.border,
                                       ),
                                     ),
                                     child: Text(
-                                      role == 'admin'
-                                          ? 'Administrador'
-                                          : 'Cliente',
+                                      role == AppRoles.admin
+                                          ? 'ADMINISTRADOR'
+                                          : role == AppRoles.employee
+                                              ? 'EMPLEADO'
+                                              : 'CLIENTE',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        color:
-                                            role == 'admin'
-                                                ? Colors.indigo.shade700
+                                        color: role == AppRoles.admin
+                                            ? Colors.indigo.shade700
+                                            : role == AppRoles.employee
+                                                ? Colors.orange.shade700
                                                 : AppColors.textSecondary,
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color:
-                                          isActive
-                                              ? Colors.green.shade50
-                                              : Colors.red.shade50,
+                                      color: isActive
+                                          ? Colors.green.shade50
+                                          : Colors.red.shade50,
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
-                                        color:
-                                            isActive
-                                                ? Colors.green.shade200
-                                                : Colors.red.shade200,
+                                        color: isActive
+                                            ? Colors.green.shade200
+                                            : Colors.red.shade200,
                                       ),
                                     ),
                                     child: Text(
@@ -243,10 +331,9 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        color:
-                                            isActive
-                                                ? Colors.green.shade700
-                                                : Colors.red.shade700,
+                                        color: isActive
+                                            ? Colors.green.shade700
+                                            : Colors.red.shade700,
                                       ),
                                     ),
                                   ),
@@ -278,6 +365,29 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                     ),
 
                     const SizedBox(height: 24),
+
+                    // ─── BOTÓN ACCIÓN DIRECTA EDITAR ─────────────────
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _openEditForm(context, state),
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: const Text(
+                          'Editar datos de este usuario',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
 
                     // ─── INFORMACIÓN DEL USUARIO ──────────
                     Container(

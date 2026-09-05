@@ -12,10 +12,29 @@ class UsersRoutes {
     GoRoute(
       path: '/admin/users/form',
       builder: (context, state) {
-        final args = state.extra as Map<String, dynamic>? ?? {};
+        final extra = state.extra;
+        UserEntity? user;
+        String? role = state.uri.queryParameters['role'];
+
+        if (extra is UserEntity) {
+          user = extra;
+          role ??= user.role;
+        } else if (extra is Map<String, dynamic>) {
+          if (extra['existingUser'] is UserEntity) {
+            user = extra['existingUser'] as UserEntity;
+          } else if (extra['userToEdit'] is UserEntity) {
+            user = extra['userToEdit'] as UserEntity;
+          }
+          if (extra['initialRole'] is String) {
+            role = extra['initialRole'] as String;
+          } else if (user != null) {
+            role ??= user.role;
+          }
+        }
+
         return UserFormScreen(
-          existingUser:
-              args['userToEdit'] is UserEntity ? args['userToEdit'] : null,
+          existingUser: user,
+          initialRole: role,
         );
       },
     ),
