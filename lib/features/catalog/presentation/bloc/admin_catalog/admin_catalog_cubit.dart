@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
@@ -46,8 +46,9 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   Future<void> _fetchCategories() async {
     final result = await getCategoriesUC();
     result.fold((failure) {
-      developer.log(
-        'AdminCatalogCubit: Error al cargar categorías: ${failure.message}',
+      LoggerService.e(
+        'Error al cargar categorías: ${failure.message}',
+        tag: 'ADMIN_CATALOG_CUBIT',
         error: failure,
         stackTrace: StackTrace.current,
       );
@@ -57,11 +58,12 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   // Filters
 
   void setSearchTerm(String term) {
-    if (state.searchTerm == term) return;
+    final cleaned = term.trim();
+    if (state.searchTerm == cleaned) return;
 
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      emit(state.copyWith(searchTerm: term, currentPage: 0));
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      emit(state.copyWith(searchTerm: cleaned, currentPage: 0));
       refreshProducts();
     });
   }
@@ -303,8 +305,9 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
             resUnwrapped is Exception
                 ? resUnwrapped.toString()
                 : (resUnwrapped as dynamic).message ?? 'Error desconocido';
-        developer.log(
-          'AdminCatalogCubit: Error al cargar productos para PDF: $failureMsg',
+        LoggerService.e(
+          'Error al cargar productos para PDF: $failureMsg',
+          tag: 'ADMIN_CATALOG_CUBIT',
         );
         emit(
           state.copyWith(
@@ -353,8 +356,10 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
       exportResult.fold(
         (failure) {
-          developer.log(
-            'AdminCatalogCubit: Error en exportCatalogPdfUC: ${failure.message}',
+          LoggerService.e(
+            'Error en exportCatalogPdfUC: ${failure.message}',
+            tag: 'ADMIN_CATALOG_CUBIT',
+            error: failure,
           );
           emit(
             state.copyWith(
@@ -368,8 +373,9 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         },
       );
     } catch (e, st) {
-      developer.log(
-        'AdminCatalogCubit: Error inesperado en exportCatalogPdf',
+      LoggerService.e(
+        'Error inesperado en exportCatalogPdf',
+        tag: 'ADMIN_CATALOG_CUBIT',
         error: e,
         stackTrace: st,
       );
