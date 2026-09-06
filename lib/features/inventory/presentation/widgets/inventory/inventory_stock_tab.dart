@@ -15,7 +15,9 @@ import 'dart:async';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 
 class InventoryStockTab extends StatefulWidget {
-  const InventoryStockTab({super.key});
+  final String? initialSearch;
+
+  const InventoryStockTab({super.key, this.initialSearch});
 
   @override
   State<InventoryStockTab> createState() => _InventoryStockTabState();
@@ -23,12 +25,20 @@ class InventoryStockTab extends StatefulWidget {
 
 class _InventoryStockTabState extends State<InventoryStockTab>
     with AutomaticKeepAliveClientMixin {
-  final _searchCtrl = TextEditingController();
+  late final TextEditingController _searchCtrl;
   final _searchFocusNode = FocusNode();
   Timer? _debounce;
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchCtrl = TextEditingController(
+      text: widget.initialSearch?.trim() ?? '',
+    );
+  }
 
   @override
   void dispose() {
@@ -41,13 +51,15 @@ class _InventoryStockTabState extends State<InventoryStockTab>
   void _onSearchChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      context.read<InventoryCubit>().setStockSearch(value);
+      if (mounted) {
+        context.read<InventoryCubit>().setStockSearch(value.trim());
+      }
     });
   }
 
   void _onSearchSubmitted(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    context.read<InventoryCubit>().setStockSearch(value);
+    context.read<InventoryCubit>().setStockSearch(value.trim());
   }
 
   void _openProductDetail(InventoryStockItem item) {

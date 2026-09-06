@@ -359,7 +359,9 @@ class ProductQuickViewContent extends StatelessWidget {
                       OutlinedButton.icon(
                         onPressed: () {
                           Navigator.pop(context);
-                          context.push('/admin/inventory');
+                          final cleanName = product.name.trim();
+                          final encodedSearch = Uri.encodeComponent(cleanName);
+                          context.push('/admin/inventory?search=$encodedSearch');
                         },
                         icon: const Icon(Icons.open_in_new_rounded, size: 12),
                         label: const Text(

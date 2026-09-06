@@ -8,7 +8,9 @@ import 'package:inventory_store_app/features/inventory/presentation/widgets/inve
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class InventoryScreen extends StatefulWidget {
-  const InventoryScreen({super.key});
+  final String? initialSearch;
+
+  const InventoryScreen({super.key, this.initialSearch});
 
   @override
   State<InventoryScreen> createState() => _InventoryScreenState();
@@ -28,8 +30,12 @@ class _InventoryScreenState extends State<InventoryScreen>
   void _handleTabSelection() {
     if (_tabController.indexIsChanging) return;
     if (_tabController.index == 1) {
-      // Lazy load de la pestaña de lotes
-      context.read<InventoryCubit>().initBatchesTab();
+      // Lazy load de la pestaña de lotes evitando llamadas duplicadas
+      final cubit = context.read<InventoryCubit>();
+      final state = cubit.state;
+      if (state is InventoryLoaded && state.batchItems.isEmpty) {
+        cubit.initBatchesTab();
+      }
     }
   }
 
@@ -174,9 +180,9 @@ class _InventoryScreenState extends State<InventoryScreen>
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
-                  children: const [
-                    InventoryStockTab(),
-                    InventoryBatchesTab(),
+                  children: [
+                    InventoryStockTab(initialSearch: widget.initialSearch),
+                    const InventoryBatchesTab(),
                   ],
                 ),
               ),

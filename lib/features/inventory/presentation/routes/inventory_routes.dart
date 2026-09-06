@@ -76,11 +76,13 @@ class InventoryRoutes {
     ),
     GoRoute(
       path: '/admin/inventory',
-      builder:
-          (context, state) => BlocProvider(
-            create: (_) => sl<InventoryCubit>(),
-            child: const InventoryScreen(),
-          ),
+      builder: (context, state) {
+        final search = state.uri.queryParameters['search'];
+        return BlocProvider(
+          create: (_) => sl<InventoryCubit>()..initStockTab(initialSearch: search),
+          child: InventoryScreen(initialSearch: search),
+        );
+      },
     ),
     GoRoute(
       path: '/admin/kardex',

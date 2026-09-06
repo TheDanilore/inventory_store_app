@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_repository.dart';
 
@@ -98,14 +99,15 @@ class InventoryRepositoryImpl implements InventoryRepository {
         .eq('is_active', true)
         .eq('products.is_active', true);
 
-    if (search.isNotEmpty) {
+    final cleanSearch = search.trim();
+    if (cleanSearch.isNotEmpty) {
       final matchingProducts = await _supabase
           .from('products')
           .select('id')
-          .ilike('name', '%$search%');
+          .ilike('name', '%$cleanSearch%');
       final pIds = (matchingProducts as List).map((e) => e['id']).toList();
 
-      final orConditions = ['sku.ilike.%$search%'];
+      final orConditions = ['sku.ilike.%$cleanSearch%'];
       if (pIds.isNotEmpty) {
         orConditions.add('product_id.in.(${pIds.join(',')})');
       }
@@ -494,14 +496,15 @@ class InventoryRepositoryImpl implements InventoryRepository {
         .eq('is_active', true)
         .eq('products.is_active', true);
 
-    if (search.isNotEmpty) {
+    final cleanSearch = search.trim();
+    if (cleanSearch.isNotEmpty) {
       final matchingProducts = await _supabase
           .from('products')
           .select('id')
-          .ilike('name', '%$search%');
+          .ilike('name', '%$cleanSearch%');
       final pIds = (matchingProducts as List).map((e) => e['id']).toList();
 
-      final orConditions = ['sku.ilike.%$search%'];
+      final orConditions = ['sku.ilike.%$cleanSearch%'];
       if (pIds.isNotEmpty) {
         orConditions.add('product_id.in.(${pIds.join(',')})');
       }
@@ -525,8 +528,13 @@ class InventoryRepositoryImpl implements InventoryRepository {
       query = query.eq('products.category_id', catId);
     }
 
-    final response = await query;
-    return (response as List).length;
+    try {
+      final response = await query.count(CountOption.exact);
+      return response.count;
+    } catch (e, stack) {
+      LoggerService.e('Error en getTotalGeneralStockCount', error: e, stackTrace: stack);
+      rethrow;
+    }
   }
 
   @override
@@ -589,7 +597,12 @@ class InventoryRepositoryImpl implements InventoryRepository {
       query = query.gt('expiry_date', plus90);
     }
 
-    final response = await query;
-    return (response as List).length;
+    try {
+      final response = await query.count(CountOption.exact);
+      return response.count;
+    } catch (e, stack) {
+      LoggerService.e('Error en getTotalBatchesCount', error: e, stackTrace: stack);
+      rethrow;
+    }
   }
 }
