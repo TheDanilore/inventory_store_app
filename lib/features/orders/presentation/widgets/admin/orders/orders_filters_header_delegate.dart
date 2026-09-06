@@ -6,6 +6,7 @@ import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 
 class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
   final TextEditingController searchCtrl;
+  final FocusNode? searchFocusNode;
   final Function(String) onSearchChanged;
   final OrdersCubit cubit;
   final OrdersState state;
@@ -18,6 +19,7 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   OrdersFiltersHeaderDelegate({
     required this.searchCtrl,
+    this.searchFocusNode,
     required this.onSearchChanged,
     required this.cubit,
     required this.state,
@@ -49,15 +51,17 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
               height: 42,
               child: TextField(
                 controller: searchCtrl,
+                focusNode: searchFocusNode,
                 onChanged: onSearchChanged,
                 style: const TextStyle(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
                 ),
                 decoration: InputDecoration(
                   hintText: 'Buscar por cliente o ID de pedido...',
-                  hintStyle: TextStyle(
-                    color: Colors.grey.shade400,
+                  hintStyle: const TextStyle(
+                    color: AppColors.textMuted,
                     fontSize: 13,
                   ),
                   prefixIcon: const Icon(
@@ -70,7 +74,7 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                           ? IconButton(
                             icon: const Icon(
                               Icons.cancel_rounded,
-                              color: Colors.grey,
+                              color: AppColors.textMuted,
                               size: 18,
                             ),
                             onPressed: () {
@@ -78,16 +82,46 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                               cubit.setSearchQuery('');
                             },
                           )
-                          : null,
+                          : Padding(
+                              padding: const EdgeInsets.only(right: 10),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(5),
+                                      border: Border.all(
+                                        color: AppColors.border,
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      '/',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textSecondary,
+                                        fontFamily: 'monospace',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
+                    borderSide: const BorderSide(color: AppColors.border),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
+                    borderSide: const BorderSide(color: AppColors.border),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),

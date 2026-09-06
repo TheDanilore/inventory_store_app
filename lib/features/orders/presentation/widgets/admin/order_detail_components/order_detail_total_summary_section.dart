@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_section_card.dart';
 
 class OrderDetailTotalSummarySection extends StatelessWidget {
@@ -56,15 +57,15 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
                     fontSize: 13,
                     fontWeight:
                         isEmphasized ? FontWeight.w700 : FontWeight.w500,
-                    color: Colors.grey.shade700,
+                    color: isEmphasized ? AppColors.textPrimary : AppColors.textSecondary,
                   ),
                 ),
                 if (hint != null)
                   Text(
                     hint,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 10,
-                      color: Colors.orange.shade600,
+                      color: AppColors.amberDark,
                     ),
                   ),
               ],
@@ -73,9 +74,10 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: isEmphasized ? 15 : 13,
-              fontWeight: FontWeight.bold,
-              color: valueColor ?? Colors.black87,
+              fontSize: isEmphasized ? 16 : 13,
+              fontWeight: isEmphasized ? FontWeight.w900 : FontWeight.w700,
+              color: valueColor ?? AppColors.textPrimary,
+              letterSpacing: isEmphasized ? -0.3 : 0,
             ),
           ),
         ],
@@ -96,7 +98,7 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
             _buildRow(
               'Descuento por monedas',
               '- S/ ${_appliedDiscount.toStringAsFixed(2)}',
-              valueColor: Colors.green.shade800,
+              valueColor: AppColors.successDark,
               hint:
                   capApplied
                       ? 'Cap 50% aplicado (S/ ${_rawDiscount.toStringAsFixed(2)} → S/ ${_appliedDiscount.toStringAsFixed(2)})'
@@ -107,14 +109,14 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
             _buildRow(
               'Descuento adicional',
               '- S/ ${discountAmount.toStringAsFixed(2)}',
-              valueColor: Colors.green.shade800,
+              valueColor: AppColors.successDark,
             ),
-          const Divider(height: 16),
+          const Divider(height: 16, color: AppColors.border),
           _buildRow(
             'Total final',
             'S/ ${_totalFinal.toStringAsFixed(2)}',
             isEmphasized: true,
-            valueColor: Colors.teal,
+            valueColor: AppColors.teal,
           ),
           const SizedBox(height: 6),
           if (isLoyaltyEnabled || pointsEarned > 0)

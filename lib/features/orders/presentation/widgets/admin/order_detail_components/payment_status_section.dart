@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_section_card.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -265,60 +266,56 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
 
     return OrderDetailSectionCard(
       title: 'Estado de Pago',
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: badgeColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+        ),
+        child: Text(
+          badgeLabel,
+          style: TextStyle(
+            color: badgeColor,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Badge de estado
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: badgeColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  badgeLabel,
-                  style: TextStyle(
-                    color: badgeColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Fila de totales
+          // Fila de métricas Bento Grid
           Row(
             children: [
               Expanded(
                 child: _PStatRow(
                   label: 'Total',
                   value: 'S/ ${widget.totalAmount.toStringAsFixed(2)}',
+                  icon: Icons.receipt_outlined,
                 ),
               ),
+              const SizedBox(width: 8),
               Expanded(
                 child: _PStatRow(
                   label: 'Pagado',
                   value: 'S/ ${widget.amountPaid.toStringAsFixed(2)}',
-                  valueColor: Colors.teal,
+                  valueColor: AppColors.teal,
+                  icon: Icons.check_circle_outline_rounded,
                 ),
               ),
-              if (widget.paymentStatus != 'PAID')
+              if (widget.paymentStatus != 'PAID') ...[
+                const SizedBox(width: 8),
                 Expanded(
                   child: _PStatRow(
                     label: 'Pendiente',
                     value: 'S/ ${pendingAmount.toStringAsFixed(2)}',
-                    valueColor: Colors.deepOrange,
+                    valueColor: AppColors.error,
                     bold: true,
+                    icon: Icons.pending_actions_rounded,
                   ),
                 ),
+              ],
             ],
           ),
 
@@ -753,55 +750,58 @@ class _AbonoQuickChip extends StatelessWidget {
     final Color textColor;
 
     if (isSelected) {
-      bgColor = isTotal ? Colors.teal : Colors.teal;
-      borderColor = Colors.teal;
+      bgColor = AppColors.teal;
+      borderColor = AppColors.teal;
       textColor = Colors.white;
     } else if (isTotal) {
-      bgColor = Colors.teal.withValues(alpha: 0.07);
-      borderColor = Colors.teal.withValues(alpha: 0.4);
-      textColor = Colors.teal.shade700;
+      bgColor = AppColors.teal.withValues(alpha: 0.08);
+      borderColor = AppColors.teal.withValues(alpha: 0.35);
+      textColor = AppColors.tealDark;
     } else {
-      bgColor = Colors.grey.shade50;
-      borderColor = Colors.grey.shade300;
-      textColor = Colors.grey.shade600;
+      bgColor = const Color(0xFFF8FAFC);
+      borderColor = AppColors.border;
+      textColor = AppColors.textSecondary;
     }
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: borderColor, width: isSelected ? 1.5 : 1),
-          boxShadow:
-              isSelected
-                  ? [
-                    BoxShadow(
-                      color: Colors.teal.withValues(alpha: 0.2),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                  : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isSelected) ...[
-              Icon(Icons.check_rounded, size: 11, color: textColor),
-              const SizedBox(width: 4),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: textColor,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor, width: isSelected ? 1.5 : 1),
+            boxShadow:
+                isSelected
+                    ? [
+                      BoxShadow(
+                        color: AppColors.teal.withValues(alpha: 0.2),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                    : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isSelected) ...[
+                Icon(Icons.check_rounded, size: 12, color: textColor),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -813,27 +813,57 @@ class _PStatRow extends StatelessWidget {
   final String value;
   final Color? valueColor;
   final bool bold;
+  final IconData? icon;
+
   const _PStatRow({
     required this.label,
     required this.value,
     this.valueColor,
     this.bold = false,
+    this.icon,
   });
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
-            color: valueColor ?? Colors.black87,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 12, color: AppColors.textMuted),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
+              color: valueColor ?? AppColors.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

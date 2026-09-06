@@ -344,11 +344,11 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                   ? null
                   : MediaQuery.of(context).size.height * 0.9,
           decoration: BoxDecoration(
-            color: widget.isEmbedded ? Colors.transparent : Colors.grey.shade50,
+            color: widget.isEmbedded ? const Color(0xFFF8FAFC) : const Color(0xFFF8FAFC),
             borderRadius:
                 widget.isEmbedded
                     ? BorderRadius.zero
-                    : const BorderRadius.vertical(top: Radius.circular(20)),
+                    : const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: SafeArea(
             child: Column(
@@ -356,11 +356,11 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                 if (!widget.isEmbedded)
                   Center(
                     child: Container(
-                      margin: const EdgeInsets.only(top: 10, bottom: 5),
-                      width: 40,
+                      margin: const EdgeInsets.only(top: 10, bottom: 6),
+                      width: 44,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
+                        color: const Color(0xFFCBD5E1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
@@ -823,42 +823,58 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                       final actualTotal = totalFinal < 0 ? 0.0 : totalFinal;
 
                       return Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           border: Border(
-                            top: BorderSide(color: Colors.grey.shade200),
+                            top: BorderSide(color: AppColors.border),
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
+                              color: Colors.black.withValues(alpha: 0.03),
                               blurRadius: 10,
-                              offset: const Offset(0, -5),
+                              offset: const Offset(0, -3),
                             ),
                           ],
                         ),
                         child: Row(
                           children: [
                             Expanded(
-                              flex: 3,
+                              flex: 4,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    'Total',
+                                  const Text(
+                                    'Total del Pedido',
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  Text(
-                                    'S/ ${actualTotal.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.teal,
+                                  const SizedBox(height: 2),
+                                  RichText(
+                                    text: TextSpan(
+                                      children: [
+                                        const TextSpan(
+                                          text: 'S/ ',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.teal,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: actualTotal.toStringAsFixed(2),
+                                          style: const TextStyle(
+                                            fontSize: 19,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.textPrimary,
+                                            letterSpacing: -0.4,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -868,77 +884,93 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                             if (_isEditing)
                               Expanded(
                                 flex: 5,
-                                child: ElevatedButton(
-                                  onPressed:
-                                      state.isSaving
-                                          ? null
-                                          : () =>
-                                              _saveChanges(pointsToSolesRatio),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: ElevatedButton(
+                                    onPressed:
+                                        state.isSaving
+                                            ? null
+                                            : () =>
+                                                _saveChanges(pointsToSolesRatio),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                                    child:
+                                        state.isSaving
+                                            ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                            : const Row(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Icon(Icons.save_rounded, size: 17),
+                                                SizedBox(width: 6),
+                                                Text(
+                                                  'Guardar',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 13.5,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                   ),
-                                  child:
-                                      state.isSaving
-                                          ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                          : const Text(
-                                            'Guardar',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
                                 ),
                               )
                             else if (state.isCompleted)
                               Expanded(
                                 flex: 5,
-                                child: ElevatedButton.icon(
-                                  onPressed:
-                                      state.isReturning ? null : _confirmReturn,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red.shade50,
-                                    foregroundColor: Colors.red.shade700,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: OutlinedButton.icon(
+                                    onPressed:
+                                        state.isReturning ? null : _confirmReturn,
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.error,
+                                      backgroundColor: AppColors.error.withValues(alpha: 0.04),
                                       side: BorderSide(
-                                        color: Colors.red.shade200,
+                                        color: AppColors.error.withValues(alpha: 0.35),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 13,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
                                     ),
-                                  ),
-                                  icon:
-                                      state.isReturning
-                                          ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.red,
+                                    icon:
+                                        state.isReturning
+                                            ? const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: AppColors.error,
+                                              ),
+                                            )
+                                            : const Icon(
+                                              Icons.assignment_return_rounded,
+                                              size: 16,
                                             ),
-                                          )
-                                          : const Icon(
-                                            Icons.assignment_return_rounded,
-                                          ),
-                                  label: const Text(
-                                    'Devolución',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
+                                    label: const Text(
+                                      'Devolución',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -946,19 +978,24 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                             else
                               Expanded(
                                 flex: 5,
-                                child: TextButton(
-                                  onPressed:
-                                      () async =>
-                                          await _handlePop(state.wasModified),
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: TextButton(
+                                    onPressed:
+                                        () async =>
+                                            await _handlePop(state.wasModified),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 13,
+                                      ),
                                     ),
-                                  ),
-                                  child: const Text(
-                                    'Cerrar',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
+                                    child: const Text(
+                                      'Cerrar',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textSecondary,
+                                        fontSize: 13.5,
+                                      ),
                                     ),
                                   ),
                                 ),

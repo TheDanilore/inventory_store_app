@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_section_card.dart';
 
 class OrderDetailCreditSection extends StatelessWidget {
@@ -14,21 +15,21 @@ class OrderDetailCreditSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (customerId == null) {
-      return OrderDetailSectionCard(
-        title: 'Crédito',
+      return const OrderDetailSectionCard(
+        title: 'Crédito del Cliente',
         child: Text(
           'Sin cliente asignado para mostrar crédito.',
-          style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
         ),
       );
     }
 
     if (creditInfo == null) {
-      return OrderDetailSectionCard(
-        title: 'Crédito',
+      return const OrderDetailSectionCard(
+        title: 'Crédito del Cliente',
         child: Text(
           'Este cliente no tiene línea de crédito registrada.',
-          style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
         ),
       );
     }
@@ -39,59 +40,52 @@ class OrderDetailCreditSection extends StatelessWidget {
     final available = (limit - debt).clamp(0.0, double.infinity);
 
     return OrderDetailSectionCard(
-      title: 'Resumen de Línea de Crédito',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isActive ? Colors.green.shade50 : Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color:
-                        isActive ? Colors.green.shade200 : Colors.red.shade200,
-                  ),
-                ),
-                child: Text(
-                  isActive ? 'Crédito activo' : 'Crédito inactivo',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color:
-                        isActive ? Colors.green.shade700 : Colors.red.shade700,
-                  ),
-                ),
-              ),
-            ],
+      title: 'Línea de Crédito',
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.success.withValues(alpha: 0.1) : AppColors.error.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isActive ? AppColors.success.withValues(alpha: 0.25) : AppColors.error.withValues(alpha: 0.25),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _CreditStatCell(
-                  label: 'Límite Global',
-                  value: 'S/ ${limit.toStringAsFixed(2)}',
-                ),
-              ),
-              Expanded(
-                child: _CreditStatCell(
-                  label: 'Deuda Total',
-                  value: 'S/ ${debt.toStringAsFixed(2)}',
-                  valueColor: debt > 0 ? Colors.deepOrange : Colors.teal,
-                  bold: debt > 0,
-                ),
-              ),
-              Expanded(
-                child: _CreditStatCell(
-                  label: 'Disponible',
-                  value: 'S/ ${available.toStringAsFixed(2)}',
-                  valueColor: available > 0 ? Colors.teal : Colors.grey,
-                ),
-              ),
-            ],
+        ),
+        child: Text(
+          isActive ? 'Crédito activo' : 'Inactivo',
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w800,
+            color: isActive ? AppColors.successDark : AppColors.error,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _CreditStatCell(
+              label: 'Límite Global',
+              value: 'S/ ${limit.toStringAsFixed(2)}',
+              icon: Icons.account_balance_wallet_outlined,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _CreditStatCell(
+              label: 'Deuda Total',
+              value: 'S/ ${debt.toStringAsFixed(2)}',
+              valueColor: debt > 0 ? AppColors.error : AppColors.teal,
+              bold: debt > 0,
+              icon: Icons.credit_score_rounded,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _CreditStatCell(
+              label: 'Disponible',
+              value: 'S/ ${available.toStringAsFixed(2)}',
+              valueColor: available > 0 ? AppColors.teal : AppColors.textMuted,
+              icon: Icons.check_circle_outline_rounded,
+            ),
           ),
         ],
       ),
@@ -104,30 +98,57 @@ class _CreditStatCell extends StatelessWidget {
   final String value;
   final Color? valueColor;
   final bool bold;
+  final IconData? icon;
 
   const _CreditStatCell({
     required this.label,
     required this.value,
     this.valueColor,
     this.bold = false,
+    this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
-            color: valueColor ?? Colors.black87,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 12, color: AppColors.textMuted),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
+              color: valueColor ?? AppColors.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

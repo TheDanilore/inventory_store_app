@@ -30,49 +30,89 @@ class OrderDetailStatusSection extends StatelessWidget {
     if (!isEditing) {
       Color badgeColor;
       String label;
+      IconData icon;
+      String subtitle;
       switch (currentStatus.toUpperCase()) {
         case 'COMPLETED':
-          badgeColor = Colors.teal;
+          badgeColor = AppColors.teal;
           label = 'COMPLETADO';
+          icon = Icons.check_circle_rounded;
+          subtitle = 'Pedido completado y procesado en inventario';
           break;
         case 'PENDING':
-          badgeColor = Colors.orange.shade700;
-          label = 'PENDIENTE (Borrador)';
+          badgeColor = AppColors.amberDark;
+          label = 'BORRADOR';
+          icon = Icons.edit_note_rounded;
+          subtitle = 'Borrador editable antes de confirmar cobro';
           break;
         case 'CANCELLED':
-          badgeColor = Colors.red;
+          badgeColor = AppColors.error;
           label = 'CANCELADO';
+          icon = Icons.cancel_rounded;
+          subtitle = 'Pedido cancelado sin efecto en inventario';
           break;
         case 'RETURNED':
-          badgeColor = Colors.purple;
+          badgeColor = Colors.purple.shade700;
           label = 'DEVUELTO';
+          icon = Icons.rotate_left_rounded;
+          subtitle = 'Venta reembolsada o devuelta';
           break;
         default:
-          badgeColor = Colors.grey;
+          badgeColor = AppColors.slate;
           label = currentStatus;
+          icon = Icons.info_outline_rounded;
+          subtitle = 'Estado actual del pedido';
       }
 
       return OrderDetailSectionCard(
         title: 'Estado del Pedido',
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: badgeColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
-              ),
-              child: Text(
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: badgeColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: badgeColor.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 12, color: badgeColor),
+              const SizedBox(width: 4),
+              Text(
                 label,
                 style: TextStyle(
                   color: badgeColor,
                   fontWeight: FontWeight.w800,
-                  fontSize: 14,
+                  fontSize: 11,
+                  letterSpacing: 0.4,
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: badgeColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

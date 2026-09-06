@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
 class OrderDetailSkeleton extends StatelessWidget {
@@ -30,7 +31,7 @@ class OrderDetailSkeleton extends StatelessWidget {
             ),
           ],
         ),
-        const Divider(height: 32),
+        const Divider(height: 32, color: AppColors.divider),
 
         // Cards
         for (int i = 0; i < 3; i++) ...[
@@ -38,9 +39,9 @@ class OrderDetailSkeleton extends StatelessWidget {
             margin: const EdgeInsets.symmetric(vertical: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: AppColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,31 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_section_card.dart';
 
 class OrderDetailPointInfo extends StatelessWidget {
   final String title;
   final String value;
   final Color color;
+  final IconData icon;
+
   const OrderDetailPointInfo({
     super.key,
     required this.title,
     required this.value,
     required this.color,
+    required this.icon,
   });
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: color),
           ),
-        ),
-      ],
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -94,7 +131,8 @@ class _OrderDetailPointsSectionState extends State<OrderDetailPointsSection> {
                 child: OrderDetailPointInfo(
                   title: 'Monedas usadas',
                   value: _localPointsUsed.toString(),
-                  color: Colors.red,
+                  color: AppColors.error,
+                  icon: Icons.stars_rounded,
                 ),
               ),
               const SizedBox(width: 12),
@@ -103,7 +141,8 @@ class _OrderDetailPointsSectionState extends State<OrderDetailPointsSection> {
                   title: 'Descuento',
                   value:
                       'S/ ${(_localPointsUsed * widget.pointsToSolesRatio).toStringAsFixed(2)}',
-                  color: Colors.teal,
+                  color: AppColors.teal,
+                  icon: Icons.savings_rounded,
                 ),
               ),
             ],

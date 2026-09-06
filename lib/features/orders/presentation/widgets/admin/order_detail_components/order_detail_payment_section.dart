@@ -69,25 +69,27 @@ class OrderDetailPaymentSection extends StatelessWidget {
           if (isCrediToLocked) ...[
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
-                ),
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.lock_rounded, size: 13, color: Color(0xFFB45309)),
-                  SizedBox(width: 6),
+                  Icon(
+                    Icons.lock_outline_rounded,
+                    size: 14,
+                    color: AppColors.slate,
+                  ),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Venta a crédito completada. El método de pago no puede modificarse.',
+                      'Venta a crédito completada · El método de pago está protegido.',
                       style: TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF92400E),
+                        fontSize: 11.5,
+                        color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

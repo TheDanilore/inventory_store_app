@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class OrderDetailHeaderRow extends StatelessWidget {
   final String orderId;
@@ -18,8 +21,19 @@ class OrderDetailHeaderRow extends StatelessWidget {
     required this.onShare,
   });
 
+  void _copyOrderId(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: orderId));
+    AppSnackbar.show(
+      context,
+      message: 'ID de pedido copiado al portapapeles',
+      type: SnackbarType.info,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final shortId = orderId.length > 8 ? orderId.substring(0, 8).toUpperCase() : orderId;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -30,34 +44,133 @@ class OrderDetailHeaderRow extends StatelessWidget {
             children: [
               const Text(
                 'Detalle del Pedido',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 2),
-              SelectableText(
-                'ID: $orderId',
                 style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey.shade500,
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.w600,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => _copyOrderId(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.copy_rounded,
+                          size: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'ID: $shortId',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '(Copiar)',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color: AppColors.tealDark,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
         ),
         Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              icon: const Icon(Icons.print_rounded, color: Colors.blueGrey),
-              onPressed: onShare,
-              tooltip: 'Imprimir Ticket',
-            ),
-            if (canToggleEdit)
-              IconButton(
-                icon: Icon(isEditing ? Icons.close : Icons.edit),
-                onPressed: onToggleEditing,
-                tooltip: isEditing ? 'Cancelar edición' : 'Editar pedido',
+            Tooltip(
+              message: 'Imprimir Ticket (Ctrl + P)',
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: InkWell(
+                  onTap: onShare,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.print_rounded,
+                          size: 15,
+                          color: AppColors.textPrimary,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Ticket',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
+            ),
+            if (canToggleEdit) ...[
+              const SizedBox(width: 8),
+              Tooltip(
+                message: isEditing ? 'Cancelar edición' : 'Editar pedido',
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: InkWell(
+                    onTap: onToggleEditing,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: isEditing
+                            ? AppColors.error.withValues(alpha: 0.1)
+                            : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isEditing
+                              ? AppColors.error.withValues(alpha: 0.3)
+                              : AppColors.border,
+                        ),
+                      ),
+                      child: Icon(
+                        isEditing ? Icons.close_rounded : Icons.edit_rounded,
+                        size: 16,
+                        color: isEditing ? AppColors.error : AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ],

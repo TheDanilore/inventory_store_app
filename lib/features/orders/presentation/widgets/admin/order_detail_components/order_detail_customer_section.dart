@@ -1,23 +1,113 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_section_card.dart';
 
 class OrderDetailInfoBox extends StatelessWidget {
   final String value;
-  const OrderDetailInfoBox({super.key, required this.value});
+  final bool isRegistered;
+
+  const OrderDetailInfoBox({
+    super.key,
+    required this.value,
+    this.isRegistered = false,
+  });
+
   @override
   Widget build(BuildContext context) {
+    final cleanValue = value.trim().isNotEmpty ? value.trim() : 'Cliente general';
+    final parts = cleanValue.split(' ').where((p) => p.isNotEmpty).toList();
+    final initials = parts.isNotEmpty
+        ? parts.take(2).map((p) => p[0]).join().toUpperCase()
+        : '?';
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: AppColors.border),
       ),
-      child: Text(value),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: isRegistered
+                  ? AppColors.teal.withValues(alpha: 0.12)
+                  : const Color(0xFFE2E8F0),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(
+                initials,
+                style: TextStyle(
+                  color: isRegistered ? AppColors.teal : AppColors.textSecondary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  cleanValue,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isRegistered ? 'Cliente registrado' : 'Cliente mostrador · Venta rápida',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isRegistered)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.teal.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppColors.teal.withValues(alpha: 0.25)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.verified_rounded, size: 12, color: AppColors.teal),
+                  SizedBox(width: 4),
+                  Text(
+                    'Registrado',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.teal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -69,9 +159,13 @@ class OrderDetailCustomerSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!isEditing) {
+      final isRegistered = selectedCustomerId != null && selectedCustomerId!.isNotEmpty;
       return OrderDetailSectionCard(
         title: 'Cliente',
-        child: OrderDetailInfoBox(value: selectedCustomerLabel),
+        child: OrderDetailInfoBox(
+          value: selectedCustomerLabel,
+          isRegistered: isRegistered,
+        ),
       );
     }
 

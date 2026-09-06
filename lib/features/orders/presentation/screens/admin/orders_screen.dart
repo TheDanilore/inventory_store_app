@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 
@@ -32,6 +33,7 @@ class OrdersScreen extends StatefulWidget {
 
 class _OrdersScreenState extends State<OrdersScreen> {
   final _searchCtrl = TextEditingController();
+  final _searchFocusNode = FocusNode();
   Timer? _debounce;
   OrderEntity? _selectedOrder;
 
@@ -50,8 +52,66 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _searchFocusNode.dispose();
     _debounce?.cancel();
     super.dispose();
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    // Atajo '/' para enfocar el buscador si no está enfocado
+    if (event.logicalKey == LogicalKeyboardKey.slash && !_searchFocusNode.hasFocus) {
+      _searchFocusNode.requestFocus();
+      return KeyEventResult.handled;
+    }
+
+    // Atajo 'Escape' para desenfocar el buscador
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      if (_searchFocusNode.hasFocus) {
+        _searchFocusNode.unfocus();
+        return KeyEventResult.handled;
+      }
+    }
+
+    // Atajo 'Ctrl + P' o 'Cmd + P' para imprimir ticket del pedido seleccionado
+    final isControlOrMeta = HardwareKeyboard.instance.isControlPressed ||
+        HardwareKeyboard.instance.isMetaPressed;
+    if (isControlOrMeta && event.logicalKey == LogicalKeyboardKey.keyP) {
+      if (_selectedOrder != null) {
+        _printOrderTicket(_selectedOrder!);
+        return KeyEventResult.handled;
+      }
+    }
+
+    // Navegación con flechas [↑ / ↓] entre pedidos de la lista
+    final cubit = context.read<OrdersCubit>();
+    final orders = cubit.state.orders;
+    if (orders.isNotEmpty && !_searchFocusNode.hasFocus) {
+      final currentIndex = _selectedOrder != null
+          ? orders.indexWhere((o) => o.id == _selectedOrder!.id)
+          : 0;
+
+      if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+        final nextIndex = (currentIndex + 1).clamp(0, orders.length - 1);
+        if (nextIndex != currentIndex) {
+          setState(() {
+            _selectedOrder = orders[nextIndex];
+          });
+          return KeyEventResult.handled;
+        }
+      } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+        final prevIndex = (currentIndex - 1).clamp(0, orders.length - 1);
+        if (prevIndex != currentIndex) {
+          setState(() {
+            _selectedOrder = orders[prevIndex];
+          });
+          return KeyEventResult.handled;
+        }
+      }
+    }
+
+    return KeyEventResult.ignored;
   }
 
   void _onSearchChanged(String value) {
@@ -273,6 +333,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     floating: true,
                     delegate: OrdersFiltersHeaderDelegate(
                       searchCtrl: _searchCtrl,
+                      searchFocusNode: _searchFocusNode,
                       onSearchChanged: _onSearchChanged,
                       cubit: cubit,
                       state: state,
@@ -292,38 +353,42 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 ],
               );
 
-              final content = Column(
-                children: [
-                  Expanded(
-                    child: RefreshIndicator(
-                      color: AppColors.primary,
-                      onRefresh: () async => cubit.loadOrders(reset: true),
-                      child: scrollContent,
-                    ),
-                  ),
-                  if (state.totalPages > 1 && !state.isLoading && state.errorMessage.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, -4),
-                          ),
-                        ],
+              final content = Focus(
+                onKeyEvent: _handleKeyEvent,
+                autofocus: true,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: RefreshIndicator(
+                        color: AppColors.primary,
+                        onRefresh: () async => cubit.loadOrders(reset: true),
+                        child: scrollContent,
                       ),
-                      child: SafeArea(
-                        top: false,
-                        child: AdminPageBlocks(
-                          currentPage: state.currentPage,
-                          totalPages: state.totalPages,
-                          onPageChanged: cubit.goToPage,
+                    ),
+                    if (state.totalPages > 1 && !state.isLoading && state.errorMessage.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, -4),
+                            ),
+                          ],
+                        ),
+                        child: SafeArea(
+                          top: false,
+                          child: AdminPageBlocks(
+                            currentPage: state.currentPage,
+                            totalPages: state.totalPages,
+                            onPageChanged: cubit.goToPage,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               );
 
               if (isWide) {
@@ -340,7 +405,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     Expanded(
                       flex: 58,
                       child: Container(
-                        color: Colors.white,
+                        color: const Color(0xFFF8FAFC),
                         child:
                             currentSelectedOrder == null
                                 ? const AppEmptyState(
@@ -436,24 +501,51 @@ class _OrdersScreenState extends State<OrdersScreen> {
         // Encabezado de contador de resultados (Index 0)
         if (index == 0) {
           return Padding(
-            padding: const EdgeInsets.fromLTRB(4, 8, 4, 16),
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 14),
             child: Row(
               children: [
                 Text(
-                  'Mostrando resultados',
-                  style: TextStyle(
+                  '${pageItems.length} pedidos en esta página',
+                  style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (isWide) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: const Text(
+                      '↑ ↓ navegar',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                ],
                 const Spacer(),
-                Text(
-                  'Pág. ${state.currentPage + 1} / $totalPages',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Text(
+                    'Pág. ${state.currentPage + 1} / $totalPages',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
