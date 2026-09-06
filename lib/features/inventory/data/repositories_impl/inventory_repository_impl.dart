@@ -11,54 +11,59 @@ class InventoryRepositoryImpl implements InventoryRepository {
   /// Retorna las métricas globales para Stock (Stock total, Variantes, Low stock)
   @override
   Future<Map<String, dynamic>> getGeneralStockMetrics({String? warehouseId}) async {
-    final response = await _supabase
-        .from('product_variants')
-        .select('''
-      id, reorder_point, unit_cost,
-      products!inner(stock_control, is_active),
-      warehouse_stock_batches(available_quantity, warehouse_id)
-    ''')
-        .eq('is_active', true)
-        .eq('products.is_active', true);
+    try {
+      final response = await _supabase
+          .from('product_variants')
+          .select('''
+        id, reorder_point, unit_cost,
+        products!inner(stock_control, is_active),
+        warehouse_stock_batches(available_quantity, warehouse_id)
+      ''')
+          .eq('is_active', true)
+          .eq('products.is_active', true);
 
-    int totalStock = 0;
-    int lowStockCount = 0;
-    double totalCost = 0.0;
-    int totalVariants = (response as List).length;
+      int totalStock = 0;
+      int lowStockCount = 0;
+      double totalCost = 0.0;
+      int totalVariants = (response as List).length;
 
-    for (final raw in response) {
-      final stockControl = raw['products']['stock_control'] as bool? ?? true;
-      final reorderPoint = raw['reorder_point'] as int? ?? 3;
+      for (final raw in response) {
+        final stockControl = raw['products']['stock_control'] as bool? ?? true;
+        final reorderPoint = raw['reorder_point'] as int? ?? 3;
 
-      // El costo unitario ahora se obtiene exclusivamente de la variante
-      final double finalCost = (raw['unit_cost'] as num?)?.toDouble() ?? 0.0;
+        // El costo unitario ahora se obtiene exclusivamente de la variante
+        final double finalCost = (raw['unit_cost'] as num?)?.toDouble() ?? 0.0;
 
-      int variantStock = 0;
-      final batches = raw['warehouse_stock_batches'] as List? ?? [];
-      for (final b in batches) {
-        if (warehouseId != null && warehouseId.isNotEmpty) {
-          if (b['warehouse_id'] != warehouseId) continue;
+        int variantStock = 0;
+        final batches = raw['warehouse_stock_batches'] as List? ?? [];
+        for (final b in batches) {
+          if (warehouseId != null && warehouseId.isNotEmpty) {
+            if (b['warehouse_id'] != warehouseId) continue;
+          }
+          variantStock += (b['available_quantity'] as num?)?.toInt() ?? 0;
         }
-        variantStock += (b['available_quantity'] as num?)?.toInt() ?? 0;
+
+        if (stockControl) {
+          totalStock += variantStock;
+          totalCost += variantStock * finalCost;
+          if (variantStock <= reorderPoint && variantStock > 0) {
+            lowStockCount++;
+          } else if (variantStock <= 0) {
+            lowStockCount++;
+          }
+        }
       }
 
-      if (stockControl) {
-        totalStock += variantStock;
-        totalCost += variantStock * finalCost;
-        if (variantStock <= reorderPoint && variantStock > 0) {
-          lowStockCount++;
-        } else if (variantStock <= 0) {
-          lowStockCount++;
-        }
-      }
+      return {
+        'totalVariants': totalVariants,
+        'totalStock': totalStock,
+        'lowStockCount': lowStockCount,
+        'totalCost': totalCost,
+      };
+    } catch (e, stack) {
+      LoggerService.e('Error en getGeneralStockMetrics', error: e, stackTrace: stack);
+      rethrow;
     }
-
-    return {
-      'totalVariants': totalVariants,
-      'totalStock': totalStock,
-      'lowStockCount': lowStockCount,
-      'totalCost': totalCost,
-    };
   }
 
   /// Retorna las categorías activas para el filtro
@@ -409,76 +414,82 @@ class InventoryRepositoryImpl implements InventoryRepository {
     String search = '',
     String? warehouseId,
   }) async {
-    var query = _supabase
-        .from('warehouse_stock_batches')
-        .select('''
-      expiry_date,
-      products!inner(uses_batches)
-    ''')
-        .gt('available_quantity', 0)
-        .eq('products.uses_batches', true);
+    try {
+      var query = _supabase
+          .from('warehouse_stock_batches')
+          .select('''
+        expiry_date,
+        products!inner(uses_batches)
+      ''')
+          .gt('available_quantity', 0)
+          .eq('products.uses_batches', true);
 
-    if (warehouseId != null && warehouseId.isNotEmpty) {
-      query = query.eq('warehouse_id', warehouseId);
-    }
-
-    if (search.isNotEmpty) {
-      final matchingProducts = await _supabase
-          .from('products')
-          .select('id')
-          .ilike('name', '%$search%');
-      final pIds = (matchingProducts as List).map((e) => e['id']).toList();
-
-      final matchingVariants = await _supabase
-          .from('product_variants')
-          .select('id')
-          .ilike('sku', '%$search%');
-      final vIds = (matchingVariants as List).map((e) => e['id']).toList();
-
-      final orConditions = ['batch_number.ilike.%$search%'];
-      if (pIds.isNotEmpty) {
-        orConditions.add('product_id.in.(${pIds.join(',')})');
+      if (warehouseId != null && warehouseId.isNotEmpty) {
+        query = query.eq('warehouse_id', warehouseId);
       }
-      if (vIds.isNotEmpty) {
-        orConditions.add('variant_id.in.(${vIds.join(',')})');
+
+      final cleanSearch = search.trim();
+      if (cleanSearch.isNotEmpty) {
+        final matchingProducts = await _supabase
+            .from('products')
+            .select('id')
+            .ilike('name', '%$cleanSearch%');
+        final pIds = (matchingProducts as List).map((e) => e['id']).toList();
+
+        final matchingVariants = await _supabase
+            .from('product_variants')
+            .select('id')
+            .ilike('sku', '%$cleanSearch%');
+        final vIds = (matchingVariants as List).map((e) => e['id']).toList();
+
+        final orConditions = ['batch_number.ilike.%$cleanSearch%'];
+        if (pIds.isNotEmpty) {
+          orConditions.add('product_id.in.(${pIds.join(',')})');
+        }
+        if (vIds.isNotEmpty) {
+          orConditions.add('variant_id.in.(${vIds.join(',')})');
+        }
+        query = query.or(orConditions.join(','));
       }
-      query = query.or(orConditions.join(','));
-    }
 
-    final response = await query;
+      final response = await query;
 
-    int countVencido = 0;
-    int countCritico = 0;
-    int countProximo = 0;
-    int countNormal = 0;
+      int countVencido = 0;
+      int countCritico = 0;
+      int countProximo = 0;
+      int countNormal = 0;
 
-    final now = DateTime.now();
+      final now = DateTime.now();
 
-    for (final raw in (response as List)) {
-      final ed = raw['expiry_date'] as String?;
-      if (ed == null) continue;
+      for (final raw in (response as List)) {
+        final ed = raw['expiry_date'] as String?;
+        if (ed == null) continue;
 
-      final expiry = DateTime.tryParse(ed);
-      if (expiry == null) continue;
+        final expiry = DateTime.tryParse(ed);
+        if (expiry == null) continue;
 
-      final diff = expiry.difference(now).inDays;
-      if (diff < 0) {
-        countVencido++;
-      } else if (diff <= 30) {
-        countCritico++;
-      } else if (diff <= 90) {
-        countProximo++;
-      } else {
-        countNormal++;
+        final diff = expiry.difference(now).inDays;
+        if (diff < 0) {
+          countVencido++;
+        } else if (diff <= 30) {
+          countCritico++;
+        } else if (diff <= 90) {
+          countProximo++;
+        } else {
+          countNormal++;
+        }
       }
-    }
 
-    return {
-      'vencido': countVencido,
-      'critico': countCritico,
-      'proximo': countProximo,
-      'normal': countNormal,
-    };
+      return {
+        'vencido': countVencido,
+        'critico': countCritico,
+        'proximo': countProximo,
+        'normal': countNormal,
+      };
+    } catch (e, stack) {
+      LoggerService.e('Error en getBatchMetrics', error: e, stackTrace: stack);
+      rethrow;
+    }
   }
 
   @override
@@ -602,6 +613,147 @@ class InventoryRepositoryImpl implements InventoryRepository {
       return response.count;
     } catch (e, stack) {
       LoggerService.e('Error en getTotalBatchesCount', error: e, stackTrace: stack);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<InventoryStockItem>> getAllStockForExport({String? warehouseId}) async {
+    try {
+      const chunkSize = 1000;
+      int from = 0;
+      bool hasMore = true;
+      final List<dynamic> allVariants = [];
+
+      while (hasMore) {
+        final chunk = await _supabase
+            .from('product_variants')
+            .select('''
+          id, sku, sale_price, unit_cost, wholesale_price, wholesale_min_quantity, reorder_point,
+          variant_attribute_values(attribute_values(value)),
+          products!inner(
+            id, name, product_type, uses_batches, stock_control,
+            categories(name)
+          ),
+          warehouse_stock_batches(
+            id, batch_number, expiry_date, available_quantity, warehouse_id, supplier_id,
+            warehouses(name), suppliers(name)
+          )
+        ''')
+            .eq('is_active', true)
+            .eq('products.is_active', true)
+            .order('created_at', ascending: false)
+            .range(from, from + chunkSize - 1);
+
+        final chunkList = chunk as List;
+        allVariants.addAll(chunkList);
+        if (chunkList.length < chunkSize) {
+          hasMore = false;
+        } else {
+          from += chunkSize;
+        }
+      }
+
+      final List<InventoryStockItem> result = [];
+
+      for (final rawVariant in allVariants) {
+        final variant = rawVariant as Map<String, dynamic>;
+        final prod = variant['products'] as Map<String, dynamic>;
+
+        final variantId = variant['id'] as String;
+        final usesBatches = prod['uses_batches'] as bool? ?? false;
+        final stockControl = prod['stock_control'] as bool? ?? true;
+        final catName =
+            (prod['categories'] as Map<String, dynamic>?)?['name'] as String? ??
+            'Sin categoría';
+
+        final variantUnitCost =
+            (variant['unit_cost'] as num?)?.toDouble() ?? 0.0;
+        final variantSalePrice =
+            (variant['sale_price'] as num?)?.toDouble() ?? 0.0;
+        final variantWholesalePrice =
+            (variant['wholesale_price'] as num?)?.toDouble();
+        final variantWholesaleMinQty =
+            (variant['wholesale_min_quantity'] as num?)?.toInt() ?? 0;
+
+        final attrValuesList =
+            variant['variant_attribute_values'] as List? ?? [];
+        final attrs = <String>[];
+        for (final av in attrValuesList) {
+          final val = (av as Map)['attribute_values']?['value'] as String?;
+          if (val != null && val.isNotEmpty) {
+            attrs.add(val);
+          }
+        }
+        final attrsText = attrs.join(' / ');
+
+        final batchesRaw = variant['warehouse_stock_batches'] as List? ?? [];
+        final batches =
+            batchesRaw
+                .where((b) {
+                  if (warehouseId != null && warehouseId.isNotEmpty) {
+                    return (b as Map)['warehouse_id'] == warehouseId;
+                  }
+                  return true;
+                })
+                .map((b) {
+                  final m = Map<String, dynamic>.from(b as Map);
+                  final wh = m['warehouses'] as Map<String, dynamic>?;
+                  final sup = m['suppliers'] as Map<String, dynamic>?;
+                  return InventoryBatchItem(
+                    id: m['id'] as String,
+                    batchNumber: m['batch_number'] as String? ?? 'DEFAULT',
+                    expiryDate: m['expiry_date'] as String?,
+                    availableQuantity:
+                        (m['available_quantity'] as num?)?.toInt() ?? 0,
+                    warehouseId: m['warehouse_id'] as String,
+                    warehouseName: wh?['name'] as String?,
+                    supplierId: m['supplier_id'] as String?,
+                    supplierName: sup?['name'] as String?,
+                    variantId: variantId,
+                    productId: prod['id'] as String,
+                    productName: prod['name'] as String,
+                    variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
+                    sku: variant['sku'] as String?,
+                    usesBatches: usesBatches,
+                  );
+                })
+                .toList();
+
+        int stock = 0;
+        if (stockControl) {
+          stock = batches.fold(0, (s, b) => s + b.availableQuantity);
+        }
+
+        final reorderPoint = (variant['reorder_point'] as int?) ?? 3;
+
+        result.add(
+          InventoryStockItem(
+            productId: prod['id'] as String,
+            productName: prod['name'] as String,
+            category: catName,
+            productType: prod['product_type'] as String? ?? 'good',
+            usesBatches: usesBatches,
+            stockControl: stockControl,
+            unitCost: variantUnitCost,
+            salePrice: variantSalePrice,
+            wholesalePrice: variantWholesalePrice,
+            wholesaleMinQty: variantWholesaleMinQty,
+            variantId: variantId,
+            sku: variant['sku'] as String?,
+            attrsText: attrsText.isNotEmpty ? attrsText : 'Única',
+            imageUrl: null,
+            reorderPoint: reorderPoint,
+            stock: stock,
+            batches: batches,
+            isLowStock: stockControl && stock <= reorderPoint,
+          ),
+        );
+      }
+
+      return result;
+    } catch (e, stack) {
+      LoggerService.e('Error en getAllStockForExport', error: e, stackTrace: stack);
       rethrow;
     }
   }

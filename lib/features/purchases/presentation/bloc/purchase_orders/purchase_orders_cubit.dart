@@ -14,7 +14,7 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
   final RegisterOrderPaymentUseCase registerOrderPaymentUseCase;
   final UpdateOrderPaymentMethodUseCase updateOrderPaymentMethodUseCase;
 
-  static const int pageSize = 10;
+  static const int pageSize = 24;
 
   PurchaseOrdersCubit({
     required this.fetchPurchaseOrdersUseCase,

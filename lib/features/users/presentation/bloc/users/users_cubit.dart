@@ -13,7 +13,7 @@ class UsersCubit extends Cubit<UsersState> {
   final GetGlobalUsersCountUseCase _getCounts;
   final UpdateUserUseCase _updateUser;
 
-  static const int pageSize = 8;
+  static const int pageSize = 24;
   String _currentRole = AppRoles.customer;
 
   UsersCubit(this._getUsers, this._getCounts, this._updateUser)

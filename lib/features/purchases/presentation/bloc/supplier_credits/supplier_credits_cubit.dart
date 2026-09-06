@@ -12,7 +12,7 @@ class SupplierCreditsCubit extends Cubit<SupplierCreditsState> {
   final ToggleSupplierCreditUseCase toggleSupplierCreditUseCase;
   final RegisterSupplierPaymentUseCase registerSupplierPaymentUseCase;
 
-  static const int pageSize = 8;
+  static const int pageSize = 24;
 
   SupplierCreditsCubit({
     required this.fetchSupplierCreditsUseCase,

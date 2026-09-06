@@ -11,7 +11,7 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/kardex/
 class KardexCubit extends Cubit<KardexState> {
   final GetKardexMovementsUseCase getKardexMovements;
   final ExportKardexPdfUseCase exportKardexPdf;
-  static const int pageSize = 12;
+  static const int pageSize = 24;
 
   KardexCubit({required this.getKardexMovements, required this.exportKardexPdf})
     : super(KardexInitial());

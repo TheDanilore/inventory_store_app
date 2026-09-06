@@ -246,6 +246,8 @@ import '../../features/inventory/domain/usecases/create_inventory_exit_usecase.d
     as _i738;
 import '../../features/inventory/domain/usecases/delete_warehouse_usecase.dart'
     as _i1033;
+import '../../features/inventory/domain/usecases/export_inventory_excel_usecase.dart'
+    as _i525;
 import '../../features/inventory/domain/usecases/export_kardex_pdf_usecase.dart'
     as _i876;
 import '../../features/inventory/domain/usecases/get_active_warehouses_exits_usecase.dart'
@@ -1108,6 +1110,9 @@ extension GetItInjectableX on _i174.GetIt {
         updateOrderPaymentMethodUseCase:
             gh<_i515.UpdateOrderPaymentMethodUseCase>(),
       ),
+    );
+    gh.factory<_i525.ExportInventoryExcelUseCase>(
+      () => _i525.ExportInventoryExcelUseCase(gh<_i422.InventoryRepository>()),
     );
     gh.factory<_i581.GetBatchMetricsUseCase>(
       () => _i581.GetBatchMetricsUseCase(gh<_i422.InventoryRepository>()),

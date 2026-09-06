@@ -14,7 +14,7 @@ class SupplierCreditMovementsCubit extends Cubit<SupplierCreditMovementsState> {
   final String creditId;
   final String supplierName;
 
-  static const int pageSize = 8;
+  static const int pageSize = 24;
 
   SupplierCreditMovementsCubit({
     required this.fetchMovementsUseCase,

@@ -35,4 +35,7 @@ abstract class InventoryRepository {
     String statusFilter = 'Todos',
     String? warehouseId,
   });
+
+  /// Obtiene todo el stock de productos activos para la exportación a Excel
+  Future<List<InventoryStockItem>> getAllStockForExport({String? warehouseId});
 }

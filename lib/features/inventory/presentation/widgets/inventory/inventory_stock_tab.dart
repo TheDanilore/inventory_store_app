@@ -89,7 +89,18 @@ class _InventoryStockTabState extends State<InventoryStockTab>
 
         if (loadedState == null) {
           if (state is InventoryError) {
-            return Center(child: Text('Error: ${state.message}'));
+            return Center(
+              child: AppEmptyState(
+                icon: Icons.cloud_off_rounded,
+                title: 'Error al cargar inventario',
+                message: state.message,
+                action: ElevatedButton.icon(
+                  onPressed: () => context.read<InventoryCubit>().refreshAll(),
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Reintentar conexión'),
+                ),
+              ),
+            );
           }
           return const Center(
             child: CircularProgressIndicator(color: AppColors.primary),
@@ -641,9 +652,17 @@ class _InventoryStockTabState extends State<InventoryStockTab>
             child: AdminPageBlocks(
               currentPage: state.currentStockPage,
               totalPages: state.totalStockPages,
+              totalItems: (state.stockSearchText.isEmpty && state.stockCategoryFilter.isEmpty)
+                  ? state.globalTotalVariants
+                  : null,
+              itemsPerPage: 24,
+              itemName: 'variantes',
               onPageChanged: (page) => cubit.setStockPage(page),
             ),
-          ),
+          )
+        else if (!isLoading && state.totalStockPages == 1) 
+          //Agregar espacio vacio para paginacion
+          const SizedBox(height: 50),
       ],
     );
   }
@@ -882,6 +901,11 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               child: AdminPageBlocks(
                 currentPage: state.currentStockPage,
                 totalPages: state.totalStockPages,
+                totalItems: (state.stockSearchText.isEmpty && state.stockCategoryFilter.isEmpty)
+                    ? state.globalTotalVariants
+                    : null,
+                itemsPerPage: 24,
+                itemName: 'variantes',
                 onPageChanged: (page) => cubit.setStockPage(page),
               ),
             ),

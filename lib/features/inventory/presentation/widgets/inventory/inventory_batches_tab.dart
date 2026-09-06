@@ -40,13 +40,14 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
   void _onSearchChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      context.read<InventoryCubit>().setBatchSearch(value);
+      if (!mounted) return;
+      context.read<InventoryCubit>().setBatchSearch(value.trim());
     });
   }
 
   void _onSearchSubmitted(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    context.read<InventoryCubit>().setBatchSearch(value);
+    context.read<InventoryCubit>().setBatchSearch(value.trim());
   }
 
   void _selectBatch(InventoryBatchItem batch, {required bool isTablet}) {
@@ -69,7 +70,18 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
 
         if (loadedState == null) {
           if (state is InventoryError) {
-            return Center(child: Text('Error: ${state.message}'));
+            return Center(
+              child: AppEmptyState(
+                icon: Icons.cloud_off_rounded,
+                title: 'Error al cargar lotes',
+                message: state.message,
+                action: ElevatedButton.icon(
+                  onPressed: () => context.read<InventoryCubit>().initBatchesTab(),
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Reintentar conexión'),
+                ),
+              ),
+            );
           }
           return const Center(
             child: CircularProgressIndicator(color: AppColors.primary),
@@ -82,21 +94,13 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
           builder: (context, constraints) {
             final isTablet = constraints.maxWidth >= 840;
 
-            // Auto-selección del primer lote en tablet/desktop para eliminar el desierto blanco
-            if (isTablet && currentState.batchItems.isNotEmpty) {
-              final exists = currentState.batchItems.any(
-                (b) => b.id == _selectedBatch?.id,
-              );
-              if (!exists || _selectedBatch == null) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted && currentState.batchItems.isNotEmpty) {
-                    setState(() {
-                      _selectedBatch = currentState.batchItems.first;
-                    });
-                  }
-                });
-              }
-            }
+            // Determinación reactiva y limpia del lote activo sin agendar setState en build
+            final activeBatch = (_selectedBatch != null &&
+                    currentState.batchItems.any((b) => b.id == _selectedBatch!.id))
+                ? _selectedBatch
+                : (currentState.batchItems.isNotEmpty
+                    ? currentState.batchItems.first
+                    : null);
 
             if (isTablet) {
               return Row(
@@ -117,6 +121,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                         currentState,
                         state is InventoryLoading,
                         isTablet: true,
+                        activeBatchId: activeBatch?.id,
                       ),
                     ),
                   ),
@@ -128,7 +133,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                       color: AppColors.background,
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                       child:
-                          _selectedBatch == null
+                          activeBatch == null
                               ? Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -153,9 +158,8 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                               : AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 180),
                                 child: InventoryBatchDetailPane(
-                                  key: ValueKey('batch_${_selectedBatch!.id}'),
-                                  batch: _selectedBatch!,
-                                  isEmbedded: true,
+                                  key: ValueKey(activeBatch.id),
+                                  batch: activeBatch,
                                 ),
                               ),
                     ),
@@ -169,6 +173,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
               currentState,
               state is InventoryLoading,
               isTablet: false,
+              activeBatchId: activeBatch?.id,
             );
           },
         );
@@ -180,6 +185,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
     InventoryLoaded state,
     bool isLoading, {
     required bool isTablet,
+    String? activeBatchId,
   }) {
     final cubit = context.read<InventoryCubit>();
     final totalBatches =
@@ -370,7 +376,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate((context, i) {
                   final batch = state.batchItems[i];
-                  final isSelected = isTablet && _selectedBatch?.id == batch.id;
+                  final isSelected = isTablet && activeBatchId == batch.id;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: InventoryBatchCard(
@@ -391,6 +397,8 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                 child: AdminPageBlocks(
                   currentPage: state.currentBatchPage,
                   totalPages: state.totalBatchPages,
+                  itemsPerPage: 24,
+                  itemName: 'lotes',
                   onPageChanged: (page) => cubit.setBatchPage(page),
                 ),
               ),

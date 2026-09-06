@@ -30,7 +30,7 @@ class CustomerCreditMovementsState extends Equatable {
     this.movements = const [],
     this.totalCount = 0,
     this.currentPage = 0,
-    this.pageSize = 8,
+    this.pageSize = 24,
     this.totalCharged = 0.0,
     this.totalPaid = 0.0,
     this.dateFilter = 'all',

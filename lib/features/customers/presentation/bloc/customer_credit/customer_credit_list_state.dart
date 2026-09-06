@@ -33,7 +33,7 @@ class CustomerCreditListState extends Equatable {
     this.currentPage = 1,
     this.searchQuery = '',
     this.withDebtOnly = false,
-    this.pageSize = 8,
+    this.pageSize = 24,
   });
 
   int get totalPages =>

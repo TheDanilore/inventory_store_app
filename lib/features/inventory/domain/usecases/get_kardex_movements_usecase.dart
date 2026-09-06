@@ -18,7 +18,7 @@ class GetKardexMovementsUseCase {
     String? variantId,
     String? batchId,
     int page = 0,
-    int pageSize = 12,
+    int pageSize = 24,
   }) {
     return repository.getKardexMovements(
       startDate: startDate,

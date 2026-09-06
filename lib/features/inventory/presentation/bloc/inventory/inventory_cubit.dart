@@ -20,8 +20,8 @@ class InventoryCubit extends Cubit<InventoryState> {
   final GetBatchesPaginatedUseCase _getBatchesPaginated;
   final GetWarehousesUseCase _getWarehouses;
 
-  static const int _stockPageSize = 8;
-  static const int _batchPageSize = 8;
+  static const int _stockPageSize = 24;
+  static const int _batchPageSize = 24;
 
   InventoryCubit({
     required GetGeneralStockMetricsUseCase getGeneralStockMetrics,
@@ -87,41 +87,62 @@ class InventoryCubit extends Cubit<InventoryState> {
         currentState = currentState.copyWith(stockSearchText: sanitizedSearch);
       }
 
-      List<WarehouseEntity> warehouses = currentState.warehouses;
-      if (warehouses.isEmpty) {
-        try {
-          final whRes = await _getWarehouses(start: 0, end: 100);
-          warehouses = whRes.data.where((w) => w.isActive).toList();
-        } catch (e, stack) {
-          LoggerService.e('Error cargando almacenes en InventoryCubit', error: e, stackTrace: stack);
-        }
-      }
+      final warehousesFuture = currentState.warehouses.isEmpty
+          ? _getWarehouses(start: 0, end: 100)
+              .then((res) => res.data.where((w) => w.isActive).toList())
+              .catchError((e, stack) {
+                LoggerService.e(
+                  'Error cargando almacenes en InventoryCubit',
+                  error: e,
+                  stackTrace: stack,
+                );
+                return <WarehouseEntity>[];
+              })
+          : Future.value(currentState.warehouses);
 
-      final categoriesResult = await _getCategories();
-      final categoriesNames = categoriesResult.fold(
-        (l) => <String>['Todos'],
-        (r) => <String>['Todos', ...r.map((c) => c.name)],
-      );
-      final metrics = await _getGeneralStockMetrics(
+      final categoriesFuture = currentState.categories.length <= 1
+          ? _getCategories().then(
+              (res) => res.fold(
+                (l) => <String>['Todos'],
+                (r) => <String>['Todos', ...r.map((c) => c.name)],
+              ),
+            )
+          : Future.value(currentState.categories);
+
+      final metricsFuture = _getGeneralStockMetrics(
         currentState.selectedWarehouseId,
       );
 
-      final totalStockCount = await _getGeneralStockPaginated.getTotalCount(
+      final totalCountFuture = _getGeneralStockPaginated.getTotalCount(
         search: currentState.stockSearchText,
         categoryName: currentState.stockCategoryFilter,
         warehouseId: currentState.selectedWarehouseId,
       );
 
-      final totalPages =
-          totalStockCount == 0 ? 1 : (totalStockCount / _stockPageSize).ceil();
-
-      final stockItems = await _getGeneralStockPaginated(
+      final stockItemsFuture = _getGeneralStockPaginated(
         page: 0,
         pageSize: _stockPageSize,
         search: currentState.stockSearchText,
         categoryName: currentState.stockCategoryFilter,
         warehouseId: currentState.selectedWarehouseId,
       );
+
+      final results = await Future.wait([
+        warehousesFuture,
+        categoriesFuture,
+        metricsFuture,
+        totalCountFuture,
+        stockItemsFuture,
+      ]);
+
+      final warehouses = results[0] as List<WarehouseEntity>;
+      final categoriesNames = results[1] as List<String>;
+      final metrics = results[2] as Map<String, dynamic>;
+      final totalStockCount = results[3] as int;
+      final stockItems = results[4] as List<InventoryStockItem>;
+
+      final totalPages =
+          totalStockCount == 0 ? 1 : (totalStockCount / _stockPageSize).ceil();
 
       emit(
         currentState.copyWith(
@@ -155,23 +176,27 @@ class InventoryCubit extends Cubit<InventoryState> {
 
     emit(currentState.copyWith(isSearchingStock: true));
     try {
-      final totalStockCount = await _getGeneralStockPaginated.getTotalCount(
-        search: currentState.stockSearchText,
-        categoryName: currentState.stockCategoryFilter,
-        warehouseId: currentState.selectedWarehouseId,
-      );
+      final results = await Future.wait([
+        _getGeneralStockPaginated.getTotalCount(
+          search: currentState.stockSearchText,
+          categoryName: currentState.stockCategoryFilter,
+          warehouseId: currentState.selectedWarehouseId,
+        ),
+        _getGeneralStockPaginated(
+          page: targetPage,
+          pageSize: _stockPageSize,
+          search: currentState.stockSearchText,
+          categoryName: currentState.stockCategoryFilter,
+          warehouseId: currentState.selectedWarehouseId,
+        ),
+      ]);
+
+      final totalStockCount = results[0] as int;
+      final stockItems = results[1] as List<InventoryStockItem>;
 
       int totalPages =
           totalStockCount == 0 ? 1 : (totalStockCount / _stockPageSize).ceil();
       int validPage = targetPage >= totalPages ? 0 : targetPage;
-
-      final stockItems = await _getGeneralStockPaginated(
-        page: validPage,
-        pageSize: _stockPageSize,
-        search: currentState.stockSearchText,
-        categoryName: currentState.stockCategoryFilter,
-        warehouseId: currentState.selectedWarehouseId,
-      );
 
       emit(
         currentState.copyWith(
@@ -199,25 +224,20 @@ class InventoryCubit extends Cubit<InventoryState> {
   void setStockSearch(String text) {
     final cleanText = text.trim();
     final currentState = _getLoadedState();
-    if (currentState.stockSearchText == cleanText && !currentState.isSearchingStock) {
-      return;
-    }
-    emit(currentState.copyWith(
-      stockSearchText: cleanText,
-      currentStockPage: 0,
-      isSearchingStock: true,
-    ));
+    if (currentState.stockSearchText == cleanText) return;
+    emit(currentState.copyWith(stockSearchText: cleanText));
     fetchStockPage(page: 0);
   }
 
-  void setStockCategory(String cat) {
+  void setStockCategory(String category) {
     final currentState = _getLoadedState();
-    emit(currentState.copyWith(
-      stockCategoryFilter: cat,
-      currentStockPage: 0,
-      isSearchingStock: true,
-    ));
+    if (currentState.stockCategoryFilter == category) return;
+    emit(currentState.copyWith(stockCategoryFilter: category));
     fetchStockPage(page: 0);
+  }
+
+  void refreshAll() {
+    initStockTab();
   }
 
   Future<void> initBatchesTab() async {
@@ -225,27 +245,31 @@ class InventoryCubit extends Cubit<InventoryState> {
     emit(currentState.copyWith(isSearchingBatches: true));
 
     try {
-      final metrics = await _getBatchMetrics(
-        search: currentState.batchSearchText,
-        warehouseId: currentState.selectedWarehouseId,
-      );
+      final results = await Future.wait([
+        _getBatchMetrics(
+          search: currentState.batchSearchText,
+          warehouseId: currentState.selectedWarehouseId,
+        ),
+        _getBatchesPaginated.getTotalCount(
+          search: currentState.batchSearchText,
+          statusFilter: currentState.batchStatusFilter,
+          warehouseId: currentState.selectedWarehouseId,
+        ),
+        _getBatchesPaginated(
+          page: 0,
+          pageSize: _batchPageSize,
+          search: currentState.batchSearchText,
+          statusFilter: currentState.batchStatusFilter,
+          warehouseId: currentState.selectedWarehouseId,
+        ),
+      ]);
 
-      final totalBatchCount = await _getBatchesPaginated.getTotalCount(
-        search: currentState.batchSearchText,
-        statusFilter: currentState.batchStatusFilter,
-        warehouseId: currentState.selectedWarehouseId,
-      );
+      final metrics = results[0] as Map<String, dynamic>;
+      final totalBatchCount = results[1] as int;
+      final batchItems = results[2] as List<InventoryBatchItem>;
 
       final totalPages =
           totalBatchCount == 0 ? 1 : (totalBatchCount / _batchPageSize).ceil();
-
-      final batchItems = await _getBatchesPaginated(
-        page: 0,
-        pageSize: _batchPageSize,
-        search: currentState.batchSearchText,
-        statusFilter: currentState.batchStatusFilter,
-        warehouseId: currentState.selectedWarehouseId,
-      );
 
       final updatedState = _getLoadedState();
       emit(
@@ -260,7 +284,8 @@ class InventoryCubit extends Cubit<InventoryState> {
           isSearchingBatches: false,
         ),
       );
-    } catch (e) {
+    } catch (e, stack) {
+      LoggerService.e('Error en initBatchesTab de InventoryCubit', error: e, stackTrace: stack);
       final stateNow = _getLoadedState();
       emit(stateNow.copyWith(isSearchingBatches: false));
     }
@@ -272,23 +297,27 @@ class InventoryCubit extends Cubit<InventoryState> {
 
     emit(currentState.copyWith(isSearchingBatches: true));
     try {
-      final totalBatchCount = await _getBatchesPaginated.getTotalCount(
-        search: currentState.batchSearchText,
-        statusFilter: currentState.batchStatusFilter,
-        warehouseId: currentState.selectedWarehouseId,
-      );
+      final results = await Future.wait([
+        _getBatchesPaginated.getTotalCount(
+          search: currentState.batchSearchText,
+          statusFilter: currentState.batchStatusFilter,
+          warehouseId: currentState.selectedWarehouseId,
+        ),
+        _getBatchesPaginated(
+          page: targetPage,
+          pageSize: _batchPageSize,
+          search: currentState.batchSearchText,
+          statusFilter: currentState.batchStatusFilter,
+          warehouseId: currentState.selectedWarehouseId,
+        ),
+      ]);
+
+      final totalBatchCount = results[0] as int;
+      final batchItems = results[1] as List<InventoryBatchItem>;
 
       int totalPages =
           totalBatchCount == 0 ? 1 : (totalBatchCount / _batchPageSize).ceil();
       int validPage = targetPage >= totalPages ? 0 : targetPage;
-
-      final batchItems = await _getBatchesPaginated(
-        page: validPage,
-        pageSize: _batchPageSize,
-        search: currentState.batchSearchText,
-        statusFilter: currentState.batchStatusFilter,
-        warehouseId: currentState.selectedWarehouseId,
-      );
 
       emit(
         currentState.copyWith(

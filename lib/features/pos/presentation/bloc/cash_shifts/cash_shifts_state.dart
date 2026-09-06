@@ -71,7 +71,7 @@ class CashShiftsState extends Equatable {
     );
   }
 
-  int get pageSize => 15;
+  int get pageSize => 24;
   int get totalPages => totalCount == 0 ? 1 : (totalCount / pageSize).ceil();
   int get openCount =>
       shifts.where((s) => s.status == CashShiftStatus.open).length;

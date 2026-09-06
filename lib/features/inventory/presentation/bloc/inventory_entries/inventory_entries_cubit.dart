@@ -10,7 +10,7 @@ import 'dart:developer' as developer;
 class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
   final GetInventoryEntriesUseCase getInventoryEntries;
   final GetActiveWarehousesUseCase getActiveWarehouses;
-  static const int pageSize = 8;
+  static const int pageSize = 24;
 
   InventoryEntriesCubit({
     required this.getInventoryEntries,

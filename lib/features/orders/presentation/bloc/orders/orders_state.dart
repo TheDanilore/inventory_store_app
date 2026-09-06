@@ -86,7 +86,7 @@ class OrdersState extends Equatable {
     customerIdFilter,
   ];
 
-  static const int pageSize = 8;
+  static const int pageSize = 24;
 
   int get totalPages =>
       totalRecords == 0 ? 1 : (totalRecords / pageSize).ceil();

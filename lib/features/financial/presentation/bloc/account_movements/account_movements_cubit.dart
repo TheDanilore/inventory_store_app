@@ -19,7 +19,7 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
   final GetCurrentUserUseCase _getCurrentUser;
   final GetAccountMovementTotalsUseCase _getTotals;
 
-  static const int _pageSize = 15;
+  static const int _pageSize = 24;
   int _currentPage = 0;
   int _totalPages = 1;
   MovementFilters _filters = const MovementFilters();
