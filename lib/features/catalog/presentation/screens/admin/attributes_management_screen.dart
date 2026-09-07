@@ -4,9 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
-import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes/attributes_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes/attributes_state.dart';
@@ -29,6 +27,8 @@ class _EscapeIntent extends Intent {
   const _EscapeIntent();
 }
 
+enum _AttributeFilter { all, withValues, withoutValues }
+
 class AttributesManagementScreen extends StatefulWidget {
   const AttributesManagementScreen({super.key});
 
@@ -42,17 +42,11 @@ class _AttributesManagementScreenState
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
-  // Desktop Form State
-  final _desktopNameCtrl = TextEditingController();
-  final _desktopDescCtrl = TextEditingController();
-  final _nameFocusNode = FocusNode();
-
-  // Search State
+  // Search & Filter State
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   String _searchQuery = '';
-
-  String? _editingAttributeId;
+  _AttributeFilter _activeFilter = _AttributeFilter.all;
 
   @override
   void initState() {
@@ -73,83 +67,16 @@ class _AttributesManagementScreenState
   void dispose() {
     _isFabExtended.dispose();
     _scrollController.dispose();
-    _desktopNameCtrl.dispose();
-    _desktopDescCtrl.dispose();
-    _nameFocusNode.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     super.dispose();
   }
 
-  void _showAttributeForm([AttributeEntity? attribute, bool isDesktop = false]) {
-    if (isDesktop) {
-      setState(() {
-        _editingAttributeId = attribute?.id;
-        _desktopNameCtrl.text = attribute?.name ?? '';
-        _desktopDescCtrl.text = attribute?.description ?? '';
-      });
-      _nameFocusNode.requestFocus();
-      return;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AttributeFormSheet(attribute: attribute),
-    );
+  void _openForm([AttributeEntity? attribute]) {
+    AttributeFormSheet.showAdaptive(context, attribute: attribute);
   }
 
-  void _clearDesktopForm() {
-    setState(() {
-      _editingAttributeId = null;
-      _desktopNameCtrl.clear();
-      _desktopDescCtrl.clear();
-    });
-  }
-
-  void _handleHeaderNewAttribute(bool isDesktop) {
-    if (isDesktop) {
-      _clearDesktopForm();
-      _nameFocusNode.requestFocus();
-    } else {
-      _showAttributeForm();
-    }
-  }
-
-  Future<void> _saveDesktopAttribute() async {
-    final name = _desktopNameCtrl.text.trim();
-    if (name.isEmpty) {
-      AppSnackbar.show(
-        context,
-        message: 'El nombre de la propiedad es obligatorio.',
-        type: SnackbarType.warning,
-      );
-      _nameFocusNode.requestFocus();
-      return;
-    }
-
-    final cubit = context.read<AttributesCubit>();
-    final success = await cubit.saveAttribute(
-      name,
-      id: _editingAttributeId,
-      description: _desktopDescCtrl.text.trim(),
-    );
-
-    if (success && mounted) {
-      AppSnackbar.show(
-        context,
-        message:
-            _editingAttributeId == null
-                ? 'Propiedad creada correctamente.'
-                : 'Propiedad actualizada correctamente.',
-        type: SnackbarType.success,
-      );
-      _clearDesktopForm();
-    }
-  }
-
-  void _showAddValueForm(String attributeId, String attributeName) {
+  void _showAddValueDialog(String attributeId, String attributeName) {
     showDialog(
       context: context,
       builder:
@@ -164,7 +91,6 @@ class _AttributesManagementScreenState
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isMobile = screenWidth < 720;
-    final isEditing = _editingAttributeId != null;
 
     return Shortcuts(
       shortcuts: <ShortcutActivator, Intent>{
@@ -179,7 +105,7 @@ class _AttributesManagementScreenState
         actions: <Type, Action<Intent>>{
           _NewAttributeIntent: CallbackAction<_NewAttributeIntent>(
             onInvoke: (_) {
-              _handleHeaderNewAttribute(!isMobile);
+              _openForm();
               return null;
             },
           ),
@@ -193,8 +119,6 @@ class _AttributesManagementScreenState
             onInvoke: (_) {
               if (_searchFocusNode.hasFocus) {
                 _searchFocusNode.unfocus();
-              } else if (_editingAttributeId != null) {
-                _clearDesktopForm();
               }
               return null;
             },
@@ -237,21 +161,17 @@ class _AttributesManagementScreenState
               ),
               const SizedBox(width: 8),
               FilledButton.icon(
-                onPressed: () => _handleHeaderNewAttribute(!isMobile),
-                icon: Icon(
-                  isEditing ? Icons.edit_note_rounded : Icons.add_rounded,
-                  size: 18,
-                ),
-                label: Text(
-                  isEditing ? 'Editando...' : 'Nueva Propiedad',
-                  style: const TextStyle(
+                onPressed: () => _openForm(),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text(
+                  'Nueva Propiedad',
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
                 ),
                 style: FilledButton.styleFrom(
-                  backgroundColor:
-                      isEditing ? AppColors.info : AppColors.primary,
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   shape: RoundedRectangleBorder(
@@ -264,7 +184,7 @@ class _AttributesManagementScreenState
           floatingActionButton:
               isMobile
                   ? FloatingActionButton.extended(
-                    onPressed: () => _showAttributeForm(null, false),
+                    onPressed: () => _openForm(),
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     tooltip: 'Nueva Propiedad',
@@ -304,142 +224,57 @@ class _AttributesManagementScreenState
             child: BlocBuilder<AttributesCubit, AttributesState>(
               builder: (context, state) {
                 final cubit = context.read<AttributesCubit>();
-                final isSaving = state.isSaving;
+                final filteredAttributes = _getFilteredAttributes(state.attributes);
+                final totalValues = state.attributes.fold<int>(
+                  0,
+                  (sum, a) => sum + a.values.length,
+                );
 
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isDesktop = constraints.maxWidth >= 960;
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1200),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMobile ? 16 : 24,
+                        vertical: isMobile ? 14 : 20,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Command Bar (Search + Filter Chips + Counters)
+                          _buildCommandBar(
+                            totalAttributes: state.attributes.length,
+                            totalValues: totalValues,
+                            isMobile: isMobile,
+                          ),
+                          const SizedBox(height: 16),
 
-                    if (isDesktop) {
-                      return _buildDesktopLayout(
-                        context,
-                        state,
-                        cubit,
-                        isSaving,
-                        constraints,
-                      );
-                    }
-
-                    return _buildMobileLayout(
-                      context,
-                      state,
-                      cubit,
-                      isSaving,
-                    );
-                  },
+                          // Attributes List
+                          Expanded(
+                            child: RefreshIndicator(
+                              onRefresh: () => cubit.loadAttributes(),
+                              color: AppColors.primary,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 250),
+                                child: _buildAttributeListContent(
+                                  state,
+                                  cubit,
+                                  filteredAttributes,
+                                  isMobile: isMobile,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 );
               },
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  // --- LAYOUT DESKTOP (32% Formulario / 68% Lista y Comandos) ---
-  Widget _buildDesktopLayout(
-    BuildContext context,
-    AttributesState state,
-    AttributesCubit cubit,
-    bool isSaving,
-    BoxConstraints constraints,
-  ) {
-    final filteredAttributes = _getFilteredAttributes(state.attributes);
-    final totalValues = state.attributes.fold<int>(
-      0,
-      (sum, a) => sum + a.values.length,
-    );
-
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1400),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Columna Izquierda: Formulario ERP Embebido (Ancho Fijo Óptimo 360px)
-              SizedBox(
-                width: 360,
-                child: _buildDesktopFormCard(isSaving),
-              ),
-              const SizedBox(width: 24),
-              // Columna Derecha: Barra de Comandos + Lista de Atributos
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildCommandBar(
-                      totalAttributes: state.attributes.length,
-                      totalValues: totalValues,
-                      isMobile: false,
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: () => cubit.loadAttributes(),
-                        color: AppColors.primary,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 250),
-                          child: _buildAttributeListContent(
-                            state,
-                            cubit,
-                            filteredAttributes,
-                            isDesktop: true,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // --- LAYOUT MÓVIL Y TABLET COMPACTA ---
-  Widget _buildMobileLayout(
-    BuildContext context,
-    AttributesState state,
-    AttributesCubit cubit,
-    bool isSaving,
-  ) {
-    final filteredAttributes = _getFilteredAttributes(state.attributes);
-    final totalValues = state.attributes.fold<int>(
-      0,
-      (sum, a) => sum + a.values.length,
-    );
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        children: [
-          _buildCommandBar(
-            totalAttributes: state.attributes.length,
-            totalValues: totalValues,
-            isMobile: true,
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () => cubit.loadAttributes(),
-              color: AppColors.primary,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: _buildAttributeListContent(
-                  state,
-                  cubit,
-                  filteredAttributes,
-                  isDesktop: false,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -450,90 +285,158 @@ class _AttributesManagementScreenState
     required int totalValues,
     required bool isMobile,
   }) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: TextField(
-              controller: _searchCtrl,
-              focusNode: _searchFocusNode,
-              onChanged: (val) => setState(() => _searchQuery = val.trim()),
-              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-              decoration: InputDecoration(
-                hintText: isMobile
-                    ? 'Buscar propiedad o valor...'
-                    : 'Buscar propiedad o valor (Ej: Talla, Spiderman, Litro)...',
-                hintStyle: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textMuted,
+        Row(
+          children: [
+            // Search Input
+            Expanded(
+              child: Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.border),
                 ),
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  size: 18,
-                  color: AppColors.textSecondary,
-                ),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 16),
-                        tooltip: 'Limpiar búsqueda',
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : (!isMobile
-                        ? Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.background,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: const Text(
-                                  '/',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textSecondary,
+                child: TextField(
+                  controller: _searchCtrl,
+                  focusNode: _searchFocusNode,
+                  onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: isMobile
+                        ? 'Buscar propiedad o valor...'
+                        : 'Buscar propiedad o valor (Ej: Talla, Spiderman, Litro)...',
+                    hintStyle: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textMuted,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 16),
+                            tooltip: 'Limpiar búsqueda',
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : (!isMobile
+                            ? Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.background,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: AppColors.border),
+                                    ),
+                                    child: const Text(
+                                      '/',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                          )
-                        : null),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                              )
+                            : null),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
               ),
             ),
+            const SizedBox(width: 10),
+
+            // Stat Badges
+            _buildStatBadge(
+              label: '$totalAttributes ${totalAttributes == 1 ? 'propiedad' : 'propiedades'}',
+              icon: Icons.category_outlined,
+              color: AppColors.primary,
+            ),
+            if (!isMobile) ...[
+              const SizedBox(width: 8),
+              _buildStatBadge(
+                label: '$totalValues valores',
+                icon: Icons.label_outline_rounded,
+                color: AppColors.info,
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Filter Pills: [ Todos ] [ Con valores ] [ Sin valores ]
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildFilterChip(
+                label: 'Todas',
+                filter: _AttributeFilter.all,
+              ),
+              const SizedBox(width: 6),
+              _buildFilterChip(
+                label: 'Con valores',
+                filter: _AttributeFilter.withValues,
+              ),
+              const SizedBox(width: 6),
+              _buildFilterChip(
+                label: 'Sin valores',
+                filter: _AttributeFilter.withoutValues,
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 10),
-        _buildStatBadge(
-          label: '$totalAttributes ${totalAttributes == 1 ? 'propiedad' : 'propiedades'}',
-          icon: Icons.category_outlined,
-          color: AppColors.primary,
-        ),
-        if (!isMobile) ...[
-          const SizedBox(width: 8),
-          _buildStatBadge(
-            label: '$totalValues valores',
-            icon: Icons.label_outline_rounded,
-            color: AppColors.info,
-          ),
-        ],
       ],
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required _AttributeFilter filter,
+  }) {
+    final isSelected = _activeFilter == filter;
+    return InkWell(
+      onTap: () => setState(() => _activeFilter = filter),
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: isSelected ? 1.2 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? AppColors.primary : AppColors.textSecondary,
+          ),
+        ),
+      ),
     );
   }
 
@@ -572,10 +475,19 @@ class _AttributesManagementScreenState
   List<AttributeEntity> _getFilteredAttributes(
     List<AttributeEntity> attributes,
   ) {
-    if (_searchQuery.isEmpty) return attributes;
+    var list = attributes;
+
+    // Filtro por estado de valores
+    if (_activeFilter == _AttributeFilter.withValues) {
+      list = list.where((a) => a.values.isNotEmpty).toList();
+    } else if (_activeFilter == _AttributeFilter.withoutValues) {
+      list = list.where((a) => a.values.isEmpty).toList();
+    }
+
+    if (_searchQuery.isEmpty) return list;
 
     final q = _searchQuery.toLowerCase();
-    return attributes.where((attr) {
+    return list.where((attr) {
       final matchName = attr.name.toLowerCase().contains(q);
       final matchDesc = attr.description?.toLowerCase().contains(q) ?? false;
       final matchValue = attr.values.any(
@@ -585,137 +497,12 @@ class _AttributesManagementScreenState
     }).toList();
   }
 
-  // --- TARJETA DE FORMULARIO DESKTOP ---
-  Widget _buildDesktopFormCard(bool isSaving) {
-    final isEditing = _editingAttributeId != null;
-
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isEditing
-              ? AppColors.primary.withValues(alpha: 0.5)
-              : AppColors.border,
-          width: isEditing ? 1.5 : 1,
-        ),
-        boxShadow: AppColors.cardShadow(opacity: 0.04),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: isEditing
-                      ? AppColors.info.withValues(alpha: 0.1)
-                      : AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  isEditing
-                      ? Icons.edit_note_rounded
-                      : Icons.add_circle_outline_rounded,
-                  color: isEditing ? AppColors.info : AppColors.primary,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isEditing ? 'Editar Propiedad' : 'Nueva Propiedad',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 17,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      isEditing
-                          ? 'Modifica el nombre o descripción.'
-                          : 'Crea una propiedad para variantes.',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          AppTextField(
-            controller: _desktopNameCtrl,
-            focusNode: _nameFocusNode,
-            label: 'Nombre de la Propiedad *',
-            icon: Icons.label_outlined,
-            hintText: 'Ej: Talla, Color, Presentación...',
-            textCapitalization: TextCapitalization.words,
-          ),
-          const SizedBox(height: 14),
-          AppTextField(
-            controller: _desktopDescCtrl,
-            label: 'Descripción (Opcional)',
-            icon: Icons.notes_rounded,
-            hintText: 'Ej: Tamaño o formato del producto...',
-            maxLines: 2,
-            textCapitalization: TextCapitalization.sentences,
-          ),
-          const SizedBox(height: 22),
-          Row(
-            children: [
-              if (isEditing) ...[
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: isSaving ? null : _clearDesktopForm,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
-                      side: const BorderSide(color: AppColors.border),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'Cancelar',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-              ],
-              Expanded(
-                flex: isEditing ? 1 : 2,
-                child: AppPrimaryButton(
-                  label: isEditing ? 'Guardar' : 'Crear Propiedad',
-                  loading: isSaving,
-                  onPressed: isSaving ? null : _saveDesktopAttribute,
-                  backgroundColor:
-                      isEditing ? AppColors.info : AppColors.primary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   // --- CONTENIDO DE LA LISTA DE ATRIBUTOS ---
   Widget _buildAttributeListContent(
     AttributesState state,
     AttributesCubit cubit,
     List<AttributeEntity> filteredAttributes, {
-    required bool isDesktop,
+    required bool isMobile,
   }) {
     if (state.viewState == ViewState.loading ||
         state.viewState == ViewState.initial) {
@@ -772,6 +559,22 @@ class _AttributesManagementScreenState
                     fontSize: 13,
                   ),
                 ),
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: () => _openForm(),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Crear Primera Propiedad'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -779,7 +582,7 @@ class _AttributesManagementScreenState
       );
     }
 
-    if (filteredAttributes.isEmpty && _searchQuery.isNotEmpty) {
+    if (filteredAttributes.isEmpty && (_searchQuery.isNotEmpty || _activeFilter != _AttributeFilter.all)) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -791,7 +594,9 @@ class _AttributesManagementScreenState
             ),
             const SizedBox(height: 12),
             Text(
-              'No se encontraron coincidencias para "$_searchQuery"',
+              _searchQuery.isNotEmpty
+                  ? 'No se encontraron coincidencias para "$_searchQuery"'
+                  : 'No hay propiedades con el filtro seleccionado',
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
@@ -802,9 +607,12 @@ class _AttributesManagementScreenState
             TextButton(
               onPressed: () {
                 _searchCtrl.clear();
-                setState(() => _searchQuery = '');
+                setState(() {
+                  _searchQuery = '';
+                  _activeFilter = _AttributeFilter.all;
+                });
               },
-              child: const Text('Limpiar búsqueda'),
+              child: const Text('Restablecer filtros'),
             ),
           ],
         ),
@@ -815,19 +623,18 @@ class _AttributesManagementScreenState
       controller: _scrollController,
       key: const ValueKey('list'),
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.only(bottom: 40),
       itemCount: filteredAttributes.length,
       separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (context, index) {
         final attr = filteredAttributes[index];
-        final isSelected = _editingAttributeId == attr.id;
 
         return _AttributeCard(
           attribute: attr,
-          isSelected: isSelected,
-          onEdit: () => _showAttributeForm(attr, isDesktop),
+          searchQuery: _searchQuery,
+          onEdit: () => _openForm(attr),
           onDelete: () => _handleDeleteAttribute(attr, cubit),
-          onAddValue: () => _showAddValueForm(attr.id, attr.name),
+          onOpenAddDialog: () => _showAddValueDialog(attr.id, attr.name),
         );
       },
     );
@@ -849,9 +656,6 @@ class _AttributesManagementScreenState
     if (confirmed == true && mounted) {
       final success = await cubit.deleteAttribute(attr.id);
       if (mounted && success) {
-        if (_editingAttributeId == attr.id) {
-          _clearDesktopForm();
-        }
         AppSnackbar.show(
           context,
           message: 'Propiedad "${attr.name}" eliminada',
@@ -868,17 +672,17 @@ class _AttributesManagementScreenState
 
 class _AttributeCard extends StatefulWidget {
   final AttributeEntity attribute;
-  final bool isSelected;
+  final String searchQuery;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
-  final VoidCallback onAddValue;
+  final VoidCallback onOpenAddDialog;
 
   const _AttributeCard({
     required this.attribute,
-    required this.isSelected,
+    required this.searchQuery,
     required this.onEdit,
     required this.onDelete,
-    required this.onAddValue,
+    required this.onOpenAddDialog,
   });
 
   @override
@@ -887,6 +691,20 @@ class _AttributeCard extends StatefulWidget {
 
 class _AttributeCardState extends State<_AttributeCard> {
   bool _isHovered = false;
+  bool _isExpanded = false;
+
+  // Inline value creator state
+  bool _isAddingInline = false;
+  bool _isSubmittingInline = false;
+  final TextEditingController _inlineCtrl = TextEditingController();
+  final FocusNode _inlineFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _inlineCtrl.dispose();
+    _inlineFocusNode.dispose();
+    super.dispose();
+  }
 
   IconData _getAttributeIcon(String name) {
     final lower = name.toLowerCase().trim();
@@ -935,12 +753,38 @@ class _AttributeCardState extends State<_AttributeCard> {
     return text[0].toUpperCase() + text.substring(1);
   }
 
+  Future<void> _submitInlineValue() async {
+    final text = _inlineCtrl.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() => _isSubmittingInline = true);
+    final cubit = context.read<AttributesCubit>();
+    final success = await cubit.saveAttributeValue(widget.attribute.id, text);
+
+    if (mounted) {
+      setState(() {
+        _isSubmittingInline = false;
+        if (success) {
+          _inlineCtrl.clear();
+          // Mantiene el foco para que el usuario pueda escribir múltiples valores rápidamente
+          _inlineFocusNode.requestFocus();
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final values = widget.attribute.values;
     final themeColor = _getAttributeColor(widget.attribute.name);
     final themeIcon = _getAttributeIcon(widget.attribute.name);
     final formattedTitle = _formatTitle(widget.attribute.name);
+
+    // Sistema Smart Tag Cloud: colapso inteligente si hay más de 8 valores
+    final hasManyValues = values.length > 8;
+    final visibleValues = (hasManyValues && !_isExpanded)
+        ? values.take(8).toList()
+        : values;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -952,18 +796,16 @@ class _AttributeCardState extends State<_AttributeCard> {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: widget.isSelected
-                ? AppColors.primary
-                : (_isHovered
-                    ? AppColors.primary.withValues(alpha: 0.3)
-                    : AppColors.border),
-            width: widget.isSelected ? 1.5 : 1,
+            color: _isHovered
+                ? AppColors.primary.withValues(alpha: 0.35)
+                : AppColors.border,
+            width: 1,
           ),
           boxShadow: [
-            if (_isHovered || widget.isSelected)
+            if (_isHovered)
               BoxShadow(
                 color: themeColor.withValues(alpha: 0.08),
-                blurRadius: 12,
+                blurRadius: 16,
                 offset: const Offset(0, 4),
               )
             else
@@ -1073,7 +915,7 @@ class _AttributeCardState extends State<_AttributeCard> {
               child: Divider(color: AppColors.border, height: 1),
             ),
 
-            // Grilla de Chips de Valores
+            // Grilla de Chips de Valores con Inline Creator & Smart Tag Expansion
             AnimatedSize(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeInOut,
@@ -1082,13 +924,155 @@ class _AttributeCardState extends State<_AttributeCard> {
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  ...values.map(
-                    (v) => _ValueChip(
-                      value: v,
-                      attributeName: formattedTitle,
-                    ),
+                  ...visibleValues.map(
+                    (v) {
+                      final isMatch = widget.searchQuery.isNotEmpty &&
+                          v.value.toLowerCase().contains(widget.searchQuery.toLowerCase());
+                      return _ValueChip(
+                        value: v,
+                        attributeName: formattedTitle,
+                        isSearchMatch: isMatch,
+                      );
+                    },
                   ),
-                  _AddValueChipButton(onTap: widget.onAddValue),
+
+                  // Botón para expandir/colapsar si tiene muchos valores
+                  if (hasManyValues)
+                    InkWell(
+                      onTap: () => setState(() => _isExpanded = !_isExpanded),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _isExpanded
+                                  ? 'Ver menos'
+                                  : '+${values.length - 8} más',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                            Icon(
+                              _isExpanded
+                                  ? Icons.keyboard_arrow_up_rounded
+                                  : Icons.keyboard_arrow_down_rounded,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  // Creador Inline de Valor (Pro Tool: rápido sin modales)
+                  if (_isAddingInline)
+                    Container(
+                      height: 32,
+                      padding: const EdgeInsets.only(left: 10, right: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.primary, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(minWidth: 90, maxWidth: 160),
+                            child: TextField(
+                              controller: _inlineCtrl,
+                              focusNode: _inlineFocusNode,
+                              autofocus: true,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                              decoration: const InputDecoration(
+                                hintText: 'Nuevo valor...',
+                                hintStyle: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                ),
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(vertical: 8),
+                              ),
+                              onSubmitted: (_) => _submitInlineValue(),
+                            ),
+                          ),
+                          if (_isSubmittingInline)
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            )
+                          else ...[
+                            InkWell(
+                              onTap: _submitInlineValue,
+                              borderRadius: BorderRadius.circular(4),
+                              child: const Padding(
+                                padding: EdgeInsets.all(3),
+                                child: Icon(
+                                  Icons.check_rounded,
+                                  size: 16,
+                                  color: AppColors.success,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _isAddingInline = false;
+                                  _inlineCtrl.clear();
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(4),
+                              child: const Padding(
+                                padding: EdgeInsets.all(3),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  size: 16,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    )
+                  else
+                    _AddValueChipButton(
+                      onTap: () {
+                        setState(() {
+                          _isAddingInline = true;
+                        });
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _inlineFocusNode.requestFocus();
+                        });
+                      },
+                      onLongPress: widget.onOpenAddDialog,
+                    ),
                 ],
               ),
             ),
@@ -1153,10 +1137,12 @@ class _CardActionIconState extends State<_CardActionIcon> {
 class _ValueChip extends StatefulWidget {
   final AttributeValueEntity value;
   final String attributeName;
+  final bool isSearchMatch;
 
   const _ValueChip({
     required this.value,
     required this.attributeName,
+    this.isSearchMatch = false,
   });
 
   @override
@@ -1202,14 +1188,19 @@ class _ValueChipState extends State<_ValueChip> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: _isHovered
-              ? AppColors.primary.withValues(alpha: 0.05)
-              : AppColors.background,
+          color: widget.isSearchMatch
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : (_isHovered
+                  ? AppColors.primary.withValues(alpha: 0.05)
+                  : AppColors.background),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: _isHovered
-                ? AppColors.primary.withValues(alpha: 0.3)
-                : AppColors.border,
+            color: widget.isSearchMatch
+                ? AppColors.primary
+                : (_isHovered
+                    ? AppColors.primary.withValues(alpha: 0.4)
+                    : AppColors.border),
+            width: widget.isSearchMatch ? 1.4 : 1,
           ),
         ),
         child: Row(
@@ -1217,10 +1208,10 @@ class _ValueChipState extends State<_ValueChip> {
           children: [
             Text(
               widget.value.value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
+                fontWeight: widget.isSearchMatch ? FontWeight.bold : FontWeight.w500,
+                color: widget.isSearchMatch ? AppColors.primary : AppColors.textPrimary,
               ),
             ),
             const SizedBox(width: 6),
@@ -1254,8 +1245,12 @@ class _ValueChipState extends State<_ValueChip> {
 
 class _AddValueChipButton extends StatefulWidget {
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
-  const _AddValueChipButton({required this.onTap});
+  const _AddValueChipButton({
+    required this.onTap,
+    this.onLongPress,
+  });
 
   @override
   State<_AddValueChipButton> createState() => _AddValueChipButtonState();
@@ -1270,39 +1265,43 @@ class _AddValueChipButtonState extends State<_AddValueChipButton> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       cursor: SystemMouseCursors.click,
-      child: InkWell(
-        onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: _isHovered
-                ? AppColors.primary.withValues(alpha: 0.15)
-                : AppColors.primary.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: _isHovered ? 0.4 : 0.2),
+      child: Tooltip(
+        message: 'Añadir valor rápido (Clic) / Diálogo (Mantener presionado)',
+        child: InkWell(
+          onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
+          borderRadius: BorderRadius.circular(8),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: _isHovered
+                  ? AppColors.primary.withValues(alpha: 0.15)
+                  : AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: _isHovered ? 0.4 : 0.2),
+              ),
             ),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.add_rounded,
-                size: 15,
-                color: AppColors.primary,
-              ),
-              SizedBox(width: 4),
-              Text(
-                'Añadir valor',
-                style: TextStyle(
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.add_rounded,
+                  size: 15,
                   color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
                 ),
-              ),
-            ],
+                SizedBox(width: 4),
+                Text(
+                  'Añadir valor',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
