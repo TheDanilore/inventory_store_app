@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/purchase_order_item_entity.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,13 +14,13 @@ import 'package:inventory_store_app/features/purchases/domain/usecases/fetch_pur
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_state.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_card.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_detail_sheet.dart';
-import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
+import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 
 class PurchaseOrdersScreen extends StatefulWidget {
   const PurchaseOrdersScreen({super.key});
@@ -33,6 +34,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   _PurchaseOrdersViewModel get viewModel =>
       _PurchaseOrdersViewModel(cubit, cubit.state);
   final _searchCtrl = TextEditingController();
+  final _searchFocusNode = FocusNode();
+  final _screenFocusNode = FocusNode();
   bool _hasDraft = false;
   Timer? _debounce;
   PurchaseOrderModel? _selectedOrder;
@@ -77,34 +80,101 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   void dispose() {
     _debounce?.cancel();
     _searchCtrl.dispose();
+    _searchFocusNode.dispose();
+    _screenFocusNode.dispose();
     super.dispose();
   }
 
-  Future<void> _pickDateRange(BuildContext context) async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialDateRange: viewModel.dateRange,
-      initialEntryMode: DatePickerEntryMode.input,
-      builder:
-          (context, child) => Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.light(primary: AppColors.primary),
-              inputDecorationTheme: const InputDecorationTheme(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-              ),
-            ),
-            child: child!,
-          ),
-    );
-    if (picked != null) {
-      cubit.setDateRange(picked.start, picked.end);
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    // '/' para enfocar buscador instantáneamente
+    if (event.logicalKey == LogicalKeyboardKey.slash) {
+      if (!_searchFocusNode.hasFocus) {
+        _searchFocusNode.requestFocus();
+        _searchCtrl.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _searchCtrl.text.length,
+        );
+        return KeyEventResult.handled;
+      }
     }
+
+    // Escape para desenfocar buscador o deseleccionar orden
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      if (_searchFocusNode.hasFocus) {
+        _searchFocusNode.unfocus();
+        return KeyEventResult.handled;
+      }
+      if (_selectedOrder != null) {
+        setState(() => _selectedOrder = null);
+        return KeyEventResult.handled;
+      }
+    }
+
+    // Flechas arriba y abajo para navegar órdenes en split-view
+    final filtered = viewModel.orders.cast<PurchaseOrderModel>();
+    if (filtered.isNotEmpty && !_searchFocusNode.hasFocus) {
+      final currentIndex =
+          _selectedOrder != null
+              ? filtered.indexWhere((o) => o.id == _selectedOrder!.id)
+              : -1;
+
+      if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+        final nextIndex = (currentIndex + 1).clamp(0, filtered.length - 1);
+        setState(() => _selectedOrder = filtered[nextIndex]);
+        return KeyEventResult.handled;
+      }
+
+      if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+        final prevIndex = (currentIndex - 1).clamp(0, filtered.length - 1);
+        setState(() => _selectedOrder = filtered[prevIndex]);
+        return KeyEventResult.handled;
+      }
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  Widget _buildNewOrderButton(BuildContext context, {bool isHeader = false}) {
+    if (isHeader) {
+      return FilledButton.icon(
+        onPressed: () {
+          context.go('/admin/purchase-orders/form');
+        },
+        icon: Icon(
+          _hasDraft ? Icons.edit_note_rounded : Icons.add_rounded,
+          size: 18,
+        ),
+        label: Text(
+          _hasDraft ? 'Continuar Borrador' : 'Nueva orden',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor:
+              _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+
+    return FloatingActionButton.extended(
+      onPressed: () {
+        context.go('/admin/purchase-orders/form');
+      },
+      icon: Icon(_hasDraft ? Icons.edit_note_rounded : Icons.add_rounded),
+      label: Text(
+        _hasDraft ? 'Continuar Borrador' : 'Nueva orden',
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      backgroundColor:
+          _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
+      foregroundColor: Colors.white,
+    );
   }
 
   void _showDetail(BuildContext context, PurchaseOrderModel po) async {
@@ -195,9 +265,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       return const SizedBox.shrink();
     }
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.background,
+        border: Border(top: BorderSide(color: AppColors.border)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -206,6 +278,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           ),
         ],
       ),
+      alignment: Alignment.center,
       child: SafeArea(
         top: false,
         child: AdminPageBlocks(
@@ -219,440 +292,484 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 800;
+
     return AdminLayout(
       title: 'Órdenes de Compra',
       showBackButton: true,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isTablet = constraints.maxWidth >= 800;
+      actions:
+          isDesktopOrTablet
+              ? [_buildNewOrderButton(context, isHeader: true)]
+              : null,
+      floatingActionButton:
+          isDesktopOrTablet
+              ? null
+              : _buildNewOrderButton(context, isHeader: false),
+      body: Focus(
+        focusNode: _screenFocusNode,
+        autofocus: true,
+        onKeyEvent: _handleKeyEvent,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isTablet = constraints.maxWidth >= 800;
 
-          return BlocBuilder<PurchaseOrdersCubit, PurchaseOrdersState>(
-            builder: (context, state) {
-              final viewModel = _PurchaseOrdersViewModel(
-                context.read<PurchaseOrdersCubit>(),
-                state,
-              );
-              if (viewModel.errorMessage.isNotEmpty) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  AppSnackbar.show(
-                    context,
-                    message: viewModel.errorMessage,
-                    type: SnackbarType.error,
-                  );
-                  viewModel.clearError();
-                });
-              }
-
-              final filtered = viewModel.orders.cast<PurchaseOrderModel>();
-              final totalAmount = viewModel.totalAmountFiltered;
-              final pendingCount = viewModel.pendingCountFiltered;
-
-              // Sincronizar orden seleccionada si existe en la lista filtrada
-              if (filtered.isNotEmpty && _selectedOrder != null) {
-                final index = filtered.indexWhere(
-                  (o) => o.id == _selectedOrder!.id,
+            return BlocBuilder<PurchaseOrdersCubit, PurchaseOrdersState>(
+              builder: (context, state) {
+                final viewModel = _PurchaseOrdersViewModel(
+                  context.read<PurchaseOrdersCubit>(),
+                  state,
                 );
-                if (index != -1) {
-                  _selectedOrder = filtered[index];
+                if (viewModel.errorMessage.isNotEmpty) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    AppSnackbar.show(
+                      context,
+                      message: viewModel.errorMessage,
+                      type: SnackbarType.error,
+                    );
+                    viewModel.clearError();
+                  });
                 }
-              }
 
-              final listContent = Column(
-                children: [
-                  // ── Borrador ──────────────────────────────────────────────
-                  if (_hasDraft)
-                    Container(
-                      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.1),
-                        border: Border.all(
-                          color: AppColors.warning.withValues(alpha: 0.3),
+                final filtered = viewModel.orders.cast<PurchaseOrderModel>();
+                final totalAmount = viewModel.totalAmountFiltered;
+                final pendingCount = viewModel.pendingCountFiltered;
+
+                // Sincronizar orden seleccionada si existe en la lista filtrada
+                if (filtered.isNotEmpty && _selectedOrder != null) {
+                  final index = filtered.indexWhere(
+                    (o) => o.id == _selectedOrder!.id,
+                  );
+                  if (index != -1) {
+                    _selectedOrder = filtered[index];
+                  }
+                }
+
+                final listContent = Column(
+                  children: [
+                    // ── Borrador ──────────────────────────────────────────────
+                    if (_hasDraft)
+                      Container(
+                        margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
                         ),
-                        borderRadius: BorderRadius.circular(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withValues(alpha: 0.1),
+                          border: Border.all(
+                            color: AppColors.warning.withValues(alpha: 0.3),
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.edit_document,
+                              color: AppColors.warning,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'Tienes un borrador de compra en progreso.',
+                                style: TextStyle(
+                                  color: AppColors.warning,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            FilledButton.tonal(
+                              onPressed: () {
+                                context.go('/admin/purchase-orders/form');
+                              },
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                visualDensity: VisualDensity.compact,
+                                backgroundColor: AppColors.warning.withValues(
+                                  alpha: 0.2,
+                                ),
+                                foregroundColor: AppColors.warning,
+                              ),
+                              child: const Text('Continuar'),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Row(
+
+                    // ── Ribbon Compacto de KPIs (42dp) ──────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _CompactKpiRibbon(
+                        orderCount: filtered.length,
+                        totalAmount: totalAmount,
+                        pendingCount: pendingCount,
+                      ),
+                    ),
+
+                    // ── Filtros y Búsqueda ────────────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.edit_document,
-                            color: AppColors.warning,
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'Tienes un borrador de compra en progreso.',
-                              style: TextStyle(
-                                color: AppColors.warning,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _SearchField(
+                                  controller: _searchCtrl,
+                                  focusNode: _searchFocusNode,
+                                  hint: 'Buscar proveedor, doc... (Presiona /)',
+                                  onChanged: (v) {
+                                    _debounce?.cancel();
+                                    _debounce = Timer(
+                                      const Duration(milliseconds: 300),
+                                      () => viewModel.setSearchText(v),
+                                    );
+                                  },
+                                  onSubmitted: (v) {
+                                    _debounce?.cancel();
+                                    viewModel.setSearchText(v);
+                                  },
+                                  onClear: () {
+                                    _debounce?.cancel();
+                                    _searchCtrl.clear();
+                                    viewModel.setSearchText('');
+                                  },
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              DateFilterCalendar(
+                                dateRange: viewModel.dateRange,
+                                onDateRangeSelected:
+                                    (range) => cubit.setDateRange(
+                                      range.start,
+                                      range.end,
+                                    ),
+                                onClear: () => cubit.setDateRange(null, null),
+                              ),
+                            ],
                           ),
-                          FilledButton.tonal(
-                            onPressed: () {
-                              context.go('/admin/purchase-orders/form');
+                          const SizedBox(height: 10),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final chips =
+                                  _statusLabels.entries.map((e) {
+                                    final sel = viewModel.statusFilter == e.key;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(
+                                        right: 6,
+                                        bottom: 4,
+                                      ),
+                                      child: FilterChip(
+                                        label: Text(e.value),
+                                        selected: sel,
+                                        onSelected:
+                                            (_) => viewModel.setStatusFilter(
+                                              e.key,
+                                            ),
+                                        selectedColor: AppColors.primary
+                                            .withValues(alpha: 0.15),
+                                        checkmarkColor: AppColors.primary,
+                                        labelStyle: TextStyle(
+                                          fontWeight:
+                                              sel
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
+                                          fontSize: 12,
+                                          color:
+                                              sel
+                                                  ? AppColors.primary
+                                                  : AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList();
+
+                              if (constraints.maxWidth > 600) {
+                                return Wrap(children: chips);
+                              }
+
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(children: chips),
+                              );
                             },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.warning.withValues(
-                                alpha: 0.2,
-                              ),
-                              foregroundColor: AppColors.warning,
-                            ),
-                            child: const Text('Continuar'),
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 6),
 
-                  // ── Resumen KPI ───────────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: Row(
-                      children: [
-                        _SummaryTile(
-                          label: 'Órdenes',
-                          value: '${filtered.length}',
-                          icon: Icons.shopping_cart_rounded,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 8),
-                        _SummaryTile(
-                          label: 'Total Pág.',
-                          value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-                          icon: Icons.payments_rounded,
-                          color: AppColors.teal,
-                        ),
-                        const SizedBox(width: 8),
-                        _SummaryTile(
-                          label: 'Pendientes',
-                          value: '$pendingCount',
-                          icon: Icons.pending_actions_rounded,
-                          color:
-                              pendingCount > 0
-                                  ? AppColors.warning
-                                  : AppColors.success,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // ── Filtros y Búsqueda ────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _SearchField(
-                                controller: _searchCtrl,
-                                hint: 'Buscar proveedor, documento...',
-                                onChanged: (v) {
-                                  _debounce?.cancel();
-                                  _debounce = Timer(
-                                    const Duration(milliseconds: 300),
-                                    () => viewModel.setSearchText(v),
-                                  );
-                                },
-                                onSubmitted: (v) {
-                                  _debounce?.cancel();
-                                  viewModel.setSearchText(v);
-                                },
-                                onClear: () {
-                                  _debounce?.cancel();
-                                  _searchCtrl.clear();
-                                  viewModel.setSearchText('');
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            _DateRangeButton(
-                              dateRange: viewModel.dateRange,
-                              onTap: () => _pickDateRange(context),
-                              onClear: () => cubit.setDateRange(null, null),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final chips =
-                                _statusLabels.entries.map((e) {
-                                  final sel = viewModel.statusFilter == e.key;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(
-                                      right: 6,
-                                      bottom: 6,
-                                    ),
-                                    child: FilterChip(
-                                      label: Text(e.value),
-                                      selected: sel,
-                                      onSelected:
-                                          (_) =>
-                                              viewModel.setStatusFilter(e.key),
-                                      selectedColor: AppColors.primary
-                                          .withValues(alpha: 0.15),
-                                      checkmarkColor: AppColors.primary,
-                                      labelStyle: TextStyle(
-                                        fontWeight:
-                                            sel
-                                                ? FontWeight.w700
-                                                : FontWeight.w500,
-                                        fontSize: 12,
-                                        color:
-                                            sel
-                                                ? AppColors.primary
-                                                : AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  );
-                                }).toList();
-
-                            if (constraints.maxWidth > 600) {
-                              return Wrap(children: chips);
-                            }
-
-                            return SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(children: chips),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-
-                  // ── Lista ─────────────────────────────────────────────────
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 220),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      child:
-                          viewModel.isLoading
-                              ? ListView.separated(
-                                key: const ValueKey('loading'),
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  0,
-                                ),
-                                itemCount: 5,
-                                separatorBuilder:
-                                    (_, _) => const SizedBox(height: 10),
-                                itemBuilder:
-                                    (_, _) => AppShimmer(
-                                      width: double.infinity,
-                                      height: 90,
-                                      borderRadius: 14,
-                                    ),
-                              )
-                              : filtered.isEmpty
-                              ? AppEmptyState(
-                                key: const ValueKey('empty'),
-                                icon: Icons.shopping_cart_outlined,
-                                title: 'Sin Resultados',
-                                message:
-                                    'Sin resultados para los filtros aplicados',
-                              )
-                              : RefreshIndicator(
-                                key: ValueKey(
-                                  '${viewModel.statusFilter}_${viewModel.currentPage}',
-                                ),
-                                color: AppColors.primary,
-                                onRefresh:
-                                    () => cubit.loadOrders(refresh: true),
-                                child: ListView.separated(
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
+                    // ── Lista de Órdenes ──────────────────────────────────────
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        switchInCurve: Curves.easeOut,
+                        switchOutCurve: Curves.easeIn,
+                        child:
+                            viewModel.isLoading
+                                ? ListView.separated(
+                                  key: const ValueKey('loading'),
                                   padding: const EdgeInsets.fromLTRB(
                                     16,
                                     0,
                                     16,
-                                    80,
+                                    0,
                                   ),
-                                  itemCount: filtered.length,
+                                  itemCount: 5,
                                   separatorBuilder:
                                       (_, _) => const SizedBox(height: 10),
-                                  itemBuilder: (context, index) {
-                                    final po = filtered[index];
-                                    final isSel =
-                                        isTablet && _selectedOrder?.id == po.id;
-                                    return POCard(
-                                      po: po,
-                                      isSelected: isSel,
-                                      onTap: () {
-                                        if (isTablet) {
-                                          setState(() {
-                                            _selectedOrder = po;
-                                          });
-                                        } else {
-                                          _showDetail(context, po);
-                                        }
-                                      },
-                                    );
-                                  },
-                                ),
-                              ),
-                    ),
-                  ),
-
-                  // ── Paginación ────────────────────────────────────────────
-                  _buildPagination(viewModel),
-                ],
-              );
-
-              // ── ESTRUCTURA DOS PANELES IGUAL A ENTRADAS DE INVENTARIO ──
-              if (isTablet) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 4, child: listContent),
-                    Container(
-                      width: 1,
-                      color: Theme.of(
-                        context,
-                      ).dividerColor.withValues(alpha: 0.1),
-                    ),
-                    Expanded(
-                      flex: 6,
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child:
-                            _selectedOrder == null
-                                ? const AppEmptyState(
-                                  key: ValueKey('empty_detail'),
-                                  icon: Icons.receipt_long_rounded,
-                                  title: 'Ninguna Orden Seleccionada',
-                                  message:
-                                      'Selecciona una orden del panel izquierdo para ver sus detalles.',
+                                  itemBuilder:
+                                      (_, _) => AppShimmer(
+                                        width: double.infinity,
+                                        height: 90,
+                                        borderRadius: 16,
+                                      ),
                                 )
-                                : Padding(
-                                  key: ValueKey(_selectedOrder!.id),
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: PODetailSheet(
-                                    po: _selectedOrder!,
-                                    isDialog: true,
-                                    onPaymentSuccess: () {
-                                      if (context.mounted) {
-                                        context
-                                            .read<PurchaseOrdersCubit>()
-                                            .loadOrders(refresh: true);
-                                      }
-                                    },
-                                    loadItems: () async {
-                                      final res = await sl<
-                                            FetchPurchaseOrderItemsUseCase
-                                          >()
-                                          .call(_selectedOrder!.id);
-                                      return res.fold((l) => [], (r) => r);
-                                    },
-                                    onReceive:
-                                        () => _handleReceiveOrder(
-                                          context,
-                                          _selectedOrder!,
-                                        ),
-                                    onUpdateStatus: (status) async {
-                                      await viewModel.updateOrderStatus(
-                                        _selectedOrder!.id,
-                                        status,
+                                : filtered.isEmpty
+                                ? AppEmptyState(
+                                  key: const ValueKey('empty'),
+                                  icon: Icons.shopping_cart_outlined,
+                                  title: 'Sin Resultados',
+                                  message:
+                                      'Sin resultados para los filtros aplicados',
+                                )
+                                : RefreshIndicator(
+                                  key: ValueKey(
+                                    '${viewModel.statusFilter}_${viewModel.currentPage}',
+                                  ),
+                                  color: AppColors.primary,
+                                  onRefresh:
+                                      () => cubit.loadOrders(refresh: true),
+                                  child: ListView.separated(
+                                    physics:
+                                        const AlwaysScrollableScrollPhysics(),
+                                    padding: EdgeInsets.fromLTRB(
+                                      16,
+                                      0,
+                                      16,
+                                      isTablet ? 16 : 80,
+                                    ),
+                                    itemCount: filtered.length,
+                                    separatorBuilder:
+                                        (_, _) => const SizedBox(height: 10),
+                                    itemBuilder: (context, index) {
+                                      final po = filtered[index];
+                                      final isSel =
+                                          isTablet &&
+                                          _selectedOrder?.id == po.id;
+                                      return POCard(
+                                        po: po,
+                                        isSelected: isSel,
+                                        onTap: () {
+                                          if (isTablet) {
+                                            setState(() {
+                                              _selectedOrder = po;
+                                            });
+                                          } else {
+                                            _showDetail(context, po);
+                                          }
+                                        },
                                       );
-                                      if (context.mounted) {
-                                        context
-                                            .read<PurchaseOrdersCubit>()
-                                            .loadOrders(refresh: true);
-                                      }
                                     },
                                   ),
                                 ),
                       ),
                     ),
+
+                    // ── Paginación ────────────────────────────────────────────
+                    _buildPagination(viewModel),
                   ],
                 );
-              }
 
-              return listContent;
-            },
-          );
-        },
-      ),
+                // ── ESTRUCTURA DOS PANELES (SPLIT VIEW ERP) ──────────────────
+                if (isTablet) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 4, child: listContent),
+                      Container(width: 1, color: AppColors.border),
+                      Expanded(
+                        flex: 6,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 250),
+                          child:
+                              _selectedOrder == null
+                                  ? const AppEmptyState(
+                                    key: ValueKey('empty_detail'),
+                                    icon: Icons.receipt_long_rounded,
+                                    title: 'Ninguna Orden Seleccionada',
+                                    message:
+                                        'Selecciona una orden del panel izquierdo o navega con las flechas ↑/↓.',
+                                  )
+                                  : Padding(
+                                    key: ValueKey(_selectedOrder!.id),
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: PODetailSheet(
+                                      po: _selectedOrder!,
+                                      isDialog: true,
+                                      onPaymentSuccess: () {
+                                        if (context.mounted) {
+                                          context
+                                              .read<PurchaseOrdersCubit>()
+                                              .loadOrders(refresh: true);
+                                        }
+                                      },
+                                      loadItems: () async {
+                                        final res = await sl<
+                                              FetchPurchaseOrderItemsUseCase
+                                            >()
+                                            .call(_selectedOrder!.id);
+                                        return res.fold((l) => [], (r) => r);
+                                      },
+                                      onReceive:
+                                          () => _handleReceiveOrder(
+                                            context,
+                                            _selectedOrder!,
+                                          ),
+                                      onUpdateStatus: (status) async {
+                                        await viewModel.updateOrderStatus(
+                                          _selectedOrder!.id,
+                                          status,
+                                        );
+                                        if (context.mounted) {
+                                          context
+                                              .read<PurchaseOrdersCubit>()
+                                              .loadOrders(refresh: true);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                        ),
+                      ),
+                    ],
+                  );
+                }
 
-      // ── FAB NUEVA ORDEN ──
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          context.go('/admin/purchase-orders/form');
-        },
-        icon: Icon(_hasDraft ? Icons.edit_note_rounded : Icons.add_rounded),
-        label: Text(
-          _hasDraft ? 'Continuar Borrador' : 'Nueva orden',
-          style: const TextStyle(fontWeight: FontWeight.bold),
+                return listContent;
+              },
+            );
+          },
         ),
-        backgroundColor:
-            _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-        foregroundColor: Colors.white,
       ),
     );
   }
 }
 
-class _SummaryTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-  const _SummaryTile({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
+// ─────────────────────────────────────────────────────────────────────────────
+// Ribbon Compacto de KPIs (Estilo Stripe / Linear, altura fija 42dp)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CompactKpiRibbon extends StatelessWidget {
+  final int orderCount;
+  final double totalAmount;
+  final int pendingCount;
+
+  const _CompactKpiRibbon({
+    required this.orderCount,
+    required this.totalAmount,
+    required this.pendingCount,
   });
 
   @override
-  Widget build(BuildContext context) => Expanded(
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+  Widget build(BuildContext context) {
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 15,
-              color: color,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            const Icon(
+              Icons.receipt_long_rounded,
+              size: 16,
+              color: AppColors.primary,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
+            const SizedBox(width: 6),
+            const Text(
+              'Órdenes: ',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+            Text(
+              '$orderCount',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Container(width: 1, height: 16, color: AppColors.border),
+            const SizedBox(width: 14),
+
+            const Icon(Icons.payments_rounded, size: 16, color: AppColors.teal),
+            const SizedBox(width: 6),
+            const Text(
+              'Total Pág: ',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              'S/ ${totalAmount.toStringAsFixed(2)}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.teal,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Container(width: 1, height: 16, color: AppColors.border),
+            const SizedBox(width: 14),
+
+            Icon(
+              Icons.pending_actions_rounded,
+              size: 16,
+              color: pendingCount > 0 ? AppColors.warning : AppColors.success,
+            ),
+            const SizedBox(width: 6),
+            const Text(
+              'Pendientes: ',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              '$pendingCount',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color:
+                    pendingCount > 0 ? AppColors.warning : AppColors.success,
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _SearchField extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final String hint;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String> onSubmitted;
@@ -660,6 +777,7 @@ class _SearchField extends StatelessWidget {
 
   const _SearchField({
     required this.controller,
+    this.focusNode,
     required this.hint,
     required this.onSubmitted,
     required this.onClear,
@@ -669,6 +787,7 @@ class _SearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) => TextField(
     controller: controller,
+    focusNode: focusNode,
     onChanged: onChanged,
     onSubmitted: onSubmitted,
     textInputAction: TextInputAction.search,
@@ -693,87 +812,6 @@ class _SearchField extends StatelessWidget {
       fillColor: AppColors.surface,
     ),
   );
-}
-
-class _DateRangeButton extends StatelessWidget {
-  final DateTimeRange? dateRange;
-  final VoidCallback onTap;
-  final VoidCallback onClear;
-  const _DateRangeButton({
-    required this.dateRange,
-    required this.onTap,
-    required this.onClear,
-  });
-
-  String _formatRange(DateTimeRange range) {
-    final fmt = DateFormat('d MMM', 'es');
-    return '${fmt.format(range.start)} – ${fmt.format(range.end)}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasDate = dateRange != null;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        constraints: const BoxConstraints(minHeight: 48),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color:
-              hasDate
-                  ? AppColors.primary.withValues(alpha: 0.1)
-                  : AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border:
-              hasDate
-                  ? Border.all(color: AppColors.primary.withValues(alpha: 0.3))
-                  : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.date_range_rounded,
-              size: 18,
-              color: hasDate ? AppColors.primary : AppColors.textSecondary,
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              child:
-                  hasDate
-                      ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(width: 6),
-                          Text(
-                            _formatRange(dateRange!),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          GestureDetector(
-                            onTap: onClear,
-                            child: const Icon(
-                              Icons.close_rounded,
-                              size: 14,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      )
-                      : const SizedBox.shrink(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _PurchaseOrdersViewModel {

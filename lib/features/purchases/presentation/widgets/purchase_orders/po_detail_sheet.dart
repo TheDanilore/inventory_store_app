@@ -563,6 +563,48 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                       color: _statusColor(_status),
                     ),
                     const Spacer(),
+                    Tooltip(
+                      message: 'Exportar orden en PDF',
+                      child: OutlinedButton.icon(
+                        onPressed:
+                            _isProcessingAction
+                                ? null
+                                : () {
+                                  AppSnackbar.show(
+                                    context,
+                                    message:
+                                        'Función de PDF próximamente ($shortCode)',
+                                    type: SnackbarType.info,
+                                  );
+                                },
+                        icon: const Icon(
+                          Icons.picture_as_pdf_rounded,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                        label: const Text(
+                          'Exportar PDF',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          side: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.25),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -576,40 +618,7 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Exportar PDF
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Tooltip(
-                            message: 'Exportar orden en PDF',
-                            child: TextButton.icon(
-                              onPressed:
-                                  _isProcessingAction
-                                      ? null
-                                      : () {
-                                        AppSnackbar.show(
-                                          context,
-                                          message:
-                                              'Función de PDF próximamente',
-                                          type: SnackbarType.info,
-                                        );
-                                      },
-                              icon: const Icon(
-                                Icons.picture_as_pdf_rounded,
-                                size: 18,
-                                color: AppColors.primary,
-                              ),
-                              label: const Text(
-                                'Exportar PDF',
-                                style: TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      const SizedBox(height: 4),
 
                       // ── Card Proveedor y Finanzas ──────────────────
                       Container(
@@ -622,7 +631,7 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Label PROVEEDOR con contraste mejorado
+                            // Label PROVEEDOR
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -632,56 +641,15 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.textSecondary,
-                                    letterSpacing: 0.3,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
-                                Tooltip(
-                                  message:
-                                      'Copiar ID completo (${widget.po.id})',
-                                  child: InkWell(
-                                    onTap: () {
-                                      Clipboard.setData(
-                                        ClipboardData(text: widget.po.id),
-                                      );
-                                      AppSnackbar.show(
-                                        context,
-                                        message:
-                                            'ID de orden copiado: ${widget.po.id}',
-                                        type: SnackbarType.info,
-                                      );
-                                    },
-                                    borderRadius: BorderRadius.circular(6),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            shortCode,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.primary,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          const Icon(
-                                            Icons.copy_rounded,
-                                            size: 13,
-                                            color: AppColors.primary,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                                Text(
+                                  'Doc: ${widget.po.documentType.isNotEmpty ? widget.po.documentType : "N/A"}${widget.po.documentNumber != null && widget.po.documentNumber!.isNotEmpty ? " • ${widget.po.documentNumber}" : ""}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
@@ -939,6 +907,7 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
               _StickyFooter(
                 status: _status,
                 isProcessing: _isProcessingAction,
+                isDialog: widget.isDialog,
                 onReceive: widget.onReceive,
                 onMarkSent: () => _handleUpdateStatus('SENT'),
                 onSendWhatsApp: _sendWhatsAppMessage,
@@ -953,12 +922,13 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Sticky Footer con AnimatedSwitcher
+// Sticky Footer con AnimatedSwitcher y soporte horizontal en Desktop
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _StickyFooter extends StatelessWidget {
   final String status;
   final bool isProcessing;
+  final bool isDialog;
   final VoidCallback onReceive;
   final VoidCallback onMarkSent;
   final VoidCallback onSendWhatsApp;
@@ -967,6 +937,7 @@ class _StickyFooter extends StatelessWidget {
   const _StickyFooter({
     required this.status,
     required this.isProcessing,
+    this.isDialog = false,
     required this.onReceive,
     required this.onMarkSent,
     required this.onSendWhatsApp,
@@ -984,6 +955,108 @@ class _StickyFooter extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    // ── Desktop / Split View (Barra Horizontal Compacta de 64dp) ────────────
+    if (isDialog) {
+      return Container(
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: Row(
+          children: [
+            if (showCancel)
+              TextButton.icon(
+                onPressed: isProcessing ? null : onCancel,
+                icon: const Icon(
+                  Icons.cancel_outlined,
+                  size: 16,
+                  color: AppColors.danger,
+                ),
+                label: Text(
+                  'Anular Orden',
+                  style: TextStyle(
+                    color:
+                        isProcessing ? AppColors.textMuted : AppColors.danger,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                ),
+              ),
+            const Spacer(),
+            if (showMarkSent) ...[
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: isProcessing ? null : onMarkSent,
+                child: const Text(
+                  'Marcar como ENVIADA',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.chat_rounded, size: 16),
+                label: const Text(
+                  'WhatsApp',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: isProcessing ? null : onSendWhatsApp,
+              ),
+            ] else if (showReceive) ...[
+              ElevatedButton.icon(
+                icon: const Icon(Icons.inventory_rounded, size: 18),
+                label: const Text(
+                  'Recepcionar Mercadería',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: isProcessing ? null : onReceive,
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    // ── Mobile Bottom Sheet (Columna Táctil) ──────────────────────────────────
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
       decoration: BoxDecoration(
@@ -1000,7 +1073,6 @@ class _StickyFooter extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Botón de acción primaria con AnimatedSwitcher
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
             transitionBuilder:
@@ -1016,18 +1088,18 @@ class _StickyFooter extends StatelessWidget {
                 ),
             child: _buildPrimaryButton(context),
           ),
-
-          // Botón destructivo siempre debajo
           if (showCancel) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             SizedBox(
               width: double.infinity,
-              child: TextButton(
+              child: TextButton.icon(
                 onPressed: isProcessing ? null : onCancel,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
+                icon: const Icon(
+                  Icons.cancel_outlined,
+                  size: 16,
+                  color: AppColors.danger,
                 ),
-                child: Text(
+                label: Text(
                   'Anular Orden',
                   style: TextStyle(
                     color:
@@ -1035,6 +1107,9 @@ class _StickyFooter extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                   ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                 ),
               ),
             ),
@@ -1162,6 +1237,13 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
     super.dispose();
   }
 
+  void _applyPercentage(double fraction) {
+    final val = widget.pending * fraction;
+    setState(() {
+      _amountCtrl.text = val.toStringAsFixed(2);
+    });
+  }
+
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     final payAmount = double.tryParse(_amountCtrl.text.trim()) ?? 0.0;
@@ -1194,17 +1276,87 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
     );
   }
 
+  Widget _buildQuickPctChip(String label, double fraction) {
+    final expectedVal = (widget.pending * fraction).toStringAsFixed(2);
+    final isSelected = _amountCtrl.text == expectedVal;
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => _applyPercentage(fraction),
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color:
+                isSelected
+                    ? AppColors.primary.withValues(alpha: 0.12)
+                    : AppColors.surface,
+            border: Border.all(
+              color:
+                  isSelected
+                      ? AppColors.primary
+                      : AppColors.border.withValues(alpha: 0.7),
+              width: isSelected ? 1.5 : 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Row(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      title: Row(
         children: [
-          Icon(Icons.payments_rounded, color: AppColors.success),
-          SizedBox(width: 8),
-          Text(
-            'Registrar Pago de Orden',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.payments_rounded,
+              color: AppColors.success,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Registrar Pago de Orden',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Amortización directa a cuenta por pagar',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1215,36 +1367,97 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Proveedor: ${widget.supplierName}',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Deuda Pendiente: S/ ${widget.pending.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: AppColors.danger,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
+              // Panel Proveedor y Deuda
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'PROVEEDOR',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.supplierName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'DEUDA PENDIENTE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textSecondary,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'S/ ${widget.pending.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: AppColors.danger,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
+
               const Text(
                 'Cuenta Origen (Caja / Banco):',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 initialValue: _selectedAccountId,
                 isExpanded: true,
                 decoration: InputDecoration(
+                  prefixIcon: const Icon(
+                    Icons.account_balance_wallet_rounded,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.border),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 10,
+                    vertical: 12,
                   ),
+                  filled: true,
+                  fillColor: AppColors.surface,
                 ),
                 items:
                     widget.accounts.map((acc) {
@@ -1263,11 +1476,38 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
                 },
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Monto a pagar (S/):',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Monto a pagar:',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'Saldo: S/ ${widget.accounts.firstWhere((a) => a.id == _selectedAccountId, orElse: () => widget.accounts.first).balance.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
+
+              // Chips de porcentaje rápido
+              Row(
+                children: [
+                  _buildQuickPctChip('100% (Total)', 1.0),
+                  const SizedBox(width: 8),
+                  _buildQuickPctChip('50%', 0.5),
+                  const SizedBox(width: 8),
+                  _buildQuickPctChip('25%', 0.25),
+                ],
+              ),
+              const SizedBox(height: 8),
+
               TextFormField(
                 controller: _amountCtrl,
                 keyboardType: const TextInputType.numberWithOptions(
@@ -1276,14 +1516,36 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}$')),
                 ],
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
                 decoration: InputDecoration(
+                  prefixIcon: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    child: Text(
+                      'S/',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 0,
+                    minHeight: 0,
+                  ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.border),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
+                    horizontal: 14,
+                    vertical: 12,
                   ),
+                  filled: true,
+                  fillColor: AppColors.surface,
                 ),
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) {
@@ -1309,12 +1571,17 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.success,
             foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
             ),
           ),
           onPressed: _submit,
-          child: const Text('Confirmar Pago'),
+          child: const Text(
+            'Confirmar Pago',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
         ),
       ],
     );
