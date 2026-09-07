@@ -350,6 +350,17 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       currentSelectedOrder,
                     ),
                   ),
+                  if (!isWide && state.totalPages > 1 && !state.isLoading && state.errorMessage.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                        child: AdminPageBlocks(
+                          currentPage: state.currentPage,
+                          totalPages: state.totalPages,
+                          onPageChanged: cubit.goToPage,
+                        ),
+                      ),
+                    ),
                 ],
               );
 
@@ -365,21 +376,17 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         child: scrollContent,
                       ),
                     ),
-                    if (state.totalPages > 1 && !state.isLoading && state.errorMessage.isEmpty)
+                    if (isWide && state.totalPages > 1 && !state.isLoading && state.errorMessage.isEmpty)
                       Container(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, -4),
-                            ),
-                          ],
+                        height: 64,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: const BoxDecoration(
+                          color: AppColors.surface,
+                          border: Border(
+                            top: BorderSide(color: AppColors.border),
+                          ),
                         ),
-                        child: SafeArea(
-                          top: false,
+                        child: Center(
                           child: AdminPageBlocks(
                             currentPage: state.currentPage,
                             totalPages: state.totalPages,

@@ -823,19 +823,13 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                       final actualTotal = totalFinal < 0 ? 0.0 : totalFinal;
 
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
+                        height: 64,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: const BoxDecoration(
                           color: Colors.white,
                           border: Border(
                             top: BorderSide(color: AppColors.border),
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, -3),
-                            ),
-                          ],
                         ),
                         child: Row(
                           children: [

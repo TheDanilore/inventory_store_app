@@ -176,137 +176,140 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                 ),
                 const SizedBox(width: 12),
                 // Dropdown estilizado de Cobros
-                Container(
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color:
-                        isPaymentFiltered
-                            ? AppColors.teal.withValues(alpha: 0.1)
-                            : Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Container(
+                    height: 36,
+                    decoration: BoxDecoration(
                       color:
                           isPaymentFiltered
-                              ? AppColors.teal
-                              : Colors.grey.shade300,
-                      width: isPaymentFiltered ? 1.5 : 1,
+                              ? AppColors.teal.withValues(alpha: 0.1)
+                              : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color:
+                            isPaymentFiltered
+                                ? AppColors.teal
+                                : AppColors.border,
+                        width: isPaymentFiltered ? 1.5 : 1,
+                      ),
                     ),
-                  ),
-                  child: PopupMenuButton<String>(
-                    initialValue: state.paymentStatusFilter,
-                    offset: const Offset(0, 40),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    onSelected: (val) {
-                      cubit.setPaymentStatusFilter(val);
-                    },
-                    itemBuilder:
-                        (context) => [
-                          const PopupMenuItem(
-                            value: 'ALL',
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.payments_rounded,
-                                  size: 16,
-                                  color: AppColors.textMuted,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Cobros: Todos',
-                                  style: TextStyle(fontSize: 13),
-                                ),
-                              ],
+                    child: PopupMenuButton<String>(
+                      initialValue: state.paymentStatusFilter,
+                      offset: const Offset(0, 40),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      onSelected: (val) {
+                        cubit.setPaymentStatusFilter(val);
+                      },
+                      itemBuilder:
+                          (context) => [
+                            const PopupMenuItem(
+                              value: 'ALL',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.payments_rounded,
+                                    size: 16,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Cobros: Todos',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'PAID',
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.check_circle_rounded,
-                                  size: 16,
-                                  color: Colors.green,
-                                ),
-                                SizedBox(width: 8),
-                                Text('Pagados', style: TextStyle(fontSize: 13)),
-                              ],
+                            const PopupMenuItem(
+                              value: 'PAID',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    size: 16,
+                                    color: AppColors.teal,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text('Pagados', style: TextStyle(fontSize: 13)),
+                                ],
+                              ),
                             ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'PENDING',
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.pending_actions_rounded,
-                                  size: 16,
-                                  color: Colors.orange,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Por cobrar',
-                                  style: TextStyle(fontSize: 13),
-                                ),
-                              ],
+                            const PopupMenuItem(
+                              value: 'PENDING',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.pending_actions_rounded,
+                                    size: 16,
+                                    color: AppColors.warning,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Por cobrar',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'PARTIAL',
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.pie_chart_rounded,
-                                  size: 16,
-                                  color: Colors.blue,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Parciales',
-                                  style: TextStyle(fontSize: 13),
-                                ),
-                              ],
+                            const PopupMenuItem(
+                              value: 'PARTIAL',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.pie_chart_rounded,
+                                    size: 16,
+                                    color: AppColors.primary,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Parciales',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.tune_rounded,
-                            size: 14,
-                            color:
-                                isPaymentFiltered
-                                    ? AppColors.teal
-                                    : AppColors.textSecondary,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _getPaymentStatusLabel(state.paymentStatusFilter),
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight:
-                                  isPaymentFiltered
-                                      ? FontWeight.w800
-                                      : FontWeight.w600,
+                          ],
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.tune_rounded,
+                              size: 14,
                               color:
                                   isPaymentFiltered
                                       ? AppColors.teal
-                                      : AppColors.textPrimary,
+                                      : AppColors.textSecondary,
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            size: 16,
-                            color:
-                                isPaymentFiltered
-                                    ? AppColors.teal
-                                    : AppColors.textSecondary,
-                          ),
-                        ],
+                            const SizedBox(width: 6),
+                            Text(
+                              _getPaymentStatusLabel(state.paymentStatusFilter),
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight:
+                                    isPaymentFiltered
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                color:
+                                    isPaymentFiltered
+                                        ? AppColors.teal
+                                        : AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 16,
+                              color:
+                                  isPaymentFiltered
+                                      ? AppColors.teal
+                                      : AppColors.textSecondary,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
