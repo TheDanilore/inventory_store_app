@@ -38,6 +38,9 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     final bool isPaymentFiltered = state.paymentStatusFilter != 'ALL';
+    final bool isCreditFiltered = state.paymentStatusFilter == 'CREDIT';
+    final Color activePaymentColor =
+        isCreditFiltered ? AppColors.warning : AppColors.teal;
 
     return Container(
       color: AppColors.background,
@@ -183,13 +186,13 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                     decoration: BoxDecoration(
                       color:
                           isPaymentFiltered
-                              ? AppColors.teal.withValues(alpha: 0.1)
+                              ? activePaymentColor.withValues(alpha: 0.1)
                               : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color:
                             isPaymentFiltered
-                                ? AppColors.teal
+                                ? activePaymentColor
                                 : AppColors.border,
                         width: isPaymentFiltered ? 1.5 : 1,
                       ),
@@ -218,6 +221,27 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                                   Text(
                                     'Cobros: Todos',
                                     style: TextStyle(fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'CREDIT',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.credit_card_rounded,
+                                    size: 16,
+                                    color: AppColors.warning,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Solo a crédito',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.warning,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -277,11 +301,13 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              Icons.tune_rounded,
+                              isCreditFiltered
+                                  ? Icons.credit_card_rounded
+                                  : Icons.tune_rounded,
                               size: 14,
                               color:
                                   isPaymentFiltered
-                                      ? AppColors.teal
+                                      ? activePaymentColor
                                       : AppColors.textSecondary,
                             ),
                             const SizedBox(width: 6),
@@ -295,7 +321,7 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                                         : FontWeight.w600,
                                 color:
                                     isPaymentFiltered
-                                        ? AppColors.teal
+                                        ? activePaymentColor
                                         : AppColors.textPrimary,
                               ),
                             ),
@@ -305,7 +331,7 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                               size: 16,
                               color:
                                   isPaymentFiltered
-                                      ? AppColors.teal
+                                      ? activePaymentColor
                                       : AppColors.textSecondary,
                             ),
                           ],
@@ -340,6 +366,8 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   String _getPaymentStatusLabel(String status) {
     switch (status) {
+      case 'CREDIT':
+        return 'A Crédito';
       case 'PAID':
         return 'Pagados';
       case 'PENDING':

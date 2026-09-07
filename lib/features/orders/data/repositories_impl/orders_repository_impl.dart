@@ -143,7 +143,13 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
       if (statusFilter != 'ALL') query = query.eq('status', statusFilter);
       if (paymentStatusFilter != 'ALL') {
-        query = query.eq('payment_status', paymentStatusFilter);
+        if (paymentStatusFilter == 'CREDIT') {
+          query = query.or(
+            'payment_method.ilike.%crédito%,payment_method.ilike.%credito%',
+          );
+        } else {
+          query = query.eq('payment_status', paymentStatusFilter);
+        }
       }
 
       if (customerIdFilter != null) {
@@ -934,13 +940,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
       if (rpcResp != null && rpcResp['success'] == true) {
         return const Right(null);
       } else {
-        final errorMsg = rpcResp is Map
-            ? (rpcResp['error'] ?? rpcResp.toString())
-            : rpcResp?.toString() ?? 'Error desconocido';
+        final errorMsg =
+            rpcResp is Map
+                ? (rpcResp['error'] ?? rpcResp.toString())
+                : rpcResp?.toString() ?? 'Error desconocido';
         return Left(
-          ServerFailure(
-            message: 'Error al registrar abono: $errorMsg',
-          ),
+          ServerFailure(message: 'Error al registrar abono: $errorMsg'),
         );
       }
     } catch (e, st) {
@@ -970,17 +975,19 @@ class OrdersRepositoryImpl implements OrdersRepository {
           .gt('available_quantity', 0)
           .order('expiry_date', ascending: true, nullsFirst: false);
 
-      final batches = (resp as List).map((b) {
-        return BatchAssignmentModel(
-          batchId: b['id'] as String,
-          batchNumber: b['batch_number'] as String,
-          expiryDate: b['expiry_date'] != null
-              ? DateTime.tryParse(b['expiry_date'] as String)
-              : null,
-          available: (b['available_quantity'] as num).toInt(),
-          assigned: 0,
-        );
-      }).toList();
+      final batches =
+          (resp as List).map((b) {
+            return BatchAssignmentModel(
+              batchId: b['id'] as String,
+              batchNumber: b['batch_number'] as String,
+              expiryDate:
+                  b['expiry_date'] != null
+                      ? DateTime.tryParse(b['expiry_date'] as String)
+                      : null,
+              available: (b['available_quantity'] as num).toInt(),
+              assigned: 0,
+            );
+          }).toList();
 
       return Right(batches);
     } catch (e, st) {
