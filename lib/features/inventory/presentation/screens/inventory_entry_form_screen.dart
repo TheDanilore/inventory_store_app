@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
@@ -1228,6 +1229,15 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                               onUpdateCost: (newCost) {
                                 cubit.updateItemCost(index, newCost);
                               },
+                              onEditBatch:
+                                  items[index].usesBatches
+                                      ? () => _showEditBatchDialog(
+                                        context,
+                                        index,
+                                        items[index],
+                                        cubit,
+                                      )
+                                      : null,
                               onRemove: () => cubit.removeItem(index),
                             );
                           },
@@ -1328,6 +1338,235 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         borderSide: const BorderSide(color: AppColors.primary, width: 2),
       ),
     );
+  }
+
+  Future<void> _showEditBatchDialog(
+    BuildContext context,
+    int index,
+    InventoryEntryItemEntity item,
+    InventoryEntryFormCubit cubit,
+  ) async {
+    final initialBatch = item.batchNumber == 'DEFAULT' ? '' : item.batchNumber;
+    final batchCtrl = TextEditingController(text: initialBatch);
+    DateTime? selectedExpiry = item.expiryDate;
+    String? localError;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.qr_code_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Asignar Lote',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.productName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    if (item.variantLabel.isNotEmpty &&
+                        item.variantLabel != 'Variante Única') ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        item.variantLabel,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: batchCtrl,
+                      autofocus: true,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: InputDecoration(
+                        labelText: 'Nº de Lote *',
+                        hintText: 'Ej: LOTE-2024-001',
+                        errorText: localError,
+                        prefixIcon: const Icon(
+                          Icons.tag,
+                          color: AppColors.textMuted,
+                          size: 20,
+                        ),
+                        filled: true,
+                        fillColor: AppColors.background,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                      onChanged: (val) {
+                        if (localError != null) {
+                          setDialogState(() => localError = null);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Fecha de Vencimiento (Opcional)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: () async {
+                        HapticFeedback.lightImpact();
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate:
+                              selectedExpiry ??
+                              DateTime.now().add(const Duration(days: 90)),
+                          firstDate: DateTime.now().subtract(
+                            const Duration(days: 30),
+                          ),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365 * 10),
+                          ),
+                          helpText: 'Fecha de Vencimiento',
+                        );
+                        if (picked != null) {
+                          setDialogState(() => selectedExpiry = picked);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.calendar_today_rounded,
+                              size: 18,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                selectedExpiry != null
+                                    ? '${selectedExpiry!.day.toString().padLeft(2, '0')}/${selectedExpiry!.month.toString().padLeft(2, '0')}/${selectedExpiry!.year}'
+                                    : 'Sin fecha de vencimiento',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color:
+                                      selectedExpiry != null
+                                          ? AppColors.textPrimary
+                                          : AppColors.textSecondary,
+                                  fontWeight:
+                                      selectedExpiry != null
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                            if (selectedExpiry != null)
+                              GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  setDialogState(() => selectedExpiry = null);
+                                },
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  size: 18,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final text = batchCtrl.text.trim();
+                    if (text.isEmpty) {
+                      setDialogState(
+                        () => localError = 'El número de lote es obligatorio',
+                      );
+                      return;
+                    }
+                    cubit.updateItemBatch(index, text, selectedExpiry);
+                    Navigator.pop(dialogCtx);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text('Guardar Lote'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    batchCtrl.dispose();
   }
 }
 

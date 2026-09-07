@@ -303,13 +303,12 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                           side: const BorderSide(color: AppColors.border),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
-                            vertical: 9,
+                            vertical: 10,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppColors.radiusSm,
-                            ),
+                            borderRadius: BorderRadius.circular(10),
                           ),
+                          minimumSize: const Size(0, 40),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -328,38 +327,35 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                           side: const BorderSide(color: AppColors.border),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
-                            vertical: 9,
+                            vertical: 10,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppColors.radiusSm,
-                            ),
+                            borderRadius: BorderRadius.circular(10),
                           ),
+                          minimumSize: const Size(0, 40),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      ElevatedButton.icon(
+                      FilledButton.icon(
                         onPressed:
                             () => context.go('/admin/products/product-form'),
-                        style: ElevatedButton.styleFrom(
+                        style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          elevation: 0,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
-                            vertical: 9,
+                            vertical: 10,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppColors.radiusSm,
-                            ),
+                            borderRadius: BorderRadius.circular(10),
                           ),
+                          minimumSize: const Size(0, 40),
                         ),
                         icon: const Icon(Icons.add_rounded, size: 18),
                         label: const Text(
                           'Nuevo Producto',
                           style: TextStyle(
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             fontSize: 13,
                           ),
                         ),

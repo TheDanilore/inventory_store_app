@@ -8,6 +8,7 @@ class POFormItemTile extends StatelessWidget {
   final InventoryEntryItemEntity item;
   final ValueChanged<double> onUpdateQuantity;
   final ValueChanged<double>? onUpdateCost;
+  final VoidCallback? onEditBatch;
   final VoidCallback onRemove;
 
   const POFormItemTile({
@@ -15,6 +16,7 @@ class POFormItemTile extends StatelessWidget {
     required this.item,
     required this.onUpdateQuantity,
     this.onUpdateCost,
+    this.onEditBatch,
     required this.onRemove,
   });
 
@@ -262,35 +264,104 @@ class POFormItemTile extends StatelessWidget {
                     ),
                   ),
                 const SizedBox(height: 6),
-                // Chip de lote con color semafórico
-                if (item.usesBatches &&
-                    item.batchNumber.isNotEmpty &&
-                    item.batchNumber != 'DEFAULT')
-                  Semantics(
-                    label:
-                        'Lote ${item.batchNumber}${item.expiryDate != null ? ', vence el ${item.expiryDate!.day}/${item.expiryDate!.month}/${item.expiryDate!.year}' : ''}',
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: batchColor.withValues(alpha: 0.1),
+                // Chip de lote con color semafórico y acción de edición
+                if (item.usesBatches) ...[
+                  if (item.batchNumber.isEmpty || item.batchNumber == 'DEFAULT')
+                    Semantics(
+                      label: 'Producto requiere asignar lote',
+                      button: onEditBatch != null,
+                      child: InkWell(
+                        onTap: onEditBatch,
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: batchColor.withValues(alpha: 0.4),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7), // Amber 100
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(0xFFF59E0B), // Amber 500
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                size: 13,
+                                color: Color(0xFFB45309),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                onEditBatch != null
+                                    ? 'Asignar Lote'
+                                    : 'Sin lote asignado',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFFB45309),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              if (onEditBatch != null) ...[
+                                const SizedBox(width: 3),
+                                const Icon(
+                                  Icons.edit_rounded,
+                                  size: 11,
+                                  color: Color(0xFFB45309),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
-                      child: Text(
-                        'Lote: ${item.batchNumber}',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: batchColor,
-                          fontWeight: FontWeight.w700,
+                    )
+                  else
+                    Semantics(
+                      label:
+                          'Lote ${item.batchNumber}${item.expiryDate != null ? ', vence el ${item.expiryDate!.day}/${item.expiryDate!.month}/${item.expiryDate!.year}' : ''}',
+                      button: onEditBatch != null,
+                      child: InkWell(
+                        onTap: onEditBatch,
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: batchColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: batchColor.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Lote: ${item.batchNumber}${item.expiryDate != null ? ' (${item.expiryDate!.day.toString().padLeft(2, '0')}/${item.expiryDate!.month.toString().padLeft(2, '0')}/${item.expiryDate!.year})' : ''}',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: batchColor,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              if (onEditBatch != null) ...[
+                                const SizedBox(width: 3),
+                                Icon(
+                                  Icons.edit_outlined,
+                                  size: 11,
+                                  color: batchColor,
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                ],
               ],
             ),
           ),

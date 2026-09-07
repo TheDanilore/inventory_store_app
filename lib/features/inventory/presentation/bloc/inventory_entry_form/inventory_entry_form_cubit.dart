@@ -261,6 +261,20 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     _scheduleSaveDraft();
   }
 
+  void updateItemBatch(int index, String batchNumber, DateTime? expiryDate) {
+    if (index < 0 || index >= state.items.length) return;
+    final cleanBatch =
+        batchNumber.trim().isEmpty ? 'DEFAULT' : batchNumber.trim();
+    final newItems = List<InventoryEntryItemEntity>.from(state.items);
+    newItems[index] = newItems[index].copyWith(
+      batchNumber: cleanBatch,
+      expiryDate: expiryDate,
+      clearExpiryDate: expiryDate == null,
+    );
+    emit(state.copyWith(items: newItems));
+    _scheduleSaveDraft();
+  }
+
   void removeItem(int index) {
     final newItems = List<InventoryEntryItemEntity>.from(state.items);
     newItems.removeAt(index);

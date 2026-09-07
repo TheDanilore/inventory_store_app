@@ -113,8 +113,10 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (_) =>
-              AddEntryProductSheet(warehouseId: viewModel.selectedWarehouseId),
+          (_) => AddEntryProductSheet(
+            warehouseId: viewModel.selectedWarehouseId,
+            isBatchRequired: false,
+          ),
     );
 
     if (newItem != null && context.mounted) {

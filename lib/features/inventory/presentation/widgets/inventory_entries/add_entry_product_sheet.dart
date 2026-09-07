@@ -18,8 +18,13 @@ import 'dart:developer' as developer;
 
 class AddEntryProductSheet extends StatefulWidget {
   final String? warehouseId;
+  final bool isBatchRequired;
 
-  const AddEntryProductSheet({super.key, this.warehouseId});
+  const AddEntryProductSheet({
+    super.key,
+    this.warehouseId,
+    this.isBatchRequired = true,
+  });
 
   @override
   State<AddEntryProductSheet> createState() => _AddEntryProductSheetState();
@@ -31,8 +36,6 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   double _quantity = 1;
   final _costCtrl = TextEditingController();
   final _batchCtrl = TextEditingController();
-  final _batchSearchCtrl =
-      TextEditingController(); // Controlador extraído para no forzar rebuilds de Autocomplete
   DateTime? _expiryDate;
 
   final _searchDebouncer = _Debouncer(milliseconds: 500);
@@ -52,7 +55,6 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
     _searchDebouncer.dispose();
     _costCtrl.dispose();
     _batchCtrl.dispose();
-    _batchSearchCtrl.dispose();
     _cubit.close();
     super.dispose();
   }
@@ -78,7 +80,6 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       _selectedVariant = autoSelectedVariant;
       _quantity = 1;
       _batchCtrl.clear();
-      _batchSearchCtrl.clear();
       _expiryDate = null;
       if (val != null) {
         final cost = _effectiveCost(variant: autoSelectedVariant, product: val);
@@ -103,7 +104,6 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       final cost = _effectiveCost(variant: val, product: _selectedProduct);
       _costCtrl.text = cost.toStringAsFixed(2);
       _batchCtrl.clear();
-      _batchSearchCtrl.clear();
     });
 
     if (val != null &&
@@ -206,7 +206,9 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
     }
 
     final bool usesBatches = _selectedProduct?.usesBatches == true;
-    if (usesBatches && _batchCtrl.text.trim().isEmpty) {
+    if (widget.isBatchRequired &&
+        usesBatches &&
+        _batchCtrl.text.trim().isEmpty) {
       AppSnackbar.show(
         context,
         message: 'El número de lote es obligatorio para este producto.',
@@ -239,7 +241,12 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
         usesBatches: usesBatches,
         quantity: _quantity,
         unitCost: cost,
-        batchNumber: usesBatches ? _batchCtrl.text.trim() : 'DEFAULT',
+        batchNumber:
+            usesBatches
+                ? (_batchCtrl.text.trim().isEmpty
+                    ? 'DEFAULT'
+                    : _batchCtrl.text.trim())
+                : 'DEFAULT',
         expiryDate: usesBatches ? _expiryDate : null,
       ),
     );
@@ -677,6 +684,12 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                             )
                           else
                             Autocomplete<WarehouseStockBatchModel>(
+                              key: ValueKey(
+                                'batch_autocomplete_${_selectedProduct?.id}_${_selectedVariant?.id}',
+                              ),
+                              initialValue: TextEditingValue(
+                                text: _batchCtrl.text,
+                              ),
                               optionsBuilder: (
                                 TextEditingValue textEditingValue,
                               ) {
@@ -707,29 +720,23 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                                 focusNode,
                                 onFieldSubmitted,
                               ) {
-                                if (textEditingController != _batchSearchCtrl) {
-                                  textEditingController.text =
-                                      _batchSearchCtrl.text;
-                                  textEditingController.addListener(() {
-                                    _batchSearchCtrl.text =
-                                        textEditingController.text;
-                                    _batchCtrl.text =
-                                        textEditingController.text;
-                                  });
-                                }
-
                                 return TextField(
                                   controller: textEditingController,
                                   focusNode: focusNode,
                                   onChanged: (value) => _batchCtrl.text = value,
                                   decoration: InputDecoration(
-                                    labelText: 'Nº de Lote (Obligatorio)',
+                                    labelText:
+                                        widget.isBatchRequired
+                                            ? 'Nº de Lote (Obligatorio)'
+                                            : 'Nº de Lote (Opcional - En recepción)',
                                     labelStyle: textTheme.bodyMedium?.copyWith(
                                       color: AppColors.textSecondary,
                                     ),
                                     hintText:
                                         state.availableBatches.isEmpty
-                                            ? 'Ej: LOTE-2024-001'
+                                            ? (widget.isBatchRequired
+                                                ? 'Ej: LOTE-2024-001'
+                                                : 'Opcional (se asigna en recepción física)')
                                             : 'Escribe o toca para ver lotes existentes...',
                                     filled: true,
                                     fillColor: AppColors.background,
