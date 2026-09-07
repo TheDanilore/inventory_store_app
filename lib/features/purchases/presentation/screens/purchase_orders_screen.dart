@@ -153,6 +153,35 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     return KeyEventResult.ignored;
   }
 
+  Widget _buildRefreshButton(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: () {
+        context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
+      },
+      icon: const Icon(
+        Icons.refresh_rounded,
+        size: 16,
+        color: AppColors.textSecondary,
+      ),
+      label: const Text(
+        'Actualizar',
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+          color: AppColors.textSecondary,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: AppColors.border),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        minimumSize: const Size(0, 40),
+      ),
+    );
+  }
+
   Widget _buildNewOrderButton(BuildContext context, {bool isHeader = false}) {
     if (isHeader) {
       return FilledButton.icon(
@@ -282,28 +311,26 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     }
   }
 
-  Widget _buildPagination(_PurchaseOrdersViewModel viewModel) {
+  Widget _buildPagination(
+    _PurchaseOrdersViewModel viewModel, {
+    bool isTablet = false,
+  }) {
     if (viewModel.totalPages <= 1 || viewModel.isLoading) {
       return const SizedBox.shrink();
     }
     return Container(
-      height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.background,
+      height: 58,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.border)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, -4),
-          ),
-        ],
       ),
       alignment: Alignment.center,
       child: SafeArea(
         top: false,
+        bottom: !isTablet,
         child: AdminPageBlocks(
+          isCompact: isTablet,
           currentPage: viewModel.currentPage,
           totalPages: viewModel.totalPages,
           onPageChanged: (p) => viewModel.setPage(p),
@@ -321,7 +348,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       showBackButton: true,
       actions:
           isDesktopOrTablet
-              ? [_buildNewOrderButton(context, isHeader: true)]
+              ? [
+                  _buildRefreshButton(context),
+                  const SizedBox(width: 8),
+                  _buildNewOrderButton(context, isHeader: true),
+                ]
               : null,
       floatingActionButton:
           isDesktopOrTablet
@@ -366,6 +397,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                     );
                     if (index != -1) {
                       _selectedOrder = filtered[index];
+                    } else if (isTablet) {
+                      _selectedOrder = filtered.first;
                     }
                   } else if (querySelectedId != null) {
                     final index = filtered.indexWhere(
@@ -380,8 +413,14 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                           }
                         });
                       }
+                    } else if (isTablet) {
+                      _selectedOrder = filtered.first;
                     }
+                  } else if (isTablet) {
+                    _selectedOrder = filtered.first;
                   }
+                } else {
+                  _selectedOrder = null;
                 }
 
                 final listContent = Column(
@@ -535,6 +574,66 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                     ),
                     const SizedBox(height: 6),
 
+                    // ── Encabezado de Navegación y Contador (Estilo Pedidos) ────
+                    if (!viewModel.isLoading && filtered.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${filtered.length} ${filtered.length == 1 ? "orden" : "órdenes"} en esta página',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (isTablet) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: const Text(
+                                  '↑ ↓ navegar',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Text(
+                                'Pág. ${viewModel.currentPage + 1} / ${viewModel.totalPages}',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
                     // ── Lista de Órdenes ──────────────────────────────────────
                     Expanded(
                       child: AnimatedSwitcher(
@@ -613,7 +712,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                     ),
 
                     // ── Paginación ────────────────────────────────────────────
-                    _buildPagination(viewModel),
+                    _buildPagination(viewModel, isTablet: isTablet),
                   ],
                 );
 
@@ -1056,14 +1155,13 @@ class _PurchaseOrdersViewModel {
     if (state is PurchaseOrdersLoaded) {
       return (state as PurchaseOrdersLoaded).totalPages;
     }
-    int tc = 0;
     if (state is PurchaseOrdersLoading) {
-      tc = (state as PurchaseOrdersLoading).totalCount;
+      return (state as PurchaseOrdersLoading).totalPages;
     }
     if (state is PurchaseOrdersError) {
-      tc = (state as PurchaseOrdersError).totalCount;
+      return (state as PurchaseOrdersError).totalPages;
     }
-    return tc == 0 ? 1 : (tc / 10).ceil();
+    return 1;
   }
 
   double get totalAmountFiltered {

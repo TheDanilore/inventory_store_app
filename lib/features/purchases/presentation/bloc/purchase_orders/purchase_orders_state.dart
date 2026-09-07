@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 abstract class PurchaseOrdersState extends Equatable {
+  static const int pageSize = 4;
   const PurchaseOrdersState();
 
   @override
@@ -27,6 +28,9 @@ class PurchaseOrdersLoading extends PurchaseOrdersState {
     this.currentPage = 0,
     this.totalCount = 0,
   });
+
+  int get totalPages =>
+      totalCount == 0 ? 1 : (totalCount / PurchaseOrdersState.pageSize).ceil();
 
   @override
   List<Object?> get props => [
@@ -59,7 +63,8 @@ class PurchaseOrdersLoaded extends PurchaseOrdersState {
     required this.totalCount,
   });
 
-  int get totalPages => totalCount == 0 ? 1 : (totalCount / 10).ceil();
+  int get totalPages =>
+      totalCount == 0 ? 1 : (totalCount / PurchaseOrdersState.pageSize).ceil();
 
   PurchaseOrdersLoaded copyWith({
     List<dynamic>? orders,
@@ -113,6 +118,9 @@ class PurchaseOrdersError extends PurchaseOrdersState {
     this.currentPage = 0,
     this.totalCount = 0,
   });
+
+  int get totalPages =>
+      totalCount == 0 ? 1 : (totalCount / PurchaseOrdersState.pageSize).ceil();
 
   @override
   List<Object?> get props => [
