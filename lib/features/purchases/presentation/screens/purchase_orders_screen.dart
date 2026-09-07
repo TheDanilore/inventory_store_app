@@ -49,6 +49,23 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     'CANCELLED': 'Cancelado',
   };
 
+  static Color? _statusColorForFilter(String key) {
+    switch (key) {
+      case 'PENDING':
+        return AppColors.warning;
+      case 'SENT':
+        return const Color(0xFF3B82F6);
+      case 'PARTIAL':
+        return Colors.amber.shade800;
+      case 'RECEIVED':
+        return AppColors.teal;
+      case 'CANCELLED':
+        return AppColors.error;
+      default:
+        return null;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -148,12 +165,13 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         ),
         label: Text(
           _hasDraft ? 'Continuar Borrador' : 'Nueva orden',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
         ),
         style: FilledButton.styleFrom(
           backgroundColor:
               _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
           foregroundColor: Colors.white,
+          minimumSize: const Size(0, 40),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -465,6 +483,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                               ),
                               const SizedBox(width: 8),
                               DateFilterCalendar(
+                                height: 40,
+                                borderRadius: BorderRadius.circular(10),
                                 dateRange: viewModel.dateRange,
                                 onDateRangeSelected:
                                     (range) => cubit.setDateRange(
@@ -481,32 +501,20 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                               final chips =
                                   _statusLabels.entries.map((e) {
                                     final sel = viewModel.statusFilter == e.key;
+                                    final color = _statusColorForFilter(e.key);
                                     return Padding(
                                       padding: const EdgeInsets.only(
-                                        right: 6,
-                                        bottom: 4,
+                                        right: 8,
+                                        bottom: 6,
                                       ),
-                                      child: FilterChip(
-                                        label: Text(e.value),
-                                        selected: sel,
-                                        onSelected:
-                                            (_) => viewModel.setStatusFilter(
+                                      child: _POFilterPill(
+                                        label: e.value,
+                                        isSelected: sel,
+                                        activeColor: color,
+                                        onTap:
+                                            () => viewModel.setStatusFilter(
                                               e.key,
                                             ),
-                                        selectedColor: AppColors.primary
-                                            .withValues(alpha: 0.15),
-                                        checkmarkColor: AppColors.primary,
-                                        labelStyle: TextStyle(
-                                          fontWeight:
-                                              sel
-                                                  ? FontWeight.w700
-                                                  : FontWeight.w500,
-                                          fontSize: 12,
-                                          color:
-                                              sel
-                                                  ? AppColors.primary
-                                                  : AppColors.textSecondary,
-                                        ),
                                       ),
                                     );
                                   }).toList();
@@ -517,6 +525,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
                               return SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
+                                physics: const BouncingScrollPhysics(),
                                 child: Row(children: chips),
                               );
                             },
@@ -808,33 +817,151 @@ class _SearchField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => TextField(
-    controller: controller,
-    focusNode: focusNode,
-    onChanged: onChanged,
-    onSubmitted: onSubmitted,
-    textInputAction: TextInputAction.search,
-    decoration: InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-      prefixIcon: const Icon(Icons.search_rounded, size: 20),
-      suffixIcon:
-          controller.text.isNotEmpty
-              ? IconButton(
-                icon: const Icon(Icons.clear_rounded, size: 18),
-                onPressed: onClear,
-              )
-              : null,
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(vertical: 13),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
       ),
-      filled: true,
-      fillColor: AppColors.surface,
-    ),
-  );
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        onChanged: onChanged,
+        onSubmitted: onSubmitted,
+        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 13,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.textMuted,
+            size: 18,
+          ),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 36,
+            minHeight: 40,
+          ),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (controller.text.isNotEmpty)
+                IconButton(
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                  onPressed: onClear,
+                  tooltip: 'Limpiar búsqueda',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
+                  ),
+                ),
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.slateLight.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Text(
+                  '/',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 11,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _POFilterPill extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final Color? activeColor;
+
+  const _POFilterPill({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    this.activeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveColor = activeColor ?? AppColors.primary;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? effectiveColor.withValues(alpha: 0.12)
+                : AppColors.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? effectiveColor : AppColors.border,
+              width: isSelected ? 1.4 : 1.0,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isSelected && activeColor != null) ...[
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: effectiveColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? effectiveColor : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _PurchaseOrdersViewModel {

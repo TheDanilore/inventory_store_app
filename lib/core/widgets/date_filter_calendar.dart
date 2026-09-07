@@ -25,6 +25,8 @@ class DateFilterCalendar extends StatelessWidget {
   final ValueChanged<DateTimeRange> onDateRangeSelected;
   final VoidCallback onClear;
   final bool isExpanded;
+  final double? height;
+  final BorderRadius? borderRadius;
 
   const DateFilterCalendar({
     super.key,
@@ -32,6 +34,8 @@ class DateFilterCalendar extends StatelessWidget {
     required this.onDateRangeSelected,
     required this.onClear,
     this.isExpanded = false,
+    this.height,
+    this.borderRadius,
   });
 
   static bool _isSameDay(DateTime a, DateTime b) {
@@ -570,7 +574,7 @@ class DateFilterCalendar extends StatelessWidget {
       message: 'Filtrar por período',
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        height: isExpanded ? null : 36,
+        height: isExpanded ? null : (height ?? 36),
         padding: EdgeInsets.only(
           left: 12,
           right: hasDate ? 6 : 10,
@@ -583,7 +587,7 @@ class DateFilterCalendar extends StatelessWidget {
               hasDate
                   ? AppColors.primary.withValues(alpha: 0.1)
                   : Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: borderRadius ?? BorderRadius.circular(20),
           border: Border.all(
             color:
                 hasDate

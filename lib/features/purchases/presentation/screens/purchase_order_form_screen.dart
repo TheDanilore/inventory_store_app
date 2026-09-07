@@ -15,7 +15,9 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class PurchaseOrderFormScreen extends StatefulWidget {
-  const PurchaseOrderFormScreen({super.key});
+  final String? editOrderId;
+
+  const PurchaseOrderFormScreen({super.key, this.editOrderId});
 
   @override
   State<PurchaseOrderFormScreen> createState() =>
@@ -39,7 +41,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<PurchaseOrderFormCubit>().initForm();
+      context.read<PurchaseOrderFormCubit>().initForm(
+        editOrderId: widget.editOrderId,
+      );
     });
   }
 
@@ -157,7 +161,10 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     if (newState is PurchaseOrderFormSuccess) {
       AppSnackbar.show(
         context,
-        message: 'Orden generada con éxito',
+        message:
+            viewModel.isEditing
+                ? 'Orden de compra actualizada con éxito'
+                : 'Orden generada con éxito',
         type: SnackbarType.success,
       );
       if (context.canPop()) {
@@ -215,19 +222,30 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<PurchaseOrderFormCubit, PurchaseOrderFormState>(
+    return BlocConsumer<PurchaseOrderFormCubit, PurchaseOrderFormState>(
+      listener: (context, state) {
+        if (state is PurchaseOrderFormLoaded && state.isEditing) {
+          if (_documentNumberCtrl.text.isEmpty &&
+              state.documentNumber.isNotEmpty) {
+            _documentNumberCtrl.text = state.documentNumber;
+          }
+          if (_notesCtrl.text.isEmpty && state.notes.isNotEmpty) {
+            _notesCtrl.text = state.notes;
+          }
+        }
+      },
       builder: (context, state) {
         final viewModel = _PurchaseOrderFormViewModel(
           context.read<PurchaseOrderFormCubit>(),
           state,
         );
         if (viewModel.isLoading) {
-          return const AdminLayout(
-            title: 'Nueva Orden',
+          return AdminLayout(
+            title: widget.editOrderId != null ? 'Editar Orden' : 'Nueva Orden',
             showBackButton: true,
             showProfileButton: false,
             showDrawerButton: false,
-            body: Center(
+            body: const Center(
               child: CircularProgressIndicator(color: AppColors.primary),
             ),
           );
@@ -235,7 +253,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
 
         if (viewModel.errorMessage.isNotEmpty && viewModel.suppliers.isEmpty) {
           return AdminLayout(
-            title: 'Nueva Orden',
+            title: viewModel.isEditing ? 'Editar Orden' : 'Nueva Orden',
             showBackButton: true,
             showProfileButton: false,
             showDrawerButton: false,
@@ -263,7 +281,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                     ElevatedButton.icon(
                       onPressed:
                           () =>
-                              context.read<PurchaseOrderFormCubit>().initForm(),
+                              context.read<PurchaseOrderFormCubit>().initForm(
+                                editOrderId: widget.editOrderId,
+                              ),
                       icon: const Icon(Icons.refresh_rounded),
                       label: const Text('Reintentar'),
                       style: ElevatedButton.styleFrom(
@@ -280,7 +300,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
 
         if (viewModel.suppliers.isEmpty || viewModel.warehouses.isEmpty) {
           return AdminLayout(
-            title: 'Nueva Orden',
+            title: viewModel.isEditing ? 'Editar Orden' : 'Nueva Orden',
             showBackButton: true,
             showProfileButton: false,
             showDrawerButton: false,
@@ -331,6 +351,41 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           canPop: false,
           onPopInvokedWithResult: (didPop, result) async {
             if (didPop) return;
+
+            if (viewModel.isEditing) {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder:
+                    (ctx) => AlertDialog(
+                      title: const Text('Salir de la edición'),
+                      content: const Text(
+                        '¿Deseas salir sin guardar los cambios de la orden de compra?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Continuar editando'),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.danger,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Salir sin guardar'),
+                        ),
+                      ],
+                    ),
+              );
+              if (confirm == true && context.mounted) {
+                if (context.canPop()) {
+                  context.pop(result);
+                } else {
+                  context.go('/admin/purchase-orders');
+                }
+              }
+              return;
+            }
 
             if (viewModel.items.isEmpty) {
               viewModel.clearDraft();
@@ -401,7 +456,10 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             }
           },
           child: AdminLayout(
-            title: 'Nueva Orden de Compra',
+            title:
+                viewModel.isEditing
+                    ? 'Editar Orden de Compra'
+                    : 'Nueva Orden de Compra',
             showBackButton: true,
             showProfileButton: false,
             showDrawerButton: false,
@@ -524,9 +582,12 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
               child: ElevatedButton.icon(
                 onPressed: canSubmit ? _handleSave : null,
                 icon: const Icon(Icons.check_circle_outline_rounded),
-                label: const Text(
-                  'Generar Orden',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                label: Text(
+                  viewModel.isEditing ? 'Guardar Cambios' : 'Generar Orden',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -652,7 +713,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                     ),
                     label: const Text('Agregar'),
                   ),
-                  if (viewModel.items.isNotEmpty)
+                  if (viewModel.items.isNotEmpty && !viewModel.isEditing)
                     PopupMenuButton<String>(
                       tooltip: 'Más opciones',
                       icon: const Icon(
@@ -836,7 +897,38 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             },
           ),
           const SizedBox(height: 16),
-          if (viewModel.paymentMode != 'CRÉDITO') ...[
+          if (viewModel.isEditing) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Estado de pago: PENDIENTE. Los abonos y pagos se gestionan desde el detalle de la orden.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (viewModel.paymentMode != 'CRÉDITO') ...[
             DropdownButtonFormField<String>(
               key: ValueKey('status_${viewModel.paymentStatus}'),
               initialValue: viewModel.paymentStatus,
@@ -1325,6 +1417,14 @@ class _PurchaseOrderFormViewModel {
 
   bool get isLoading =>
       state is PurchaseOrderFormLoading || state is PurchaseOrderFormInitial;
+
+  bool get isEditing {
+    if (state is PurchaseOrderFormLoaded) {
+      return (state as PurchaseOrderFormLoaded).isEditing;
+    }
+    return false;
+  }
+
   bool get isSaving {
     if (state is PurchaseOrderFormLoaded) {
       return (state as PurchaseOrderFormLoaded).isSaving;

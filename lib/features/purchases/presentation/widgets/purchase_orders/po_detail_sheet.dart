@@ -3,15 +3,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:developer' as developer;
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_active_cash_shift_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_financial_accounts_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/register_order_payment_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/update_order_payment_method_usecase.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_cubit.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_state.dart';
 
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/purchases/data/models/purchase_order_model.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/purchase_order_item_entity.dart';
 
@@ -224,8 +227,7 @@ class _PODetailSheetState extends State<PODetailSheet> {
           supplierId: supplierId,
           amount: result.amount,
           accountId: result.accountId,
-          shiftId:
-              null, // El RPC de backend se encargará de resolver el shiftId de forma atómica
+          shiftId: result.shiftId,
         ),
       );
     }
@@ -469,6 +471,16 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
     }
   }
 
+  Future<void> _handleEditOrder() async {
+    if (!widget.isDialog && context.canPop()) {
+      Navigator.pop(context);
+    }
+    await context.push(
+      '/admin/purchase-orders/form?editOrderId=${widget.po.id}',
+    );
+    widget.onPaymentSuccess?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final shortCode =
@@ -647,6 +659,42 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                         ),
                       ),
                     ),
+                    if (_status == 'PENDING' && _amountPaid == 0) ...[
+                      const SizedBox(width: 8),
+                      Tooltip(
+                        message: 'Editar orden de compra completa',
+                        child: OutlinedButton.icon(
+                          onPressed:
+                              _isProcessingAction ? null : _handleEditOrder,
+                          icon: const Icon(
+                            Icons.edit_note_rounded,
+                            size: 16,
+                            color: AppColors.primary,
+                          ),
+                          label: const Text(
+                            'Editar Orden',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            side: BorderSide(
+                              color: AppColors.primary.withValues(alpha: 0.25),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -826,16 +874,19 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                                   label: Text(
                                     'Registrar Pago / Abono (S/ ${_pending.toStringAsFixed(2)})',
                                     style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
                                       color: AppColors.success,
                                     ),
                                   ),
                                   style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size(0, 40),
                                     side: const BorderSide(
                                       color: AppColors.success,
                                     ),
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
+                                      horizontal: 16,
+                                      vertical: 10,
                                     ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
@@ -954,6 +1005,10 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                 onMarkSent: _confirmMarkSent,
                 onSendWhatsApp: _sendWhatsAppMessage,
                 onCancel: _confirmCancelOrder,
+                onEdit:
+                    (_status == 'PENDING' && _amountPaid == 0)
+                        ? _handleEditOrder
+                        : null,
               ),
             ],
           ),
@@ -975,6 +1030,7 @@ class _StickyFooter extends StatelessWidget {
   final VoidCallback onMarkSent;
   final VoidCallback onSendWhatsApp;
   final VoidCallback onCancel;
+  final VoidCallback? onEdit;
 
   const _StickyFooter({
     required this.status,
@@ -984,6 +1040,7 @@ class _StickyFooter extends StatelessWidget {
     required this.onMarkSent,
     required this.onSendWhatsApp,
     required this.onCancel,
+    this.onEdit,
   });
 
   @override
@@ -1000,8 +1057,8 @@ class _StickyFooter extends StatelessWidget {
     // ── Desktop / Split View (Barra Horizontal Compacta de 64dp) ────────────
     if (isDialog) {
       return Container(
-        height: 64,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        height: 60,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
           color: AppColors.background,
           border: Border(top: BorderSide(color: AppColors.border)),
@@ -1026,16 +1083,54 @@ class _StickyFooter extends StatelessWidget {
                   ),
                 ),
                 style: TextButton.styleFrom(
+                  minimumSize: const Size(0, 40),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
               ),
             const Spacer(),
+            if (onEdit != null) ...[
+              OutlinedButton.icon(
+                onPressed: isProcessing ? null : onEdit,
+                icon: const Icon(
+                  Icons.edit_note_rounded,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+                label: const Text(
+                  'Editar Orden',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 40),
+                  side: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
             if (showMarkSent) ...[
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 40),
+                  side: const BorderSide(color: AppColors.border),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
                     vertical: 10,
@@ -1047,24 +1142,24 @@ class _StickyFooter extends StatelessWidget {
                 onPressed: isProcessing ? null : onMarkSent,
                 child: const Text(
                   'Marcar como ENVIADA',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                 ),
               ),
               const SizedBox(width: 8),
-              ElevatedButton.icon(
+              FilledButton.icon(
                 icon: const Icon(Icons.chat_rounded, size: 16),
                 label: const Text(
                   'WhatsApp',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                 ),
-                style: ElevatedButton.styleFrom(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 40),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 10,
                   ),
                   backgroundColor: AppColors.success,
                   foregroundColor: Colors.white,
-                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -1072,20 +1167,20 @@ class _StickyFooter extends StatelessWidget {
                 onPressed: isProcessing ? null : onSendWhatsApp,
               ),
             ] else if (showReceive) ...[
-              ElevatedButton.icon(
+              FilledButton.icon(
                 icon: const Icon(Icons.inventory_rounded, size: 18),
                 label: const Text(
                   'Recepcionar Mercadería',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                 ),
-                style: ElevatedButton.styleFrom(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 40),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
+                    horizontal: 18,
+                    vertical: 10,
                   ),
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -1228,6 +1323,28 @@ class _StickyFooter extends StatelessWidget {
               ),
             ),
           ),
+          if (onEdit != null) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.edit_note_rounded, size: 20),
+                label: const Text(
+                  'Editar Orden de Compra',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: isProcessing ? null : onEdit,
+              ),
+            ),
+          ],
         ],
       );
     }
@@ -1240,8 +1357,13 @@ class _StickyFooter extends StatelessWidget {
 class _PaymentDialogResult {
   final double amount;
   final String accountId;
+  final String? shiftId;
 
-  const _PaymentDialogResult({required this.amount, required this.accountId});
+  const _PaymentDialogResult({
+    required this.amount,
+    required this.accountId,
+    this.shiftId,
+  });
 }
 
 class _OrderPaymentDialog extends StatefulWidget {
@@ -1263,6 +1385,8 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _amountCtrl;
   late String _selectedAccountId;
+  bool _checkingShift = false;
+  Map<String, dynamic>? _activeShift;
 
   @override
   void initState() {
@@ -1271,12 +1395,44 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
     _amountCtrl = TextEditingController(
       text: widget.pending.toStringAsFixed(2),
     );
+
+    final initialAcc = widget.accounts.first;
+    if (initialAcc.type == 'CAJA') {
+      _checkActiveShift(initialAcc.id);
+    }
   }
 
   @override
   void dispose() {
     _amountCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkActiveShift(String accountId) async {
+    setState(() => _checkingShift = true);
+    try {
+      final shiftResult = await sl<GetActiveCashShiftUseCase>().call(accountId);
+      final shift = shiftResult.fold((l) => null, (r) => r);
+      if (mounted) {
+        setState(() {
+          _activeShift = (shift != null && shift.isNotEmpty) ? shift : null;
+          _checkingShift = false;
+        });
+      }
+    } catch (e, st) {
+      LoggerService.e(
+        'Error verificando turno activo para la cuenta $accountId',
+        tag: 'PO_DETAIL_SHEET',
+        error: e,
+        stackTrace: st,
+      );
+      if (mounted) {
+        setState(() {
+          _activeShift = null;
+          _checkingShift = false;
+        });
+      }
+    }
   }
 
   void _applyPercentage(double fraction) {
@@ -1302,6 +1458,17 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
       (a) => a.id == _selectedAccountId,
       orElse: () => widget.accounts.first,
     );
+
+    if (selAcc.type == 'CAJA' && _activeShift == null) {
+      AppSnackbar.show(
+        context,
+        message:
+            'La caja seleccionada no tiene un turno abierto. Debe abrir turno antes de registrar el pago.',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
     if (selAcc.balance < payAmount) {
       AppSnackbar.show(
         context,
@@ -1312,9 +1479,17 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
       return;
     }
 
+    final shiftId = (selAcc.type == 'CAJA' && _activeShift != null)
+        ? _activeShift!['id']?.toString()
+        : null;
+
     Navigator.pop(
       context,
-      _PaymentDialogResult(amount: payAmount, accountId: _selectedAccountId),
+      _PaymentDialogResult(
+        amount: payAmount,
+        accountId: _selectedAccountId,
+        shiftId: shiftId,
+      ),
     );
   }
 
@@ -1360,6 +1535,11 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedAcc = widget.accounts.firstWhere(
+      (a) => a.id == _selectedAccountId,
+      orElse: () => widget.accounts.first,
+    );
+
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
@@ -1513,10 +1693,113 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
                     }).toList(),
                 onChanged: (val) {
                   if (val != null) {
-                    setState(() => _selectedAccountId = val);
+                    setState(() {
+                      _selectedAccountId = val;
+                      _activeShift = null;
+                    });
+                    final acc = widget.accounts.firstWhere((a) => a.id == val);
+                    if (acc.type == 'CAJA') {
+                      _checkActiveShift(acc.id);
+                    }
                   }
                 },
               ),
+              if (selectedAcc.type == 'CAJA') ...[
+                const SizedBox(height: 8),
+                if (_checkingShift)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: const Row(
+                      children: [
+                        SizedBox(
+                          width: 13,
+                          height: 13,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Verificando turno de caja...',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (_activeShift == null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.dangerLight,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.danger.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.lock_rounded, size: 13, color: AppColors.danger),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Esta caja no tiene un turno abierto. Abre el turno antes de registrar el pago.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.danger,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.successLight,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.success.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle_rounded,
+                          size: 13,
+                          color: AppColors.success,
+                        ),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Turno abierto · Se registrará en el turno activo',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
               const SizedBox(height: 16),
 
               Row(
@@ -1527,7 +1810,7 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    'Saldo: S/ ${widget.accounts.firstWhere((a) => a.id == _selectedAccountId, orElse: () => widget.accounts.first).balance.toStringAsFixed(2)}',
+                    'Saldo: S/ ${selectedAcc.balance.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 11,
                       color: AppColors.textSecondary,
@@ -1613,13 +1896,19 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.success,
             foregroundColor: Colors.white,
+            disabledBackgroundColor: Colors.grey.shade300,
+            disabledForegroundColor: Colors.grey.shade500,
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          onPressed: _submit,
+          onPressed:
+              (selectedAcc.type == 'CAJA' &&
+                      (_checkingShift || _activeShift == null))
+                  ? null
+                  : _submit,
           child: const Text(
             'Confirmar Pago',
             style: TextStyle(fontWeight: FontWeight.bold),

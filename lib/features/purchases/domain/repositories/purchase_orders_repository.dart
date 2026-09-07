@@ -39,6 +39,22 @@ abstract class PurchaseOrdersRepository {
     required String? notes,
   });
 
+  Future<Either<Failure, void>> updatePurchaseOrder({
+    required String orderId,
+    required String supplierId,
+    required String supplierName,
+    required String warehouseId,
+    required List<dynamic> items,
+    required double totalAmount,
+    required String paymentMode,
+    required String paymentStatus,
+    required DateTime? dueDate,
+    required DateTime? documentDate,
+    required String documentType,
+    required String? documentNumber,
+    required String? notes,
+  });
+
   Future<Either<Failure, void>> receiveOrderItems({
     required String poId,
     required List<Map<String, dynamic>> receivedItems,

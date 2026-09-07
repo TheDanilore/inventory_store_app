@@ -25,7 +25,7 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           await _supabase
               .from('purchase_orders')
               .select(
-                'id, supplier_id, warehouse_id, status, total_amount, payment_method, payment_status, amount_paid, due_date, document_type, document_number, notes, created_at, updated_at, suppliers(name)',
+                'id, supplier_id, warehouse_id, status, total_amount, payment_method, payment_status, amount_paid, due_date, document_date, document_type, document_number, notes, created_at, updated_at, suppliers(name)',
               )
               .eq('id', poId)
               .maybeSingle();
@@ -326,6 +326,308 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
     } catch (e, st) {
       LoggerService.e(
         'createPurchaseOrder unexpected error: $e',
+        tag: 'PURCHASE_ORDERS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updatePurchaseOrder({
+    required String orderId,
+    required String supplierId,
+    required String supplierName,
+    required String warehouseId,
+    required List<dynamic> items,
+    required double totalAmount,
+    required String paymentMode,
+    required String paymentStatus,
+    required DateTime? dueDate,
+    required DateTime? documentDate,
+    required String documentType,
+    required String? documentNumber,
+    required String? notes,
+  }) async {
+    try {
+      // 1. Validar que la orden exista y esté en estado PENDIENTE sin pagos
+      final currentPo = await _supabase
+          .from('purchase_orders')
+          .select(
+            'id, status, amount_paid, payment_method, supplier_id, total_amount',
+          )
+          .eq('id', orderId)
+          .maybeSingle();
+
+      if (currentPo == null) {
+        return Left(ServerFailure(message: 'La orden de compra no existe.'));
+      }
+
+      final status = currentPo['status']?.toString().toUpperCase();
+      final amountPaid = (currentPo['amount_paid'] as num?)?.toDouble() ?? 0.0;
+      if (status != 'PENDING' || amountPaid > 0) {
+        return Left(
+          ServerFailure(
+            message:
+                'Solo se pueden editar órdenes en estado PENDIENTE y sin pagos registrados.',
+          ),
+        );
+      }
+
+      // Validar que no tenga recepciones
+      final itemsCheck = await _supabase
+          .from('purchase_order_items')
+          .select('quantity_received')
+          .eq('purchase_order_id', orderId);
+
+      final hasReceived = (itemsCheck as List).any((it) {
+        final qr = (it['quantity_received'] as num?)?.toDouble() ?? 0.0;
+        return qr > 0;
+      });
+
+      if (hasReceived) {
+        return Left(
+          ServerFailure(
+            message:
+                'No se puede editar una orden que ya tiene mercadería recibida.',
+          ),
+        );
+      }
+
+      // 2. Ajustes de crédito si aplica
+      final oldMethod = currentPo['payment_method']?.toString().toUpperCase();
+      final oldSupplierId = currentPo['supplier_id']?.toString();
+      final oldTotal = (currentPo['total_amount'] as num?)?.toDouble() ?? 0.0;
+
+      final currentUser = _supabase.auth.currentUser;
+      String? profileId;
+      if (currentUser != null) {
+        final profile =
+            await _supabase
+                .from('profiles')
+                .select('id')
+                .eq('auth_user_id', currentUser.id)
+                .maybeSingle();
+        profileId = profile?['id'] as String?;
+      }
+
+      if (oldMethod == 'CRÉDITO') {
+        if (paymentMode == 'CRÉDITO') {
+          if (oldSupplierId == supplierId) {
+            final diff = totalAmount - oldTotal;
+            if (diff != 0) {
+              final creditRes = await _supabase
+                  .from('supplier_credits')
+                  .select('id, current_debt, credit_limit, is_active')
+                  .eq('supplier_id', supplierId)
+                  .maybeSingle();
+              if (creditRes != null) {
+                final currentDebt =
+                    (creditRes['current_debt'] as num?)?.toDouble() ?? 0.0;
+                final creditLimit =
+                    (creditRes['credit_limit'] as num?)?.toDouble() ?? 0.0;
+                if (diff > 0 &&
+                    creditLimit > 0 &&
+                    (currentDebt + diff) > creditLimit) {
+                  return Left(
+                    ServerFailure(
+                      message:
+                          'Límite de crédito excedido con este proveedor para el nuevo total.',
+                    ),
+                  );
+                }
+                await _supabase
+                    .from('supplier_credits')
+                    .update({
+                      'current_debt': currentDebt + diff,
+                      'updated_at': DateTime.now().toIso8601String(),
+                    })
+                    .eq('id', creditRes['id']);
+
+                await _supabase.from('supplier_credit_movements').insert({
+                  'supplier_credit_id': creditRes['id'],
+                  'movement_type': diff > 0 ? 'CHARGE' : 'ADJUSTMENT',
+                  'amount': diff.abs(),
+                  'purchase_order_id': orderId,
+                  'notes':
+                      'Ajuste por edición de OC #${orderId.substring(0, 8)}',
+                  'created_by': profileId,
+                });
+              }
+            }
+          } else {
+            if (oldSupplierId != null) {
+              final oldCredit = await _supabase
+                  .from('supplier_credits')
+                  .select('id, current_debt')
+                  .eq('supplier_id', oldSupplierId)
+                  .maybeSingle();
+              if (oldCredit != null) {
+                final curDebt =
+                    (oldCredit['current_debt'] as num?)?.toDouble() ?? 0.0;
+                await _supabase
+                    .from('supplier_credits')
+                    .update({
+                      'current_debt': (curDebt - oldTotal).clamp(
+                        0.0,
+                        double.infinity,
+                      ),
+                      'updated_at': DateTime.now().toIso8601String(),
+                    })
+                    .eq('id', oldCredit['id']);
+              }
+            }
+            final newCredit = await _supabase
+                .from('supplier_credits')
+                .select('id, current_debt, credit_limit, is_active')
+                .eq('supplier_id', supplierId)
+                .maybeSingle();
+            if (newCredit != null) {
+              final currentDebt =
+                  (newCredit['current_debt'] as num?)?.toDouble() ?? 0.0;
+              final creditLimit =
+                  (newCredit['credit_limit'] as num?)?.toDouble() ?? 0.0;
+              if (creditLimit > 0 &&
+                  (currentDebt + totalAmount) > creditLimit) {
+                return Left(
+                  ServerFailure(
+                    message:
+                        'Límite de crédito excedido con el nuevo proveedor.',
+                  ),
+                );
+              }
+              await _supabase
+                  .from('supplier_credits')
+                  .update({
+                    'current_debt': currentDebt + totalAmount,
+                    'updated_at': DateTime.now().toIso8601String(),
+                  })
+                  .eq('id', newCredit['id']);
+            }
+          }
+        } else {
+          if (oldSupplierId != null) {
+            final oldCredit = await _supabase
+                .from('supplier_credits')
+                .select('id, current_debt')
+                .eq('supplier_id', oldSupplierId)
+                .maybeSingle();
+            if (oldCredit != null) {
+              final curDebt =
+                  (oldCredit['current_debt'] as num?)?.toDouble() ?? 0.0;
+              await _supabase
+                  .from('supplier_credits')
+                  .update({
+                    'current_debt': (curDebt - oldTotal).clamp(
+                      0.0,
+                      double.infinity,
+                    ),
+                    'updated_at': DateTime.now().toIso8601String(),
+                  })
+                  .eq('id', oldCredit['id']);
+            }
+          }
+        }
+      } else if (paymentMode == 'CRÉDITO') {
+        final newCredit = await _supabase
+            .from('supplier_credits')
+            .select('id, current_debt, credit_limit, is_active')
+            .eq('supplier_id', supplierId)
+            .maybeSingle();
+        if (newCredit != null) {
+          final currentDebt =
+              (newCredit['current_debt'] as num?)?.toDouble() ?? 0.0;
+          final creditLimit =
+              (newCredit['credit_limit'] as num?)?.toDouble() ?? 0.0;
+          if (creditLimit > 0 && (currentDebt + totalAmount) > creditLimit) {
+            return Left(
+              ServerFailure(
+                message: 'Límite de crédito excedido con este proveedor.',
+              ),
+            );
+          }
+          await _supabase
+              .from('supplier_credits')
+              .update({
+                'current_debt': currentDebt + totalAmount,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', newCredit['id']);
+        }
+      }
+
+      // 3. Actualizar purchase_orders
+      await _supabase
+          .from('purchase_orders')
+          .update({
+            'supplier_id': supplierId,
+            'supplier_name': supplierName,
+            'warehouse_id': warehouseId,
+            'total_amount': totalAmount,
+            'payment_method': paymentMode,
+            'payment_status': paymentStatus,
+            'due_date': dueDate?.toIso8601String().split('T').first,
+            'document_date': documentDate?.toIso8601String().split('T').first,
+            'document_type': documentType,
+            'document_number': documentNumber,
+            'notes': notes,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', orderId);
+
+      // 4. Eliminar ítems anteriores y re-insertar
+      await _supabase
+          .from('purchase_order_items')
+          .delete()
+          .eq('purchase_order_id', orderId);
+
+      final itemsToInsert =
+          items.map((item) {
+            final rawVariantId = item.variantId?.toString().trim();
+            final safeVariantId =
+                (rawVariantId != null && rawVariantId.isNotEmpty)
+                    ? rawVariantId
+                    : null;
+            final subtotal =
+                (item.quantity as num).toDouble() *
+                (item.unitCost as num).toDouble();
+            final expDate = item.expiryDate;
+            final expDateStr =
+                (expDate is DateTime)
+                    ? expDate.toIso8601String().split('T').first
+                    : null;
+
+            return {
+              'purchase_order_id': orderId,
+              'product_id': item.productId,
+              'variant_id': safeVariantId,
+              'quantity_ordered': item.quantity,
+              'quantity_received': 0.0,
+              'unit_cost': item.unitCost,
+              'net_cost': item.unitCost,
+              'subtotal': subtotal,
+              'batch_number': item.batchNumber ?? 'DEFAULT',
+              'expiry_date': expDateStr,
+            };
+          }).toList();
+
+      await _supabase.from('purchase_order_items').insert(itemsToInsert);
+
+      return const Right(null);
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'updatePurchaseOrder PostgrestException: ${e.message}',
+        tag: 'PURCHASE_ORDERS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
+    } catch (e, st) {
+      LoggerService.e(
+        'updatePurchaseOrder unexpected error: $e',
         tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,

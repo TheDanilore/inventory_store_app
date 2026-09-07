@@ -46,6 +46,9 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
   final bool isSaving;
   final String? errorMessage;
   final bool isDraftRestored;
+  final String? editOrderId;
+
+  bool get isEditing => editOrderId != null;
 
   const PurchaseOrderFormLoaded({
     required this.suppliers,
@@ -67,6 +70,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
     this.isSaving = false,
     this.errorMessage,
     this.isDraftRestored = false,
+    this.editOrderId,
   });
 
   double get totalAmount {
@@ -143,6 +147,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
     bool? isSaving,
     String? errorMessage,
     bool? isDraftRestored,
+    String? editOrderId,
   }) {
     return PurchaseOrderFormLoaded(
       suppliers: suppliers ?? this.suppliers,
@@ -166,6 +171,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       isSaving: isSaving ?? this.isSaving,
       errorMessage: errorMessage,
       isDraftRestored: isDraftRestored ?? this.isDraftRestored,
+      editOrderId: editOrderId ?? this.editOrderId,
     );
   }
 
@@ -190,6 +196,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       isSaving: isSaving,
       errorMessage: null,
       isDraftRestored: isDraftRestored,
+      editOrderId: editOrderId,
     );
   }
 
@@ -214,6 +221,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       isSaving: isSaving,
       errorMessage: errorMessage,
       isDraftRestored: isDraftRestored,
+      editOrderId: editOrderId,
     );
   }
 
@@ -238,6 +246,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       isSaving: isSaving,
       errorMessage: errorMessage,
       isDraftRestored: isDraftRestored,
+      editOrderId: editOrderId,
     );
   }
 
@@ -262,6 +271,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
     isSaving,
     errorMessage,
     isDraftRestored,
+    editOrderId,
   ];
 }
 

@@ -16,11 +16,13 @@ class PurchasesRoutes {
   static List<RouteBase> get adminRoutes => [
     GoRoute(
       path: '/admin/purchase-orders/form',
-      builder:
-          (context, state) => BlocProvider(
-            create: (_) => sl<PurchaseOrderFormCubit>(),
-            child: const PurchaseOrderFormScreen(),
-          ),
+      builder: (context, state) {
+        final editOrderId = state.uri.queryParameters['editOrderId'];
+        return BlocProvider(
+          create: (_) => sl<PurchaseOrderFormCubit>(),
+          child: PurchaseOrderFormScreen(editOrderId: editOrderId),
+        );
+      },
     ),
     GoRoute(
       path: '/admin/purchase-orders',

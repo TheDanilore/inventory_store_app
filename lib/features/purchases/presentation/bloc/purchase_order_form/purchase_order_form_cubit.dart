@@ -7,7 +7,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/purchase_order_item_entity.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/create_purchase_order_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/update_purchase_order_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_purchase_order_by_id_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/fetch_purchase_order_items_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_active_cash_shift_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_purchase_order_form_catalogs_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_supplier_credit_usecase.dart';
@@ -16,6 +20,9 @@ import 'package:inventory_store_app/features/purchases/presentation/bloc/purchas
 @injectable
 class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
   final CreatePurchaseOrderUseCase createPurchaseOrderUseCase;
+  final UpdatePurchaseOrderUseCase updatePurchaseOrderUseCase;
+  final GetPurchaseOrderByIdUseCase getPurchaseOrderByIdUseCase;
+  final FetchPurchaseOrderItemsUseCase fetchPurchaseOrderItemsUseCase;
   final GetActiveCashShiftUseCase getActiveCashShiftUseCase;
   final GetPurchaseOrderFormCatalogsUseCase getPurchaseOrderFormCatalogsUseCase;
   final GetSupplierCreditUseCase getSupplierCreditUseCase;
@@ -25,13 +32,16 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
 
   PurchaseOrderFormCubit({
     required this.createPurchaseOrderUseCase,
+    required this.updatePurchaseOrderUseCase,
+    required this.getPurchaseOrderByIdUseCase,
+    required this.fetchPurchaseOrderItemsUseCase,
     required this.getActiveCashShiftUseCase,
     required this.getPurchaseOrderFormCatalogsUseCase,
     required this.getSupplierCreditUseCase,
   }) : super(PurchaseOrderFormInitial());
 
-  Future<void> initForm({bool forceReload = false}) async {
-    if (!forceReload && state is PurchaseOrderFormLoaded) {
+  Future<void> initForm({bool forceReload = false, String? editOrderId}) async {
+    if (editOrderId == null && !forceReload && state is PurchaseOrderFormLoaded) {
       final loaded = state as PurchaseOrderFormLoaded;
       if (loaded.suppliers.isNotEmpty || loaded.warehouses.isNotEmpty) {
         return; // Evitar recargas redundantes si el estado ya está cargado
@@ -67,6 +77,142 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
           final activeShiftsByAccount =
               data['activeShiftsByAccount'] as Map<String, String>? ?? {};
 
+          if (editOrderId != null) {
+            // Modo edición: Cargar la orden y sus ítems
+            final orderRes = await getPurchaseOrderByIdUseCase(editOrderId);
+            Map<String, dynamic>? orderData;
+            String? orderError;
+            orderRes.fold(
+              (f) => orderError = f.message,
+              (d) => orderData = d,
+            );
+
+            if (orderError != null || orderData == null) {
+              emit(
+                PurchaseOrderFormLoaded(
+                  suppliers: suppliers,
+                  warehouses: warehouses,
+                  accounts: accounts,
+                  errorMessage:
+                      orderError ?? 'No se encontró la orden de compra a editar.',
+                ),
+              );
+              return;
+            }
+
+            final status = orderData!['status']?.toString().toUpperCase();
+            final amountPaid =
+                (orderData!['amount_paid'] as num?)?.toDouble() ?? 0.0;
+            if (status != 'PENDING' || amountPaid > 0) {
+              emit(
+                PurchaseOrderFormLoaded(
+                  suppliers: suppliers,
+                  warehouses: warehouses,
+                  accounts: accounts,
+                  errorMessage:
+                      'Solo se pueden editar órdenes en estado PENDIENTE y sin pagos registrados.',
+                ),
+              );
+              return;
+            }
+
+            final itemsRes = await fetchPurchaseOrderItemsUseCase(editOrderId);
+            List<PurchaseOrderItemEntity> fetchedItems = [];
+            String? itemsError;
+            itemsRes.fold(
+              (f) => itemsError = f.message,
+              (its) => fetchedItems = its,
+            );
+
+            if (itemsError != null) {
+              emit(
+                PurchaseOrderFormLoaded(
+                  suppliers: suppliers,
+                  warehouses: warehouses,
+                  accounts: accounts,
+                  errorMessage: itemsError,
+                ),
+              );
+              return;
+            }
+
+            final hasReceived = fetchedItems.any((i) => i.quantityReceived > 0);
+            if (hasReceived) {
+              emit(
+                PurchaseOrderFormLoaded(
+                  suppliers: suppliers,
+                  warehouses: warehouses,
+                  accounts: accounts,
+                  errorMessage:
+                      'No se puede editar una orden que ya tiene mercadería recibida.',
+                ),
+              );
+              return;
+            }
+
+            final convertedItems =
+                fetchedItems.map((e) {
+                  return InventoryEntryItemEntity(
+                    productId: e.productId,
+                    variantId: e.variantId,
+                    productName: e.productName ?? 'Producto',
+                    variantLabel: e.variantAttrs,
+                    imageUrl: e.imageUrl,
+                    batchNumber: e.batchNumber,
+                    usesBatches: e.usesBatches,
+                    expiryDate: e.expiryDate,
+                    unitCost: e.unitCost,
+                    quantity: e.quantityOrdered,
+                  );
+                }).toList();
+
+            final supplierId = orderData!['supplier_id'] as String?;
+            final warehouseId = orderData!['warehouse_id'] as String?;
+            final paymentMethod =
+                orderData!['payment_method'] as String? ?? 'EFECTIVO';
+            final paymentStatus =
+                orderData!['payment_status'] as String? ?? 'PENDING';
+            final docType =
+                orderData!['document_type'] as String? ?? 'NINGUNO';
+            final docNumber = orderData!['document_number'] as String? ?? '';
+            final notes = orderData!['notes'] as String? ?? '';
+            final dueDate =
+                orderData!['due_date'] != null
+                    ? DateTime.tryParse(orderData!['due_date'] as String)
+                    : null;
+            final docDate =
+                orderData!['document_date'] != null
+                    ? DateTime.tryParse(orderData!['document_date'] as String)
+                    : null;
+
+            emit(
+              PurchaseOrderFormLoaded(
+                suppliers: suppliers,
+                warehouses: warehouses,
+                accounts: accounts,
+                activeShiftsByAccount: activeShiftsByAccount,
+                items: convertedItems,
+                selectedSupplierId: supplierId,
+                selectedWarehouseId: warehouseId,
+                paymentMode: paymentMethod,
+                paymentStatus: paymentStatus,
+                documentType: docType,
+                documentNumber: docNumber,
+                notes: notes,
+                dueDate: dueDate,
+                documentDate: docDate,
+                editOrderId: editOrderId,
+                isDraftRestored: false,
+              ),
+            );
+
+            if (supplierId != null) {
+              _fetchSupplierCreditIfNeeded(supplierId);
+            }
+            return;
+          }
+
+          // Modo creación normal (con restauración de borrador)
           bool isDraftRestored = false;
           List<InventoryEntryItemEntity> initialItems = [];
           String? initialSupplier;
@@ -212,6 +358,10 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
   }
 
   void _scheduleDraftSave() {
+    final currentState = state;
+    if (currentState is PurchaseOrderFormLoaded && currentState.isEditing) {
+      return; // No sobreescribir ni guardar borradores al editar una orden existente
+    }
     _draftTimer?.cancel();
     _draftTimer = Timer(const Duration(milliseconds: 600), () {
       _saveDraft();
@@ -412,6 +562,43 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
       final supplier = loadingState.suppliers.firstWhere(
         (s) => s['id'] == loadingState.selectedSupplierId,
       );
+
+      if (loadingState.isEditing) {
+        final updateResult = await updatePurchaseOrderUseCase(
+          orderId: loadingState.editOrderId!,
+          supplierId: loadingState.selectedSupplierId!,
+          supplierName: supplier['name'] as String,
+          warehouseId: loadingState.selectedWarehouseId!,
+          items: loadingState.items,
+          totalAmount: loadingState.totalAmount,
+          paymentMode: loadingState.paymentMode,
+          paymentStatus: loadingState.paymentStatus,
+          dueDate: loadingState.dueDate,
+          documentDate: loadingState.documentDate,
+          documentType: loadingState.documentType,
+          documentNumber: loadingState.documentNumber.trim(),
+          notes: loadingState.notes.trim(),
+        );
+
+        await updateResult.fold(
+          (failure) async {
+            developer.log(
+              'Error al actualizar orden en submitOrder: ${failure.message}',
+              name: 'PurchaseOrderFormCubit',
+            );
+            emit(
+              loadingState.copyWith(
+                isSaving: false,
+                errorMessage: 'Error al actualizar la orden: ${failure.message}',
+              ),
+            );
+          },
+          (_) async {
+            emit(PurchaseOrderFormSuccess());
+          },
+        );
+        return;
+      }
 
       String? activeShiftId;
       if (loadingState.paymentStatus == 'PAID' &&
