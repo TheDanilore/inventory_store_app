@@ -165,7 +165,17 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         type: SnackbarType.success,
       );
       if (!mounted) return;
-      context.go('/admin/inventory-entries');
+      if (widget.purchaseOrderId != null) {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(true);
+        } else {
+          context.go(
+            '/admin/purchase-orders?selectedId=${widget.purchaseOrderId}',
+          );
+        }
+      } else {
+        context.go('/admin/inventory-entries');
+      }
     } else if (cubit.state.errorMessage.isNotEmpty) {
       AppSnackbar.show(
         context,
@@ -212,70 +222,95 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     }
   }
 
+  Future<void> _handleBackButton() async {
+    final cubit = context.read<InventoryEntryFormCubit>();
+    if (cubit.state.isSaving) return;
+
+    if (widget.purchaseOrderId != null) {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(false);
+      } else {
+        context.go(
+          '/admin/purchase-orders?selectedId=${widget.purchaseOrderId}',
+        );
+      }
+      return;
+    }
+
+    if (cubit.state.items.isEmpty) {
+      cubit.clearDraft();
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      } else {
+        context.go('/admin/inventory-entries');
+      }
+      return;
+    }
+
+    final action = await showDialog<String>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Cambios sin guardar'),
+            content: const Text(
+              'Tienes un registro en curso. ¿Qué deseas hacer al salir?',
+            ),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            actions: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, 'cancel'),
+                    child: const Text('Cancelar'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, 'discard'),
+                    child: const Text(
+                      'Descartar',
+                      style: TextStyle(color: AppColors.danger),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, 'draft'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    child: const Text('Borrador'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+    );
+
+    if (!mounted) return;
+
+    if (action == 'discard') {
+      cubit.clearDraft();
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      } else {
+        context.go('/admin/inventory-entries');
+      }
+    } else if (action == 'draft') {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      } else {
+        context.go('/admin/inventory-entries');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-
-        final cubit = context.read<InventoryEntryFormCubit>();
-        // Si no hay ítems o está guardando, permitimos salir directamente
-        if (cubit.state.items.isEmpty ||
-            cubit.state.isSaving ||
-            widget.purchaseOrderId != null) {
-          if (cubit.state.items.isEmpty) cubit.clearDraft();
-          Navigator.pop(context, result);
-          return;
-        }
-
-        final action = await showDialog<String>(
-          context: context,
-          builder:
-              (ctx) => AlertDialog(
-                title: const Text('Cambios sin guardar'),
-                content: const Text(
-                  'Tienes un registro en curso. ¿Qué deseas hacer al salir?',
-                ),
-                actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                actions: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, 'cancel'),
-                        child: const Text('Cancelar'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, 'discard'),
-                        child: const Text(
-                          'Descartar',
-                          style: TextStyle(color: AppColors.danger),
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => Navigator.pop(ctx, 'draft'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                        ),
-                        child: const Text('Borrador'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-        );
-
-        if (!context.mounted) return;
-
-        if (action == 'discard') {
-          cubit.clearDraft();
-          Navigator.pop(context, result);
-        } else if (action == 'draft') {
-          Navigator.pop(context, result);
-        }
+        await _handleBackButton();
       },
       child: BlocConsumer<InventoryEntryFormCubit, InventoryEntryFormState>(
         listenWhen: (prev, curr) => prev.documentNumber != curr.documentNumber,
@@ -305,12 +340,13 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         builder: (context, state) {
           final cubit = context.read<InventoryEntryFormCubit>();
           if (cubit.state.isLoading) {
-            return const AdminLayout(
+            return AdminLayout(
               title: 'Entrada de Inventario',
               showBackButton: true,
+              onBack: _handleBackButton,
               showProfileButton: false,
               showDrawerButton: false,
-              body: Center(
+              body: const Center(
                 child: CircularProgressIndicator(color: AppColors.primary),
               ),
             );
@@ -325,6 +361,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                       ? 'Recepción de Orden'
                       : 'Nueva Entrada Manual',
               showBackButton: true,
+              onBack: _handleBackButton,
               showProfileButton: false,
               showDrawerButton: false,
               body: Center(
@@ -383,6 +420,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                     ? 'Recepción de Orden'
                     : 'Nueva Entrada Manual',
             showBackButton: true,
+            onBack: _handleBackButton,
             showProfileButton: false,
             showDrawerButton: false,
             body:

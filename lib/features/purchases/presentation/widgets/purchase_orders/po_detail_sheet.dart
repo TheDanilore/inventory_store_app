@@ -71,6 +71,29 @@ class _PODetailSheetState extends State<PODetailSheet> {
     _fetchItems();
   }
 
+  @override
+  void didUpdateWidget(covariant PODetailSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.po.id != widget.po.id) {
+      _paymentMethod = widget.po.paymentMethod;
+      _status = widget.po.status;
+      _amountPaid = widget.po.amountPaid;
+      _items = null;
+      _isLoadingItems = true;
+      _fetchItems();
+    } else {
+      if (oldWidget.po.status != widget.po.status) {
+        _status = widget.po.status;
+      }
+      if (oldWidget.po.paymentMethod != widget.po.paymentMethod) {
+        _paymentMethod = widget.po.paymentMethod;
+      }
+      if (oldWidget.po.amountPaid != widget.po.amountPaid) {
+        _amountPaid = widget.po.amountPaid;
+      }
+    }
+  }
+
   Future<void> _fetchItems() async {
     try {
       final items = await widget.loadItems();
@@ -105,7 +128,9 @@ class _PODetailSheetState extends State<PODetailSheet> {
           message: 'Estado actualizado correctamente.',
           type: SnackbarType.success,
         );
-        Navigator.pop(context, true);
+        if (!widget.isDialog) {
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -117,6 +142,23 @@ class _PODetailSheetState extends State<PODetailSheet> {
       }
     } finally {
       if (mounted) setState(() => _isProcessingAction = false);
+    }
+  }
+
+  /// Confirmación para marcar como enviada con feedback háptico y diálogo.
+  Future<void> _confirmMarkSent() async {
+    HapticFeedback.lightImpact();
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Marcar como Enviada',
+      message:
+          '¿Estás seguro de que deseas marcar esta orden de compra como enviada al proveedor?',
+      confirmText: 'Sí, marcar',
+      cancelText: 'Cancelar',
+      confirmColor: AppColors.primary,
+    );
+    if (confirmed == true && mounted) {
+      await _handleUpdateStatus('SENT');
     }
   }
 
@@ -909,7 +951,7 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                 isProcessing: _isProcessingAction,
                 isDialog: widget.isDialog,
                 onReceive: widget.onReceive,
-                onMarkSent: () => _handleUpdateStatus('SENT'),
+                onMarkSent: _confirmMarkSent,
                 onSendWhatsApp: _sendWhatsAppMessage,
                 onCancel: _confirmCancelOrder,
               ),

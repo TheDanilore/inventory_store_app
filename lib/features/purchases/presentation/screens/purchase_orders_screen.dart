@@ -202,9 +202,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               onReceive: () => _handleReceiveOrder(context, po),
               onUpdateStatus: (status) async {
                 await viewModel.updateOrderStatus(po.id, status);
-                if (context.mounted) {
-                  context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
-                }
               },
             ),
           ),
@@ -239,13 +236,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
     if (!context.mounted) return;
 
-    // Cerrar cualquier modal/bottomSheet abierto antes de navegar
-    Navigator.of(
-      context,
-      rootNavigator: true,
-    ).popUntil((route) => route is! PopupRoute);
-
-    context.go(
+    final received = await context.push<bool>(
       '/admin/inventory-entries/form?purchaseOrderId=${po.id}',
       extra: {
         'purchaseOrderId': po.id,
@@ -258,6 +249,19 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         'prefillDocumentDate': po.createdAt,
       },
     );
+
+    if (!context.mounted) return;
+
+    if (received == true) {
+      // Si la recepción se guardó con éxito:
+      // En móvil, si había un bottom sheet abierto, lo cerramos para ver la lista con el nuevo estado
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).popUntil((route) => route is! PopupRoute);
+
+      await context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
+    }
   }
 
   Widget _buildPagination(_PurchaseOrdersViewModel viewModel) {
@@ -334,13 +338,31 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                 final totalAmount = viewModel.totalAmountFiltered;
                 final pendingCount = viewModel.pendingCountFiltered;
 
-                // Sincronizar orden seleccionada si existe en la lista filtrada
-                if (filtered.isNotEmpty && _selectedOrder != null) {
-                  final index = filtered.indexWhere(
-                    (o) => o.id == _selectedOrder!.id,
-                  );
-                  if (index != -1) {
-                    _selectedOrder = filtered[index];
+                // Sincronizar orden seleccionada si existe en la lista filtrada o por query param
+                final querySelectedId =
+                    GoRouterState.of(context).uri.queryParameters['selectedId'];
+                if (filtered.isNotEmpty) {
+                  if (_selectedOrder != null) {
+                    final index = filtered.indexWhere(
+                      (o) => o.id == _selectedOrder!.id,
+                    );
+                    if (index != -1) {
+                      _selectedOrder = filtered[index];
+                    }
+                  } else if (querySelectedId != null) {
+                    final index = filtered.indexWhere(
+                      (o) => o.id == querySelectedId,
+                    );
+                    if (index != -1) {
+                      _selectedOrder = filtered[index];
+                      if (!isTablet) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted && _selectedOrder != null) {
+                            _showDetail(context, _selectedOrder!);
+                          }
+                        });
+                      }
+                    }
                   }
                 }
 
@@ -636,10 +658,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                           _selectedOrder!.id,
                                           status,
                                         );
-                                        if (context.mounted) {
-                                          context
-                                              .read<PurchaseOrdersCubit>()
-                                              .loadOrders(refresh: true);
+                                        if (mounted && _selectedOrder != null) {
+                                          setState(() {
+                                            _selectedOrder = _selectedOrder!
+                                                .copyWith(status: status);
+                                          });
                                         }
                                       },
                                     ),

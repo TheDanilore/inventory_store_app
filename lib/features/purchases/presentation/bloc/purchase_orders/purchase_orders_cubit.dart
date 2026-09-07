@@ -206,7 +206,26 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
         return false;
       },
       (_) {
-        loadOrders();
+        // Zero Egress: mutar el estado en la lista en RAM
+        final updatedOrders =
+            currentState.orders.map((o) {
+              if (o is PurchaseOrderModel && o.id == poId) {
+                return o.copyWith(status: newStatus);
+              }
+              return o;
+            }).toList();
+
+        emit(
+          PurchaseOrdersLoaded(
+            orders: updatedOrders,
+            searchText: currentState.searchText,
+            statusFilter: currentState.statusFilter,
+            startDate: currentState.startDate,
+            endDate: currentState.endDate,
+            currentPage: currentState.currentPage,
+            totalCount: currentState.totalCount,
+          ),
+        );
         return true;
       },
     );
