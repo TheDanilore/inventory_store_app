@@ -42,13 +42,16 @@ class OrdersState extends Equatable {
     String? errorMessage,
     Set<String>? processingOrders,
     String? generatingPdfOrderId,
+    bool clearPdfOrderId = false,
     String? statusFilter,
     String? paymentStatusFilter,
     DateTime? startDate,
     DateTime? endDate,
+    bool clearDates = false,
     String? searchQuery,
     int? currentPage,
     String? customerIdFilter,
+    bool clearCustomerId = false,
   }) {
     return OrdersState(
       orders: orders ?? this.orders,
@@ -57,14 +60,18 @@ class OrdersState extends Equatable {
       isBackgroundLoading: isBackgroundLoading ?? this.isBackgroundLoading,
       errorMessage: errorMessage ?? this.errorMessage,
       processingOrders: processingOrders ?? this.processingOrders,
-      generatingPdfOrderId: generatingPdfOrderId ?? this.generatingPdfOrderId,
+      generatingPdfOrderId:
+          clearPdfOrderId
+              ? null
+              : (generatingPdfOrderId ?? this.generatingPdfOrderId),
       statusFilter: statusFilter ?? this.statusFilter,
       paymentStatusFilter: paymentStatusFilter ?? this.paymentStatusFilter,
-      startDate: startDate ?? this.startDate,
-      endDate: endDate ?? this.endDate,
+      startDate: clearDates ? null : (startDate ?? this.startDate),
+      endDate: clearDates ? null : (endDate ?? this.endDate),
       searchQuery: searchQuery ?? this.searchQuery,
       currentPage: currentPage ?? this.currentPage,
-      customerIdFilter: customerIdFilter ?? this.customerIdFilter,
+      customerIdFilter:
+          clearCustomerId ? null : (customerIdFilter ?? this.customerIdFilter),
     );
   }
 

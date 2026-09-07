@@ -1,7 +1,7 @@
-import 'dart:developer' as developer;
 import 'package:fpdart/fpdart.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
@@ -66,7 +66,10 @@ class OrdersCubit extends Cubit<OrdersState> {
 
     result.fold(
       (failure) {
-        developer.log('Error en loadOrders', error: failure.message);
+        LoggerService.e(
+          'Error en loadOrders: ${failure.message}',
+          tag: 'OrdersCubit',
+        );
         emit(
           state.copyWith(
             isLoading: false,
@@ -118,13 +121,18 @@ class OrdersCubit extends Cubit<OrdersState> {
   }
 
   void setDateRange(DateTime? start, DateTime? end) {
-    emit(state.copyWith(startDate: start, endDate: end));
+    if (start == null && end == null) {
+      emit(state.copyWith(clearDates: true));
+    } else {
+      emit(state.copyWith(startDate: start, endDate: end));
+    }
     loadOrders(reset: true);
   }
 
   void setSearchQuery(String val) {
-    if (state.searchQuery == val) return;
-    emit(state.copyWith(searchQuery: val));
+    final clean = val.trim();
+    if (state.searchQuery == clean) return;
+    emit(state.copyWith(searchQuery: clean));
     loadOrders(reset: true);
   }
 
@@ -133,7 +141,10 @@ class OrdersCubit extends Cubit<OrdersState> {
   ) async {
     final result = await _getOrderItemsUc(orderId);
     return result.fold((failure) {
-      developer.log('Error en fetchOrderItems (Admin)', error: failure.message);
+      LoggerService.e(
+        'Error en fetchOrderItems (Admin): ${failure.message}',
+        tag: 'OrdersCubit',
+      );
       return Left(failure);
     }, (items) => Right(items));
   }
@@ -155,7 +166,10 @@ class OrdersCubit extends Cubit<OrdersState> {
 
       result.fold(
         (failure) {
-          developer.log('Error actualizando estado', error: failure.message);
+          LoggerService.e(
+            'Error actualizando estado: ${failure.message}',
+            tag: 'OrdersCubit',
+          );
           emit(state.copyWith(errorMessage: failure.message));
         },
         (_) {
@@ -163,8 +177,9 @@ class OrdersCubit extends Cubit<OrdersState> {
         },
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error inesperado actualizando estado',
+        tag: 'OrdersCubit',
         error: e,
         stackTrace: st,
       );
@@ -195,9 +210,9 @@ class OrdersCubit extends Cubit<OrdersState> {
 
       await rawItemsResult.fold(
         (failure) async {
-          developer.log(
-            'Error obteniendo items para PDF',
-            error: failure.message,
+          LoggerService.e(
+            'Error obteniendo items para PDF: ${failure.message}',
+            tag: 'OrdersCubit',
           );
           emit(state.copyWith(errorMessage: failure.message));
         },
@@ -218,10 +233,15 @@ class OrdersCubit extends Cubit<OrdersState> {
         },
       );
     } catch (e, st) {
-      developer.log('Error generando PDF', error: e, stackTrace: st);
+      LoggerService.e(
+        'Error generando PDF',
+        tag: 'OrdersCubit',
+        error: e,
+        stackTrace: st,
+      );
       emit(state.copyWith(errorMessage: 'Error al generar el ticket PDF.'));
     } finally {
-      emit(state.copyWith(generatingPdfOrderId: null));
+      emit(state.copyWith(clearPdfOrderId: true));
     }
   }
 }

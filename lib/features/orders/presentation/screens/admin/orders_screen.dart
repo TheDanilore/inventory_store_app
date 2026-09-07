@@ -298,6 +298,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     p.isBackgroundLoading != c.isBackgroundLoading ||
                     p.statusFilter != c.statusFilter ||
                     p.paymentStatusFilter != c.paymentStatusFilter ||
+                    p.startDate != c.startDate ||
+                    p.endDate != c.endDate ||
+                    p.searchQuery != c.searchQuery ||
+                    p.customerIdFilter != c.customerIdFilter ||
                     p.currentPage != c.currentPage ||
                     p.totalPages != c.totalPages,
             builder: (context, state) {

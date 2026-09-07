@@ -568,96 +568,120 @@ class DateFilterCalendar extends StatelessWidget {
 
     return Tooltip(
       message: 'Filtrar por período',
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () => _showAdaptivePicker(context),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: isExpanded ? null : 36,
-            padding: EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: isExpanded ? 10 : 0,
-            ),
-            alignment: isExpanded ? null : Alignment.center,
-            decoration: BoxDecoration(
-              color:
-                  hasDate
-                      ? AppColors.primary.withValues(alpha: 0.1)
-                      : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color:
-                    hasDate
-                        ? AppColors.primary.withValues(alpha: 0.35)
-                        : AppColors.border,
-                width: hasDate ? 1.5 : 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: isExpanded ? MainAxisSize.max : MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.calendar_today_rounded,
-                  size: 14,
-                  color: hasDate ? AppColors.primary : AppColors.textSecondary,
-                ),
-                const SizedBox(width: 6),
-                if (isExpanded)
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: isExpanded ? null : 36,
+        padding: EdgeInsets.only(
+          left: 12,
+          right: hasDate ? 6 : 10,
+          top: isExpanded ? 10 : 0,
+          bottom: isExpanded ? 10 : 0,
+        ),
+        alignment: isExpanded ? null : Alignment.center,
+        decoration: BoxDecoration(
+          color:
+              hasDate
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color:
+                hasDate
+                    ? AppColors.primary.withValues(alpha: 0.35)
+                    : AppColors.border,
+            width: hasDate ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: isExpanded ? MainAxisSize.max : MainAxisSize.min,
+          children: [
+            // Área principal: abre el selector adaptativo
+            Flexible(
+              fit: isExpanded ? FlexFit.tight : FlexFit.loose,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _showAdaptivePicker(context),
+                  child: Row(
+                    mainAxisSize:
+                        isExpanded ? MainAxisSize.max : MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.calendar_today_rounded,
+                        size: 14,
                         color:
                             hasDate
                                 ? AppColors.primary
                                 : AppColors.textSecondary,
                       ),
-                    ),
-                  )
-                else
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: hasDate ? FontWeight.w800 : FontWeight.w600,
-                      color:
-                          hasDate
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
-                    ),
+                      const SizedBox(width: 6),
+                      if (isExpanded)
+                        Expanded(
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  hasDate
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary,
+                            ),
+                          ),
+                        )
+                      else
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight:
+                                hasDate ? FontWeight.w800 : FontWeight.w600,
+                            color:
+                                hasDate
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary,
+                          ),
+                        ),
+                      if (!hasDate) ...[
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 16,
+                          color: AppColors.textSecondary,
+                        ),
+                      ],
+                    ],
                   ),
-                if (hasDate) ...[
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: onClear,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.close_rounded,
-                        size: 12,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                ] else ...[
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                ],
-              ],
+                ),
+              ),
             ),
-          ),
+            // Botón independiente para limpiar filtro (X)
+            if (hasDate) ...[
+              const SizedBox(width: 6),
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onClear,
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 13,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
