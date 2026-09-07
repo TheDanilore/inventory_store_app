@@ -173,11 +173,10 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       ),
       style: OutlinedButton.styleFrom(
         side: const BorderSide(color: AppColors.border),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
-        minimumSize: const Size(0, 40),
       ),
     );
   }
@@ -200,8 +199,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           backgroundColor:
               _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
           foregroundColor: Colors.white,
-          minimumSize: const Size(0, 40),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -353,7 +351,17 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   const SizedBox(width: 8),
                   _buildNewOrderButton(context, isHeader: true),
                 ]
-              : null,
+              : [
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded),
+                    tooltip: 'Actualizar órdenes',
+                    onPressed: () {
+                      context
+                          .read<PurchaseOrdersCubit>()
+                          .loadOrders(refresh: true);
+                    },
+                  ),
+                ],
       floatingActionButton:
           isDesktopOrTablet
               ? null

@@ -93,12 +93,6 @@ class _InventoryScreenState extends State<InventoryScreen>
           child: AdminLayout(
             title: 'Inventario',
             showBackButton: true,
-            actions: [
-              _ExportHeaderButton(
-                onPressed: () => _openExportModal(loadedState),
-                isCompact: true,
-              ),
-            ],
             body: Column(
               children: [
                 // ── Header Segmented Pill Bar, Warehouse Selector & Export Action ──

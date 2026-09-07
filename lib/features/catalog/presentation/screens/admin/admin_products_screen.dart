@@ -206,7 +206,8 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<AdminCatalogCubit>();
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isDesktop = screenWidth >= 900;
 
     return Shortcuts(
       shortcuts: <ShortcutActivator, Intent>{
@@ -301,14 +302,10 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                         ),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: AppColors.border),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          minimumSize: const Size(0, 40),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -325,14 +322,10 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                         ),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: AppColors.border),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          minimumSize: const Size(0, 40),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -342,14 +335,10 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          minimumSize: const Size(0, 40),
                         ),
                         icon: const Icon(Icons.add_rounded, size: 18),
                         label: const Text(

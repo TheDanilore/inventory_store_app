@@ -26,6 +26,14 @@ class _SearchFocusIntent extends Intent {
   const _SearchFocusIntent();
 }
 
+class _NextCategoryIntent extends Intent {
+  const _NextCategoryIntent();
+}
+
+class _PrevCategoryIntent extends Intent {
+  const _PrevCategoryIntent();
+}
+
 class _EscapeIntent extends Intent {
   const _EscapeIntent();
 }
@@ -71,6 +79,7 @@ class _CategoriesManagementScreenState
   final _desktopNameFocusNode = FocusNode();
   CategoryEntity? _editingCategory;
   bool _isSavingDesktop = false;
+  bool _isSplitViewActive = false;
 
   /// Color de acento del formulario, reacciona al nombre en tiempo real.
   Color _previewColor = const Color(0xFF6366F1);
@@ -116,8 +125,8 @@ class _CategoriesManagementScreenState
   // ── Acciones ─────────────────────────────────────────────────────────────
 
   void _showCategoryForm([CategoryEntity? category]) {
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
-    if (isDesktop) {
+    // Si el panel de Split View está activo y visible en pantalla
+    if (_isSplitViewActive) {
       setState(() {
         _editingCategory = category;
         _desktopNameCtrl.text = category?.name ?? '';
@@ -130,16 +139,63 @@ class _CategoriesManagementScreenState
       return;
     }
 
+    // Si NO está activo el Split View (Tablet, móvil o Desktop con sidebar expandido)
     final cubit = context.read<CategoriesCubit>();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => BlocProvider.value(
-        value: cubit,
-        child: CategoryFormSheet(category: category),
-      ),
-    );
+    final isTabletOrDesktop = MediaQuery.sizeOf(context).width >= 600;
+
+    if (isTabletOrDesktop) {
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogCtx) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: BlocProvider.value(
+                value: cubit,
+                child: CategoryFormSheet(category: category),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetCtx) => BlocProvider.value(
+          value: cubit,
+          child: CategoryFormSheet(category: category),
+        ),
+      );
+    }
+  }
+
+  void _handleNextCategory() {
+    if (_searchFocusNode.hasFocus || _desktopNameFocusNode.hasFocus) return;
+    final categories = context.read<CategoriesCubit>().state.categories;
+    if (categories.isEmpty) return;
+    final currentIndex = _editingCategory == null
+        ? -1
+        : categories.indexWhere((c) => c.id == _editingCategory!.id);
+    final nextIndex = (currentIndex + 1).clamp(0, categories.length - 1);
+    _showCategoryForm(categories[nextIndex]);
+  }
+
+  void _handlePrevCategory() {
+    if (_searchFocusNode.hasFocus || _desktopNameFocusNode.hasFocus) return;
+    final categories = context.read<CategoriesCubit>().state.categories;
+    if (categories.isEmpty) return;
+    final currentIndex = _editingCategory == null
+        ? categories.length
+        : categories.indexWhere((c) => c.id == _editingCategory!.id);
+    final prevIndex = (currentIndex - 1).clamp(0, categories.length - 1);
+    _showCategoryForm(categories[prevIndex]);
   }
 
   void _clearDesktopForm() {
@@ -196,6 +252,7 @@ class _CategoriesManagementScreenState
     bool val,
     CategoriesCubit cubit,
   ) async {
+    HapticFeedback.lightImpact();
     if (!val) {
       final confirm = await AppConfirmDialog.show(
         context,
@@ -242,7 +299,8 @@ class _CategoriesManagementScreenState
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width >= 900;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isMobile = screenWidth < 720;
 
     return Shortcuts(
       shortcuts: <ShortcutActivator, Intent>{
@@ -256,6 +314,10 @@ class _CategoriesManagementScreenState
             const _SearchFocusIntent(),
         const SingleActivator(LogicalKeyboardKey.keyK, meta: true):
             const _SearchFocusIntent(),
+        const SingleActivator(LogicalKeyboardKey.arrowDown):
+            const _NextCategoryIntent(),
+        const SingleActivator(LogicalKeyboardKey.arrowUp):
+            const _PrevCategoryIntent(),
         const SingleActivator(LogicalKeyboardKey.escape): const _EscapeIntent(),
       },
       child: Actions(
@@ -269,6 +331,18 @@ class _CategoriesManagementScreenState
           _SearchFocusIntent: CallbackAction<_SearchFocusIntent>(
             onInvoke: (_) {
               _searchFocusNode.requestFocus();
+              return null;
+            },
+          ),
+          _NextCategoryIntent: CallbackAction<_NextCategoryIntent>(
+            onInvoke: (_) {
+              _handleNextCategory();
+              return null;
+            },
+          ),
+          _PrevCategoryIntent: CallbackAction<_PrevCategoryIntent>(
+            onInvoke: (_) {
+              _handlePrevCategory();
               return null;
             },
           ),
@@ -289,60 +363,74 @@ class _CategoriesManagementScreenState
           child: AdminLayout(
             title: 'Categorías',
             showBackButton: true,
-            actions: isDesktop
-                ? [
-                    _CatHeaderButton(
-                      icon: Icons.refresh_rounded,
-                      label: 'Actualizar',
-                      tooltip: 'Recargar categorías',
-                      onPressed: () => context
-                          .read<CategoriesCubit>()
-                          .loadCategories(forceRefresh: true),
+            actions: [
+              if (isMobile)
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded),
+                  tooltip: 'Actualizar',
+                  onPressed: () => context
+                      .read<CategoriesCubit>()
+                      .loadCategories(forceRefresh: true),
+                )
+              else ...[
+                OutlinedButton.icon(
+                  onPressed: () => context
+                      .read<CategoriesCubit>()
+                      .loadCategories(forceRefresh: true),
+                  icon: const Icon(
+                    Icons.refresh_rounded,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                  label: const Text(
+                    'Actualizar',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
                     ),
-                    const SizedBox(width: 8),
-                    FilledButton.icon(
-                      onPressed: _showCategoryForm,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _editingCategory != null
-                            ? _previewColor
-                            : AppColors.primary,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(0, 40),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      icon: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        child: Icon(
-                          _editingCategory != null
-                              ? Icons.edit_note_rounded
-                              : Icons.add_rounded,
-                          key: ValueKey(_editingCategory != null),
-                          size: 18,
-                        ),
-                      ),
-                      label: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        child: Text(
-                          _editingCategory != null
-                              ? 'Editando...'
-                              : 'Nueva Categoría',
-                          key: ValueKey(_editingCategory != null),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.border),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  ]
-                : null,
-            floatingActionButton: isDesktop
-                ? null
-                : FloatingActionButton.extended(
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: _showCategoryForm,
+                  icon: Icon(
+                    _editingCategory != null
+                        ? Icons.edit_note_rounded
+                        : Icons.add_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    _editingCategory != null
+                        ? 'Editando...'
+                        : 'Nueva Categoría',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _editingCategory != null
+                        ? _previewColor
+                        : AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+            floatingActionButton: isMobile
+                ? FloatingActionButton.extended(
                     onPressed: () => _showCategoryForm(),
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -360,7 +448,8 @@ class _CategoriesManagementScreenState
                             : const SizedBox.shrink(),
                       ),
                     ),
-                  ),
+                  )
+                : null,
             body: BlocConsumer<CategoriesCubit, CategoriesState>(
               listenWhen: (prev, curr) =>
                   curr.errorMessage != null &&
@@ -378,7 +467,8 @@ class _CategoriesManagementScreenState
                 final cubit = context.read<CategoriesCubit>();
                 return LayoutBuilder(
                   builder: (context, constraints) {
-                    final isDesktopLayout = constraints.maxWidth >= 900;
+                    final isDesktopLayout = constraints.maxWidth >= 960;
+                    _isSplitViewActive = isDesktopLayout;
                     return isDesktopLayout
                         ? _buildDesktopLayout(context, state, cubit)
                         : _buildMobileLayout(context, state, cubit);
@@ -1340,10 +1430,13 @@ class _RowIconBtn extends StatelessWidget {
       cursor: SystemMouseCursors.click,
       child: IconButton(
         icon: Icon(icon, color: color, size: 19),
-        onPressed: onTap,
-        padding: const EdgeInsets.all(6),
-        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-        splashRadius: 16,
+        onPressed: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        padding: const EdgeInsets.all(8),
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+        splashRadius: 20,
       ),
     );
   }
@@ -1525,47 +1618,4 @@ class _KbdBadge extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Header Outlined Button para AdminLayout.actions
-// ─────────────────────────────────────────────────────────────────────────────
 
-class _CatHeaderButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String? tooltip;
-  final VoidCallback onPressed;
-
-  const _CatHeaderButton({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-    this.tooltip,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final btn = OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 16, color: AppColors.textSecondary),
-      label: Text(
-        label,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 13,
-          color: AppColors.textSecondary,
-        ),
-      ),
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: AppColors.border),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        minimumSize: const Size(0, 40),
-      ),
-    );
-
-    if (tooltip != null) return Tooltip(message: tooltip!, child: btn);
-    return btn;
-  }
-}
