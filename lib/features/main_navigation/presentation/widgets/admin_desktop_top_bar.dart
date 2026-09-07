@@ -89,7 +89,9 @@ class AdminDesktopTopBar extends StatelessWidget {
           const Spacer(),
 
           // ── Quick Custom Actions ──────────────────────────────────
-          if (actions != null) ...actions!,
+          if (actions != null) ...actions!.map(
+            (action) => SizedBox(height: 40, child: action),
+          ),
           if (actions != null && actions!.isNotEmpty) const SizedBox(width: 12),
 
           // ── Notifications Icon ────────────────────────────────────
