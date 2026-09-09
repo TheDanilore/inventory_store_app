@@ -605,7 +605,10 @@ class ProductQuickViewContent extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: onEdit,
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    onEdit();
+                  },
                   icon: const Icon(Icons.edit_outlined, size: 16),
                   label: const Text(
                     'Editar Producto',
@@ -623,7 +626,10 @@ class ProductQuickViewContent extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: onOpenFullDetail,
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    onOpenFullDetail();
+                  },
                   icon: const Icon(Icons.open_in_new_rounded, size: 16),
                   label: const Text(
                     'Ver Ficha Completa',

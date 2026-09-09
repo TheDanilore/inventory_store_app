@@ -151,14 +151,12 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       cubit: cubit,
       onToggleActive: () => _toggleProductoActivo(product, cubit),
       onEdit: () {
-        Navigator.pop(context);
         context.go(
           '/admin/products/product-form/${product.id}',
           extra: {'productToEdit': product},
         );
       },
       onOpenFullDetail: () {
-        Navigator.pop(context);
         context.go('/admin/product/${product.id}', extra: product);
       },
     );
