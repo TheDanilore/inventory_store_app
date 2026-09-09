@@ -358,7 +358,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         final isLoading = state is InventoryEntriesLoading;
 
         // Sincronización automática de selección en vista Master-Detail (Tablet/Desktop)
-        if (loadedState != null && loadedState.entries.isNotEmpty) {
+        if (isDesktopOrTablet &&
+            loadedState != null &&
+            loadedState.entries.isNotEmpty) {
           final found = loadedState.entries
               .where((e) => e.id == _selectedEntry?.id)
               .firstOrNull;
@@ -370,8 +372,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
               }
             });
           }
-        } else if (loadedState != null &&
-            loadedState.entries.isEmpty &&
+        } else if ((!isDesktopOrTablet ||
+                (loadedState != null && loadedState.entries.isEmpty)) &&
             _selectedEntry != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && _selectedEntry != null) {
@@ -711,7 +713,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _EntryCard(
                     entry: entry,
-                    isSelected: _selectedEntry?.id == entry.id,
+                    isSelected: isTablet && _selectedEntry?.id == entry.id,
                     onTap: () => _onEntryTapped(context, entry, isTablet),
                   ),
                 );

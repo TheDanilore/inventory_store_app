@@ -561,141 +561,201 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                 ),
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
+                  horizontal: 20,
                   vertical: 8,
                 ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.receipt_long_rounded,
-                      color: AppColors.primary,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 8),
-                    Tooltip(
-                      message: 'Copiar ID completo (${widget.po.id})',
-                      child: InkWell(
-                        onTap: () {
-                          Clipboard.setData(ClipboardData(text: widget.po.id));
-                          AppSnackbar.show(
-                            context,
-                            message: 'ID de orden copiado: ${widget.po.id}',
-                            type: SnackbarType.info,
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(6),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 2,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Detalle de Orden $shortCode',
-                                style: const TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Icon(
-                                Icons.copy_rounded,
-                                size: 15,
-                                color: AppColors.textSecondary,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    StatusPill(
-                      label: _statusLabel(_status),
-                      color: _statusColor(_status),
-                    ),
-                    const Spacer(),
-                    Tooltip(
-                      message: 'Exportar orden en PDF',
-                      child: OutlinedButton.icon(
-                        onPressed:
-                            _isProcessingAction
-                                ? null
-                                : () {
-                                  AppSnackbar.show(
-                                    context,
-                                    message:
-                                        'Función de PDF próximamente ($shortCode)',
-                                    type: SnackbarType.info,
-                                  );
-                                },
-                        icon: const Icon(
-                          Icons.picture_as_pdf_rounded,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
-                        label: const Text(
-                          'Exportar PDF',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          side: BorderSide(
-                            color: AppColors.primary.withValues(alpha: 0.25),
-                          ),
-                          shape: RoundedRectangleBorder(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 600;
+
+                    return Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                    ),
-                    if (_status == 'PENDING' && _amountPaid == 0) ...[
-                      const SizedBox(width: 8),
-                      Tooltip(
-                        message: 'Editar orden de compra completa',
-                        child: OutlinedButton.icon(
-                          onPressed:
-                              _isProcessingAction ? null : _handleEditOrder,
-                          icon: const Icon(
-                            Icons.edit_note_rounded,
-                            size: 16,
+                          child: const Icon(
+                            Icons.receipt_long_rounded,
                             color: AppColors.primary,
+                            size: 18,
                           ),
-                          label: const Text(
-                            'Editar Orden',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Tooltip(
+                            message: 'Copiar ID completo (${widget.po.id})',
+                            child: InkWell(
+                              onTap: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: widget.po.id),
+                                );
+                                AppSnackbar.show(
+                                  context,
+                                  message:
+                                      'ID de orden copiado: ${widget.po.id}',
+                                  type: SnackbarType.info,
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(6),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      isNarrow
+                                          ? shortCode
+                                          : 'Detalle de Orden $shortCode',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.copy_rounded,
+                                    size: 14,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        StatusPill(
+                          label: _statusLabel(_status),
+                          color: _statusColor(_status),
+                        ),
+                        const Spacer(),
+                        if (isNarrow) ...[
+                          // En móvil (< 600dp): Botones de icono compactos con tooltip (Cero Overflows)
+                          IconButton(
+                            onPressed:
+                                _isProcessingAction
+                                    ? null
+                                    : () {
+                                      AppSnackbar.show(
+                                        context,
+                                        message:
+                                            'Función de PDF próximamente ($shortCode)',
+                                        type: SnackbarType.info,
+                                      );
+                                    },
+                            icon: const Icon(
+                              Icons.picture_as_pdf_rounded,
+                              size: 18,
                               color: AppColors.primary,
                             ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            side: BorderSide(
-                              color: AppColors.primary.withValues(alpha: 0.25),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            tooltip: 'Exportar PDF',
                             visualDensity: VisualDensity.compact,
                           ),
-                        ),
-                      ),
-                    ],
-                  ],
+                          if (_status == 'PENDING' && _amountPaid == 0)
+                            IconButton(
+                              onPressed:
+                                  _isProcessingAction ? null : _handleEditOrder,
+                              icon: const Icon(
+                                Icons.edit_note_rounded,
+                                size: 20,
+                                color: AppColors.primary,
+                              ),
+                              tooltip: 'Editar Orden',
+                              visualDensity: VisualDensity.compact,
+                            ),
+                        ] else ...[
+                          // En desktop/tablet (>= 600dp): Botones expandidos con texto
+                          Tooltip(
+                            message: 'Exportar orden en PDF',
+                            child: OutlinedButton.icon(
+                              onPressed:
+                                  _isProcessingAction
+                                      ? null
+                                      : () {
+                                        AppSnackbar.show(
+                                          context,
+                                          message:
+                                              'Función de PDF próximamente ($shortCode)',
+                                          type: SnackbarType.info,
+                                        );
+                                      },
+                              icon: const Icon(
+                                Icons.picture_as_pdf_rounded,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                              label: const Text(
+                                'Exportar PDF',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                side: BorderSide(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.25,
+                                  ),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                          ),
+                          if (_status == 'PENDING' && _amountPaid == 0) ...[
+                            const SizedBox(width: 8),
+                            Tooltip(
+                              message: 'Editar orden de compra completa',
+                              child: OutlinedButton.icon(
+                                onPressed:
+                                    _isProcessingAction
+                                        ? null
+                                        : _handleEditOrder,
+                                icon: const Icon(
+                                  Icons.edit_note_rounded,
+                                  size: 16,
+                                  color: AppColors.primary,
+                                ),
+                                label: const Text(
+                                  'Editar Orden',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  side: BorderSide(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.25,
+                                    ),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ],
+                    );
+                  },
                 ),
               ),
 
