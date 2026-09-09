@@ -1,4 +1,3 @@
-import 'dart:developer' as developer;
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:injectable/injectable.dart';
 import 'package:fpdart/fpdart.dart';
@@ -112,21 +111,21 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
 
       return Right({'data': dataList, 'count': response.count});
     } on PostgrestException catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] fetchOrders PostgrestException: $e',
+      LoggerService.e(
+        'fetchOrders PostgrestException: ${e.message}',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(
         ServerFailure(message: 'Error de base de datos: ${e.message}'),
       );
     } catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] fetchOrders error: $e',
+      LoggerService.e(
+        'fetchOrders unexpected error: $e',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(ServerFailure(message: e.toString()));
     }
@@ -172,11 +171,11 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
 
       return Right(list);
     } catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] fetchOrderItems fatal error: $e',
+      LoggerService.e(
+        'fetchOrderItems fatal error: $e',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(ServerFailure(message: e.toString()));
     }
@@ -227,11 +226,11 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           .eq('id', poId);
       return const Right(null);
     } catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] updateOrderStatus error: $e',
+      LoggerService.e(
+        'updateOrderStatus error: $e',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(ServerFailure(message: e.toString()));
     }
@@ -681,11 +680,11 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
 
       return const Right(null);
     } catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] receiveOrderItems error: $e',
+      LoggerService.e(
+        'receiveOrderItems error: $e',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(ServerFailure(message: e.toString()));
     }
@@ -726,21 +725,21 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       }
       return const Right(null);
     } on PostgrestException catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] registerOrderPayment PostgrestException: $e',
+      LoggerService.e(
+        'registerOrderPayment PostgrestException: ${e.message}',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(
         ServerFailure(message: 'Error de base de datos: ${e.message}'),
       );
     } catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] registerOrderPayment unexpected: $e',
+      LoggerService.e(
+        'registerOrderPayment unexpected error: $e',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(
         ServerFailure(message: 'Error inesperado al registrar el pago: $e'),
@@ -780,21 +779,21 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       }
       return const Right(null);
     } on PostgrestException catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] updateOrderPaymentMethod PostgrestException: $e',
+      LoggerService.e(
+        'updateOrderPaymentMethod PostgrestException: ${e.message}',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(
         ServerFailure(message: 'Error de base de datos: ${e.message}'),
       );
     } catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] updateOrderPaymentMethod unexpected: $e',
+      LoggerService.e(
+        'updateOrderPaymentMethod unexpected error: $e',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(
         ServerFailure(
@@ -847,21 +846,21 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         'activeShiftsByAccount': activeShiftsByAccount,
       });
     } on PostgrestException catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] getFormCatalogs PostgrestException: $e',
+      LoggerService.e(
+        'getFormCatalogs PostgrestException: ${e.message}',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(
         ServerFailure(message: 'Error al cargar catálogos: ${e.message}'),
       );
     } catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] getFormCatalogs unexpected: $e',
+      LoggerService.e(
+        'getFormCatalogs unexpected error: $e',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(
         ServerFailure(message: 'Error inesperado al cargar catálogos: $e'),
@@ -884,21 +883,21 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         creditRes != null ? Map<String, dynamic>.from(creditRes) : null,
       );
     } on PostgrestException catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] getSupplierCredit PostgrestException: $e',
+      LoggerService.e(
+        'getSupplierCredit PostgrestException: ${e.message}',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(
         ServerFailure(message: 'Error al consultar crédito: ${e.message}'),
       );
     } catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] getSupplierCredit unexpected: $e',
+      LoggerService.e(
+        'getSupplierCredit unexpected error: $e',
+        tag: 'PURCHASE_ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(
         ServerFailure(message: 'Error inesperado al consultar crédito: $e'),

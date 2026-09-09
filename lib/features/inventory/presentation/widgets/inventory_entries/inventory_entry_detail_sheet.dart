@@ -152,7 +152,11 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.move_to_inbox_rounded, color: AppColors.primary, size: 20),
+                    child: const Icon(
+                      Icons.move_to_inbox_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Text(
@@ -170,7 +174,11 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                     visualDensity: VisualDensity.compact,
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: entry.id));
-                      AppSnackbar.show(context, message: 'ID copiado al portapapeles', type: SnackbarType.info);
+                      AppSnackbar.show(
+                        context,
+                        message: 'ID copiado al portapapeles',
+                        type: SnackbarType.info,
+                      );
                     },
                   ),
                 ],
@@ -225,28 +233,35 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: entry.paymentMode == 'CRÉDITO'
-                                      ? Colors.purple.shade50
-                                      : AppColors.teal.withValues(alpha: 0.1),
+                                  color:
+                                      entry.paymentMode == 'CRÉDITO'
+                                          ? Colors.purple.shade50
+                                          : AppColors.teal.withValues(
+                                            alpha: 0.1,
+                                          ),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: entry.paymentMode == 'CRÉDITO'
-                                        ? Colors.purple.shade200
-                                        : AppColors.teal.withValues(alpha: 0.3),
+                                    color:
+                                        entry.paymentMode == 'CRÉDITO'
+                                            ? Colors.purple.shade200
+                                            : AppColors.teal.withValues(
+                                              alpha: 0.3,
+                                            ),
                                   ),
                                 ),
                                 child: Text(
                                   entry.paymentMode == 'CONTADO'
                                       ? 'Al Contado'
                                       : entry.paymentMode == 'CRÉDITO'
-                                          ? 'Al Crédito'
-                                          : entry.paymentMode!,
+                                      ? 'Al Crédito'
+                                      : entry.paymentMode!,
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
-                                    color: entry.paymentMode == 'CRÉDITO'
-                                        ? Colors.purple.shade700
-                                        : AppColors.teal,
+                                    color:
+                                        entry.paymentMode == 'CRÉDITO'
+                                            ? Colors.purple.shade700
+                                            : AppColors.teal,
                                   ),
                                 ),
                               ),
@@ -352,8 +367,10 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      DateFormat('dd/MM/yyyy', 'es')
-                                          .format(entry.documentDate!),
+                                      DateFormat(
+                                        'dd/MM/yyyy',
+                                        'es',
+                                      ).format(entry.documentDate!),
                                       style: const TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
@@ -394,7 +411,9 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: Colors.purple.shade50,
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                           border: Border.all(
                                             color: Colors.purple.shade200,
                                           ),
@@ -458,7 +477,7 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                                   size: 14,
                                 ),
                                 label: const Text(
-                                  'Ver Orden ↗',
+                                  'Ver Orden',
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,

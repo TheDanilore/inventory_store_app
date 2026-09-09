@@ -147,9 +147,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
       style: OutlinedButton.styleFrom(
         side: const BorderSide(color: AppColors.border),
         padding: const EdgeInsets.symmetric(horizontal: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -207,9 +205,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -361,9 +357,10 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         if (isDesktopOrTablet &&
             loadedState != null &&
             loadedState.entries.isNotEmpty) {
-          final found = loadedState.entries
-              .where((e) => e.id == _selectedEntry?.id)
-              .firstOrNull;
+          final found =
+              loadedState.entries
+                  .where((e) => e.id == _selectedEntry?.id)
+                  .firstOrNull;
           final target = found ?? loadedState.entries.first;
           if (_selectedEntry != target) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -388,22 +385,22 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
           actions:
               isDesktopOrTablet
                   ? [
-                      _buildRefreshButton(context),
-                      const SizedBox(width: 8),
-                      _buildNewEntryButton(context, isHeader: true),
-                    ]
+                    _buildRefreshButton(context),
+                    const SizedBox(width: 8),
+                    _buildNewEntryButton(context, isHeader: true),
+                  ]
                   : [
-                      IconButton(
-                        icon: const Icon(Icons.refresh_rounded),
-                        tooltip: 'Actualizar entradas',
-                        onPressed: () {
-                          context
-                              .read<InventoryEntriesCubit>()
-                              .loadEntries(page: 0);
-                        },
-                      ),
-                      _buildNewEntryButton(context, isCompactMobile: true),
-                    ],
+                    IconButton(
+                      icon: const Icon(Icons.refresh_rounded),
+                      tooltip: 'Actualizar entradas',
+                      onPressed: () {
+                        context.read<InventoryEntriesCubit>().loadEntries(
+                          page: 0,
+                        );
+                      },
+                    ),
+                    _buildNewEntryButton(context, isCompactMobile: true),
+                  ],
           floatingActionButton: null,
           body: Focus(
             focusNode: _screenFocusNode,
@@ -476,10 +473,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             ],
           ),
         ),
-        Container(
-          width: 1,
-          color: AppColors.border,
-        ),
+        Container(width: 1, color: AppColors.border),
         Expanded(
           flex: 6,
           child: AnimatedSwitcher(
@@ -487,28 +481,28 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             child:
                 _selectedEntry == null
                     ? const AppEmptyState(
-                        key: ValueKey('empty_detail'),
-                        icon: Icons.receipt_long_rounded,
-                        title: 'Ninguna Entrada Seleccionada',
-                        message:
-                            'Selecciona una entrada del panel izquierdo para ver sus detalles.',
-                      )
+                      key: ValueKey('empty_detail'),
+                      icon: Icons.receipt_long_rounded,
+                      title: 'Ninguna Entrada Seleccionada',
+                      message:
+                          'Selecciona una entrada del panel izquierdo para ver sus detalles.',
+                    )
                     : Container(
-                        key: ValueKey(_selectedEntry!.id),
-                        margin: const EdgeInsets.all(16.0),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: InventoryEntryDetailSheet(
-                          entry: _selectedEntry!,
-                          isBottomSheet: false,
-                          loadItems:
-                              () => _loadEntryItems(_selectedEntry!.id, null),
-                        ),
+                      key: ValueKey(_selectedEntry!.id),
+                      margin: const EdgeInsets.all(16.0),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
                       ),
+                      clipBehavior: Clip.antiAlias,
+                      child: InventoryEntryDetailSheet(
+                        entry: _selectedEntry!,
+                        isBottomSheet: false,
+                        loadItems:
+                            () => _loadEntryItems(_selectedEntry!.id, null),
+                      ),
+                    ),
           ),
         ),
       ],
@@ -544,7 +538,11 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.edit_document, color: AppColors.warning, size: 20),
+                  const Icon(
+                    Icons.edit_document,
+                    color: AppColors.warning,
+                    size: 20,
+                  ),
                   const SizedBox(width: 10),
                   const Expanded(
                     child: Text(
@@ -572,7 +570,10 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                     ),
                     child: const Text(
                       'Continuar',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],
@@ -958,8 +959,8 @@ class _EntryCard extends StatelessWidget {
                                 entry.paymentMode == 'CONTADO'
                                     ? 'Contado'
                                     : entry.paymentMode == 'CRÉDITO'
-                                        ? 'Crédito'
-                                        : entry.paymentMode!,
+                                    ? 'Crédito'
+                                    : entry.paymentMode!,
                             color:
                                 entry.paymentMode == 'CRÉDITO'
                                     ? Colors.purple.shade700
@@ -992,7 +993,7 @@ class _EntryCard extends StatelessWidget {
                               child: _Pill(
                                 icon: Icons.link_rounded,
                                 label:
-                                    'Orden #${entry.purchaseOrderId!.substring(0, entry.purchaseOrderId!.length >= 8 ? 8 : entry.purchaseOrderId!.length).toUpperCase()} ↗',
+                                    'Orden #${entry.purchaseOrderId!.substring(0, entry.purchaseOrderId!.length >= 8 ? 8 : entry.purchaseOrderId!.length).toUpperCase()}',
                                 color: Colors.purple.shade700,
                                 bgColor: Colors.purple.shade400.withValues(
                                   alpha: 0.12,
@@ -1221,10 +1222,7 @@ class _SearchField extends StatelessWidget {
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 13,
-          ),
+          hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
           prefixIcon: const Icon(
             Icons.search_rounded,
             color: AppColors.textMuted,

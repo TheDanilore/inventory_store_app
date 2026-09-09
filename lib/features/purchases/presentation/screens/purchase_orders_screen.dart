@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/purchase_order_item_entity.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
@@ -44,6 +45,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   PurchaseOrderModel? _selectedOrder;
   String? _pendingTargetOrderId;
   bool _isFetchingTargetOrder = false;
+  final Map<String, List<PurchaseOrderItemEntity>> _itemsCache = {};
 
   static const _statusLabels = {
     'Todos': 'Todos',
@@ -84,8 +86,16 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   @override
   void didUpdateWidget(covariant PurchaseOrdersScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.targetOrderId != oldWidget.targetOrderId &&
-        widget.targetOrderId != null) {
+    if (widget.targetOrderId != oldWidget.targetOrderId) {
+      if (widget.targetOrderId == null) {
+        if (_selectedOrder != null) {
+          setState(() => _selectedOrder = null);
+        }
+        return;
+      }
+      if (widget.targetOrderId == _selectedOrder?.id) {
+        return;
+      }
       _pendingTargetOrderId = widget.targetOrderId;
       final state = cubit.state;
       if (state is PurchaseOrdersLoaded) {
@@ -95,20 +105,57 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     }
   }
 
+  void _selectOrder(PurchaseOrderModel? po, {bool updateUrl = true}) {
+    setState(() {
+      _selectedOrder = po;
+    });
+
+    if (updateUrl && mounted) {
+      final isTablet = MediaQuery.sizeOf(context).width >= 800;
+      if (isTablet) {
+        if (po != null) {
+          context.replace('/admin/purchase-orders?selectedId=${po.id}');
+        } else {
+          context.replace('/admin/purchase-orders');
+        }
+      }
+    }
+  }
+
+  Future<List<PurchaseOrderItemEntity>> _loadOrderItems(String orderId) async {
+    if (_itemsCache.containsKey(orderId)) {
+      return _itemsCache[orderId]!;
+    }
+    final res = await sl<FetchPurchaseOrderItemsUseCase>().call(orderId);
+    final items = res.fold((l) => <PurchaseOrderItemEntity>[], (r) => r);
+    if (items.isNotEmpty) {
+      _itemsCache[orderId] = items;
+    }
+    return items;
+  }
+
   Future<void> _checkDraft() async {
-    final prefs = await SharedPreferences.getInstance();
-    final str = prefs.getString('po_form_draft_v1');
-    if (str != null) {
-      try {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final str = prefs.getString('po_form_draft_v1');
+      if (str != null) {
         final data = jsonDecode(str) as Map<String, dynamic>;
         final items = data['items'] as List?;
-        setState(() {
-          _hasDraft = items != null && items.isNotEmpty;
-        });
-      } catch (_) {
+        if (mounted) {
+          setState(() {
+            _hasDraft = items != null && items.isNotEmpty;
+          });
+        }
+      } else {
         if (mounted) setState(() => _hasDraft = false);
       }
-    } else {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al verificar borrador de orden de compra',
+        tag: 'PURCHASE_ORDERS_SCREEN',
+        error: e,
+        stackTrace: st,
+      );
       if (mounted) setState(() => _hasDraft = false);
     }
   }
@@ -147,7 +194,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         return KeyEventResult.handled;
       }
       if (_selectedOrder != null) {
-        setState(() => _selectedOrder = null);
+        _selectOrder(null, updateUrl: true);
         return KeyEventResult.handled;
       }
     }
@@ -162,13 +209,13 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
       if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
         final nextIndex = (currentIndex + 1).clamp(0, filtered.length - 1);
-        setState(() => _selectedOrder = filtered[nextIndex]);
+        _selectOrder(filtered[nextIndex], updateUrl: true);
         return KeyEventResult.handled;
       }
 
       if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
         final prevIndex = (currentIndex - 1).clamp(0, filtered.length - 1);
-        setState(() => _selectedOrder = filtered[prevIndex]);
+        _selectOrder(filtered[prevIndex], updateUrl: true);
         return KeyEventResult.handled;
       }
     }
@@ -179,6 +226,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   Widget _buildRefreshButton(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: () {
+        _itemsCache.clear();
         context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
       },
       icon: const Icon(
@@ -257,16 +305,12 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
             child: PODetailSheet(
               po: po,
               onPaymentSuccess: () {
+                _itemsCache.remove(po.id);
                 if (context.mounted) {
                   context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
                 }
               },
-              loadItems: () async {
-                final res = await sl<FetchPurchaseOrderItemsUseCase>().call(
-                  po.id,
-                );
-                return res.fold((l) => [], (r) => r);
-              },
+              loadItems: () => _loadOrderItems(po.id),
               onReceive: () => _handleReceiveOrder(context, po),
               onUpdateStatus: (status) async {
                 await viewModel.updateOrderStatus(po.id, status);
@@ -283,9 +327,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     final foundIndex = orders.indexWhere((o) => o.id == targetId);
     if (foundIndex != -1) {
       _pendingTargetOrderId = null;
-      setState(() {
-        _selectedOrder = orders[foundIndex];
-      });
+      _selectOrder(orders[foundIndex], updateUrl: isTablet);
       if (!isTablet) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && _selectedOrder != null) {
@@ -316,9 +358,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         (map) {
           if (map != null && mounted) {
             final loadedPo = PurchaseOrderModel.fromMap(map);
-            setState(() {
-              _selectedOrder = loadedPo;
-            });
+            _selectOrder(loadedPo, updateUrl: isTablet);
             if (!isTablet) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted && _selectedOrder != null) {
@@ -329,7 +369,13 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           }
         },
       );
-    } catch (_) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al obtener orden de compra objetivo: $targetId',
+        tag: 'PURCHASE_ORDERS_SCREEN',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       if (mounted) {
         setState(() => _isFetchingTargetOrder = false);
@@ -343,8 +389,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     BuildContext context,
     PurchaseOrderModel po,
   ) async {
-    final res = await sl<FetchPurchaseOrderItemsUseCase>().call(po.id);
-    final items = res.fold((l) => <PurchaseOrderItemEntity>[], (r) => r);
+    final items = await _loadOrderItems(po.id);
     if (!context.mounted) return;
 
     final entryItems =
@@ -384,6 +429,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     if (!context.mounted) return;
 
     if (received == true) {
+      _itemsCache.remove(po.id);
       // Si la recepción se guardó con éxito:
       // En móvil, si había un bottom sheet abierto, lo cerramos para ver la lista con el nuevo estado
       Navigator.of(
@@ -527,6 +573,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                       // Si no está en filtered (es foránea o filtrada), SE PRESERVA intacta en _selectedOrder!
                     } else if (isTablet) {
                       _selectedOrder = filtered.first;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted && _selectedOrder != null) {
+                          _selectOrder(_selectedOrder, updateUrl: true);
+                        }
+                      });
                     }
                   } else {
                     _selectedOrder = null;
@@ -786,8 +837,10 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                     '${viewModel.statusFilter}_${viewModel.currentPage}',
                                   ),
                                   color: AppColors.primary,
-                                  onRefresh:
-                                      () => cubit.loadOrders(refresh: true),
+                                  onRefresh: () {
+                                    _itemsCache.clear();
+                                    return cubit.loadOrders(refresh: true);
+                                  },
                                   child: ListView.separated(
                                     physics:
                                         const AlwaysScrollableScrollPhysics(),
@@ -810,9 +863,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                         isSelected: isSel,
                                         onTap: () {
                                           if (isTablet) {
-                                            setState(() {
-                                              _selectedOrder = po;
-                                            });
+                                            _selectOrder(po, updateUrl: true);
                                           } else {
                                             _showDetail(context, po);
                                           }
@@ -856,19 +907,15 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                       po: _selectedOrder!,
                                       isDialog: true,
                                       onPaymentSuccess: () {
+                                        _itemsCache.remove(_selectedOrder?.id);
                                         if (context.mounted) {
                                           context
                                               .read<PurchaseOrdersCubit>()
                                               .loadOrders(refresh: true);
                                         }
                                       },
-                                      loadItems: () async {
-                                        final res = await sl<
-                                              FetchPurchaseOrderItemsUseCase
-                                            >()
-                                            .call(_selectedOrder!.id);
-                                        return res.fold((l) => [], (r) => r);
-                                      },
+                                      loadItems: () =>
+                                          _loadOrderItems(_selectedOrder!.id),
                                       onReceive:
                                           () => _handleReceiveOrder(
                                             context,

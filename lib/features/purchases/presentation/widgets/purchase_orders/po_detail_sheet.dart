@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:developer' as developer;
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_active_cash_shift_usecase.dart';
@@ -186,7 +185,10 @@ class _PODetailSheetState extends State<PODetailSheet> {
     List<SupplierFinancialAccountOption> accounts = [];
     final accountsRes = await sl<GetFinancialAccountsUseCase>().call();
     accountsRes.fold(
-      (failure) => developer.log('Error al cargar cuentas: ${failure.message}'),
+      (failure) => LoggerService.e(
+        'Error al cargar cuentas: ${failure.message}',
+        tag: 'PO_DETAIL_SHEET',
+      ),
       (list) => accounts = list,
     );
 
@@ -1514,6 +1516,16 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
       return;
     }
 
+    if (payAmount > widget.pending + 0.001) {
+      AppSnackbar.show(
+        context,
+        message:
+            'El monto a pagar (S/ ${payAmount.toStringAsFixed(2)}) no puede superar la deuda pendiente (S/ ${widget.pending.toStringAsFixed(2)}).',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
     final selAcc = widget.accounts.firstWhere(
       (a) => a.id == _selectedAccountId,
       orElse: () => widget.accounts.first,
@@ -1939,6 +1951,9 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
                   final parsed = double.tryParse(val.trim());
                   if (parsed == null || parsed <= 0) {
                     return 'El monto debe ser mayor a 0';
+                  }
+                  if (parsed > widget.pending + 0.001) {
+                    return 'Excede la deuda (S/ ${widget.pending.toStringAsFixed(2)})';
                   }
                   return null;
                 },
