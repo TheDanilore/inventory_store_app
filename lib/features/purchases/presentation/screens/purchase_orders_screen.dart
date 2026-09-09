@@ -1116,11 +1116,14 @@ class _SearchField extends StatelessWidget {
             minWidth: 36,
             minHeight: 40,
           ),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (controller.text.isNotEmpty)
-                IconButton(
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, _) {
+              final hasText = value.text.isNotEmpty;
+              final isDesktop = MediaQuery.sizeOf(context).width >= 800;
+
+              if (hasText) {
+                return IconButton(
                   icon: const Icon(
                     Icons.close_rounded,
                     size: 16,
@@ -1133,9 +1136,11 @@ class _SearchField extends StatelessWidget {
                     minWidth: 28,
                     minHeight: 28,
                   ),
-                ),
-              if (MediaQuery.sizeOf(context).width >= 800)
-                Container(
+                );
+              }
+
+              if (isDesktop) {
+                return Container(
                   margin: const EdgeInsets.only(right: 8),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,
@@ -1154,8 +1159,11 @@ class _SearchField extends StatelessWidget {
                       color: AppColors.textSecondary,
                     ),
                   ),
-                ),
-            ],
+                );
+              }
+
+              return const SizedBox.shrink();
+            },
           ),
           border: InputBorder.none,
           isDense: true,

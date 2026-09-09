@@ -10,6 +10,7 @@ import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
@@ -138,8 +139,20 @@ class _OrdersScreenState extends State<OrdersScreen> {
           }
         },
       );
-    } catch (e) {
-      // ignore
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al obtener pedido por ID foráneo: $targetId',
+        error: e,
+        stackTrace: st,
+        tag: 'OrdersScreen',
+      );
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al cargar el pedido seleccionado.',
+          type: SnackbarType.error,
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isFetchingTargetOrder = false);
@@ -492,35 +505,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         minHeight: 2,
                       ),
                     ),
-                  if (state.orders.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                        child: _OrdersKpiRibbon(
-                          pageOrdersCount: state.orders.length,
-                          totalRecords: state.totalRecords,
-                          pageTotalAmount: state.orders.fold<double>(
-                            0,
-                            (sum, o) => sum + o.totalAmount,
-                          ),
-                          pendingCount:
-                              state.orders
-                                  .where((o) => o.status == 'PENDING')
-                                  .length,
-                          pendingDebt: state.orders
-                              .where(
-                                (o) =>
-                                    o.paymentStatus != 'PAID' &&
-                                    o.status != 'CANCELLED',
-                              )
-                              .fold<double>(
-                                0,
-                                (sum, o) =>
-                                    sum + (o.totalAmount - o.amountPaid),
-                              ),
-                        ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _OrdersKpiRibbon(
+                        pageOrdersCount: state.orders.length,
+                        totalRecords: state.totalRecords,
+                        pageTotalAmount: state.totalAmountCurrentPage,
+                        pendingCount: state.pendingCountCurrentPage,
+                        pendingDebt: state.pendingDebtCurrentPage,
                       ),
                     ),
+                  ),
                   SliverPersistentHeader(
                     pinned: true,
                     floating: true,

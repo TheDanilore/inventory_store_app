@@ -36,14 +36,29 @@ class OrdersCubit extends Cubit<OrdersState> {
     loadOrders(reset: true);
   }
 
+  int _currentLoadId = 0;
+
   Future<void> loadOrders({bool reset = false, bool background = false}) async {
-    if (state.isLoading || state.isBackgroundLoading) return;
+    final loadId = ++_currentLoadId;
 
     if (reset) {
-      emit(state.copyWith(currentPage: 0, orders: [], totalRecords: 0));
-    }
-
-    if (background) {
+      if (state.orders.isEmpty) {
+        emit(state.copyWith(
+          currentPage: 0,
+          orders: const [],
+          totalRecords: 0,
+          isLoading: true,
+          isBackgroundLoading: false,
+          errorMessage: '',
+        ));
+      } else {
+        emit(state.copyWith(
+          currentPage: 0,
+          isBackgroundLoading: true,
+          errorMessage: '',
+        ));
+      }
+    } else if (background) {
       emit(state.copyWith(isBackgroundLoading: true, errorMessage: ''));
     } else {
       emit(state.copyWith(isLoading: true, errorMessage: ''));
@@ -63,6 +78,8 @@ class OrdersCubit extends Cubit<OrdersState> {
         offset: startRow,
       ),
     );
+
+    if (loadId != _currentLoadId) return;
 
     result.fold(
       (failure) {

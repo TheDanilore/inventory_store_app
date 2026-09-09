@@ -103,8 +103,12 @@ class OrdersState extends Equatable {
   bool isGeneratingPDF(String id) => generatingPdfOrderId == id;
 
   double get totalAmountCurrentPage =>
-      orders.fold(0, (sum, order) => sum + order.totalAmount);
+      orders.fold<double>(0, (sum, order) => sum + order.totalAmount);
 
   int get pendingCountCurrentPage =>
       orders.where((o) => o.status == 'PENDING').length;
+
+  double get pendingDebtCurrentPage => orders
+      .where((o) => o.paymentStatus != 'PAID' && o.status != 'CANCELLED')
+      .fold<double>(0, (sum, o) => sum + (o.totalAmount - o.amountPaid));
 }
