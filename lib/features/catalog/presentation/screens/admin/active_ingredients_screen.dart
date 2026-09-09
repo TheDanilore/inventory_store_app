@@ -123,7 +123,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
       title: 'Eliminar Componente Químico',
       itemName: formattedName,
       description:
-          'Esta acción eliminará "$formattedName" de los componentes químicos registrados. Si existen productos en catálogo con este principio activo, este atributo quedará desvinculado.',
+          'Esta acción eliminará permanentemente "$formattedName" del catálogo de componentes químicos.\n\nNota de Seguridad: La acción será bloqueada automáticamente por el sistema si este componente está siendo utilizado en las formulaciones de uno o más productos para evitar registros huérfanos.',
       matchText: ingredient.name,
       confirmButtonText: 'Eliminar Componente',
       onConfirmAsync: () async {

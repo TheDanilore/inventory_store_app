@@ -100,7 +100,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       itemName: product.name,
       matchText: product.name,
       description:
-          'Esta acción eliminará permanentemente "${product.name}"$variantText, sus códigos de barra, relaciones de inventario y configuración de precios.\n\nNota: La acción fallará si el producto cuenta con existencias activas en almacén o historial de ventas registrado.',
+          'Esta acción eliminará permanentemente "${product.name}"$variantText, sus códigos de barra, relaciones de inventario y configuración de precios.\n\nNota de Seguridad: La acción será rechazada si el producto cuenta con existencias activas en almacén, órdenes de compra a proveedores, ventas o movimientos en Kardex.',
       confirmButtonText: 'Eliminar Producto',
       onConfirmAsync: () async {
         final success = await cubit.deleteProduct(product.id);

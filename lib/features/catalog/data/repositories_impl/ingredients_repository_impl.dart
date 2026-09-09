@@ -1,8 +1,8 @@
-import 'dart:developer' as developer;
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/active_ingredient_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/active_ingredient_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/ingredients_repository.dart';
@@ -14,12 +14,17 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
   IngredientsRepositoryImpl(this._supabase);
 
   Either<Failure, T> _handleError<T>(Object e, [StackTrace? st]) {
-    developer.log('IngredientsRepositoryImpl Error', error: e, stackTrace: st);
+    LoggerService.e(
+      'Error en IngredientsRepositoryImpl: $e',
+      tag: 'INGREDIENTS_REPO',
+      error: e,
+      stackTrace: st,
+    );
     if (e is PostgrestException) {
       if (e.code == '23503') {
         return left(
           Failure.from(
-            'No se puede eliminar: Este componente químico está siendo utilizado en las formulaciones de productos del catálogo.',
+            'No se puede eliminar: Este componente químico está siendo utilizado en las formulaciones de productos del catálogo. Retíralo de las fichas de los productos antes de eliminarlo.',
           ),
         );
       }
@@ -44,8 +49,8 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
           )
           .eq('product_id', productId);
       return right(List<Map<String, dynamic>>.from(response));
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -80,8 +85,8 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
               .select()
               .single();
       return right(ActiveIngredientModel.fromJson(response).toEntity());
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -93,29 +98,59 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
           .update({'name': name.trim()})
           .eq('id', id);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
   @override
   Future<Either<Failure, void>> deleteIngredient(String id) async {
     try {
-      // Verificación previa: comprobar si el ingrediente está referenciado
-      // en algún producto antes de intentar el DELETE.
-      // Esto evita un round-trip fallido y permite un mensaje más descriptivo.
+      // 1. Intentar ejecución atómica mediante RPC seguro en Supabase
+      try {
+        final res = await _supabase.rpc(
+          'delete_active_ingredient_safely',
+          params: {'p_ingredient_id': id},
+        );
+
+        if (res is Map) {
+          final success = res['success'] as bool? ?? false;
+          final message = res['message'] as String? ?? '';
+          if (!success) {
+            return left(Failure.from(message));
+          }
+          return right(null);
+        }
+      } on PostgrestException catch (rpcError, rpcSt) {
+        // Si la RPC aún no ha sido creada en Supabase, pasamos al fallback local
+        final isMissingRpc = rpcError.code == 'PGRST202' ||
+            rpcError.message.contains('function') &&
+                rpcError.message.contains('does not exist');
+
+        if (!isMissingRpc) {
+          return _handleError(rpcError, rpcSt);
+        }
+      }
+
+      // 2. Fallback con verificación relacional previa que extrae los nombres de los productos
       final usages = await _supabase
           .from('product_active_ingredients')
-          .select('product_id')
+          .select('product_id, products(name)')
           .eq('ingredient_id', id);
 
       if (usages.isNotEmpty) {
+        final productList = (usages as List).map((u) {
+          final productMap = u['products'] as Map<String, dynamic>?;
+          return productMap?['name'] as String? ?? 'Producto';
+        }).take(3).join(', ');
+
         final count = (usages as List).length;
+        final extraText = count > 3 ? ' entre otros' : '';
+
         return left(
           Failure.from(
-            'No se puede eliminar: Este componente está siendo utilizado '
-            'en $count ${count == 1 ? "producto" : "productos"} del catálogo. '
-            'Retíralo de los productos antes de eliminarlo.',
+            'No se puede eliminar: Este componente está asignado en $count ${count == 1 ? "producto" : "productos"} del catálogo '
+            '($productList$extraText). Debes desvincularlo de las fichas de los productos antes de eliminarlo.',
           ),
         );
       }
