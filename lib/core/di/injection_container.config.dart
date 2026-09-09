@@ -1267,13 +1267,6 @@ extension GetItInjectableX on _i174.GetIt {
         exportKardexPdf: gh<_i876.ExportKardexPdfUseCase>(),
       ),
     );
-    gh.factory<_i451.UsersCubit>(
-      () => _i451.UsersCubit(
-        gh<_i499.GetUsersUseCase>(),
-        gh<_i962.GetGlobalUsersCountUseCase>(),
-        gh<_i90.UpdateUserUseCase>(),
-      ),
-    );
     gh.lazySingleton<_i382.CreateAttributeUseCase>(
       () => _i382.CreateAttributeUseCase(gh<_i570.ProductsRepository>()),
     );
@@ -1457,6 +1450,14 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i624.UpdateOrderStatusUc>(
       () => _i624.UpdateOrderStatusUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.factory<_i451.UsersCubit>(
+      () => _i451.UsersCubit(
+        gh<_i499.GetUsersUseCase>(),
+        gh<_i962.GetGlobalUsersCountUseCase>(),
+        gh<_i90.UpdateUserUseCase>(),
+        gh<_i496.DeleteUserUseCase>(),
+      ),
     );
     gh.factory<_i70.CustomersCubit>(
       () => _i70.CustomersCubit(

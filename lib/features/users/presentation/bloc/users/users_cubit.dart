@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
+import 'package:inventory_store_app/features/users/domain/usecases/delete_user_usecase.dart';
 import 'package:inventory_store_app/features/users/domain/usecases/get_global_users_count_usecase.dart';
 import 'package:inventory_store_app/features/users/domain/usecases/get_users_usecase.dart';
 import 'package:inventory_store_app/features/users/domain/usecases/update_user_usecase.dart';
@@ -12,12 +13,17 @@ class UsersCubit extends Cubit<UsersState> {
   final GetUsersUseCase _getUsers;
   final GetGlobalUsersCountUseCase _getCounts;
   final UpdateUserUseCase _updateUser;
+  final DeleteUserUseCase _deleteUser;
 
   static const int pageSize = 24;
   String _currentRole = AppRoles.customer;
 
-  UsersCubit(this._getUsers, this._getCounts, this._updateUser)
-    : super(const UsersInitial());
+  UsersCubit(
+    this._getUsers,
+    this._getCounts,
+    this._updateUser,
+    this._deleteUser,
+  ) : super(const UsersInitial());
 
   Future<void> init(String role) async {
     _currentRole = role;
@@ -197,6 +203,57 @@ class UsersCubit extends Cubit<UsersState> {
             employeeTotal: state.employeeTotal,
           ),
         );
+      },
+    );
+  }
+
+  /// Elimina un usuario por su ID de forma definitiva y actualiza el estado in-memory (Zero Egress).
+  Future<bool> deleteUser(String userId) async {
+    final res = await _deleteUser(userId);
+
+    return res.fold(
+      (failure) {
+        emit(
+          UsersError(
+            message: failure.message,
+            currentUsers: state.currentUsers,
+            searchQuery: state.searchQuery,
+            onlyActive: state.onlyActive,
+            currentPage: state.currentPage,
+            totalCount: state.totalCount,
+            customerTotal: state.customerTotal,
+            adminTotal: state.adminTotal,
+            employeeTotal: state.employeeTotal,
+          ),
+        );
+        return false;
+      },
+      (_) {
+        final updatedUsers =
+            state.currentUsers.where((u) => u.id != userId).toList();
+        final newTotal = state.totalCount > 0 ? state.totalCount - 1 : 0;
+
+        int cTotal = state.customerTotal;
+        int aTotal = state.adminTotal;
+        int eTotal = state.employeeTotal;
+
+        if (_currentRole == AppRoles.customer && cTotal > 0) cTotal--;
+        if (_currentRole == AppRoles.admin && aTotal > 0) aTotal--;
+        if (_currentRole == AppRoles.employee && eTotal > 0) eTotal--;
+
+        emit(
+          UsersLoaded(
+            users: updatedUsers,
+            searchQuery: state.searchQuery,
+            onlyActive: state.onlyActive,
+            currentPage: state.currentPage,
+            totalCount: newTotal,
+            customerTotal: cTotal,
+            adminTotal: aTotal,
+            employeeTotal: eTotal,
+          ),
+        );
+        return true;
       },
     );
   }

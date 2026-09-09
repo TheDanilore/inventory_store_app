@@ -6,6 +6,8 @@ import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/dialogs/adaptive_destructive_dialog.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
 import 'package:inventory_store_app/features/users/presentation/bloc/users/users_cubit.dart';
@@ -180,6 +182,30 @@ class _UsersTabState extends State<UsersTab>
     context.go(
       '/admin/users/form',
       extra: {'existingUser': user, 'initialRole': user.role},
+    );
+  }
+
+  Future<void> _confirmDeleteUser(BuildContext context, UserEntity user) async {
+    final cubit = context.read<UsersCubit>();
+    await AdaptiveDestructiveDialog.show(
+      context: context,
+      title: 'Eliminar Usuario',
+      itemName: user.fullName,
+      matchText: user.fullName,
+      description:
+          'Esta acción eliminará permanentemente la cuenta de "${user.fullName}" (${user.email ?? user.phone ?? 'sin contacto'}), sus credenciales de acceso y desvinculará sus registros y puntos acumulados.',
+      confirmButtonText: 'Eliminar Usuario',
+      onConfirmAsync: () async {
+        final success = await cubit.deleteUser(user.id);
+        if (success && context.mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Usuario "${user.fullName}" eliminado correctamente',
+            type: SnackbarType.success,
+          );
+        }
+        return success;
+      },
     );
   }
 
@@ -375,7 +401,7 @@ class _UsersTabState extends State<UsersTab>
                     ),
                   ),
                   const SizedBox(
-                    width: 100,
+                    width: 124,
                     child: Text(
                       'ACCIONES',
                       textAlign: TextAlign.end,
@@ -410,6 +436,7 @@ class _UsersTabState extends State<UsersTab>
                     isLoyaltyEnabled: isLoyaltyEnabled,
                     onTap: () => _showUserDetail(context, user.id),
                     onEdit: () => _onEditUser(context, user),
+                    onDelete: () => _confirmDeleteUser(context, user),
                     onToggleActive: (val) {
                       context.read<UsersCubit>().toggleUserStatus(
                         user.id,
@@ -438,6 +465,7 @@ class _UsersTabState extends State<UsersTab>
           user: user,
           role: widget.role,
           onTap: () => _showUserDetail(context, user.id),
+          onDelete: () => _confirmDeleteUser(context, user),
         );
       },
     );
@@ -450,6 +478,7 @@ class _DesktopTableRow extends StatefulWidget {
   final bool isLoyaltyEnabled;
   final VoidCallback onTap;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
   final ValueChanged<bool> onToggleActive;
 
   const _DesktopTableRow({
@@ -457,6 +486,7 @@ class _DesktopTableRow extends StatefulWidget {
     required this.isLoyaltyEnabled,
     required this.onTap,
     required this.onEdit,
+    required this.onDelete,
     required this.onToggleActive,
   });
 
@@ -714,7 +744,7 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
 
                 // 7. Acciones
                 SizedBox(
-                  width: 100,
+                  width: 124,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -731,6 +761,17 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
                         splashRadius: 18,
                         color: AppColors.primary,
                         onPressed: widget.onEdit,
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                        ),
+                        tooltip: 'Eliminar usuario',
+                        splashRadius: 18,
+                        color: AppColors.error,
+                        hoverColor: AppColors.error.withValues(alpha: 0.08),
+                        onPressed: widget.onDelete,
                       ),
                     ],
                   ),

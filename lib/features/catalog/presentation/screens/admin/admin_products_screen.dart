@@ -6,6 +6,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/dialogs/adaptive_destructive_dialog.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
@@ -89,73 +90,33 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     ProductEntity product,
     AdminCatalogCubit cubit,
   ) async {
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            backgroundColor: AppColors.surface,
-            title: const Row(
-              children: [
-                Icon(Icons.warning_amber_rounded, color: AppColors.error),
-                SizedBox(width: 8),
-                Text(
-                  'Eliminar Producto',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-            content: Text(
-              '¿Estás seguro de que deseas eliminar "${product.name}"?\n\nEsta acción no se puede deshacer y fallará si el producto tiene stock en almacenes o ventas asociadas.',
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                height: 1.4,
-              ),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppColors.radiusLg),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.error,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                  ),
-                ),
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Eliminar'),
-              ),
-            ],
-          ),
-    );
+    final variantCount = product.productVariants.length;
+    final variantText =
+        variantCount > 0 ? ' y sus $variantCount variantes vinculadas' : '';
 
-    if (confirm == true) {
-      final success = await cubit.deleteProduct(product.id);
-      if (success && mounted) {
-        setState(() {
-          _selectedProductIds.remove(product.id);
-        });
-        AppSnackbar.show(
-          context,
-          message: 'Producto eliminado correctamente',
-          type: SnackbarType.success,
-        );
-      }
-    }
+    await AdaptiveDestructiveDialog.show(
+      context: context,
+      title: 'Eliminar Producto',
+      itemName: product.name,
+      matchText: product.name,
+      description:
+          'Esta acción eliminará permanentemente "${product.name}"$variantText, sus códigos de barra, relaciones de inventario y configuración de precios.\n\nNota: La acción fallará si el producto cuenta con existencias activas en almacén o historial de ventas registrado.',
+      confirmButtonText: 'Eliminar Producto',
+      onConfirmAsync: () async {
+        final success = await cubit.deleteProduct(product.id);
+        if (success && mounted) {
+          setState(() {
+            _selectedProductIds.remove(product.id);
+          });
+          AppSnackbar.show(
+            context,
+            message: 'Producto eliminado correctamente',
+            type: SnackbarType.success,
+          );
+        }
+        return success;
+      },
+    );
   }
 
   Future<void> _handleExportPdf(

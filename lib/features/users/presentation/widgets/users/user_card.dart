@@ -11,12 +11,14 @@ class UserCard extends StatefulWidget {
   final UserEntity user;
   final VoidCallback onTap;
   final String role;
+  final VoidCallback? onDelete;
 
   const UserCard({
     super.key,
     required this.user,
     required this.onTap,
     required this.role,
+    this.onDelete,
   });
 
   @override
@@ -222,10 +224,29 @@ class _UserCardState extends State<UserCard> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 18,
-                    color: Colors.grey.shade400,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.onDelete != null)
+                        InkWell(
+                          borderRadius: BorderRadius.circular(6),
+                          onTap: widget.onDelete,
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: Icon(
+                              Icons.delete_outline_rounded,
+                              size: 18,
+                              color: AppColors.error,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: Colors.grey.shade400,
+                      ),
+                    ],
                   ),
                 ],
               ),

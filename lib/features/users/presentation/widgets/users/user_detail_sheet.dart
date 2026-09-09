@@ -8,7 +8,10 @@ import 'package:inventory_store_app/features/users/presentation/bloc/user_detail
 import 'package:inventory_store_app/features/users/presentation/bloc/user_detail/user_detail_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/dialogs/adaptive_destructive_dialog.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
+import 'package:inventory_store_app/features/users/domain/usecases/delete_user_usecase.dart';
 import 'package:go_router/go_router.dart';
 
 class UserDetailSheet extends StatelessWidget {
@@ -77,6 +80,43 @@ class _UserDetailContentState extends State<_UserDetailContent> {
         'initialRole': user.role,
       },
     );
+  }
+
+  Future<void> _confirmDeleteUser(BuildContext context, UserEntity user) async {
+    final confirmed = await AdaptiveDestructiveDialog.show(
+      context: context,
+      title: 'Eliminar Usuario',
+      itemName: user.fullName,
+      matchText: user.fullName,
+      description:
+          'Esta acción eliminará permanentemente la cuenta de "${user.fullName}" y revocará todos sus accesos al sistema. Esta operación es irreversible.',
+      confirmButtonText: 'Eliminar Usuario',
+      onConfirmAsync: () async {
+        final useCase = sl<DeleteUserUseCase>();
+        final res = await useCase(user.id);
+        return res.fold(
+          (failure) {
+            AppSnackbar.show(
+              context,
+              message: 'Error al eliminar: ${failure.message}',
+              type: SnackbarType.error,
+            );
+            return false;
+          },
+          (_) => true,
+        );
+      },
+    );
+
+    if (confirmed == true && context.mounted) {
+      Navigator.of(context).pop();
+      widget.onUserUpdated();
+      AppSnackbar.show(
+        context,
+        message: 'Usuario "${user.fullName}" eliminado correctamente',
+        type: SnackbarType.success,
+      );
+    }
   }
 
   @override
@@ -590,21 +630,38 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                           state.isSaving
                                               ? null
                                               : () {
-                                                if (_pointsCtrl.text
-                                                    .trim()
-                                                    .isEmpty) {
+                                                final input =
+                                                    _pointsCtrl.text.trim();
+                                                if (input.isEmpty) {
                                                   AppSnackbar.show(
                                                     context,
-                                                    message: 'Ingresa un monto',
+                                                    message:
+                                                        'Ingresa un monto válido',
                                                     type: SnackbarType.warning,
                                                   );
                                                   return;
                                                 }
                                                 final amount =
-                                                    int.tryParse(
-                                                      _pointsCtrl.text.trim(),
-                                                    ) ??
-                                                    0;
+                                                    int.tryParse(input) ?? 0;
+                                                if (amount <= 0) {
+                                                  AppSnackbar.show(
+                                                    context,
+                                                    message:
+                                                        'El monto a descontar debe ser mayor a 0',
+                                                    type: SnackbarType.warning,
+                                                  );
+                                                  return;
+                                                }
+                                                if (amount >
+                                                    state.user.walletBalance) {
+                                                  AppSnackbar.show(
+                                                    context,
+                                                    message:
+                                                        'No puedes restar más de los puntos actuales (${state.user.walletBalance} pt.)',
+                                                    type: SnackbarType.warning,
+                                                  );
+                                                  return;
+                                                }
                                                 context
                                                     .read<UserDetailCubit>()
                                                     .adjustPoints(-amount);
@@ -633,21 +690,37 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                           state.isSaving
                                               ? null
                                               : () {
-                                                if (_pointsCtrl.text
-                                                    .trim()
-                                                    .isEmpty) {
+                                                final input =
+                                                    _pointsCtrl.text.trim();
+                                                if (input.isEmpty) {
                                                   AppSnackbar.show(
                                                     context,
-                                                    message: 'Ingresa un monto',
+                                                    message:
+                                                        'Ingresa un monto válido',
                                                     type: SnackbarType.warning,
                                                   );
                                                   return;
                                                 }
                                                 final amount =
-                                                    int.tryParse(
-                                                      _pointsCtrl.text.trim(),
-                                                    ) ??
-                                                    0;
+                                                    int.tryParse(input) ?? 0;
+                                                if (amount <= 0) {
+                                                  AppSnackbar.show(
+                                                    context,
+                                                    message:
+                                                        'El monto a sumar debe ser mayor a 0',
+                                                    type: SnackbarType.warning,
+                                                  );
+                                                  return;
+                                                }
+                                                if (amount > 100000) {
+                                                  AppSnackbar.show(
+                                                    context,
+                                                    message:
+                                                        'Por seguridad, el límite por ajuste manual es de 100,000 pt.',
+                                                    type: SnackbarType.warning,
+                                                  );
+                                                  return;
+                                                }
                                                 context
                                                     .read<UserDetailCubit>()
                                                     .adjustPoints(amount);
@@ -733,6 +806,83 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                         }),
                       ],
                     ],
+                    const SizedBox(height: 24),
+
+                    // ─── ZONA DE PELIGRO (DANGER ZONE) ────────────────────────
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF1F2),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFFECDD3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                size: 18,
+                                color: Color(0xFFE11D48),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Zona de Peligro',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFBE123C),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'La eliminación de este usuario es definitiva e irreversible. Se revocarán todas sus sesiones, credenciales y asignaciones comerciales.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.error,
+                                side: const BorderSide(
+                                  color: Color(0xFFFDA4AF),
+                                ),
+                                backgroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppColors.radiusSm,
+                                  ),
+                                ),
+                              ),
+                              icon: const Icon(
+                                Icons.delete_forever_rounded,
+                                size: 18,
+                              ),
+                              label: const Text(
+                                'Eliminar Usuario Definitivamente',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              onPressed:
+                                  () => _confirmDeleteUser(context, state.user),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 24),
                   ],
                 ),

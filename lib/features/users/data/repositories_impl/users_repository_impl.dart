@@ -1,6 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/users/data/models/user_model.dart';
 import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
 import 'package:inventory_store_app/features/users/domain/repositories/users_repository.dart';
@@ -330,11 +331,46 @@ class UsersRepositoryImpl implements UsersRepository {
 
   @override
   Future<Either<Failure, void>> deleteUser(String id) async {
-    // Lógica para deshabilitar o eliminar, asumo que aquí no se borra duro
-    // O tal vez no había, lo pondré como no implementado por ahora
-    return Left(
-      ServerFailure(message: 'Eliminación dura no permitida. Inactívalo.'),
-    );
+    try {
+      final response = await _supabase.rpc(
+        'delete_user_safely',
+        params: {'p_user_id': id},
+      );
+
+      final Map<String, dynamic> result =
+          response is Map<String, dynamic>
+              ? response
+              : Map<String, dynamic>.from(response as Map);
+
+      final bool success = result['success'] == true;
+      final String message =
+          result['message']?.toString() ??
+          'Error desconocido al eliminar usuario.';
+
+      if (!success) {
+        return Left(ServerFailure(message: message));
+      }
+
+      return const Right(null);
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en deleteUser (id=$id): ${e.message}',
+        tag: 'UsersRepo',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(ServerFailure(message: e.message));
+    } catch (e, st) {
+      LoggerService.e(
+        'Excepción no controlada en deleteUser (id=$id): $e',
+        tag: 'UsersRepo',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(
+        ServerFailure(message: 'Error al eliminar usuario: ${e.toString()}'),
+      );
+    }
   }
 
   @override
