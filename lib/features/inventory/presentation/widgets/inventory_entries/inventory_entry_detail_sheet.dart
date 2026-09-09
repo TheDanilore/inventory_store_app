@@ -173,31 +173,6 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                       AppSnackbar.show(context, message: 'ID copiado al portapapeles', type: SnackbarType.info);
                     },
                   ),
-                  const Spacer(),
-                  if (entry.purchaseOrderId != null)
-                    OutlinedButton.icon(
-                      onPressed: () => context.go(
-                        '/admin/purchase-orders?selectedId=${entry.purchaseOrderId}',
-                      ),
-                      icon: const Icon(Icons.link_rounded, size: 14),
-                      label: Text(
-                        'Ver Orden #${entry.purchaseOrderId!.substring(0, entry.purchaseOrderId!.length > 8 ? 8 : entry.purchaseOrderId!.length).toUpperCase()} ↗',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 0,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -209,81 +184,6 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Banner de Trazabilidad: Orden de Compra Asociada (Móvil / HIG) ──
-                  if (widget.isBottomSheet && entry.purchaseOrderId != null) ...[
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 14),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade50,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.purple.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.purple.shade100,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(
-                              Icons.receipt_long_rounded,
-                              color: Colors.purple.shade800,
-                              size: 18,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'ORDEN DE COMPRA VINCULADA',
-                                  style: TextStyle(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.purple.shade800,
-                                    letterSpacing: 0.4,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '#${entry.purchaseOrderId!.substring(0, entry.purchaseOrderId!.length > 8 ? 8 : entry.purchaseOrderId!.length).toUpperCase()}',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.purple.shade900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          FilledButton.icon(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              context.go('/admin/purchase-orders?selectedId=${entry.purchaseOrderId}');
-                            },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.purple.shade700,
-                              foregroundColor: Colors.white,
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            icon: const Icon(Icons.open_in_new_rounded, size: 14),
-                            label: const Text(
-                              'Ver Orden',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
                   // ── Card de metadata ───────────────────────────────
                   Container(
                     padding: const EdgeInsets.all(16),
