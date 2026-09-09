@@ -31,6 +31,11 @@ class PosHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<PosCubit, PosState>(
+      buildWhen: (prev, current) =>
+          prev.activeShift != current.activeShift ||
+          prev.warehouses != current.warehouses ||
+          prev.selectedWarehouseId != current.selectedWarehouseId ||
+          prev.isLoading != current.isLoading,
       builder: (context, posState) {
         final isDesktop = MediaQuery.of(context).size.width >= 800;
         if (isDesktop) {
@@ -217,6 +222,11 @@ class PosHeader extends StatelessWidget {
             BlocProvider.value(value: cartCubit),
           ],
           child: BlocBuilder<PosCubit, PosState>(
+            buildWhen: (prev, current) =>
+                prev.activeShift != current.activeShift ||
+                prev.warehouses != current.warehouses ||
+                prev.selectedWarehouseId != current.selectedWarehouseId ||
+                prev.isLoading != current.isLoading,
             builder: (ctx, state) {
               final activeShift = state.activeShift;
               final isShiftOpen = activeShift != null && activeShift.isOpen;
@@ -262,10 +272,7 @@ class PosHeader extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    SizedBox(
-                      height: 56, // Touch area
-                      child: _buildShiftIndicator(ctx, state, isShiftOpen),
-                    ),
+                    _buildShiftIndicator(ctx, state, isShiftOpen),
                     const SizedBox(height: 24),
                     const Text(
                       'Almacén Activo',
@@ -276,10 +283,7 @@ class PosHeader extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    SizedBox(
-                      height: 56,
-                      child: _buildWarehouseSelector(ctx, state),
-                    ),
+                    _buildWarehouseSelector(ctx, state),
                   ],
                 ),
               );
@@ -295,6 +299,40 @@ class PosHeader extends StatelessWidget {
     PosState posState,
     bool isShiftOpen,
   ) {
+    if (posState.isLoading) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border, width: 0.5),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.primary,
+              ),
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Verificando turno...',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final activeShift = posState.activeShift;
     return InkWell(
       mouseCursor: SystemMouseCursors.click,
@@ -405,7 +443,85 @@ class PosHeader extends StatelessWidget {
   }
 
   Widget _buildWarehouseSelector(BuildContext context, PosState posState) {
-    if (posState.warehouses.isEmpty) return const SizedBox.shrink();
+    if (posState.isLoading) {
+      return Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border, width: 0.5),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.primary,
+              ),
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Cargando almacén...',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (posState.warehouses.isEmpty) {
+      return Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: AppColors.error.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.error.withValues(alpha: 0.25),
+            width: 0.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.warning_amber_rounded,
+              size: 16,
+              color: AppColors.error,
+            ),
+            const SizedBox(width: 6),
+            const Expanded(
+              child: Text(
+                'Sin almacenes disponibles',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.error,
+                ),
+              ),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+              ),
+              onPressed: () => context.read<PosCubit>().initPosData(forceRefresh: true),
+              child: const Text('Reintentar', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),

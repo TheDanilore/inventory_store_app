@@ -72,7 +72,8 @@ class _CloseShiftContentState extends State<_CloseShiftContent> {
   double? _difference;
 
   void _onAmountChanged(String v) {
-    final actual = double.tryParse(v.replaceAll(',', '.'));
+    final text = v.trim().replaceAll(',', '.');
+    final actual = double.tryParse(text);
     setState(() {
       _difference = actual != null ? actual - widget.expectedAmount : null;
     });
@@ -81,7 +82,8 @@ class _CloseShiftContentState extends State<_CloseShiftContent> {
   void _save() {
     if (!_formKey.currentState!.validate()) return;
 
-    final actual = double.parse(_actualCtrl.text.replaceAll(',', '.'));
+    final sanitized = _actualCtrl.text.trim().replaceAll(',', '.');
+    final actual = double.tryParse(sanitized) ?? 0.0;
 
     context.read<CashShiftsCubit>().closeShift(
       widget.shift.id,
@@ -247,10 +249,11 @@ class _CloseShiftContentState extends State<_CloseShiftContent> {
                 ),
               ),
               validator: (v) {
-                if (v == null || v.isEmpty) return 'Requerido';
-                if (double.tryParse(v.replaceAll(',', '.')) == null) {
-                  return 'Inválido';
-                }
+                final text = v?.trim() ?? '';
+                if (text.isEmpty) return 'Ingresa el monto físico en caja';
+                final parsed = double.tryParse(text.replaceAll(',', '.'));
+                if (parsed == null) return 'Monto inválido (ej. 150.00)';
+                if (parsed < 0) return 'El monto físico no puede ser negativo';
                 return null;
               },
             ),
@@ -288,7 +291,11 @@ class _CloseShiftContentState extends State<_CloseShiftContent> {
             TextFormField(
               controller: _notesCtrl,
               maxLines: 2,
+              maxLength: 250,
               textCapitalization: TextCapitalization.sentences,
+              buildCounter:
+                  (_, {required currentLength, required isFocused, maxLength}) =>
+                      null,
               decoration: InputDecoration(
                 hintText: 'Ej. Faltante por pago de pasajes...',
                 isDense: true,

@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -27,7 +28,10 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    context.read<PosCubit>().fetchRecentOrders();
+    final posCubit = context.read<PosCubit>();
+    if (posCubit.state.recentOrders.isEmpty) {
+      posCubit.fetchRecentOrders();
+    }
   }
 
   @override
@@ -64,11 +68,16 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
           );
         },
       );
-    } catch (e) {
+    } catch (e, st) {
+      developer.log(
+        'Error inesperado al generar ticket',
+        error: e,
+        stackTrace: st,
+      );
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: 'Error inesperado al generar ticket: $e',
+          message: 'Error inesperado al generar ticket de venta.',
           type: SnackbarType.error,
         );
       }

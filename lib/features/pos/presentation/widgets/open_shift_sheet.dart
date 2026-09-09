@@ -83,8 +83,8 @@ class _OpenShiftContentState extends State<_OpenShiftContent> {
       return;
     }
 
-    final amount =
-        double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
+    final sanitized = _amountCtrl.text.trim().replaceAll(',', '.');
+    final amount = double.tryParse(sanitized) ?? 0.0;
 
     // We delegate the opening to the Cubit (backend check & insertion)
     context.read<CashShiftsCubit>().openShift(_selectedAccountId!, amount);
@@ -256,10 +256,11 @@ class _OpenShiftContentState extends State<_OpenShiftContent> {
                 ),
               ),
               validator: (v) {
-                if (v == null || v.isEmpty) return 'Ingresa un monto';
-                if (double.tryParse(v.replaceAll(',', '.')) == null) {
-                  return 'Monto inválido';
-                }
+                final text = v?.trim() ?? '';
+                if (text.isEmpty) return 'Ingresa un monto de apertura';
+                final parsed = double.tryParse(text.replaceAll(',', '.'));
+                if (parsed == null) return 'Monto inválido (ej. 50.00)';
+                if (parsed < 0) return 'El monto no puede ser negativo';
                 return null;
               },
             ),

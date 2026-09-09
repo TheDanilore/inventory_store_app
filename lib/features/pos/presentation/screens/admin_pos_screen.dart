@@ -66,6 +66,13 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       if (_searchCtrl.text != cubit.state.searchTerm) {
         _searchCtrl.text = cubit.state.searchTerm;
       }
+
+      // [QA CRITICAL FIX] Inicializar POS (almacenes, cuentas y turno activo) en el ciclo de vida raíz.
+      // Previene que en mobile la cabecera quede sin almacenes ni turno al no montarse DesktopPosPanel.
+      final posCubit = context.read<PosCubit>();
+      if (posCubit.state.warehouses.isEmpty || posCubit.state.accounts.isEmpty) {
+        posCubit.initPosData();
+      }
     });
   }
 
