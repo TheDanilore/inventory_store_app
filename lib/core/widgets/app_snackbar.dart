@@ -33,7 +33,7 @@ class AppSnackbar {
     required String message,
     SnackbarType type = SnackbarType.success,
     Color? backgroundColor,
-    Duration duration = const Duration(milliseconds: 2500),
+    Duration duration = const Duration(milliseconds: 5000),
   }) {
     // Mantenemos tus colores e iconos originales intactos
     final resolvedBackgroundColor =

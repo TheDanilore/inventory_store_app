@@ -1,17 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/enums/view_state.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/app_text_field.dart';
+import 'package:inventory_store_app/core/widgets/dialogs/adaptive_destructive_dialog.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/active_ingredient_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredients/ingredients_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredients/ingredients_state.dart';
-import 'package:inventory_store_app/core/enums/view_state.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredients_skeleton.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredient_form_sheet.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredients_skeleton.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/active_ingredient_entity.dart';
-import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
-import 'package:inventory_store_app/core/widgets/app_text_field.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
+/// Formatea nombres de ingredientes químicos a Title Case inteligente,
+/// preservando siglas técnicas cortas (ej: "PREFONOFOS" -> "Prefonofos", "NPK" -> "NPK").
+String _formatIngredientName(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return '';
+  final words = trimmed.split(RegExp(r'\s+'));
+  return words.map((w) {
+    if (w.isEmpty) return '';
+    if (w.length == 1) return w.toUpperCase();
+    if (w.length <= 3 &&
+        w == w.toUpperCase() &&
+        !RegExp(r'[0-9]').hasMatch(w)) {
+      return w;
+    }
+    return w[0].toUpperCase() + w.substring(1).toLowerCase();
+  }).join(' ');
+}
+
+/// Pantalla Pro Tool & Apple HIG para la gestión de Componentes Químicos (Ingredientes Activos).
+///
+/// Implementa una personalidad multi-dispositivo camaleónica:
+/// - **Desktop (>= 1050px)**: Command Bar superior estilo Linear con atajos `Ctrl+K`, `Ctrl+N`,
+///   Grid científico de 3 columnas de alta densidad y Slide-Over Drawer contextual.
+/// - **Tablet (650px - 1049px)**: Eficiencia híbrida en Grid de 2 columnas y Slide-Over Drawer.
+/// - **Móvil (< 650px)**: Experiencia táctil fluida Apple HIG con tarjetas redondeadas,
+///   FAB expandible y Cupertino/Material BottomSheet.
 class ActiveIngredientsScreen extends StatefulWidget {
   const ActiveIngredientsScreen({super.key});
 
@@ -23,12 +50,8 @@ class ActiveIngredientsScreen extends StatefulWidget {
 class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
-  final _searchCtrl = TextEditingController();
-
-  // Desktop Form State
-  final _desktopNameCtrl = TextEditingController();
-  final _desktopDescCtrl = TextEditingController();
-  String? _editingIngredientId;
+  final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -40,6 +63,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
         _isFabExtended.value = true;
       }
     });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final cubit = context.read<IngredientsCubit>();
@@ -56,429 +80,36 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
     _isFabExtended.dispose();
     _scrollController.dispose();
     _searchCtrl.dispose();
-    _desktopNameCtrl.dispose();
-    _desktopDescCtrl.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
   void _showIngredientForm([String? id, String? name]) {
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
-    if (isDesktop) {
-      setState(() {
-        _editingIngredientId = id;
-        _desktopNameCtrl.text = name ?? '';
-        _desktopDescCtrl.text = '';
-      });
-      return;
-    }
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 650;
 
-    final cubit = context.read<IngredientsCubit>();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => BlocProvider.value(
-            value: cubit,
-            child: ActiveIngredientFormSheet(
-              ingredientId: id,
-              ingredientName: name,
+    if (isMobile) {
+      final cubit = context.read<IngredientsCubit>();
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder:
+            (context) => BlocProvider.value(
+              value: cubit,
+              child: ActiveIngredientFormSheet(
+                ingredientId: id,
+                ingredientName: name,
+              ),
             ),
-          ),
-    );
-  }
-
-  void _clearDesktopForm() {
-    setState(() {
-      _editingIngredientId = null;
-      _desktopNameCtrl.clear();
-      _desktopDescCtrl.clear();
-    });
-  }
-
-  Future<void> _saveDesktopIngredient() async {
-    final name = _desktopNameCtrl.text.trim();
-    if (name.isEmpty) {
-      AppSnackbar.show(
-        context,
-        message: 'El nombre del componente es obligatorio.',
-        type: SnackbarType.warning,
       );
-      return;
-    }
-
-    final cubit = context.read<IngredientsCubit>();
-    final success = await cubit.saveIngredient(name, id: _editingIngredientId);
-
-    if (mounted) {
-      if (success) {
-        AppSnackbar.show(
-          context,
-          message:
-              _editingIngredientId == null
-                  ? 'Componente creado correctamente.'
-                  : 'Componente actualizado correctamente.',
-          type: SnackbarType.success,
-        );
-        _clearDesktopForm();
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AdminLayout(
-      title: 'Componentes Químicos',
-      showBackButton: true,
-      body: BlocConsumer<IngredientsCubit, IngredientsState>(
-      listenWhen:
-          (previous, current) =>
-              current.errorId != previous.errorId,
-        listener: (context, state) {
-          if (state.errorMessage != null) {
-            AppSnackbar.show(
-              context,
-              message: state.errorMessage!,
-              type: SnackbarType.error,
-            );
-          }
-        },
-        builder: (context, state) {
-          final cubit = context.read<IngredientsCubit>();
-          final isSaving = state.isSaving;
-
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final isDesktop = constraints.maxWidth >= 900;
-
-              if (isDesktop) {
-                return _buildDesktopLayout(context, state, cubit, isSaving);
-              }
-              return _buildMobileLayout(context, state, cubit);
-            },
-          );
-        },
-      ),
-      floatingActionButton: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth >= 900) return const SizedBox.shrink();
-          return FloatingActionButton.extended(
-            backgroundColor: AppColors.primary,
-            onPressed: () => _showIngredientForm(),
-            icon: const Icon(Icons.add, color: Colors.white),
-            label: ValueListenableBuilder<bool>(
-              valueListenable: _isFabExtended,
-              builder: (context, isExtended, _) {
-                return AnimatedSize(
-                  duration: const Duration(milliseconds: 200),
-                  child:
-                      isExtended
-                          ? const Text(
-                            'Nuevo',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                          : const SizedBox.shrink(),
-                );
-              },
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildDesktopLayout(
-    BuildContext context,
-    IngredientsState state,
-    IngredientsCubit cubit,
-    bool isSaving,
-  ) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1200),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Columna Izquierda: Formulario ERP Embebido (40%)
-              Expanded(flex: 40, child: _buildDesktopFormCard(isSaving)),
-              const SizedBox(width: 24),
-              // Columna Derecha: Lista de Componentes Químicos (60%)
-              Expanded(
-                flex: 60,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _AnimatedSearchBar(
-                      controller: _searchCtrl,
-                      onChanged: cubit.onSearchChanged,
-                      onClear: () {
-                        _searchCtrl.clear();
-                        cubit.clearSearch();
-                      },
-                      hasQuery: state.searchQuery.isNotEmpty,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Total: ${state.ingredients.length} componentes',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (state.searchQuery.isNotEmpty)
-                          TextButton.icon(
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              cubit.clearSearch();
-                            },
-                            icon: const Icon(Icons.close_rounded, size: 16),
-                            label: const Text('Limpiar búsqueda'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: () => cubit.loadIngredients(),
-                        color: AppColors.primary,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          child: _buildListContent(state, cubit),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDesktopFormCard(bool isSaving) {
-    final isEditing = _editingIngredientId != null;
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppColors.cardShadow(opacity: 0.05),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.science_rounded,
-                  color: AppColors.primary,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isEditing ? 'Editar Componente' : 'Nuevo Componente',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      isEditing
-                          ? 'Modifica la información del componente activo.'
-                          : 'Ingresa los datos para registrar un componente químico.',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          AppTextField(
-            controller: _desktopNameCtrl,
-            label: 'Nombre del Componente',
-            icon: Icons.label_outlined,
-            hintText: 'Ej: Paracetamol, Amoxicilina...',
-            textCapitalization: TextCapitalization.sentences,
-          ),
-          const SizedBox(height: 16),
-          AppTextField(
-            controller: _desktopDescCtrl,
-            label: 'Descripción (Opcional)',
-            icon: Icons.notes_rounded,
-            hintText: 'Ej: Analgésico y antipirético de uso común...',
-            maxLines: 3,
-            textCapitalization: TextCapitalization.sentences,
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              if (isEditing)
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: isSaving ? null : _clearDesktopForm,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('Cancelar'),
-                  ),
-                ),
-              if (isEditing) const SizedBox(width: 12),
-              Expanded(
-                flex: isEditing ? 1 : 2,
-                child: AppPrimaryButton(
-                  label: isEditing ? 'Guardar Cambios' : 'Crear Componente',
-                  loading: isSaving,
-                  onPressed: isSaving ? null : _saveDesktopIngredient,
-                  backgroundColor: AppColors.primary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMobileLayout(
-    BuildContext context,
-    IngredientsState state,
-    IngredientsCubit cubit,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: _AnimatedSearchBar(
-            controller: _searchCtrl,
-            onChanged: cubit.onSearchChanged,
-            onClear: () {
-              _searchCtrl.clear();
-              cubit.clearSearch();
-            },
-            hasQuery: state.searchQuery.isNotEmpty,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-          child: Text(
-            'Total: ${state.ingredients.length} componentes',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () => cubit.loadIngredients(),
-            color: AppColors.primary,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: _buildListContent(state, cubit),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildListContent(IngredientsState state, IngredientsCubit cubit) {
-    if (state.viewState == ViewState.loading ||
-        state.viewState == ViewState.initial) {
-      return const ActiveIngredientsSkeleton(
-        key: ValueKey('skeleton'),
-        itemCount: 8,
+    } else {
+      _SlideOverIngredientDrawer.show(
+        context: context,
+        ingredientId: id,
+        ingredientName: name,
       );
     }
-    if (state.ingredients.isEmpty) {
-      return ListView(
-        controller: _scrollController,
-        key: const ValueKey('empty'),
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.science_outlined,
-                  size: 60,
-                  color: AppColors.textMuted,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  state.searchQuery.isNotEmpty
-                      ? 'No se encontraron componentes'
-                      : 'No hay componentes registrados',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
-    return ListView.builder(
-      controller: _scrollController,
-      key: const ValueKey('list'),
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: state.ingredients.length,
-      itemBuilder: (context, index) {
-        final item = state.ingredients[index];
-        return _IngredientCard(
-          ingredient: item,
-          onEdit: () => _showIngredientForm(item.id, item.name),
-          onDelete: () => _confirmDeleteIngredient(context, cubit, item),
-        );
-      },
-    );
   }
 
   Future<void> _confirmDeleteIngredient(
@@ -486,138 +117,611 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
     IngredientsCubit cubit,
     ActiveIngredientEntity ingredient,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final formattedName = _formatIngredientName(ingredient.name);
+    final confirmed = await AdaptiveDestructiveDialog.show(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppColors.radiusLg),
-          ),
-          title: const Text(
-            'Eliminar Componente',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          content: Text(
-            '¿Estás seguro de eliminar el componente "${ingredient.name}"? Esta acción no se puede deshacer.',
-            style: const TextStyle(color: AppColors.textSecondary),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text(
-                'Cancelar',
-                style: TextStyle(color: AppColors.textMuted),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-              child: const Text(
-                'Eliminar',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        );
+      title: 'Eliminar Componente Químico',
+      itemName: formattedName,
+      description:
+          'Esta acción eliminará "$formattedName" de los componentes químicos registrados. Si existen productos en catálogo con este principio activo, este atributo quedará desvinculado.',
+      matchText: ingredient.name,
+      confirmButtonText: 'Eliminar Componente',
+      onConfirmAsync: () async {
+        return await cubit.deleteIngredient(ingredient.id);
       },
     );
 
     if (confirmed == true && context.mounted) {
-      final success = await cubit.deleteIngredient(ingredient.id);
-      if (context.mounted) {
-        if (success) {
-          AppSnackbar.show(
-            context,
-            message: 'Componente eliminado exitosamente.',
-            type: SnackbarType.success,
-          );
-        } else {
-          final errorMsg = cubit.state.errorMessage;
-          AppSnackbar.show(
-            context,
-            message: errorMsg ?? 'No se pudo eliminar el componente.',
-            type: SnackbarType.error,
-          );
-        }
-      }
+      AppSnackbar.show(
+        context,
+        message: 'Componente "$formattedName" eliminado exitosamente.',
+        type: SnackbarType.success,
+      );
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () {
+          _searchFocusNode.requestFocus();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () {
+          _searchFocusNode.requestFocus();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true): () {
+          _showIngredientForm();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyN, meta: true): () {
+          _showIngredientForm();
+        },
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (_searchFocusNode.hasFocus) {
+            _searchFocusNode.unfocus();
+          }
+          if (_searchCtrl.text.isNotEmpty) {
+            _searchCtrl.clear();
+            context.read<IngredientsCubit>().clearSearch();
+          }
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: AdminLayout(
+          title: 'Componentes Químicos',
+          showBackButton: true,
+          body: BlocConsumer<IngredientsCubit, IngredientsState>(
+            listenWhen: (prev, curr) => curr.errorId != prev.errorId,
+            listener: (context, state) {
+              if (state.errorMessage != null) {
+                AppSnackbar.show(
+                  context,
+                  message: state.errorMessage!,
+                  type: SnackbarType.error,
+                );
+              }
+            },
+            builder: (context, state) {
+              final cubit = context.read<IngredientsCubit>();
+
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  final isDesktop = width >= 1050;
+                  final isTablet = width >= 650 && width < 1050;
+                  final isMobile = width < 650;
+                  final crossAxisCount = isDesktop ? 3 : (isTablet ? 2 : 1);
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Command Bar Superior Adaptativa
+                      if (isMobile)
+                        _buildMobileCommandBar(context, state, cubit)
+                      else
+                        _buildDesktopCommandBar(
+                          context,
+                          state,
+                          cubit,
+                          isDesktop,
+                        ),
+
+                      // Lienzo de Contenido (Skeleton / Grid / Empty)
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: () => cubit.loadIngredients(),
+                          color: AppColors.teal,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 250),
+                            child: _buildBodyContent(
+                              state,
+                              cubit,
+                              crossAxisCount,
+                              isMobile,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+          floatingActionButton: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth >= 650) return const SizedBox.shrink();
+              return FloatingActionButton.extended(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                onPressed: () => _showIngredientForm(),
+                icon: const Icon(Icons.add_rounded),
+                label: ValueListenableBuilder<bool>(
+                  valueListenable: _isFabExtended,
+                  builder: (context, isExtended, _) {
+                    return AnimatedSize(
+                      duration: const Duration(milliseconds: 200),
+                      child:
+                          isExtended
+                              ? const Text(
+                                'Nuevo',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.2,
+                                ),
+                              )
+                              : const SizedBox.shrink(),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopCommandBar(
+    BuildContext context,
+    IngredientsState state,
+    IngredientsCubit cubit,
+    bool isDesktop,
+  ) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 18, 24, 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow(opacity: 0.03),
+      ),
+      child: Row(
+        children: [
+          // Campo de búsqueda con badge Ctrl+K
+          Expanded(
+            child: _SearchBar(
+              controller: _searchCtrl,
+              focusNode: _searchFocusNode,
+              hasQuery: state.searchQuery.isNotEmpty,
+              onChanged: cubit.onSearchChanged,
+              onClear: () {
+                _searchCtrl.clear();
+                cubit.clearSearch();
+              },
+              showShortcut: true,
+            ),
+          ),
+          const SizedBox(width: 14),
+
+          // Píldora de estado con contador
+          _IngredientCounterBadge(count: state.ingredients.length),
+          const SizedBox(width: 12),
+
+          // Botón de refresco con feedback
+          _RefreshButton(
+            isLoading: state.viewState == ViewState.loading,
+            onRefresh: () => cubit.loadIngredients(),
+          ),
+          const SizedBox(width: 14),
+
+          // Botón de acción principal "+ Nuevo Componente"
+          _NewIngredientButton(
+            onPressed: () => _showIngredientForm(),
+            showShortcut: isDesktop,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileCommandBar(
+    BuildContext context,
+    IngredientsState state,
+    IngredientsCubit cubit,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SearchBar(
+            controller: _searchCtrl,
+            focusNode: _searchFocusNode,
+            hasQuery: state.searchQuery.isNotEmpty,
+            onChanged: cubit.onSearchChanged,
+            onClear: () {
+              _searchCtrl.clear();
+              cubit.clearSearch();
+            },
+            showShortcut: false,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _IngredientCounterBadge(count: state.ingredients.length),
+              if (state.searchQuery.isNotEmpty)
+                TextButton.icon(
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    cubit.clearSearch();
+                  },
+                  icon: const Icon(Icons.close_rounded, size: 14),
+                  label: const Text('Limpiar', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.tealDark,
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBodyContent(
+    IngredientsState state,
+    IngredientsCubit cubit,
+    int crossAxisCount,
+    bool isMobile,
+  ) {
+    if (state.viewState == ViewState.loading ||
+        state.viewState == ViewState.initial) {
+      return ActiveIngredientsSkeleton(
+        key: const ValueKey('skeleton'),
+        itemCount: crossAxisCount > 1 ? crossAxisCount * 3 : 8,
+        crossAxisCount: crossAxisCount,
+      );
+    }
+
+    if (state.ingredients.isEmpty) {
+      return _EmptyState(
+        searchQuery: state.searchQuery,
+        onCreate: () => _showIngredientForm(),
+        onClearSearch: () {
+          _searchCtrl.clear();
+          cubit.clearSearch();
+        },
+      );
+    }
+
+    if (crossAxisCount > 1) {
+      return GridView.builder(
+        controller: _scrollController,
+        key: const ValueKey('grid_view'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        itemCount: state.ingredients.length,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 12,
+          mainAxisExtent: 86,
+        ),
+        itemBuilder: (context, index) {
+          final item = state.ingredients[index];
+          return _IngredientCard(
+            key: ValueKey(item.id),
+            ingredient: item,
+            onEdit: () => _showIngredientForm(item.id, item.name),
+            onDelete: () => _confirmDeleteIngredient(context, cubit, item),
+          );
+        },
+      );
+    }
+
+    return ListView.builder(
+      controller: _scrollController,
+      key: const ValueKey('list_view'),
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      itemCount: state.ingredients.length,
+      itemBuilder: (context, index) {
+        final item = state.ingredients[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _IngredientCard(
+            key: ValueKey(item.id),
+            ingredient: item,
+            onEdit: () => _showIngredientForm(item.id, item.name),
+            onDelete: () => _confirmDeleteIngredient(context, cubit, item),
+          ),
+        );
+      },
+    );
   }
 }
 
-class _AnimatedSearchBar extends StatefulWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTES DE INTERFAZ (COMMAND BAR, BADGES, INPUTS)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SearchBar extends StatefulWidget {
   final TextEditingController controller;
+  final FocusNode focusNode;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
   final bool hasQuery;
+  final bool showShortcut;
 
-  const _AnimatedSearchBar({
+  const _SearchBar({
     required this.controller,
+    required this.focusNode,
     required this.onChanged,
     required this.onClear,
     required this.hasQuery,
+    required this.showShortcut,
   });
 
   @override
-  State<_AnimatedSearchBar> createState() => _AnimatedSearchBarState();
+  State<_SearchBar> createState() => _SearchBarState();
 }
 
-class _AnimatedSearchBarState extends State<_AnimatedSearchBar> {
+class _SearchBarState extends State<_SearchBar> {
   bool _isFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.focusNode.addListener(_handleFocus);
+  }
+
+  @override
+  void dispose() {
+    widget.focusNode.removeListener(_handleFocus);
+    super.dispose();
+  }
+
+  void _handleFocus() {
+    if (mounted) {
+      setState(() => _isFocused = widget.focusNode.hasFocus);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 180),
+      height: 44,
       decoration: BoxDecoration(
-        color: _isFocused ? AppColors.surface : AppColors.background,
-        borderRadius: BorderRadius.circular(14),
+        color: _isFocused ? AppColors.surface : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: _isFocused ? AppColors.primary : AppColors.border,
+          color: _isFocused ? AppColors.teal : AppColors.border,
           width: _isFocused ? 1.5 : 1,
         ),
-        boxShadow: _isFocused ? AppColors.cardShadow(opacity: 0.1) : null,
+        boxShadow:
+            _isFocused
+                ? [
+                  BoxShadow(
+                    color: AppColors.teal.withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+                : null,
       ),
-      child: Focus(
-        onFocusChange: (focused) => setState(() => _isFocused = focused),
-        child: TextField(
-          controller: widget.controller,
-          onChanged: widget.onChanged,
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-          decoration: InputDecoration(
-            hintText: 'Buscar componente químico...',
-            hintStyle: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 14,
-            ),
-            prefixIcon: Icon(
-              Icons.search_rounded,
-              color: _isFocused ? AppColors.primary : AppColors.textMuted,
-            ),
-            suffixIcon:
-                widget.hasQuery
-                    ? IconButton(
-                      icon: const Icon(
-                        Icons.clear_rounded,
-                        color: AppColors.textMuted,
-                      ),
-                      onPressed: widget.onClear,
-                    )
-                    : null,
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
+      child: TextField(
+        controller: widget.controller,
+        focusNode: widget.focusNode,
+        onChanged: widget.onChanged,
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 13.5,
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Buscar componente químico...',
+          hintStyle: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 13.5,
+            fontWeight: FontWeight.w400,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 20,
+            color: _isFocused ? AppColors.tealDark : AppColors.textMuted,
+          ),
+          suffixIcon:
+              widget.hasQuery
+                  ? IconButton(
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
+                    splashRadius: 16,
+                    onPressed: widget.onClear,
+                  )
+                  : (widget.showShortcut
+                      ? Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFE2E8F0),
+                                ),
+                              ),
+                              child: const Text(
+                                'Ctrl K',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      : null),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
           ),
         ),
       ),
     );
   }
 }
+
+class _IngredientCounterBadge extends StatelessWidget {
+  final int count;
+
+  const _IngredientCounterBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: const BoxDecoration(
+              color: AppColors.teal,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$count ${count == 1 ? 'componente' : 'componentes'}',
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RefreshButton extends StatelessWidget {
+  final bool isLoading;
+  final VoidCallback onRefresh;
+
+  const _RefreshButton({required this.isLoading, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Actualizar lista',
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: isLoading ? null : onRefresh,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
+            ),
+            child:
+                isLoading
+                    ? const Center(
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.teal,
+                        ),
+                      ),
+                    )
+                    : const Icon(
+                      Icons.refresh_rounded,
+                      size: 20,
+                      color: AppColors.textSecondary,
+                    ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NewIngredientButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final bool showShortcut;
+
+  const _NewIngredientButton({
+    required this.onPressed,
+    required this.showShortcut,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(Icons.add_rounded, size: 18),
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Nuevo Componente',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+          ),
+          if (showShortcut) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'Ctrl N',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TARJETA DE COMPONENTE QUÍMICO (SCIENTIFIC PRO CARD)
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _IngredientCard extends StatefulWidget {
   final ActiveIngredientEntity ingredient;
@@ -625,6 +729,7 @@ class _IngredientCard extends StatefulWidget {
   final VoidCallback onDelete;
 
   const _IngredientCard({
+    super.key,
     required this.ingredient,
     required this.onEdit,
     required this.onDelete,
@@ -635,109 +740,660 @@ class _IngredientCard extends StatefulWidget {
 }
 
 class _IngredientCardState extends State<_IngredientCard> {
-  bool _isPressed = false;
   bool _isHovered = false;
+  bool _isPressed = false;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onHighlightChanged: (val) => setState(() => _isPressed = val),
-        onHover: (hover) => setState(() => _isHovered = hover),
-        onTap: widget.onEdit,
-        borderRadius: BorderRadius.circular(12),
-        child: AnimatedScale(
-          scale: _isPressed ? 0.98 : 1.0,
-          duration: const Duration(milliseconds: 150),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
-              boxShadow: [
-                if (_isHovered)
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  )
-                else
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.03),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: const Icon(
-                    Icons.science_rounded,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
+    final formattedName = _formatIngredientName(widget.ingredient.name);
+    final hasDesc =
+        widget.ingredient.description != null &&
+        widget.ingredient.description!.trim().isNotEmpty;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onEdit,
+          onHighlightChanged: (val) => setState(() => _isPressed = val),
+          borderRadius: BorderRadius.circular(16),
+          child: AnimatedScale(
+            scale: _isPressed ? 0.985 : 1.0,
+            duration: const Duration(milliseconds: 120),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color:
+                      _isHovered
+                          ? AppColors.teal.withValues(alpha: 0.45)
+                          : AppColors.border,
+                  width: _isHovered ? 1.4 : 1.0,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.ingredient.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: AppColors.textPrimary,
-                        ),
+                boxShadow:
+                    _isHovered
+                        ? [
+                          BoxShadow(
+                            color: AppColors.teal.withValues(alpha: 0.08),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                        : AppColors.cardShadow(opacity: 0.025),
+              ),
+              child: Row(
+                children: [
+                  // Monograma / Avatar Científico
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color:
+                          _isHovered
+                              ? AppColors.tealLight
+                              : const Color(0xFFF0FDFA),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color:
+                            _isHovered
+                                ? AppColors.teal.withValues(alpha: 0.3)
+                                : const Color(0xFFCCFBF1),
                       ),
-                      if (widget.ingredient.description != null &&
-                          widget.ingredient.description!.isNotEmpty)
+                    ),
+                    child: const Icon(
+                      Icons.science_rounded,
+                      color: AppColors.tealDark,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+
+                  // Información del Componente
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                formattedName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  color: AppColors.textPrimary,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 1.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFE2E8F0),
+                                ),
+                              ),
+                              child: const Text(
+                                'Activo',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
                         Text(
-                          widget.ingredient.description!,
+                          hasDesc
+                              ? widget.ingredient.description!
+                              : 'Principio activo registrado',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
+                          style: TextStyle(
+                            color:
+                                hasDesc
+                                    ? AppColors.textSecondary
+                                    : AppColors.textMuted,
+                            fontSize: 11.5,
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Acciones Rápidas (Editar / Eliminar)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _ActionButton(
+                        icon: Icons.edit_outlined,
+                        color: AppColors.slate,
+                        tooltip: 'Editar',
+                        onTap: widget.onEdit,
+                      ),
+                      const SizedBox(width: 4),
+                      _ActionButton(
+                        icon: Icons.delete_outline_rounded,
+                        color: AppColors.error,
+                        tooltip: 'Eliminar',
+                        onTap: widget.onDelete,
+                      ),
                     ],
                   ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _ActionButton({
+    required this.icon,
+    required this.color,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  State<_ActionButton> createState() => _ActionButtonState();
+}
+
+class _ActionButtonState extends State<_ActionButton> {
+  bool _isHover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: widget.tooltip,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHover = true),
+        onExit: (_) => setState(() => _isHover = false),
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color:
+                  _isHover
+                      ? widget.color.withValues(alpha: 0.1)
+                      : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(widget.icon, size: 17, color: widget.color),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SLIDE-OVER DRAWER LATERAL (LINEAR / STRIPE STYLE) PARA DESKTOP & TABLET
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SlideOverIngredientDrawer extends StatefulWidget {
+  final String? ingredientId;
+  final String? ingredientName;
+
+  const _SlideOverIngredientDrawer({this.ingredientId, this.ingredientName});
+
+  static Future<bool?> show({
+    required BuildContext context,
+    String? ingredientId,
+    String? ingredientName,
+  }) {
+    final cubit = context.read<IngredientsCubit>();
+    return showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Cerrar panel',
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      transitionDuration: const Duration(milliseconds: 260),
+      pageBuilder: (ctx, anim1, anim2) {
+        return BlocProvider.value(
+          value: cubit,
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: _SlideOverIngredientDrawer(
+              ingredientId: ingredientId,
+              ingredientName: ingredientName,
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        final curvedAnim = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOutCubic,
+        );
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1.0, 0.0),
+            end: Offset.zero,
+          ).animate(curvedAnim),
+          child: child,
+        );
+      },
+    );
+  }
+
+  @override
+  State<_SlideOverIngredientDrawer> createState() =>
+      _SlideOverIngredientDrawerState();
+}
+
+class _SlideOverIngredientDrawerState
+    extends State<_SlideOverIngredientDrawer> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _nameCtrl;
+  final TextEditingController _descCtrl = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.ingredientName ?? '');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _descCtrl.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) {
+      AppSnackbar.show(
+        context,
+        message: 'El nombre del componente es requerido.',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    final cubit = context.read<IngredientsCubit>();
+    final success = await cubit.saveIngredient(name, id: widget.ingredientId);
+
+    if (mounted) {
+      if (success) {
+        AppSnackbar.show(
+          context,
+          message:
+              widget.ingredientId == null
+                  ? 'Componente "$name" creado correctamente.'
+                  : 'Componente actualizado correctamente.',
+          type: SnackbarType.success,
+        );
+        Navigator.of(context).pop(true);
+      }
+    }
+  }
+
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        Navigator.of(context).pop(false);
+        return KeyEventResult.handled;
+      } else if (event.logicalKey == LogicalKeyboardKey.enter ||
+          event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+        _handleSave();
+        return KeyEventResult.handled;
+      }
+    }
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.ingredientId != null;
+    final isSaving = context.watch<IngredientsCubit>().state.isSaving;
+    final width = MediaQuery.of(context).size.width;
+    final panelWidth = width < 500 ? width * 0.95 : 440.0;
+
+    return Focus(
+      onKeyEvent: _handleKey,
+      child: Material(
+        color: AppColors.surface,
+        elevation: 16,
+        child: Container(
+          width: panelWidth,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            border: Border(left: BorderSide(color: AppColors.border)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Cabecera del Slide-Over
+              Container(
+                padding: const EdgeInsets.fromLTRB(24, 22, 16, 20),
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: AppColors.divider)),
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.edit_rounded,
-                        color: AppColors.info,
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.tealLight,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      onPressed: widget.onEdit,
-                      tooltip: 'Editar',
+                      child: const Icon(
+                        Icons.science_rounded,
+                        color: AppColors.tealDark,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isEditing
+                                ? 'Editar Componente'
+                                : 'Nuevo Componente Químico',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isEditing
+                                ? 'Modifica los datos del principio activo.'
+                                : 'Registra un nuevo principio activo para el catálogo.',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline_rounded,
-                        color: AppColors.error,
-                      ),
-                      onPressed: widget.onDelete,
-                      tooltip: 'Eliminar',
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      color: AppColors.textSecondary,
+                      tooltip: 'Cerrar (Esc)',
+                      onPressed: () => Navigator.of(context).pop(false),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+
+              // Formulario interno
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppTextField(
+                          controller: _nameCtrl,
+                          focusNode: _focusNode,
+                          label: 'Nombre del Componente *',
+                          icon: Icons.label_outlined,
+                          hintText: 'Ej: Sulfato de Cobre, Paracetamol...',
+                          textCapitalization: TextCapitalization.words,
+                        ),
+                        const SizedBox(height: 18),
+                        AppTextField(
+                          controller: _descCtrl,
+                          label: 'Descripción o Notas Técnicas (Opcional)',
+                          icon: Icons.notes_rounded,
+                          hintText:
+                              'Ej: Fungicida cúprico preventivo de amplio espectro...',
+                          maxLines: 3,
+                          textCapitalization: TextCapitalization.sentences,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Callout informativo de buenas prácticas
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0FDFA),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFCCFBF1)),
+                          ),
+                          child: const Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.lightbulb_outline_rounded,
+                                size: 18,
+                                color: AppColors.tealDark,
+                              ),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Los componentes químicos activos se asignan a las fichas técnicas de productos y permiten filtrados agronómicos o farmacológicos avanzados en el punto de venta.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.tealDark,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Barra de botones inferior
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border(top: BorderSide(color: AppColors.divider)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed:
+                            isSaving
+                                ? null
+                                : () => Navigator.of(context).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Cancelar (Esc)'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: isSaving ? null : _handleSave,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child:
+                            isSaving
+                                ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : Text(
+                                  isEditing
+                                      ? 'Guardar Cambios'
+                                      : 'Crear Componente',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ESTADO VACÍO (EMPTY STATE)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EmptyState extends StatelessWidget {
+  final String searchQuery;
+  final VoidCallback onCreate;
+  final VoidCallback onClearSearch;
+
+  const _EmptyState({
+    required this.searchQuery,
+    required this.onCreate,
+    required this.onClearSearch,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasSearch = searchQuery.isNotEmpty;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDFA),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFCCFBF1)),
+              ),
+              child: const Icon(
+                Icons.science_outlined,
+                size: 34,
+                color: AppColors.teal,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              hasSearch
+                  ? 'No se encontraron componentes'
+                  : 'No hay componentes registrados',
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: Text(
+                hasSearch
+                    ? 'No existen componentes que coincidan con "$searchQuery". Prueba con otro término.'
+                    : 'Registra los principios activos que forman parte de la formulación de tus productos.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            if (hasSearch)
+              OutlinedButton.icon(
+                onPressed: onClearSearch,
+                icon: const Icon(Icons.clear_rounded, size: 16),
+                label: const Text('Limpiar búsqueda'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              )
+            else
+              ElevatedButton.icon(
+                onPressed: onCreate,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Registrar Primer Componente'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

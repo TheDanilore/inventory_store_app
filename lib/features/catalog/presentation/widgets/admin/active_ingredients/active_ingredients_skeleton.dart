@@ -3,55 +3,73 @@ import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
 class ActiveIngredientsSkeleton extends StatelessWidget {
   final int itemCount;
+  final int crossAxisCount;
 
-  const ActiveIngredientsSkeleton({super.key, this.itemCount = 8});
+  const ActiveIngredientsSkeleton({
+    super.key,
+    this.itemCount = 8,
+    this.crossAxisCount = 1,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (crossAxisCount > 1) {
+      return GridView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: itemCount,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 14,
+          mainAxisExtent: 80,
+        ),
+        itemBuilder: (context, index) => _buildSkeletonCard(),
+      );
+    }
+
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: itemCount,
       physics: const NeverScrollableScrollPhysics(),
       separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        return Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: Colors.grey.shade100),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
+      itemBuilder: (context, index) => _buildSkeletonCard(),
+    );
+  }
+
+  Widget _buildSkeletonCard() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE8ECF0)),
+      ),
+      child: const Row(
+        children: [
+          // Icon Shimmer
+          AppShimmer(width: 42, height: 42, borderRadius: 12),
+          SizedBox(width: 14),
+
+          // Text Shimmer
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Icon Shimmer
-                const AppShimmer(width: 40, height: 40, borderRadius: 20),
-                const SizedBox(width: 16),
-
-                // Text Shimmer
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const AppShimmer(width: 180, height: 16, borderRadius: 4),
-                      const SizedBox(height: 8),
-                      const AppShimmer(
-                        width: double.infinity,
-                        height: 12,
-                        borderRadius: 4,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-
-                // More button shimmer
-                const AppShimmer(width: 24, height: 24, borderRadius: 12),
+                AppShimmer(width: 140, height: 15, borderRadius: 4),
+                SizedBox(height: 6),
+                AppShimmer(width: 80, height: 11, borderRadius: 4),
               ],
             ),
           ),
-        );
-      },
+          SizedBox(width: 12),
+
+          // Action button shimmer
+          AppShimmer(width: 28, height: 28, borderRadius: 8),
+        ],
+      ),
     );
   }
 }
+
