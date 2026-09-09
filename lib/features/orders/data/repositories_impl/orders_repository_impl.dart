@@ -168,11 +168,32 @@ class OrdersRepositoryImpl implements OrdersRepository {
       // [OPTIMIZACIÓN N+1 → INNER JOIN] Una sola consulta con filtro por relación foránea.
       // Antes se hacía un SELECT de profiles + IN(ids) separado, que podía retornar
       // miles de IDs y romper el límite HTTP de la URL.
-      final queryText = searchQuery.replaceAll('#', '').trim();
-      if (queryText.isNotEmpty) {
-        query = query.or(
-          'customer_name.ilike.%$queryText%,id.ilike.%$queryText%',
-        );
+      final clean = searchQuery.replaceAll('#', '').trim();
+      if (clean.isNotEmpty) {
+        final txt = '%$clean%';
+        final isFullUuid = RegExp(
+          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+        ).hasMatch(clean);
+        final isShortHex = RegExp(r'^[0-9a-fA-F]{4,8}$').hasMatch(clean);
+
+        if (isFullUuid) {
+          query = query.or(
+            'id.eq.$clean,customer_name.ilike.$txt',
+          );
+        } else if (isShortHex) {
+          final prefix = clean.toLowerCase();
+          final padZeros = '0' * (8 - prefix.length);
+          final padFs = 'f' * (8 - prefix.length);
+          final minUuid = '$prefix$padZeros-0000-0000-0000-000000000000';
+          final maxUuid = '$prefix$padFs-ffff-ffff-ffff-ffffffffffff';
+          query = query.or(
+            'and(id.gte.$minUuid,id.lte.$maxUuid),customer_name.ilike.$txt',
+          );
+        } else {
+          query = query.or(
+            'customer_name.ilike.$txt',
+          );
+        }
       }
 
       final startRow = offset;
@@ -188,12 +209,24 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final orders = rawData.map((e) => OrderModel.fromJson(e)).toList();
 
       return Right((orders: orders, total: totalRecords));
-    } catch (e, st) {
-      developer.log(
-        'Error en getFilteredOrders',
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en getFilteredOrders',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
+      );
+      return Left(
+        ServerFailure(
+          message: 'Error de base de datos al consultar pedidos: ${e.message}',
+        ),
+      );
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en getFilteredOrders',
+        tag: 'OrdersRepo',
+        error: e,
+        stackTrace: st,
       );
       final errStr = e.toString().toLowerCase();
       if (e is SocketException ||
@@ -202,7 +235,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
           errStr.contains('failed host lookup')) {
         return const Left(ServerFailure(message: 'Sin conexión a internet.'));
       }
-      return Left(ServerFailure(message: 'Error fetching orders: $e'));
+      return Left(ServerFailure(message: 'Error al obtener pedidos: $e'));
     }
   }
 
@@ -236,21 +269,21 @@ class OrdersRepositoryImpl implements OrdersRepository {
               .maybeSingle();
 
       if (data == null) {
-        developer.log(
-          'getOrderById data == null para id: $orderId',
-          name: 'OrdersRepo',
+        LoggerService.e(
+          'getOrderById: Pedido no encontrado para id: $orderId',
+          tag: 'OrdersRepo',
         );
         return const Left(ServerFailure(message: 'Pedido no encontrado.'));
       }
       return Right(OrderModel.fromJson(data));
     } catch (e, st) {
-      developer.log(
-        'Error en getOrderById',
+      LoggerService.e(
+        'Error en getOrderById: $orderId',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
+        tag: 'OrdersRepo',
       );
-      return Left(ServerFailure(message: 'Error fetching order: $e'));
+      return Left(ServerFailure(message: 'No se pudo cargar el pedido.'));
     }
   }
 

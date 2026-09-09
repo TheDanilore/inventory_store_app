@@ -426,7 +426,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 800;
 
-          return BlocBuilder<OrdersCubit, OrdersState>(
+          return BlocConsumer<OrdersCubit, OrdersState>(
+            listener: (context, state) {
+              if (_pendingTargetOrderId != null) {
+                _resolveTargetOrder(state.orders, isWide);
+              }
+            },
             buildWhen:
                 (p, c) =>
                     p.orders != c.orders ||
@@ -443,10 +448,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     p.totalPages != c.totalPages,
             builder: (context, state) {
               final cubit = context.read<OrdersCubit>();
-
-              if (_pendingTargetOrderId != null) {
-                _resolveTargetOrder(state.orders, isWide);
-              }
 
               // ── Sincronización Estricta de Pedido Seleccionado ─────────────
               OrderEntity? currentSelectedOrder;
@@ -651,6 +652,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
           color: AppColors.error,
           title: 'Ocurrió un error',
           message: state.errorMessage,
+          action: FilledButton.icon(
+            onPressed: () => cubit.loadOrders(reset: true),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Reintentar'),
+          ),
         ),
       );
     }

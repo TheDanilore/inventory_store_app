@@ -72,51 +72,57 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                     color: AppColors.teal,
                     size: 19,
                   ),
-                  suffixIcon:
-                      searchCtrl.text.isNotEmpty
-                          ? IconButton(
-                            icon: const Icon(
-                              Icons.cancel_rounded,
-                              color: AppColors.textMuted,
-                              size: 18,
-                            ),
-                            onPressed: () {
-                              searchCtrl.clear();
-                              cubit.setSearchQuery('');
-                            },
-                          )
-                          : (MediaQuery.sizeOf(context).width >= 800
-                              ? Padding(
-                                  padding: const EdgeInsets.only(right: 10),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFF1F5F9),
-                                          borderRadius: BorderRadius.circular(5),
-                                          border: Border.all(
-                                            color: AppColors.border,
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'Ctrl K',
-                                          style: TextStyle(
-                                            fontSize: 10.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                  suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: searchCtrl,
+                    builder: (context, value, _) {
+                      if (value.text.isNotEmpty) {
+                        return IconButton(
+                          icon: const Icon(
+                            Icons.cancel_rounded,
+                            color: AppColors.textMuted,
+                            size: 18,
+                          ),
+                          onPressed: () {
+                            searchCtrl.clear();
+                            cubit.setSearchQuery('');
+                          },
+                        );
+                      }
+                      if (MediaQuery.sizeOf(context).width >= 800) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 10),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(5),
+                                  border: Border.all(
+                                    color: AppColors.border,
                                   ),
-                                )
-                              : null),
+                                ),
+                                child: const Text(
+                                  'Ctrl K',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
