@@ -498,8 +498,9 @@ class PosHeader extends StatelessWidget {
               color: AppColors.error,
             ),
             const SizedBox(width: 6),
-            const Expanded(
-              child: Text(
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 160),
+              child: const Text(
                 'Sin almacenes disponibles',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -686,7 +687,7 @@ class PosHeader extends StatelessWidget {
                           ),
                         ),
                         child: const Text(
-                          'F1',
+                          'Ctrl K',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,

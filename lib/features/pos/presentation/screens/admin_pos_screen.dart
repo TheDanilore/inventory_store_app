@@ -103,67 +103,18 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   Widget build(BuildContext context) {
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.f1): () {
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () {
           _searchFocusNode.requestFocus();
           _searchCtrl.selection = TextSelection(
             baseOffset: 0,
             extentOffset: _searchCtrl.text.length,
           );
         },
-        const SingleActivator(LogicalKeyboardKey.f2): () {
-          final isDesktop = MediaQuery.of(context).size.width >= 800;
-          if (isDesktop) {
-            _desktopPanelKey.currentState?.triggerCheckout();
-          } else {
-            context.push('/admin/pos-checkout');
-          }
-        },
-        const SingleActivator(LogicalKeyboardKey.f4): () {
-          final cartCubit = context.read<CartCubit>();
-          if (cartCubit.state.items.isEmpty) return;
-          showDialog(
-            context: context,
-            builder:
-                (ctx) => AlertDialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  title: const Text('¿Vaciar caja actual?'),
-                  content: const Text(
-                    'Se eliminarán todos los productos de la caja.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Cancelar'),
-                    ),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.error,
-                      ),
-                      onPressed: () {
-                        cartCubit.clearCart();
-                        context.read<PosCubit>().clearAllBatchOverrides();
-                        Navigator.pop(ctx);
-                        AppSnackbar.show(
-                          context,
-                          message: 'Caja vaciada mediante atajo F4',
-                          type: SnackbarType.info,
-                        );
-                      },
-                      child: const Text('Vaciar'),
-                    ),
-                  ],
-                ),
-          );
-        },
-        const SingleActivator(LogicalKeyboardKey.f5): () {
-          // F5: Refrescar catálogo
-          context.read<AdminCatalogCubit>().refreshProducts();
-          AppSnackbar.show(
-            context,
-            message: 'Refrescando catálogo...',
-            type: SnackbarType.info,
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () {
+          _searchFocusNode.requestFocus();
+          _searchCtrl.selection = TextSelection(
+            baseOffset: 0,
+            extentOffset: _searchCtrl.text.length,
           );
         },
       },

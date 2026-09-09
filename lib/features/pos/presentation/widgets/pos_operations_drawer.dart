@@ -226,7 +226,7 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
                               size: 16,
                             ),
                             label: Text(
-                              kIsWeb ? 'Inventario ↗' : 'Inventario',
+                              'Inventario',
                               style: const TextStyle(fontSize: 12),
                             ),
                             style: OutlinedButton.styleFrom(

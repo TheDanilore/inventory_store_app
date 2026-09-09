@@ -105,8 +105,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-    // '/' para enfocar buscador instantáneamente
-    if (event.logicalKey == LogicalKeyboardKey.slash) {
+    // Atajo Ctrl+K o Cmd+K (o '/' en desktop) para enfocar buscador instantáneamente
+    final isControlOrMeta = HardwareKeyboard.instance.isControlPressed ||
+        HardwareKeyboard.instance.isMetaPressed;
+    if ((isControlOrMeta && event.logicalKey == LogicalKeyboardKey.keyK) ||
+        (event.logicalKey == LogicalKeyboardKey.slash && !_searchFocusNode.hasFocus)) {
       if (!_searchFocusNode.hasFocus) {
         _searchFocusNode.requestFocus();
         _searchCtrl.selection = TextSelection(
@@ -361,11 +364,36 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                           .loadOrders(refresh: true);
                     },
                   ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        context.push('/admin/purchase-orders/form');
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 0,
+                        ),
+                        visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      icon: const Icon(Icons.add_rounded, size: 16),
+                      label: const Text(
+                        'Nueva',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
-      floatingActionButton:
-          isDesktopOrTablet
-              ? null
-              : _buildNewOrderButton(context, isHeader: false),
+      floatingActionButton: null,
       body: Focus(
         focusNode: _screenFocusNode,
         autofocus: true,
@@ -509,7 +537,10 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                 child: _SearchField(
                                   controller: _searchCtrl,
                                   focusNode: _searchFocusNode,
-                                  hint: 'Buscar proveedor, doc... (Presiona /)',
+                                  hint:
+                                      isTablet
+                                          ? 'Buscar proveedor, doc... (Ctrl K)'
+                                          : 'Buscar proveedor o documento...',
                                   onChanged: (v) {
                                     _debounce?.cancel();
                                     _debounce = Timer(
@@ -686,11 +717,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   child: ListView.separated(
                                     physics:
                                         const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(
+                                    padding: const EdgeInsets.fromLTRB(
                                       16,
                                       0,
                                       16,
-                                      isTablet ? 16 : 80,
+                                      16,
                                     ),
                                     itemCount: filtered.length,
                                     separatorBuilder:
@@ -972,26 +1003,27 @@ class _SearchField extends StatelessWidget {
                     minHeight: 28,
                   ),
                 ),
-              Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.slateLight.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: const Text(
-                  '/',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+              if (MediaQuery.sizeOf(context).width >= 800)
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.slateLight.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Text(
+                    'Ctrl K',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           border: InputBorder.none,

@@ -60,10 +60,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-    // Atajo '/' para enfocar el buscador si no está enfocado
-    if (event.logicalKey == LogicalKeyboardKey.slash && !_searchFocusNode.hasFocus) {
-      _searchFocusNode.requestFocus();
-      return KeyEventResult.handled;
+    // Atajo 'Ctrl + K' o 'Cmd + K' (o '/' en desktop) para enfocar el buscador si no está enfocado
+    final isControlOrMeta = HardwareKeyboard.instance.isControlPressed ||
+        HardwareKeyboard.instance.isMetaPressed;
+    if ((isControlOrMeta && event.logicalKey == LogicalKeyboardKey.keyK) ||
+        (event.logicalKey == LogicalKeyboardKey.slash && !_searchFocusNode.hasFocus)) {
+      if (!_searchFocusNode.hasFocus) {
+        _searchFocusNode.requestFocus();
+        return KeyEventResult.handled;
+      }
     }
 
     // Atajo 'Escape' para desenfocar el buscador
@@ -75,8 +80,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
 
     // Atajo 'Ctrl + P' o 'Cmd + P' para imprimir ticket del pedido seleccionado
-    final isControlOrMeta = HardwareKeyboard.instance.isControlPressed ||
-        HardwareKeyboard.instance.isMetaPressed;
     if (isControlOrMeta && event.logicalKey == LogicalKeyboardKey.keyP) {
       if (_selectedOrder != null) {
         _printOrderTicket(_selectedOrder!);
@@ -284,7 +287,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
     return AdminLayout(
       title: widget.customTitle ?? 'Gestión de Pedidos',
       showBackButton: true,
-      actions: const [],
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh_rounded),
+          tooltip: 'Actualizar pedidos',
+          onPressed: () {
+            context.read<OrdersCubit>().loadOrders(reset: true);
+          },
+        ),
+      ],
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 800;
