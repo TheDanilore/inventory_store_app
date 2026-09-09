@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_item_model.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -100,15 +103,50 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
           if (widget.isBottomSheet)
             DetailSheetHeader(title: 'Detalle de Entrada')
           else
-            const Padding(
-              padding: EdgeInsets.fromLTRB(24, 24, 24, 8),
-              child: Text(
-                'Detalle de Entrada',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.move_to_inbox_rounded, color: AppColors.primary, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Detalle de Entrada #${entry.id.substring(0, entry.id.length > 8 ? 8 : entry.id.length).toUpperCase()}',
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, size: 16),
+                    tooltip: 'Copiar ID completo',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: entry.id));
+                      AppSnackbar.show(context, message: 'ID copiado al portapapeles', type: SnackbarType.info);
+                    },
+                  ),
+                  const Spacer(),
+                  if (entry.purchaseOrderId != null)
+                    OutlinedButton.icon(
+                      onPressed: () => context.push('/admin/purchase-orders'),
+                      icon: const Icon(Icons.link_rounded, size: 14),
+                      label: const Text('Ver Orden de Compra ↗', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                ],
               ),
             ),
           const SizedBox(height: 8),

@@ -283,19 +283,49 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final isLoyaltyEnabled = context.select<AppConfigCubit, bool>(
       (c) => c.state.businessInfo?.loyaltyGlobalEnabled ?? false,
     );
+    final isWide = MediaQuery.sizeOf(context).width >= 800;
 
     return AdminLayout(
       title: widget.customTitle ?? 'Gestión de Pedidos',
       showBackButton: true,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.refresh_rounded),
-          tooltip: 'Actualizar pedidos',
-          onPressed: () {
-            context.read<OrdersCubit>().loadOrders(reset: true);
-          },
-        ),
-      ],
+      actions: isWide
+          ? [
+              OutlinedButton.icon(
+                onPressed: () {
+                  context.read<OrdersCubit>().loadOrders(reset: true);
+                },
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
+                label: const Text(
+                  'Actualizar',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.border),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ]
+          : [
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                tooltip: 'Actualizar pedidos',
+                onPressed: () {
+                  context.read<OrdersCubit>().loadOrders(reset: true);
+                },
+              ),
+            ],
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 800;
@@ -343,6 +373,35 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         minHeight: 2,
                       ),
                     ),
+                  if (state.orders.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        child: _OrdersKpiRibbon(
+                          pageOrdersCount: state.orders.length,
+                          totalRecords: state.totalRecords,
+                          pageTotalAmount: state.orders.fold<double>(
+                            0,
+                            (sum, o) => sum + o.totalAmount,
+                          ),
+                          pendingCount:
+                              state.orders
+                                  .where((o) => o.status == 'PENDING')
+                                  .length,
+                          pendingDebt: state.orders
+                              .where(
+                                (o) =>
+                                    o.paymentStatus != 'PAID' &&
+                                    o.status != 'CANCELLED',
+                              )
+                              .fold<double>(
+                                0,
+                                (sum, o) =>
+                                    sum + (o.totalAmount - o.amountPaid),
+                              ),
+                        ),
+                      ),
+                    ),
                   SliverPersistentHeader(
                     pinned: true,
                     floating: true,
@@ -356,7 +415,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ),
                   ),
                   SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     sliver: _buildListSliver(
                       state,
                       cubit,
@@ -365,17 +424,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       currentSelectedOrder,
                     ),
                   ),
-                  if (!isWide && state.totalPages > 1 && !state.isLoading && state.errorMessage.isEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                        child: AdminPageBlocks(
-                          currentPage: state.currentPage,
-                          totalPages: state.totalPages,
-                          onPageChanged: cubit.goToPage,
-                        ),
-                      ),
-                    ),
                 ],
               );
 
@@ -391,24 +439,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         child: scrollContent,
                       ),
                     ),
-                    if (isWide && state.totalPages > 1 && !state.isLoading && state.errorMessage.isEmpty)
-                      Container(
-                        height: 64,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: const BoxDecoration(
-                          color: AppColors.surface,
-                          border: Border(
-                            top: BorderSide(color: AppColors.border),
-                          ),
-                        ),
-                        child: Center(
-                          child: AdminPageBlocks(
-                            currentPage: state.currentPage,
-                            totalPages: state.totalPages,
-                            onPageChanged: cubit.goToPage,
-                          ),
-                        ),
-                      ),
+                    _buildPagination(state, cubit, isWide: isWide),
                   ],
                 ),
               );
@@ -598,4 +629,170 @@ class _OrdersScreenState extends State<OrdersScreen> {
       }, childCount: itemCount),
     );
   }
+
+  Widget _buildPagination(
+    OrdersState state,
+    OrdersCubit cubit, {
+    required bool isWide,
+  }) {
+    if (state.totalPages <= 1 ||
+        state.isLoading ||
+        state.errorMessage.isNotEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      alignment: Alignment.center,
+      child: SafeArea(
+        top: false,
+        bottom: !isWide,
+        child: AdminPageBlocks(
+          currentPage: state.currentPage,
+          totalPages: state.totalPages,
+          onPageChanged: cubit.goToPage,
+        ),
+      ),
+    );
+  }
 }
+
+class _OrdersKpiRibbon extends StatelessWidget {
+  final int pageOrdersCount;
+  final int totalRecords;
+  final double pageTotalAmount;
+  final int pendingCount;
+  final double pendingDebt;
+
+  const _OrdersKpiRibbon({
+    required this.pageOrdersCount,
+    required this.totalRecords,
+    required this.pageTotalAmount,
+    required this.pendingCount,
+    required this.pendingDebt,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            const Icon(
+              Icons.receipt_long_rounded,
+              size: 16,
+              color: AppColors.teal,
+            ),
+            const SizedBox(width: 6),
+            const Text(
+              'Pedidos: ',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              '$pageOrdersCount de $totalRecords',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Container(width: 1, height: 16, color: AppColors.border),
+            const SizedBox(width: 14),
+            const Icon(Icons.payments_rounded, size: 16, color: AppColors.teal),
+            const SizedBox(width: 6),
+            const Text(
+              'Total Pág: ',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              'S/ ${pageTotalAmount.toStringAsFixed(2)}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.teal,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+            if (pendingDebt > 0) ...[
+              const SizedBox(width: 14),
+              Container(width: 1, height: 16, color: AppColors.border),
+              const SizedBox(width: 14),
+              const Icon(
+                Icons.credit_card_rounded,
+                size: 16,
+                color: AppColors.warning,
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'Por Cobrar: ',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                'S/ ${pendingDebt.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.warning,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ] else if (pendingCount > 0) ...[
+              const SizedBox(width: 14),
+              Container(width: 1, height: 16, color: AppColors.border),
+              const SizedBox(width: 14),
+              const Icon(
+                Icons.pending_actions_rounded,
+                size: 16,
+                color: AppColors.warning,
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'Borradores: ',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                '$pendingCount',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.warning,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+

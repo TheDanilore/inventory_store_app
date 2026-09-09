@@ -342,6 +342,7 @@ class AdminOrderCard extends StatelessWidget {
                                           fontWeight: FontWeight.w900,
                                           color: AppColors.textPrimary,
                                           letterSpacing: -0.3,
+                                          fontFeatures: [FontFeature.tabularFigures()],
                                         ),
                                       ),
                                     ],
@@ -372,6 +373,7 @@ class AdminOrderCard extends StatelessWidget {
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.textSecondary,
+                                      fontFeatures: [FontFeature.tabularFigures()],
                                     ),
                                   ),
                                   Text(
@@ -383,6 +385,7 @@ class AdminOrderCard extends StatelessWidget {
                                           pendingAmount > 0
                                               ? AppColors.error
                                               : AppColors.success,
+                                      fontFeatures: const [FontFeature.tabularFigures()],
                                     ),
                                   ),
                                 ],

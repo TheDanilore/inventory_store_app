@@ -331,7 +331,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         top: false,
         bottom: !isTablet,
         child: AdminPageBlocks(
-          isCompact: isTablet,
           currentPage: viewModel.currentPage,
           totalPages: viewModel.totalPages,
           onPageChanged: (p) => viewModel.setPage(p),
