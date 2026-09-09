@@ -27,5 +27,7 @@ abstract class InventoryEntriesRepository {
 
   Future<List<dynamic>> getEntryItems(String entryId);
 
+  Future<InventoryEntryEntity?> getEntryById(String entryId);
+
   Future<Map<String, String>> getOpenCashShifts();
 }

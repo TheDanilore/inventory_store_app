@@ -21,11 +21,15 @@ class InventoryRoutes {
   static List<RouteBase> get adminRoutes => [
     GoRoute(
       path: '/admin/inventory-entries',
-      builder:
-          (context, state) => BlocProvider(
-            create: (_) => sl<InventoryEntriesCubit>()..init(),
-            child: const InventoryEntriesScreen(),
-          ),
+      builder: (context, state) {
+        final entryId =
+            state.uri.queryParameters['selectedId'] ??
+            state.uri.queryParameters['entryId'];
+        return BlocProvider(
+          create: (_) => sl<InventoryEntriesCubit>()..init(),
+          child: InventoryEntriesScreen(targetEntryId: entryId),
+        );
+      },
     ),
     GoRoute(
       path: '/admin/inventory-entries/form',

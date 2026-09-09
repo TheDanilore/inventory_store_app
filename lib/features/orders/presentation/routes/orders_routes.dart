@@ -14,11 +14,15 @@ class OrdersRoutes {
   static List<RouteBase> get adminRoutes => [
     GoRoute(
       path: '/admin/orders',
-      builder:
-          (context, state) => BlocProvider(
-            create: (_) => sl<OrdersCubit>()..loadOrders(reset: true),
-            child: const OrdersScreen(),
-          ),
+      builder: (context, state) {
+        final orderId =
+            state.uri.queryParameters['selectedId'] ??
+            state.uri.queryParameters['orderId'];
+        return BlocProvider(
+          create: (_) => sl<OrdersCubit>()..loadOrders(reset: true),
+          child: OrdersScreen(targetOrderId: orderId),
+        );
+      },
     ),
   ];
 

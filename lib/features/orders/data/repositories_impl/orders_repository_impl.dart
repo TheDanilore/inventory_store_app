@@ -168,7 +168,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
       // [OPTIMIZACIÓN N+1 → INNER JOIN] Una sola consulta con filtro por relación foránea.
       // Antes se hacía un SELECT de profiles + IN(ids) separado, que podía retornar
       // miles de IDs y romper el límite HTTP de la URL.
-      final queryText = searchQuery.trim();
+      final queryText = searchQuery.replaceAll('#', '').trim();
       if (queryText.isNotEmpty) {
         query = query.or(
           'customer_name.ilike.%$queryText%,id.ilike.%$queryText%',

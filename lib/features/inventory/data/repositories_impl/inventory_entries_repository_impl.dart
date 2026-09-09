@@ -235,14 +235,29 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           inventory_entry_items(quantity, unit_cost)
         ''');
 
-      if (searchQuery != null && searchQuery.isNotEmpty) {
-        // Usamos or para buscar en notas o en nombre del proveedor
-        // Nota: Si queremos buscar en la tabla relacionada suppliers, supabase postgrest tiene limitaciones con or en relaciones
-        // Pero si usamos .ilike('suppliers.name') requiere inner join con !inner, lo cual descarta las entradas sin proveedor.
-        // Si la búsqueda incluye el número de documento:
-        query = query.or(
-          'document_number.ilike.%$searchQuery%,notes.ilike.%$searchQuery%',
-        );
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final clean = searchQuery.replaceAll('#', '').trim();
+        final txt = '%$clean%';
+        final isFullUuid = RegExp(
+          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+        ).hasMatch(clean);
+        final isShortUuid = RegExp(r'^[0-9a-fA-F]{8}$').hasMatch(clean);
+
+        if (isFullUuid) {
+          query = query.or(
+            'id.eq.$clean,purchase_order_id.eq.$clean,document_number.ilike.$txt,notes.ilike.$txt',
+          );
+        } else if (isShortUuid) {
+          final minUuid = '${clean.toLowerCase()}-0000-0000-0000-000000000000';
+          final maxUuid = '${clean.toLowerCase()}-ffff-ffff-ffff-ffffffffffff';
+          query = query.or(
+            'and(id.gte.$minUuid,id.lte.$maxUuid),and(purchase_order_id.gte.$minUuid,purchase_order_id.lte.$maxUuid),document_number.ilike.$txt,notes.ilike.$txt',
+          );
+        } else {
+          query = query.or(
+            'document_number.ilike.$txt,notes.ilike.$txt',
+          );
+        }
       }
 
       if (warehouseFilter != null && warehouseFilter != 'Todos') {
@@ -312,6 +327,34 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         name: 'InventoryEntriesRepositoryImpl',
       );
       rethrow;
+    }
+  }
+
+  @override
+  Future<InventoryEntryEntity?> getEntryById(String entryId) async {
+    try {
+      final res = await _supabase
+          .from('inventory_entries')
+          .select('''
+          id, created_at, notes, total_amount, payment_mode, status,
+          document_type, document_number, document_date, purchase_order_id,
+          warehouses!inner(name),
+          suppliers(name),
+          inventory_entry_items(quantity, unit_cost)
+        ''')
+          .eq('id', entryId)
+          .maybeSingle();
+
+      if (res == null) return null;
+      return InventoryEntryModel.fromJson(res).toEntity();
+    } catch (e, st) {
+      developer.log(
+        'getEntryById error',
+        error: e,
+        stackTrace: st,
+        name: 'InventoryEntriesRepositoryImpl',
+      );
+      return null;
     }
   }
 

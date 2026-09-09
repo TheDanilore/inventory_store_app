@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_item_model.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_entry_items_usecase.dart';
+import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_entries_repository.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_entity.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entries/inventory_entries_cubit.dart';
@@ -21,7 +22,9 @@ import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class InventoryEntriesScreen extends StatefulWidget {
-  const InventoryEntriesScreen({super.key});
+  final String? targetEntryId;
+
+  const InventoryEntriesScreen({super.key, this.targetEntryId});
 
   @override
   State<InventoryEntriesScreen> createState() => _InventoryEntriesScreenState();
@@ -34,15 +37,110 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   Timer? _searchDebounce;
   bool _hasDraft = false;
   InventoryEntryEntity? _selectedEntry; // State for Master-Detail
+  String? _pendingTargetEntryId;
+  bool _isFetchingTargetEntry = false;
 
   @override
   void initState() {
     super.initState();
+    _pendingTargetEntryId = widget.targetEntryId;
     _checkDraft();
     // Reload entries every time the screen is (re)entered via go_router
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<InventoryEntriesCubit>().init();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant InventoryEntriesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.targetEntryId != oldWidget.targetEntryId) {
+      if (widget.targetEntryId == null) {
+        if (_selectedEntry != null) {
+          setState(() => _selectedEntry = null);
+        }
+        return;
+      }
+      if (widget.targetEntryId == _selectedEntry?.id) {
+        return;
+      }
+      _pendingTargetEntryId = widget.targetEntryId;
+      final state = context.read<InventoryEntriesCubit>().state;
+      if (state is InventoryEntriesLoaded) {
+        final isTablet = MediaQuery.sizeOf(context).width >= 800;
+        _resolveTargetEntry(state.entries, isTablet);
+      }
+    }
+  }
+
+  void _selectEntry(InventoryEntryEntity? entry, {bool updateUrl = true}) {
+    setState(() => _selectedEntry = entry);
+
+    if (updateUrl && mounted) {
+      final isTablet = MediaQuery.sizeOf(context).width >= 800;
+      if (isTablet) {
+        if (entry != null) {
+          context.replace('/admin/inventory-entries?selectedId=${entry.id}');
+        } else {
+          context.replace('/admin/inventory-entries');
+        }
+      }
+    }
+  }
+
+  void _resolveTargetEntry(List<InventoryEntryEntity> entries, bool isTablet) {
+    final targetId = _pendingTargetEntryId;
+    if (targetId == null) return;
+
+    final foundIndex = entries.indexWhere((e) => e.id == targetId);
+    if (foundIndex != -1) {
+      _pendingTargetEntryId = null;
+      _selectEntry(entries[foundIndex], updateUrl: isTablet);
+      if (!isTablet) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _selectedEntry != null) {
+            _showDetailBottomSheet(context, _selectedEntry!);
+          }
+        });
+      }
+    } else {
+      _pendingTargetEntryId = null;
+      _fetchAndSelectEntry(targetId, isTablet);
+    }
+  }
+
+  Future<void> _fetchAndSelectEntry(String targetId, bool isTablet) async {
+    if (_isFetchingTargetEntry) return;
+    _isFetchingTargetEntry = true;
+    try {
+      final entry =
+          await sl<InventoryEntriesRepository>().getEntryById(targetId);
+      if (!mounted) return;
+      if (entry != null) {
+        _selectEntry(entry, updateUrl: isTablet);
+        if (!isTablet) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _selectedEntry != null) {
+              _showDetailBottomSheet(context, _selectedEntry!);
+            }
+          });
+        }
+      } else {
+        AppSnackbar.show(
+          context,
+          message: 'No se pudo encontrar la entrada de inventario asociada.',
+          type: SnackbarType.error,
+        );
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      if (mounted) {
+        setState(() => _isFetchingTargetEntry = false);
+      } else {
+        _isFetchingTargetEntry = false;
+      }
+    }
   }
 
   Future<void> _checkDraft() async {
@@ -94,7 +192,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         return KeyEventResult.handled;
       }
       if (_selectedEntry != null) {
-        setState(() => _selectedEntry = null);
+        _selectEntry(null, updateUrl: true);
         return KeyEventResult.handled;
       }
     }
@@ -112,13 +210,13 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
       if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
         final nextIndex = (currentIndex + 1).clamp(0, entries.length - 1);
-        setState(() => _selectedEntry = entries[nextIndex]);
+        _selectEntry(entries[nextIndex], updateUrl: true);
         return KeyEventResult.handled;
       }
 
       if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
         final prevIndex = (currentIndex - 1).clamp(0, entries.length - 1);
-        setState(() => _selectedEntry = entries[prevIndex]);
+        _selectEntry(entries[prevIndex], updateUrl: true);
         return KeyEventResult.handled;
       }
     }
@@ -302,20 +400,27 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     bool isTablet,
   ) {
     if (isTablet) {
-      setState(() => _selectedEntry = entry);
+      _selectEntry(entry, updateUrl: true);
     } else {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder:
-            (_) => InventoryEntryDetailSheet(
-              entry: entry,
-              isBottomSheet: true,
-              loadItems: () => _loadEntryItems(entry.id, null),
-            ),
-      );
+      _showDetailBottomSheet(context, entry);
     }
+  }
+
+  void _showDetailBottomSheet(
+    BuildContext context,
+    InventoryEntryEntity entry,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (_) => InventoryEntryDetailSheet(
+            entry: entry,
+            isBottomSheet: true,
+            loadItems: () => _loadEntryItems(entry.id, null),
+          ),
+    );
   }
 
   @override
@@ -330,6 +435,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             message: state.message,
             type: SnackbarType.error,
           );
+        }
+        if (state is InventoryEntriesLoaded && _pendingTargetEntryId != null) {
+          _resolveTargetEntry(state.entries, isDesktopOrTablet);
         }
       },
       builder: (context, state) {
@@ -353,31 +461,37 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
         final isLoading = state is InventoryEntriesLoading;
 
-        // Sincronización automática de selección en vista Master-Detail (Tablet/Desktop)
-        if (isDesktopOrTablet &&
-            loadedState != null &&
-            loadedState.entries.isNotEmpty) {
-          final found =
-              loadedState.entries
-                  .where((e) => e.id == _selectedEntry?.id)
-                  .firstOrNull;
-          final target = found ?? loadedState.entries.first;
-          if (_selectedEntry != target) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && _selectedEntry != target) {
-                setState(() => _selectedEntry = target);
+        // Sincronización de selección ordinaria SOLO si no hay una entrada objetivo pendiente
+        if (_pendingTargetEntryId == null) {
+          if (currentState.entries.isNotEmpty) {
+            if (_selectedEntry != null) {
+              final index = currentState.entries.indexWhere(
+                (e) => e.id == _selectedEntry!.id,
+              );
+              if (index != -1) {
+                _selectedEntry = currentState.entries[index];
               }
-            });
-          }
-        } else if ((!isDesktopOrTablet ||
-                (loadedState != null && loadedState.entries.isEmpty)) &&
-            _selectedEntry != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _selectedEntry != null) {
-              setState(() => _selectedEntry = null);
+              // Si no está en currentState.entries (es foránea o de otra página), se preserva intacta
+            } else if (isDesktopOrTablet) {
+              _selectedEntry = currentState.entries.first;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && _selectedEntry != null) {
+                  _selectEntry(_selectedEntry, updateUrl: true);
+                }
+              });
             }
-          });
+          } else {
+            _selectedEntry = null;
+          }
         }
+
+        // Si hay una entrada foránea seleccionada (ej. Deep Link desde otra página),
+        // se fija arriba para que siempre aparezca visible y seleccionada en el panel izquierdo
+        final displayEntries =
+            (_selectedEntry != null &&
+                    !currentState.entries.any((e) => e.id == _selectedEntry!.id))
+                ? [_selectedEntry!, ...currentState.entries]
+                : currentState.entries;
 
         return AdminLayout(
           title: 'Historial de Entradas',
@@ -410,9 +524,19 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
               builder: (context, constraints) {
                 final isTablet = constraints.maxWidth >= 800;
                 if (isTablet) {
-                  return _buildTabletLayout(context, currentState, isLoading);
+                  return _buildTabletLayout(
+                    context,
+                    currentState,
+                    displayEntries,
+                    isLoading,
+                  );
                 }
-                return _buildMobileLayout(context, currentState, isLoading);
+                return _buildMobileLayout(
+                  context,
+                  currentState,
+                  displayEntries,
+                  isLoading,
+                );
               },
             ),
           ),
@@ -424,6 +548,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   Widget _buildMobileLayout(
     BuildContext context,
     InventoryEntriesLoaded state,
+    List<InventoryEntryEntity> displayEntries,
     bool isLoading,
   ) {
     return Column(
@@ -434,7 +559,13 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             onRefresh:
                 () async =>
                     context.read<InventoryEntriesCubit>().loadEntries(page: 0),
-            child: _buildCustomScrollView(context, state, isLoading, false),
+            child: _buildCustomScrollView(
+              context,
+              state,
+              displayEntries,
+              isLoading,
+              false,
+            ),
           ),
         ),
         _buildPagination(context, state, isLoading, isTablet: false),
@@ -445,6 +576,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   Widget _buildTabletLayout(
     BuildContext context,
     InventoryEntriesLoaded state,
+    List<InventoryEntryEntity> displayEntries,
     bool isLoading,
   ) {
     return Row(
@@ -464,6 +596,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                   child: _buildCustomScrollView(
                     context,
                     state,
+                    displayEntries,
                     isLoading,
                     true,
                   ),
@@ -512,6 +645,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   Widget _buildCustomScrollView(
     BuildContext context,
     InventoryEntriesLoaded state,
+    List<InventoryEntryEntity> displayEntries,
     bool isLoading,
     bool isTablet,
   ) {
@@ -709,7 +843,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, i) {
-                final entry = state.entries[i];
+                final entry = displayEntries[i];
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _EntryCard(
@@ -718,7 +852,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                     onTap: () => _onEntryTapped(context, entry, isTablet),
                   ),
                 );
-              }, childCount: state.entries.length),
+              }, childCount: displayEntries.length),
             ),
           ),
       ],
@@ -1034,6 +1168,7 @@ class _CompactKpiRibbon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(

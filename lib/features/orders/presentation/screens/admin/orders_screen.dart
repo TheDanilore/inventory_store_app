@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -13,6 +14,7 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
+import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders/orders_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders/orders_state.dart';
 
@@ -24,8 +26,9 @@ import 'package:inventory_store_app/features/orders/presentation/widgets/admin/o
 
 class OrdersScreen extends StatefulWidget {
   final String? customTitle;
+  final String? targetOrderId;
 
-  const OrdersScreen({super.key, this.customTitle});
+  const OrdersScreen({super.key, this.customTitle, this.targetOrderId});
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
@@ -36,10 +39,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
   final _searchFocusNode = FocusNode();
   Timer? _debounce;
   OrderEntity? _selectedOrder;
+  String? _pendingTargetOrderId;
+  bool _isFetchingTargetOrder = false;
 
   @override
   void initState() {
     super.initState();
+    _pendingTargetOrderId = widget.targetOrderId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cubit = context.read<OrdersCubit>();
       // Control de Data Egress: Carga solo si la lista está vacía
@@ -47,6 +53,100 @@ class _OrdersScreenState extends State<OrdersScreen> {
         cubit.loadOrders(reset: true);
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant OrdersScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.targetOrderId != oldWidget.targetOrderId) {
+      if (widget.targetOrderId == null) {
+        if (_selectedOrder != null) {
+          setState(() => _selectedOrder = null);
+        }
+        return;
+      }
+      if (widget.targetOrderId == _selectedOrder?.id) {
+        return;
+      }
+      _pendingTargetOrderId = widget.targetOrderId;
+      final cubit = context.read<OrdersCubit>();
+      final isWide = MediaQuery.sizeOf(context).width >= 800;
+      _resolveTargetOrder(cubit.state.orders, isWide);
+    }
+  }
+
+  void _selectOrder(OrderEntity? order, {bool updateUrl = true}) {
+    setState(() {
+      _selectedOrder = order;
+    });
+
+    if (updateUrl && mounted) {
+      final isWide = MediaQuery.sizeOf(context).width >= 800;
+      if (isWide) {
+        if (order != null) {
+          context.replace('/admin/orders?selectedId=${order.id}');
+        } else {
+          context.replace('/admin/orders');
+        }
+      }
+    }
+  }
+
+  void _resolveTargetOrder(List<OrderEntity> orders, bool isWide) {
+    final targetId = _pendingTargetOrderId;
+    if (targetId == null) return;
+
+    final foundIndex = orders.indexWhere((o) => o.id == targetId);
+    if (foundIndex != -1) {
+      _pendingTargetOrderId = null;
+      _selectOrder(orders[foundIndex], updateUrl: isWide);
+      if (!isWide) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _selectedOrder != null) {
+            _showOrderDetails(_selectedOrder!, false);
+          }
+        });
+      }
+    } else {
+      _pendingTargetOrderId = null;
+      _fetchAndSelectOrder(targetId, isWide);
+    }
+  }
+
+  Future<void> _fetchAndSelectOrder(String targetId, bool isWide) async {
+    if (_isFetchingTargetOrder) return;
+    _isFetchingTargetOrder = true;
+    try {
+      final res = await sl<OrdersRepository>().getOrderById(targetId);
+      if (!mounted) return;
+      res.fold(
+        (failure) {
+          AppSnackbar.show(
+            context,
+            message: 'No se pudo encontrar el pedido asociado.',
+            type: SnackbarType.error,
+          );
+        },
+        (order) {
+          _selectOrder(order, updateUrl: isWide);
+          if (!isWide) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _selectedOrder != null) {
+                _showOrderDetails(_selectedOrder!, false);
+              }
+            });
+          }
+        },
+      );
+    } catch (e) {
+      // ignore
+    } finally {
+      if (mounted) {
+        setState(() => _isFetchingTargetOrder = false);
+      } else {
+        _isFetchingTargetOrder = false;
+      }
+    }
   }
 
   @override
@@ -71,10 +171,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
       }
     }
 
-    // Atajo 'Escape' para desenfocar el buscador
+    // Atajo 'Escape' para desenfocar el buscador o deseleccionar pedido
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       if (_searchFocusNode.hasFocus) {
         _searchFocusNode.unfocus();
+        return KeyEventResult.handled;
+      }
+      if (_selectedOrder != null) {
+        _selectOrder(null, updateUrl: true);
         return KeyEventResult.handled;
       }
     }
@@ -98,17 +202,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
       if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
         final nextIndex = (currentIndex + 1).clamp(0, orders.length - 1);
         if (nextIndex != currentIndex) {
-          setState(() {
-            _selectedOrder = orders[nextIndex];
-          });
+          _selectOrder(orders[nextIndex], updateUrl: true);
           return KeyEventResult.handled;
         }
       } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
         final prevIndex = (currentIndex - 1).clamp(0, orders.length - 1);
         if (prevIndex != currentIndex) {
-          setState(() {
-            _selectedOrder = orders[prevIndex];
-          });
+          _selectOrder(orders[prevIndex], updateUrl: true);
           return KeyEventResult.handled;
         }
       }
@@ -194,9 +294,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Future<void> _showOrderDetails(OrderEntity order, bool isWide) async {
     if (isWide) {
-      setState(() {
-        _selectedOrder = order;
-      });
+      _selectOrder(order, updateUrl: true);
       return;
     }
 
@@ -230,9 +328,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (wasModified && mounted) {
       context.read<OrdersCubit>().loadOrders(background: true);
     }
-    setState(() {
-      _selectedOrder = null;
-    });
+    _selectOrder(null, updateUrl: true);
   }
 
   Widget _buildFilterChip({
@@ -348,21 +444,43 @@ class _OrdersScreenState extends State<OrdersScreen> {
             builder: (context, state) {
               final cubit = context.read<OrdersCubit>();
 
+              if (_pendingTargetOrderId != null) {
+                _resolveTargetOrder(state.orders, isWide);
+              }
+
               // ── Sincronización Estricta de Pedido Seleccionado ─────────────
               OrderEntity? currentSelectedOrder;
-              if (state.orders.isNotEmpty) {
-                if (_selectedOrder != null) {
-                  final index = state.orders.indexWhere(
-                    (o) => o.id == _selectedOrder!.id,
-                  );
-                  currentSelectedOrder =
-                      index != -1 ? state.orders[index] : state.orders.first;
+              if (_pendingTargetOrderId == null) {
+                if (state.orders.isNotEmpty) {
+                  if (_selectedOrder != null) {
+                    final index = state.orders.indexWhere(
+                      (o) => o.id == _selectedOrder!.id,
+                    );
+                    if (index != -1) {
+                      currentSelectedOrder = state.orders[index];
+                    } else {
+                      // Si no está en state.orders (es foránea), se preserva intacta
+                      currentSelectedOrder = _selectedOrder;
+                    }
+                  } else if (isWide) {
+                    currentSelectedOrder = state.orders.first;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted && _selectedOrder == null) {
+                        _selectOrder(currentSelectedOrder, updateUrl: true);
+                      }
+                    });
+                  }
                 } else {
-                  currentSelectedOrder = state.orders.first;
+                  currentSelectedOrder = null;
                 }
               } else {
-                currentSelectedOrder = null;
+                currentSelectedOrder = _selectedOrder;
               }
+
+              final displayOrders = (currentSelectedOrder != null &&
+                      !state.orders.any((o) => o.id == currentSelectedOrder!.id))
+                  ? [currentSelectedOrder, ...state.orders]
+                  : state.orders;
 
               final scrollContent = CustomScrollView(
                 slivers: [
@@ -422,6 +540,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       isWide,
                       isLoyaltyEnabled,
                       currentSelectedOrder,
+                      displayOrders,
                     ),
                   ),
                 ],
@@ -479,9 +598,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                         context
                                             .read<OrdersCubit>()
                                             .updateOrderInList(updated);
-                                        setState(() {
-                                          _selectedOrder = updated;
-                                        });
+                                        _selectOrder(updated, updateUrl: true);
                                         context
                                             .read<OrdersCubit>()
                                             .loadOrders(background: true);
@@ -510,9 +627,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
     bool isWide,
     bool isLoyaltyEnabled,
     OrderEntity? selectedOrder,
+    List<OrderEntity> displayOrders,
   ) {
     final totalPages = state.totalPages;
-    final pageItems = state.orders;
+    final pageItems = displayOrders;
 
     if (state.isLoading) {
       return SliverList(

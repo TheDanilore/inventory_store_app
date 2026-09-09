@@ -584,7 +584,16 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   }
                 }
 
+                // Si hay una orden foránea seleccionada (ej. Deep Link desde otra página),
+                // se fija arriba para que siempre aparezca visible y seleccionada en el panel izquierdo
+                final displayOrders =
+                    (_selectedOrder != null &&
+                            !filtered.any((o) => o.id == _selectedOrder!.id))
+                        ? [_selectedOrder!, ...filtered]
+                        : filtered;
+
                 final listContent = Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // ── Borrador ──────────────────────────────────────────────
                     if (_hasDraft)
@@ -850,11 +859,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                       16,
                                       16,
                                     ),
-                                    itemCount: filtered.length,
+                                    itemCount: displayOrders.length,
                                     separatorBuilder:
                                         (_, _) => const SizedBox(height: 10),
                                     itemBuilder: (context, index) {
-                                      final po = filtered[index];
+                                      final po = displayOrders[index];
                                       final isSel =
                                           isTablet &&
                                           _selectedOrder?.id == po.id;
@@ -969,6 +978,7 @@ class _CompactKpiRibbon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(

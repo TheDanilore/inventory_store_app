@@ -88,10 +88,28 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       }
 
       if (searchText.trim().isNotEmpty) {
-        final txt = '%${searchText.trim()}%';
-        query = query.or(
-          'supplier_name.ilike.$txt,document_number.ilike.$txt,notes.ilike.$txt',
-        );
+        final clean = searchText.replaceAll('#', '').trim();
+        final txt = '%$clean%';
+        final isFullUuid = RegExp(
+          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+        ).hasMatch(clean);
+        final isShortUuid = RegExp(r'^[0-9a-fA-F]{8}$').hasMatch(clean);
+
+        if (isFullUuid) {
+          query = query.or(
+            'id.eq.$clean,supplier_name.ilike.$txt,document_number.ilike.$txt,notes.ilike.$txt',
+          );
+        } else if (isShortUuid) {
+          final minUuid = '${clean.toLowerCase()}-0000-0000-0000-000000000000';
+          final maxUuid = '${clean.toLowerCase()}-ffff-ffff-ffff-ffffffffffff';
+          query = query.or(
+            'and(id.gte.$minUuid,id.lte.$maxUuid),supplier_name.ilike.$txt,document_number.ilike.$txt,notes.ilike.$txt',
+          );
+        } else {
+          query = query.or(
+            'supplier_name.ilike.$txt,document_number.ilike.$txt,notes.ilike.$txt',
+          );
+        }
       }
 
       final finalQuery = query
