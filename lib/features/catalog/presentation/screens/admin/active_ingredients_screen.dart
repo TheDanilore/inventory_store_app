@@ -142,6 +142,9 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isMobile = screenWidth < 720;
+
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyK, control: true): () {
@@ -171,6 +174,61 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
         child: AdminLayout(
           title: 'Componentes Químicos',
           showBackButton: true,
+          actions: [
+            if (isMobile)
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                tooltip: 'Actualizar',
+                onPressed: () =>
+                    context.read<IngredientsCubit>().loadIngredients(),
+              )
+            else ...[
+              OutlinedButton.icon(
+                onPressed: () =>
+                    context.read<IngredientsCubit>().loadIngredients(),
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
+                label: const Text(
+                  'Actualizar',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.border),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: () => _showIngredientForm(),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text(
+                  'Nuevo Componente',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ],
           body: BlocConsumer<IngredientsCubit, IngredientsState>(
             listenWhen: (prev, curr) => curr.errorId != prev.errorId,
             listener: (context, state) {
@@ -280,7 +338,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
       ),
       child: Row(
         children: [
-          // Campo de búsqueda con badge Ctrl+K
+          // Campo de búsqueda con badge Ctrl K
           Expanded(
             child: _SearchBar(
               controller: _searchCtrl,
@@ -298,20 +356,6 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
 
           // Píldora de estado con contador
           _IngredientCounterBadge(count: state.ingredients.length),
-          const SizedBox(width: 12),
-
-          // Botón de refresco con feedback
-          _RefreshButton(
-            isLoading: state.viewState == ViewState.loading,
-            onRefresh: () => cubit.loadIngredients(),
-          ),
-          const SizedBox(width: 14),
-
-          // Botón de acción principal "+ Nuevo Componente"
-          _NewIngredientButton(
-            onPressed: () => _showIngredientForm(),
-            showShortcut: isDesktop,
-          ),
         ],
       ),
     );
@@ -615,105 +659,6 @@ class _IngredientCounterBadge extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _RefreshButton extends StatelessWidget {
-  final bool isLoading;
-  final VoidCallback onRefresh;
-
-  const _RefreshButton({required this.isLoading, required this.onRefresh});
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'Actualizar lista',
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: isLoading ? null : onRefresh,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
-            ),
-            child:
-                isLoading
-                    ? const Center(
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.teal,
-                        ),
-                      ),
-                    )
-                    : const Icon(
-                      Icons.refresh_rounded,
-                      size: 20,
-                      color: AppColors.textSecondary,
-                    ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NewIngredientButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  final bool showShortcut;
-
-  const _NewIngredientButton({
-    required this.onPressed,
-    required this.showShortcut,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: const Icon(Icons.add_rounded, size: 18),
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'Nuevo Componente',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
-          ),
-          if (showShortcut) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'Ctrl N',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

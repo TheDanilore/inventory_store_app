@@ -13,8 +13,6 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
-import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 // ── Intents para atajos de teclado estilo Pro Tool ───────────────────────────
@@ -24,14 +22,6 @@ class _NewCategoryIntent extends Intent {
 
 class _SearchFocusIntent extends Intent {
   const _SearchFocusIntent();
-}
-
-class _NextCategoryIntent extends Intent {
-  const _NextCategoryIntent();
-}
-
-class _PrevCategoryIntent extends Intent {
-  const _PrevCategoryIntent();
 }
 
 class _EscapeIntent extends Intent {
@@ -73,17 +63,6 @@ class _CategoriesManagementScreenState
   final _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
-  // ── Desktop Form State ───────────────────────────────────────────────────
-  final _desktopNameCtrl = TextEditingController();
-  final _desktopDescCtrl = TextEditingController();
-  final _desktopNameFocusNode = FocusNode();
-  CategoryEntity? _editingCategory;
-  bool _isSavingDesktop = false;
-  bool _isSplitViewActive = false;
-
-  /// Color de acento del formulario, reacciona al nombre en tiempo real.
-  Color _previewColor = const Color(0xFF6366F1);
-
   @override
   void initState() {
     super.initState();
@@ -93,14 +72,6 @@ class _CategoriesManagementScreenState
         _isFabExtended.value = false;
       } else if (_scrollController.offset <= 10 && !_isFabExtended.value) {
         _isFabExtended.value = true;
-      }
-    });
-
-    // Live color preview mientras escribe el nombre
-    _desktopNameCtrl.addListener(() {
-      final newColor = _getCategoryColor(_desktopNameCtrl.text.trim());
-      if (newColor != _previewColor) {
-        setState(() => _previewColor = newColor);
       }
     });
 
@@ -116,135 +87,13 @@ class _CategoriesManagementScreenState
     _scrollController.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
-    _desktopNameCtrl.dispose();
-    _desktopDescCtrl.dispose();
-    _desktopNameFocusNode.dispose();
     super.dispose();
   }
 
   // ── Acciones ─────────────────────────────────────────────────────────────
 
   void _showCategoryForm([CategoryEntity? category]) {
-    // Si el panel de Split View está activo y visible en pantalla
-    if (_isSplitViewActive) {
-      setState(() {
-        _editingCategory = category;
-        _desktopNameCtrl.text = category?.name ?? '';
-        _desktopDescCtrl.text = category?.description ?? '';
-        _previewColor = _getCategoryColor(category?.name ?? '');
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _desktopNameFocusNode.requestFocus();
-      });
-      return;
-    }
-
-    // Si NO está activo el Split View (Tablet, móvil o Desktop con sidebar expandido)
-    final cubit = context.read<CategoriesCubit>();
-    final isTabletOrDesktop = MediaQuery.sizeOf(context).width >= 600;
-
-    if (isTabletOrDesktop) {
-      showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (dialogCtx) => Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: BlocProvider.value(
-                value: cubit,
-                child: CategoryFormSheet(category: category),
-              ),
-            ),
-          ),
-        ),
-      );
-    } else {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (sheetCtx) => BlocProvider.value(
-          value: cubit,
-          child: CategoryFormSheet(category: category),
-        ),
-      );
-    }
-  }
-
-  void _handleNextCategory() {
-    if (_searchFocusNode.hasFocus || _desktopNameFocusNode.hasFocus) return;
-    final categories = context.read<CategoriesCubit>().state.categories;
-    if (categories.isEmpty) return;
-    final currentIndex = _editingCategory == null
-        ? -1
-        : categories.indexWhere((c) => c.id == _editingCategory!.id);
-    final nextIndex = (currentIndex + 1).clamp(0, categories.length - 1);
-    _showCategoryForm(categories[nextIndex]);
-  }
-
-  void _handlePrevCategory() {
-    if (_searchFocusNode.hasFocus || _desktopNameFocusNode.hasFocus) return;
-    final categories = context.read<CategoriesCubit>().state.categories;
-    if (categories.isEmpty) return;
-    final currentIndex = _editingCategory == null
-        ? categories.length
-        : categories.indexWhere((c) => c.id == _editingCategory!.id);
-    final prevIndex = (currentIndex - 1).clamp(0, categories.length - 1);
-    _showCategoryForm(categories[prevIndex]);
-  }
-
-  void _clearDesktopForm() {
-    setState(() {
-      _editingCategory = null;
-      _desktopNameCtrl.clear();
-      _desktopDescCtrl.clear();
-      _previewColor = _categoryColors[0];
-    });
-  }
-
-  Future<void> _saveDesktopCategory() async {
-    final name = _desktopNameCtrl.text.trim();
-    if (name.isEmpty) {
-      AppSnackbar.show(
-        context,
-        message: 'El nombre de la categoría es obligatorio.',
-        type: SnackbarType.warning,
-      );
-      _desktopNameFocusNode.requestFocus();
-      return;
-    }
-
-    setState(() => _isSavingDesktop = true);
-    final cubit = context.read<CategoriesCubit>();
-
-    try {
-      final success = await cubit.saveCategory(
-        existingCategory: _editingCategory,
-        name: name,
-        description: _desktopDescCtrl.text.trim(),
-        isActive: _editingCategory?.isActive ?? true,
-      );
-
-      if (mounted) {
-        if (success) {
-          AppSnackbar.show(
-            context,
-            message: _editingCategory == null
-                ? 'Categoría creada correctamente.'
-                : 'Categoría actualizada correctamente.',
-            type: SnackbarType.success,
-          );
-          _clearDesktopForm();
-        }
-      }
-    } finally {
-      if (mounted) setState(() => _isSavingDesktop = false);
-    }
+    CategoryFormSheet.showAdaptive(context, category: category);
   }
 
   Future<void> _handleToggleStatus(
@@ -286,7 +135,6 @@ class _CategoriesManagementScreenState
     if (!mounted) return;
     final success = await cubit.deleteCategory(cat.id!);
     if (success && mounted) {
-      if (_editingCategory?.id == cat.id) _clearDesktopForm();
       AppSnackbar.show(
         context,
         message: 'Categoría eliminada exitosamente.',
@@ -308,16 +156,10 @@ class _CategoriesManagementScreenState
             const _NewCategoryIntent(),
         const SingleActivator(LogicalKeyboardKey.keyN, meta: true):
             const _NewCategoryIntent(),
-        const SingleActivator(LogicalKeyboardKey.slash):
-            const _SearchFocusIntent(),
         const SingleActivator(LogicalKeyboardKey.keyK, control: true):
             const _SearchFocusIntent(),
         const SingleActivator(LogicalKeyboardKey.keyK, meta: true):
             const _SearchFocusIntent(),
-        const SingleActivator(LogicalKeyboardKey.arrowDown):
-            const _NextCategoryIntent(),
-        const SingleActivator(LogicalKeyboardKey.arrowUp):
-            const _PrevCategoryIntent(),
         const SingleActivator(LogicalKeyboardKey.escape): const _EscapeIntent(),
       },
       child: Actions(
@@ -334,25 +176,10 @@ class _CategoriesManagementScreenState
               return null;
             },
           ),
-          _NextCategoryIntent: CallbackAction<_NextCategoryIntent>(
-            onInvoke: (_) {
-              _handleNextCategory();
-              return null;
-            },
-          ),
-          _PrevCategoryIntent: CallbackAction<_PrevCategoryIntent>(
-            onInvoke: (_) {
-              _handlePrevCategory();
-              return null;
-            },
-          ),
           _EscapeIntent: CallbackAction<_EscapeIntent>(
             onInvoke: (_) {
               if (_searchFocusNode.hasFocus) {
                 _searchFocusNode.unfocus();
-              } else if (_editingCategory != null ||
-                  _desktopNameCtrl.text.isNotEmpty) {
-                _clearDesktopForm();
               }
               return null;
             },
@@ -400,26 +227,17 @@ class _CategoriesManagementScreenState
                 ),
                 const SizedBox(width: 8),
                 FilledButton.icon(
-                  onPressed: _showCategoryForm,
-                  icon: Icon(
-                    _editingCategory != null
-                        ? Icons.edit_note_rounded
-                        : Icons.add_rounded,
-                    size: 18,
-                  ),
-                  label: Text(
-                    _editingCategory != null
-                        ? 'Editando...'
-                        : 'Nueva Categoría',
-                    style: const TextStyle(
+                  onPressed: () => _showCategoryForm(),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text(
+                    'Nueva Categoría',
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 13,
                     ),
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: _editingCategory != null
-                        ? _previewColor
-                        : AppColors.primary,
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     shape: RoundedRectangleBorder(
@@ -468,7 +286,6 @@ class _CategoriesManagementScreenState
                 return LayoutBuilder(
                   builder: (context, constraints) {
                     final isDesktopLayout = constraints.maxWidth >= 960;
-                    _isSplitViewActive = isDesktopLayout;
                     return isDesktopLayout
                         ? _buildDesktopLayout(context, state, cubit)
                         : _buildMobileLayout(context, state, cubit);
@@ -494,43 +311,33 @@ class _CategoriesManagementScreenState
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1280),
         child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(flex: 38, child: _buildDesktopFormCard()),
-              const SizedBox(width: 24),
+              _AnimatedSearchBar(
+                controller: _searchCtrl,
+                focusNode: _searchFocusNode,
+                onChanged: cubit.onSearchChanged,
+                onClear: () {
+                  _searchCtrl.clear();
+                  cubit.clearSearch();
+                },
+                hasQuery: state.searchQuery.isNotEmpty,
+              ),
+              const SizedBox(height: 12),
+              _buildStatsBar(cubit),
+              const SizedBox(height: 12),
               Expanded(
-                flex: 62,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _AnimatedSearchBar(
-                      controller: _searchCtrl,
-                      focusNode: _searchFocusNode,
-                      onChanged: cubit.onSearchChanged,
-                      onClear: () {
-                        _searchCtrl.clear();
-                        cubit.clearSearch();
-                      },
-                      hasQuery: state.searchQuery.isNotEmpty,
-                    ),
-                    const SizedBox(height: 10),
-                    _buildStatsBar(cubit),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: () =>
-                            cubit.loadCategories(forceRefresh: true),
-                        color: AppColors.primary,
-                        child: state.viewState == ViewState.loading
-                            ? const CategoriesSkeleton(itemCount: 6)
-                            : cubit.state.categories.isEmpty
-                                ? _buildEmptyState(cubit, state)
-                                : _buildDesktopList(cubit),
-                      ),
-                    ),
-                  ],
+                child: RefreshIndicator(
+                  onRefresh: () =>
+                      cubit.loadCategories(forceRefresh: true),
+                  color: AppColors.primary,
+                  child: state.viewState == ViewState.loading
+                      ? const CategoriesSkeleton(itemCount: 6)
+                      : cubit.state.categories.isEmpty
+                          ? _buildEmptyState(cubit, state)
+                          : _buildDesktopList(cubit),
                 ),
               ),
             ],
@@ -565,226 +372,6 @@ class _CategoriesManagementScreenState
           ],
         ],
       ],
-    );
-  }
-
-  // ── Desktop Form Card ─────────────────────────────────────────────────────
-
-  Widget _buildDesktopFormCard() {
-    final isEditing = _editingCategory != null;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isEditing
-              ? _previewColor.withValues(alpha: 0.35)
-              : AppColors.border,
-          width: isEditing ? 1.5 : 1.0,
-        ),
-        boxShadow: isEditing
-            ? [
-                BoxShadow(
-                  color: _previewColor.withValues(alpha: 0.1),
-                  blurRadius: 24,
-                  spreadRadius: -4,
-                  offset: const Offset(0, 6),
-                ),
-              ]
-            : AppColors.cardShadow(opacity: 0.04),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Accent Header ───────────────────────────────────────────────
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
-            decoration: BoxDecoration(
-              color: _previewColor.withValues(alpha: 0.06),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(15),
-                topRight: Radius.circular(15),
-              ),
-              border: Border(
-                bottom: BorderSide(
-                  color: _previewColor.withValues(alpha: 0.12),
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                // Swatch animado – preview del ícono de la categoría
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 350),
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: _previewColor.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _previewColor.withValues(alpha: 0.28),
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.style_rounded,
-                    color: _previewColor,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        child: Text(
-                          isEditing ? 'Editar Categoría' : 'Nueva Categoría',
-                          key: ValueKey(isEditing),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            letterSpacing: -0.2,
-                            color: isEditing
-                                ? _previewColor
-                                : AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        child: Text(
-                          isEditing
-                              ? 'Modificando "${_editingCategory!.name}"'
-                              : 'Organiza tu catálogo con categorías claras.',
-                          key: ValueKey(
-                              isEditing ? _editingCategory!.id : 'new'),
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            color: AppColors.textSecondary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (isEditing)
-                  Tooltip(
-                    message: 'Escape para cancelar',
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        'Esc',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // ── Campos del formulario ───────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-            child: Column(
-              children: [
-                AppTextField(
-                  controller: _desktopNameCtrl,
-                  focusNode: _desktopNameFocusNode,
-                  label: 'Nombre de la Categoría',
-                  icon: Icons.label_outlined,
-                  hintText: 'Ej: Agroquímicos, Fertilizantes, Semillas...',
-                  textCapitalization: TextCapitalization.sentences,
-                  textInputAction: TextInputAction.next,
-                  onFieldSubmitted: (_) =>
-                      _isSavingDesktop ? null : _saveDesktopCategory(),
-                ),
-                const SizedBox(height: 14),
-                AppTextField(
-                  controller: _desktopDescCtrl,
-                  label: 'Descripción (Opcional)',
-                  icon: Icons.notes_rounded,
-                  hintText:
-                      'Ej: Productos de protección y nutrición vegetal...',
-                  maxLines: 3,
-                  textCapitalization: TextCapitalization.sentences,
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    if (isEditing) ...[
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed:
-                              _isSavingDesktop ? null : _clearDesktopForm,
-                          icon: const Icon(Icons.close_rounded, size: 16),
-                          label: const Text('Cancelar'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.textSecondary,
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 12),
-                            side: const BorderSide(color: AppColors.border),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            textStyle: const TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 13),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                    ],
-                    Expanded(
-                      flex: isEditing ? 1 : 2,
-                      child: AppPrimaryButton(
-                        label: isEditing
-                            ? 'Guardar Cambios'
-                            : 'Crear Categoría',
-                        loading: _isSavingDesktop,
-                        onPressed:
-                            _isSavingDesktop ? null : _saveDesktopCategory,
-                        backgroundColor:
-                            isEditing ? _previewColor : AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _KbdBadge(label: 'Enter'),
-                    const SizedBox(width: 5),
-                    const Text(
-                      'guardar',
-                      style:
-                          TextStyle(fontSize: 11, color: AppColors.textMuted),
-                    ),
-                    ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -847,7 +434,7 @@ class _CategoriesManagementScreenState
       separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (context, index) {
         final cat = categories[index];
-        final isSelected = _editingCategory?.id == cat.id;
+        const isSelected = false;
         final catColor = _getCategoryColor(cat.name);
 
         return TweenAnimationBuilder<double>(
@@ -1524,7 +1111,7 @@ class _AnimatedSearchBarState extends State<_AnimatedSearchBar> {
                   onPressed: widget.onClear,
                 )
               : Tooltip(
-                  message: 'Atajo de teclado: /',
+                  message: 'Atajo de teclado: Ctrl K',
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 10),
@@ -1536,9 +1123,9 @@ class _AnimatedSearchBarState extends State<_AnimatedSearchBar> {
                         borderRadius: BorderRadius.circular(5),
                       ),
                       child: const Text(
-                        '/',
+                        'Ctrl K',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 10.5,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
                         ),
@@ -1581,37 +1168,6 @@ class _StatPill extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: color,
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Keyboard Badge
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _KbdBadge extends StatelessWidget {
-  final String label;
-
-  const _KbdBadge({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 10.5,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textSecondary,
-          fontFamily: 'monospace',
         ),
       ),
     );

@@ -96,9 +96,10 @@ class _AttributesManagementScreenState
       shortcuts: <ShortcutActivator, Intent>{
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyN):
             const _NewAttributeIntent(),
-        LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyN):
-            const _NewAttributeIntent(),
-        LogicalKeySet(LogicalKeyboardKey.slash): const _SearchFocusIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyK):
+            const _SearchFocusIntent(),
+        LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyK):
+            const _SearchFocusIntent(),
         LogicalKeySet(LogicalKeyboardKey.escape): const _EscapeIntent(),
       },
       child: Actions(
@@ -344,9 +345,9 @@ class _AttributesManagementScreenState
                                       border: Border.all(color: AppColors.border),
                                     ),
                                     child: const Text(
-                                      '/',
+                                      'Ctrl K',
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 10.5,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.textSecondary,
                                       ),
