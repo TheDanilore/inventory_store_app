@@ -368,6 +368,68 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
       builder: (context, cartState) {
         final hasItems = cartState.items.isNotEmpty;
 
+        if (!hasItems) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: const Icon(
+                      Icons.remove_shopping_cart_outlined,
+                      size: 40,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'La caja está vacía',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Los productos que agregues desde el catálogo se registrarán aquí para la venta en curso.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.storefront_rounded, size: 18),
+                    label: const Text('Explorar Catálogo'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         return Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -377,59 +439,69 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: AppColors.background,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Column(
                   children: [
-                    const Icon(
-                      Icons.shopping_bag_outlined,
-                      size: 36,
-                      color: AppColors.primary,
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.teal.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.shopping_bag_outlined,
+                        size: 32,
+                        color: AppColors.teal,
+                      ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Text(
-                      hasItems
-                          ? '${cartState.items.length} producto(s) en la venta actual'
-                          : 'El carrito está vacío',
+                      '${cartState.items.length} producto(s) en la venta actual',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Total: S/ ${cartState.totalAmount.toStringAsFixed(2)}',
                       style: const TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
+                        color: AppColors.teal,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed:
-                    hasItems
-                        ? () {
-                          context.read<CartCubit>().clearCart();
-                          Navigator.pop(context);
-                          AppSnackbar.show(
-                            context,
-                            message: 'Carrito vaciado correctamente.',
-                            type: SnackbarType.info,
-                          );
-                        }
-                        : null,
-                style: ElevatedButton.styleFrom(
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () {
+                  context.read<CartCubit>().clearCart();
+                  context.read<PosCubit>().clearAllBatchOverrides();
+                  Navigator.pop(context);
+                  AppSnackbar.show(
+                    context,
+                    message: 'Carrito vaciado correctamente.',
+                    type: SnackbarType.info,
+                  );
+                },
+                style: FilledButton.styleFrom(
                   backgroundColor: AppColors.error,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                label: const Text('Vaciar Carrito Actual'),
+                label: const Text(
+                  'Vaciar Carrito Actual',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
             ],
           ),

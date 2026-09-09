@@ -51,6 +51,66 @@ class _AdminProductCardState extends State<AdminProductCard> {
     }
   }
 
+  /// Placeholder elegante cuando no hay imagen de producto.
+  Widget _buildProductPlaceholder(String name) {
+    final initial = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'P';
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.border,
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Sin imagen',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMuted,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAgotado =
@@ -187,22 +247,12 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                             ),
                                           ),
                                       errorWidget:
-                                          (_, _, _) => const ColoredBox(
-                                            color: Color(0xFFF1F5F9),
-                                            child: Icon(
-                                              Icons.image_not_supported_rounded,
-                                              size: 40,
-                                              color: AppColors.textMuted,
-                                            ),
+                                          (_, _, _) => _buildProductPlaceholder(
+                                            widget.product.name,
                                           ),
                                     )
-                                    : const ColoredBox(
-                                      color: Color(0xFFF1F5F9),
-                                      child: Icon(
-                                        Icons.image_not_supported_rounded,
-                                        size: 40,
-                                        color: AppColors.textMuted,
-                                      ),
+                                    : _buildProductPlaceholder(
+                                      widget.product.name,
                                     ),
                           ),
                         ),
@@ -396,10 +446,16 @@ class _AdminProductCardState extends State<AdminProductCard> {
                     children: [
                       if (widget.isFullPosMode)
                         _PrimaryCardAction(
-                          icon: Icons.add_shopping_cart_rounded,
-                          label: 'Agregar',
+                          icon:
+                              isAgotado
+                                  ? Icons.block_rounded
+                                  : Icons.add_shopping_cart_rounded,
+                          label: isAgotado ? 'Agotado' : 'Agregar',
                           enabled: !isAgotado && !isDesactivado,
-                          color: Theme.of(context).colorScheme.primary,
+                          color:
+                              isAgotado
+                                  ? AppColors.textMuted
+                                  : Theme.of(context).colorScheme.primary,
                           onTap:
                               (!isAgotado && !isDesactivado)
                                   ? () {
@@ -527,6 +583,10 @@ class _PrimaryCardAction extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               onTap: onTap,
+              mouseCursor:
+                  enabled
+                      ? SystemMouseCursors.click
+                      : SystemMouseCursors.forbidden,
               borderRadius: radius,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
@@ -535,8 +595,12 @@ class _PrimaryCardAction extends StatelessWidget {
                   color:
                       enabled
                           ? color.withValues(alpha: 0.10)
-                          : Colors.transparent,
+                          : Colors.black.withValues(alpha: 0.03),
                   borderRadius: radius,
+                  border:
+                      !enabled && isFullWidth
+                          ? Border.all(color: AppColors.border, width: 0.5)
+                          : null,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,

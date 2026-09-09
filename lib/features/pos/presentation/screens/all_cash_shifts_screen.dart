@@ -44,6 +44,125 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
     });
   }
 
+  void _showUserPickerAdaptive(
+    CashShiftsCubit cubit,
+    CashShiftsState state,
+  ) {
+    if (state.isLoadingProfiles) return;
+
+    final isDesktop = MediaQuery.of(context).size.width >= 720;
+    if (isDesktop) {
+      showDialog(
+        context: context,
+        builder:
+            (dialogCtx) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.group_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Filtrar por Usuario',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 380,
+                height: 320,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  children: [
+                    _buildUserOption(
+                      cubit,
+                      state,
+                      title: 'Todos los usuarios',
+                      value: null,
+                      icon: Icons.group_rounded,
+                    ),
+                    const Divider(height: 20),
+                    ...state.profiles.map(
+                      (p) => _buildUserOption(
+                        cubit,
+                        state,
+                        title: p['full_name'] as String,
+                        value: p['id'] as String,
+                        icon: Icons.person_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text('Cerrar'),
+                ),
+              ],
+            ),
+      );
+    } else {
+      _showUserPickerBottomSheet(cubit, state);
+    }
+  }
+
+  Widget _buildKpiBar(BuildContext context, CashShiftsState state) {
+    final total = state.shifts.length;
+    final openCount =
+        state.shifts.where((s) => s.status == CashShiftStatus.open).length;
+    final closedCount =
+        state.shifts.where((s) => s.status == CashShiftStatus.closed).length;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: _KpiCard(
+              title: 'Total Registros',
+              value: '$total',
+              icon: Icons.receipt_long_rounded,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _KpiCard(
+              title: 'Turnos Abiertos',
+              value: '$openCount',
+              icon: Icons.play_circle_fill_rounded,
+              color: AppColors.success,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _KpiCard(
+              title: 'Turnos Cerrados',
+              value: '$closedCount',
+              icon: Icons.check_circle_rounded,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showUserPickerBottomSheet(
     CashShiftsCubit cubit,
     CashShiftsState state,
@@ -187,9 +306,13 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
 
           return Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
+              constraints: const BoxConstraints(maxWidth: 1100),
               child: Column(
                 children: [
+                  // KPI Header Bar
+                  _buildKpiBar(context, state),
+                  const SizedBox(height: 12),
+
                   // Filters Section
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -198,10 +321,9 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                     ),
                     decoration: BoxDecoration(
                       color: theme.cardColor,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: theme.dividerColor.withValues(alpha: 0.5),
-                        ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: theme.dividerColor.withValues(alpha: 0.5),
                       ),
                     ),
                     child: Column(
@@ -221,7 +343,7 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                         ),
                         const SizedBox(height: 16),
                         InkWell(
-                          onTap: () => _showUserPickerBottomSheet(cubit, state),
+                          onTap: () => _showUserPickerAdaptive(cubit, state),
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -722,6 +844,79 @@ class _ShiftsSkeleton extends StatelessWidget {
       itemBuilder: (context, index) {
         return AppShimmer(height: 150, borderRadius: 16.0);
       },
+    );
+  }
+}
+
+class _KpiCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _KpiCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

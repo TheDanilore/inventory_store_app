@@ -29,10 +29,10 @@ class DesktopPosPanel extends StatefulWidget {
   const DesktopPosPanel({super.key, this.onSaleCompleted});
 
   @override
-  State<DesktopPosPanel> createState() => _DesktopPosPanelState();
+  State<DesktopPosPanel> createState() => DesktopPosPanelState();
 }
 
-class _DesktopPosPanelState extends State<DesktopPosPanel> {
+class DesktopPosPanelState extends State<DesktopPosPanel> {
   // Controladores
   final _formKey = GlobalKey<FormState>();
   final _clienteCtrl = TextEditingController();
@@ -94,6 +94,21 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     _puntosCtrl.text = '0';
     FocusScope.of(context).unfocus();
     posCubit.fetchClientCredit(id);
+  }
+
+  /// Invocado externamente (ej: atajo de teclado F2) para iniciar el cobro sin usar el mouse.
+  void triggerCheckout() {
+    final posCubit = context.read<PosCubit>();
+    final cartCubit = context.read<CartCubit>();
+    if (cartCubit.state.items.isEmpty) {
+      AppSnackbar.show(
+        context,
+        message: 'No hay productos en la caja para cobrar',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+    _processSale(posCubit, cartCubit, isDraft: false);
   }
 
   Future<void> _processSale(
@@ -883,6 +898,26 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'F2',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                         ),
                       ],

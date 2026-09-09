@@ -54,6 +54,7 @@ class AdminPosScreen extends StatefulWidget {
 class _AdminPosScreenState extends State<AdminPosScreen> {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
+  final _desktopPanelKey = GlobalKey<DesktopPosPanelState>();
   Timer? _debounce;
 
   @override
@@ -97,18 +98,56 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.f1): () {
           _searchFocusNode.requestFocus();
+          _searchCtrl.selection = TextSelection(
+            baseOffset: 0,
+            extentOffset: _searchCtrl.text.length,
+          );
         },
         const SingleActivator(LogicalKeyboardKey.f2): () {
-          // F2: Ir a Cobro / Checkout
-          context.push('/admin/pos-checkout');
+          final isDesktop = MediaQuery.of(context).size.width >= 800;
+          if (isDesktop) {
+            _desktopPanelKey.currentState?.triggerCheckout();
+          } else {
+            context.push('/admin/pos-checkout');
+          }
         },
         const SingleActivator(LogicalKeyboardKey.f4): () {
-          // F4: Limpiar Carrito
-          context.read<CartCubit>().clearCart();
-          AppSnackbar.show(
-            context,
-            message: 'Carrito vaciado mediante atajo F4',
-            type: SnackbarType.info,
+          final cartCubit = context.read<CartCubit>();
+          if (cartCubit.state.items.isEmpty) return;
+          showDialog(
+            context: context,
+            builder:
+                (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  title: const Text('¿Vaciar caja actual?'),
+                  content: const Text(
+                    'Se eliminarán todos los productos de la caja.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancelar'),
+                    ),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                      ),
+                      onPressed: () {
+                        cartCubit.clearCart();
+                        context.read<PosCubit>().clearAllBatchOverrides();
+                        Navigator.pop(ctx);
+                        AppSnackbar.show(
+                          context,
+                          message: 'Caja vaciada mediante atajo F4',
+                          type: SnackbarType.info,
+                        );
+                      },
+                      child: const Text('Vaciar'),
+                    ),
+                  ],
+                ),
           );
         },
         const SingleActivator(LogicalKeyboardKey.f5): () {
@@ -248,7 +287,12 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                       Expanded(flex: 6, child: catalogContent),
                       if (isDesktop)
                         Container(
-                          width: 440,
+                          width:
+                              MediaQuery.of(context).size.width >= 1300
+                                  ? 440
+                                  : MediaQuery.of(context).size.width >= 1000
+                                  ? 400
+                                  : 360,
                           decoration: BoxDecoration(
                             color: Colors.white,
                             border: Border(
@@ -267,6 +311,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                             ],
                           ),
                           child: DesktopPosPanel(
+                            key: _desktopPanelKey,
                             onSaleCompleted: (soldQuantities) {
                               context
                                   .read<AdminCatalogCubit>()

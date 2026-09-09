@@ -196,6 +196,12 @@ class _SortFilterChip extends StatelessWidget {
                 color: AppColors.textPrimary,
               ),
             ),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 14,
+              color: AppColors.textMuted,
+            ),
           ],
         ),
       ),
@@ -287,13 +293,19 @@ class _StockFilterChip extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              stockFilterState.label,
+              'Stock: ${stockFilterState.label}',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color:
                     hasFilter ? const Color(0xFF065F46) : AppColors.textPrimary,
               ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 14,
+              color: hasFilter ? const Color(0xFF059669) : AppColors.textMuted,
             ),
           ],
         ),
