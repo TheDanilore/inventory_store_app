@@ -980,13 +980,24 @@ class _EntryCard extends StatelessWidget {
                             bgColor: AppColors.teal.withValues(alpha: 0.12),
                           ),
                         if (entry.purchaseOrderId != null)
-                          _Pill(
-                            icon: Icons.link_rounded,
-                            label:
-                                'Orden #${entry.purchaseOrderId!.substring(0, entry.purchaseOrderId!.length >= 8 ? 8 : entry.purchaseOrderId!.length).toUpperCase()}',
-                            color: Colors.purple.shade700,
-                            bgColor: Colors.purple.shade400.withValues(
-                              alpha: 0.12,
+                          Tooltip(
+                            message: 'Ver Orden de Compra asociada',
+                            child: InkWell(
+                              onTap: () {
+                                context.go(
+                                  '/admin/purchase-orders?selectedId=${entry.purchaseOrderId}',
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(6),
+                              child: _Pill(
+                                icon: Icons.link_rounded,
+                                label:
+                                    'Orden #${entry.purchaseOrderId!.substring(0, entry.purchaseOrderId!.length >= 8 ? 8 : entry.purchaseOrderId!.length).toUpperCase()} ↗',
+                                color: Colors.purple.shade700,
+                                bgColor: Colors.purple.shade400.withValues(
+                                  alpha: 0.12,
+                                ),
+                              ),
                             ),
                           ),
                       ],

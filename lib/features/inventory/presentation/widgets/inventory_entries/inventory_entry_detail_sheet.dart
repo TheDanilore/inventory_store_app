@@ -101,7 +101,46 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
         children: [
           // ── Header compartido ────────────────────────────────────
           if (widget.isBottomSheet)
-            DetailSheetHeader(title: 'Detalle de Entrada')
+            DetailSheetHeader(
+              title: 'Detalle de Entrada',
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '#${entry.id.substring(0, entry.id.length > 8 ? 8 : entry.id.length).toUpperCase()}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, size: 16),
+                    tooltip: 'Copiar ID completo',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: entry.id));
+                      AppSnackbar.show(
+                        context,
+                        message: 'ID copiado al portapapeles',
+                        type: SnackbarType.info,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            )
           else
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
@@ -137,13 +176,26 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                   const Spacer(),
                   if (entry.purchaseOrderId != null)
                     OutlinedButton.icon(
-                      onPressed: () => context.push('/admin/purchase-orders'),
+                      onPressed: () => context.go(
+                        '/admin/purchase-orders?selectedId=${entry.purchaseOrderId}',
+                      ),
                       icon: const Icon(Icons.link_rounded, size: 14),
-                      label: const Text('Ver Orden de Compra ↗', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      label: Text(
+                        'Ver Orden #${entry.purchaseOrderId!.substring(0, entry.purchaseOrderId!.length > 8 ? 8 : entry.purchaseOrderId!.length).toUpperCase()} ↗',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       style: OutlinedButton.styleFrom(
                         visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 0,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                 ],
@@ -157,6 +209,81 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── Banner de Trazabilidad: Orden de Compra Asociada (Móvil / HIG) ──
+                  if (widget.isBottomSheet && entry.purchaseOrderId != null) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.purple.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.shade100,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.receipt_long_rounded,
+                              color: Colors.purple.shade800,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'ORDEN DE COMPRA VINCULADA',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.purple.shade800,
+                                    letterSpacing: 0.4,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '#${entry.purchaseOrderId!.substring(0, entry.purchaseOrderId!.length > 8 ? 8 : entry.purchaseOrderId!.length).toUpperCase()}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.purple.shade900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          FilledButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              context.go('/admin/purchase-orders?selectedId=${entry.purchaseOrderId}');
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.purple.shade700,
+                              foregroundColor: Colors.white,
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(Icons.open_in_new_rounded, size: 14),
+                            label: const Text(
+                              'Ver Orden',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   // ── Card de metadata ───────────────────────────────
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -335,6 +462,123 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                                     ),
                                   ],
                                 ),
+                            ],
+                          ),
+                        ],
+
+                        // ── Fila de Orden de Compra Asociada (Alta visibilidad en Card) ──
+                        if (entry.purchaseOrderId != null) ...[
+                          const Divider(height: 20, color: AppColors.border),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'ORDEN DE COMPRA ASOCIADA',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textSecondary,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.purple.shade50,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: Colors.purple.shade200,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.receipt_long_rounded,
+                                              size: 14,
+                                              color: Colors.purple.shade700,
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              '#${entry.purchaseOrderId!.substring(0, entry.purchaseOrderId!.length > 8 ? 8 : entry.purchaseOrderId!.length).toUpperCase()}',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w800,
+                                                color: Colors.purple.shade800,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.copy_rounded,
+                                          size: 15,
+                                        ),
+                                        tooltip: 'Copiar ID de Orden',
+                                        visualDensity: VisualDensity.compact,
+                                        onPressed: () {
+                                          Clipboard.setData(
+                                            ClipboardData(
+                                              text: entry.purchaseOrderId!,
+                                            ),
+                                          );
+                                          AppSnackbar.show(
+                                            context,
+                                            message: 'ID de Orden copiado',
+                                            type: SnackbarType.info,
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  if (widget.isBottomSheet) {
+                                    Navigator.of(context).pop();
+                                  }
+                                  context.go(
+                                    '/admin/purchase-orders?selectedId=${entry.purchaseOrderId}',
+                                  );
+                                },
+                                icon: const Icon(
+                                  Icons.open_in_new_rounded,
+                                  size: 14,
+                                ),
+                                label: const Text(
+                                  'Ver Orden ↗',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.purple.shade700,
+                                  side: BorderSide(
+                                    color: Colors.purple.shade300,
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 0,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ],

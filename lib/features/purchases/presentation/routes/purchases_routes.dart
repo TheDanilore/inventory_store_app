@@ -26,11 +26,15 @@ class PurchasesRoutes {
     ),
     GoRoute(
       path: '/admin/purchase-orders',
-      builder:
-          (context, state) => BlocProvider(
-            create: (_) => sl<PurchaseOrdersCubit>(),
-            child: const PurchaseOrdersScreen(),
-          ),
+      builder: (context, state) {
+        final orderId =
+            state.uri.queryParameters['selectedId'] ??
+            state.uri.queryParameters['orderId'];
+        return BlocProvider(
+          create: (_) => sl<PurchaseOrdersCubit>(),
+          child: PurchaseOrdersScreen(targetOrderId: orderId),
+        );
+      },
     ),
     GoRoute(
       path: '/admin/supplier-credit-movements/:creditId',

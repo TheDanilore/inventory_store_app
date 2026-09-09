@@ -11,6 +11,7 @@ import 'package:inventory_store_app/features/purchases/data/models/purchase_orde
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_cubit.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/fetch_purchase_order_items_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_purchase_order_by_id_usecase.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_state.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_card.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_detail_sheet.dart';
@@ -23,7 +24,9 @@ import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 
 class PurchaseOrdersScreen extends StatefulWidget {
-  const PurchaseOrdersScreen({super.key});
+  final String? targetOrderId;
+
+  const PurchaseOrdersScreen({super.key, this.targetOrderId});
 
   @override
   State<PurchaseOrdersScreen> createState() => _PurchaseOrdersScreenState();
@@ -39,6 +42,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   bool _hasDraft = false;
   Timer? _debounce;
   PurchaseOrderModel? _selectedOrder;
+  String? _pendingTargetOrderId;
+  bool _isFetchingTargetOrder = false;
 
   static const _statusLabels = {
     'Todos': 'Todos',
@@ -69,10 +74,25 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   @override
   void initState() {
     super.initState();
+    _pendingTargetOrderId = widget.targetOrderId;
     _checkDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       cubit.loadOrders(refresh: true);
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant PurchaseOrdersScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.targetOrderId != oldWidget.targetOrderId &&
+        widget.targetOrderId != null) {
+      _pendingTargetOrderId = widget.targetOrderId;
+      final state = cubit.state;
+      if (state is PurchaseOrdersLoaded) {
+        final isTablet = MediaQuery.sizeOf(context).width >= 800;
+        _resolveTargetOrder(state.orders.cast<PurchaseOrderModel>(), isTablet);
+      }
+    }
   }
 
   Future<void> _checkDraft() async {
@@ -256,6 +276,69 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     );
   }
 
+  void _resolveTargetOrder(List<PurchaseOrderModel> orders, bool isTablet) {
+    final targetId = _pendingTargetOrderId;
+    if (targetId == null) return;
+
+    final foundIndex = orders.indexWhere((o) => o.id == targetId);
+    if (foundIndex != -1) {
+      _pendingTargetOrderId = null;
+      setState(() {
+        _selectedOrder = orders[foundIndex];
+      });
+      if (!isTablet) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _selectedOrder != null) {
+            _showDetail(context, _selectedOrder!);
+          }
+        });
+      }
+    } else {
+      _pendingTargetOrderId = null;
+      _fetchAndSelectOrder(targetId, isTablet);
+    }
+  }
+
+  Future<void> _fetchAndSelectOrder(String targetId, bool isTablet) async {
+    if (_isFetchingTargetOrder) return;
+    _isFetchingTargetOrder = true;
+    try {
+      final res = await sl<GetPurchaseOrderByIdUseCase>().call(targetId);
+      if (!mounted) return;
+      res.fold(
+        (failure) {
+          AppSnackbar.show(
+            context,
+            message: 'No se pudo encontrar la orden de compra asociada.',
+            type: SnackbarType.error,
+          );
+        },
+        (map) {
+          if (map != null && mounted) {
+            final loadedPo = PurchaseOrderModel.fromMap(map);
+            setState(() {
+              _selectedOrder = loadedPo;
+            });
+            if (!isTablet) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && _selectedOrder != null) {
+                  _showDetail(context, _selectedOrder!);
+                }
+              });
+            }
+          }
+        },
+      );
+    } catch (_) {
+    } finally {
+      if (mounted) {
+        setState(() => _isFetchingTargetOrder = false);
+      } else {
+        _isFetchingTargetOrder = false;
+      }
+    }
+  }
+
   Future<void> _handleReceiveOrder(
     BuildContext context,
     PurchaseOrderModel po,
@@ -401,7 +484,16 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           builder: (context, constraints) {
             final isTablet = constraints.maxWidth >= 800;
 
-            return BlocBuilder<PurchaseOrdersCubit, PurchaseOrdersState>(
+            return BlocConsumer<PurchaseOrdersCubit, PurchaseOrdersState>(
+              listener: (context, state) {
+                if (state is PurchaseOrdersLoaded &&
+                    _pendingTargetOrderId != null) {
+                  _resolveTargetOrder(
+                    state.orders.cast<PurchaseOrderModel>(),
+                    isTablet,
+                  );
+                }
+              },
               builder: (context, state) {
                 final viewModel = _PurchaseOrdersViewModel(
                   context.read<PurchaseOrdersCubit>(),
@@ -422,40 +514,23 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                 final totalAmount = viewModel.totalAmountFiltered;
                 final pendingCount = viewModel.pendingCountFiltered;
 
-                // Sincronizar orden seleccionada si existe en la lista filtrada o por query param
-                final querySelectedId =
-                    GoRouterState.of(context).uri.queryParameters['selectedId'];
-                if (filtered.isNotEmpty) {
-                  if (_selectedOrder != null) {
-                    final index = filtered.indexWhere(
-                      (o) => o.id == _selectedOrder!.id,
-                    );
-                    if (index != -1) {
-                      _selectedOrder = filtered[index];
-                    } else if (isTablet) {
-                      _selectedOrder = filtered.first;
-                    }
-                  } else if (querySelectedId != null) {
-                    final index = filtered.indexWhere(
-                      (o) => o.id == querySelectedId,
-                    );
-                    if (index != -1) {
-                      _selectedOrder = filtered[index];
-                      if (!isTablet) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted && _selectedOrder != null) {
-                            _showDetail(context, _selectedOrder!);
-                          }
-                        });
+                // Sincronizar selección ordinaria SOLO si no hay una orden objetivo pendiente de resolver
+                if (_pendingTargetOrderId == null) {
+                  if (filtered.isNotEmpty) {
+                    if (_selectedOrder != null) {
+                      final index = filtered.indexWhere(
+                        (o) => o.id == _selectedOrder!.id,
+                      );
+                      if (index != -1) {
+                        _selectedOrder = filtered[index];
                       }
+                      // Si no está en filtered (es foránea o filtrada), SE PRESERVA intacta en _selectedOrder!
                     } else if (isTablet) {
                       _selectedOrder = filtered.first;
                     }
-                  } else if (isTablet) {
-                    _selectedOrder = filtered.first;
+                  } else {
+                    _selectedOrder = null;
                   }
-                } else {
-                  _selectedOrder = null;
                 }
 
                 final listContent = Column(

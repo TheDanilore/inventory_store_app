@@ -24,28 +24,32 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       final poResp =
           await _supabase
               .from('purchase_orders')
-              .select(
-                'id, supplier_id, warehouse_id, status, total_amount, payment_method, payment_status, amount_paid, due_date, document_date, document_type, document_number, notes, created_at, updated_at, suppliers(name)',
-              )
+              .select('''
+                id, created_at, supplier_id, supplier_name, warehouse_id,
+                status, total_amount, payment_method, payment_status,
+                amount_paid, due_date, discount_amount, tax_amount,
+                document_date, document_type, document_number, notes, updated_at,
+                suppliers!left(name),
+                warehouses!left(name),
+                purchase_order_items(count)
+              ''')
               .eq('id', poId)
               .maybeSingle();
       return Right(poResp);
     } on PostgrestException catch (e, st) {
-      developer.log(
-        '[PurchaseOrdersRepositoryImpl] getPurchaseOrderById PostgrestException: $e',
+      LoggerService.e(
+        '[PurchaseOrdersRepositoryImpl] getPurchaseOrderById PostgrestException: ${e.message}',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(
         ServerFailure(message: 'Error de base de datos: ${e.message}'),
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         '[PurchaseOrdersRepositoryImpl] getPurchaseOrderById error: $e',
         error: e,
         stackTrace: st,
-        name: 'PurchaseOrdersRepositoryImpl',
       );
       return Left(ServerFailure(message: e.toString()));
     }
