@@ -79,11 +79,17 @@ class CustomersRoutes {
             double.tryParse(state.uri.queryParameters['limit'] ?? '0') ??
             0.0;
 
+        final customerId =
+            args['customerId'] as String? ??
+            state.uri.queryParameters['customerId'] ??
+            '';
+
         return CustomerCreditMovementsScreen(
           creditId: creditId,
           customerName: customerName,
           currentDebt: currentDebt,
           creditLimit: creditLimit,
+          customerId: customerId,
         );
       },
     ),

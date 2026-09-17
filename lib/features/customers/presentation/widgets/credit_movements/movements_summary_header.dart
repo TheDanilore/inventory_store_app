@@ -18,58 +18,70 @@ class MovementsSummaryHeader extends StatelessWidget {
     required this.totalPaid,
   });
 
+  String _getInitials(String name) {
+    if (name.trim().isEmpty) return 'CL';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isAtRisk = debtPercent >= 0.8;
-    final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
-    final primaryContainer = theme.colorScheme.primaryContainer;
+    final isMaxedOut = currentDebt >= creditLimit && creditLimit > 0;
+    final isAtRisk = debtPercent >= 0.8 && !isMaxedOut;
+    final available = (creditLimit - currentDebt).clamp(0.0, double.infinity);
 
-    // Si está en riesgo, colores más oscuros/intensos para contraste
-    final riskColor1 = Colors.red.shade800;
-    final riskColor2 = Colors.red.shade600;
+    final Color progressColor =
+        isMaxedOut
+            ? const Color(0xFFEF4444)
+            : (isAtRisk
+                ? const Color(0xFFF59E0B)
+                : (currentDebt > 0
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFF065F46)));
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeInOut,
-      margin: const EdgeInsets.all(16),
+    return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors:
-              isAtRisk
-                  ? [riskColor1, riskColor2]
-                  : [primaryColor, primaryContainer.withValues(alpha: 0.8)],
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: (isAtRisk ? Colors.red : primaryColor).withValues(
-              alpha: 0.3,
-            ),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Nombre del cliente
+          // Header: Avatar + Customer Name + Status Chip
           Row(
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.15),
+                  ),
+                ),
+                alignment: Alignment.center,
                 child: Text(
-                  customerName.isNotEmpty
-                      ? customerName.substring(0, 1).toUpperCase()
-                      : '?',
+                  _getInitials(customerName),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
+                    fontSize: 15,
                   ),
                 ),
               ),
@@ -79,123 +91,230 @@ class MovementsSummaryHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      customerName,
+                      customerName.isNotEmpty ? customerName : 'Cliente',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
+                        letterSpacing: -0.2,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    Text(
-                      'Cuenta de crédito',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Text(
+                          'Cuenta de crédito',
+                          style: TextStyle(
+                            color: Color(0xFF94A3B8),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildStatusBadge(isMaxedOut, isAtRisk),
+                      ],
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 22),
 
-          // Deuda actual destacada
-          Text(
+          // Big Current Debt
+          const Text(
             'Deuda actual',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 13,
+              color: Color(0xFF94A3B8),
+              fontSize: 12,
               fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             'S/ ${currentDebt.toStringAsFixed(2)}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 34,
+            style: TextStyle(
+              color:
+                  currentDebt > 0
+                      ? (isMaxedOut
+                          ? const Color(0xFFF87171)
+                          : const Color(0xFFF8FAFC))
+                      : const Color(0xFF34D399),
+              fontSize: 32,
               fontWeight: FontWeight.w900,
               letterSpacing: -1,
             ),
           ),
 
-          // Barra de progreso
+          // Progress Bar with Usage
           const SizedBox(height: 16),
-          Semantics(
-            label:
-                'Crédito utilizado: ${(debtPercent * 100).toInt()}% de un límite de S/ ${creditLimit.toStringAsFixed(2)}',
-            value: '${(debtPercent * 100).toInt()} por ciento',
-            child: Column(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: debtPercent,
-                    backgroundColor: Colors.white.withValues(alpha: 0.25),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Colors.white,
-                    ),
-                    minHeight: 6,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${(debtPercent * 100).toStringAsFixed(0)}% usado',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      'Límite: S/ ${creditLimit.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: debtPercent.clamp(0.0, 1.0),
+              backgroundColor: const Color(0xFF334155),
+              valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+              minHeight: 6,
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${(debtPercent * 100).toStringAsFixed(0)}% usado',
+                style: TextStyle(
+                  color: progressColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                'Disp: S/ ${available.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                'Límite: S/ ${creditLimit.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 20),
-          Divider(color: Colors.white.withValues(alpha: 0.2)),
+          const Divider(height: 1, color: Color(0xFF334155)),
           const SizedBox(height: 16),
 
-          // Fila: Total cargado vs total pagado
+          // Two micro-tiles: Total cargado vs Total pagado
           Row(
             children: [
               Expanded(
-                child: _StatChip(
-                  label: 'Total cargado',
-                  value: 'S/ ${totalCharged.toStringAsFixed(2)}',
-                  icon: Icons.arrow_upward_rounded,
-                  color:
-                      isAtRisk
-                          ? Colors.white
-                          : Colors.orange.shade100, // Mejor contraste
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF334155).withValues(alpha: 0.6),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEA580C).withValues(
+                            alpha: 0.15,
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_upward_rounded,
+                          size: 14,
+                          color: Color(0xFFFB923C),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Cargado',
+                              style: TextStyle(
+                                color: Color(0xFF94A3B8),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              'S/ ${totalCharged.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                color: Color(0xFFF8FAFC),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
-                child: _StatChip(
-                  label: 'Total pagado',
-                  value: 'S/ ${totalPaid.toStringAsFixed(2)}',
-                  icon: Icons.arrow_downward_rounded,
-                  color:
-                      isAtRisk
-                          ? Colors.white
-                          : Colors.green.shade100, // Mejor contraste
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF334155).withValues(alpha: 0.6),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(
+                            alpha: 0.15,
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_downward_rounded,
+                          size: 14,
+                          color: Color(0xFF34D399),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Pagado',
+                              style: TextStyle(
+                                color: Color(0xFF94A3B8),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              'S/ ${totalPaid.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                color: Color(0xFF34D399),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -204,63 +323,72 @@ class MovementsSummaryHeader extends StatelessWidget {
       ),
     );
   }
-}
 
-class _StatChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _StatChip({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(
-          alpha: 0.15,
-        ), // Fondo oscuro para mejor contraste
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9), // Más opaco
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+  Widget _buildStatusBadge(bool isMaxedOut, bool isAtRisk) {
+    if (isMaxedOut) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFDC2626).withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: const Text(
+          'Al límite',
+          style: TextStyle(
+            color: Color(0xFFFCA5A5),
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
           ),
-        ],
+        ),
+      );
+    }
+    if (isAtRisk) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFD97706).withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: const Text(
+          'Riesgo',
+          style: TextStyle(
+            color: Color(0xFFFDE68A),
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+    if (currentDebt > 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D9488).withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: const Text(
+          'Con saldo',
+          style: TextStyle(
+            color: Color(0xFF5EEAD4),
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10B981).withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: const Text(
+        'Al día',
+        style: TextStyle(
+          color: Color(0xFF6EE7B7),
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

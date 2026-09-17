@@ -40,17 +40,44 @@ class _MovementCardState extends State<MovementCard> {
         );
       },
       (order) {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          useRootNavigator: true,
-          backgroundColor: Colors.transparent,
-          builder:
-              (ctx) => BlocProvider(
-                create: (_) => sl<OrderDetailCubit>()..fetchData(order.id),
-                child: OrderDetailSheet(order: order),
-              ),
-        );
+        final isWide = MediaQuery.of(context).size.width >= 700;
+        if (isWide) {
+          showDialog(
+            context: context,
+            builder:
+                (ctx) => Dialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 580,
+                      maxHeight: 700,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: BlocProvider(
+                        create:
+                            (_) => sl<OrderDetailCubit>()..fetchData(order.id),
+                        child: OrderDetailSheet(order: order),
+                      ),
+                    ),
+                  ),
+                ),
+          );
+        } else {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            useRootNavigator: true,
+            backgroundColor: Colors.transparent,
+            builder:
+                (ctx) => BlocProvider(
+                  create: (_) => sl<OrderDetailCubit>()..fetchData(order.id),
+                  child: OrderDetailSheet(order: order),
+                ),
+          );
+        }
       },
     );
   }
