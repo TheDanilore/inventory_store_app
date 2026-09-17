@@ -13,12 +13,66 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 class CreditAccountModal extends StatelessWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity? accountToEdit;
+  final bool isDialog;
 
   const CreditAccountModal({
     super.key,
     required this.onSaved,
     this.accountToEdit,
+    this.isDialog = false,
   });
+
+  static Future<bool?> show(
+    BuildContext context, {
+    CustomerCreditEntity? accountToEdit,
+    required VoidCallback onSaved,
+  }) async {
+    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    if (isDesktop) {
+      return showDialog<bool>(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogCtx) {
+          return Center(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 520,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 32,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: CreditAccountModal(
+                  accountToEdit: accountToEdit,
+                  onSaved: onSaved,
+                  isDialog: true,
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      return showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetCtx) => CreditAccountModal(
+          accountToEdit: accountToEdit,
+          onSaved: onSaved,
+          isDialog: false,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +81,7 @@ class CreditAccountModal extends StatelessWidget {
       child: _CreditAccountModalView(
         onSaved: onSaved,
         accountToEdit: accountToEdit,
+        isDialog: isDialog,
       ),
     );
   }
@@ -35,8 +90,13 @@ class CreditAccountModal extends StatelessWidget {
 class _CreditAccountModalView extends StatefulWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity? accountToEdit;
+  final bool isDialog;
 
-  const _CreditAccountModalView({required this.onSaved, this.accountToEdit});
+  const _CreditAccountModalView({
+    required this.onSaved,
+    this.accountToEdit,
+    this.isDialog = false,
+  });
 
   @override
   State<_CreditAccountModalView> createState() =>
@@ -169,35 +229,50 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.fromLTRB(24, widget.isDialog ? 24 : 16, 24, 24 + bottomInset),
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: widget.isDialog
+            ? BorderRadius.circular(20)
+            : const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
+          if (!widget.isDialog)
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          Text(
-            _isEditing
-                ? 'Editar límite de crédito'
-                : 'Aprobar línea de crédito',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _isEditing
+                      ? 'Editar límite de crédito'
+                      : 'Aprobar línea de crédito',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              if (widget.isDialog)
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.textMuted),
+                  splashRadius: 18,
+                  onPressed: () => Navigator.pop(context),
+                ),
+            ],
           ),
           const SizedBox(height: 20),
           const Text(
