@@ -11,20 +11,58 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 
 class CustomerFormSheet extends StatelessWidget {
   final CustomerEntity? customer;
+  final bool isDialog;
 
-  const CustomerFormSheet({super.key, this.customer});
+  const CustomerFormSheet({
+    super.key,
+    this.customer,
+    this.isDialog = false,
+  });
 
   static Future<bool?> show(
     BuildContext context, {
     CustomerEntity? customer,
     VoidCallback? onSaved,
   }) async {
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => CustomerFormSheet(customer: customer),
-    );
+    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    bool? saved;
+    if (isDesktop) {
+      saved = await showDialog<bool>(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogCtx) {
+          return Center(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 580,
+                height: MediaQuery.of(context).size.height * 0.88,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 32,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: CustomerFormSheet(customer: customer, isDialog: true),
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      saved = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => CustomerFormSheet(customer: customer),
+      );
+    }
     if (saved == true) onSaved?.call();
     return saved;
   }
@@ -33,15 +71,22 @@ class CustomerFormSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<CustomerFormCubit>(),
-      child: _CustomerFormSheetContent(customer: customer),
+      child: _CustomerFormSheetContent(
+        customer: customer,
+        isDialog: isDialog,
+      ),
     );
   }
 }
 
 class _CustomerFormSheetContent extends StatefulWidget {
   final CustomerEntity? customer; // null = modo crear
+  final bool isDialog;
 
-  const _CustomerFormSheetContent({this.customer});
+  const _CustomerFormSheetContent({
+    this.customer,
+    this.isDialog = false,
+  });
 
   @override
   State<_CustomerFormSheetContent> createState() =>
@@ -146,11 +191,39 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
 
   // BUILD
 
+  void _onStateListener(BuildContext context, CustomerFormState state) {
+    if (state is CustomerFormSuccess) {
+      Navigator.pop(context, true);
+    } else if (state is CustomerFormError) {
+      _showError(state.message);
+    } else if (state is CustomerFormCreditLoaded) {
+      final account = state.creditAccount;
+      if (account != null && mounted) {
+        setState(() {
+          _creditExistsInDb = true;
+          _creditId = account.id;
+          _creditIsActive = account.isActive;
+          _hasCredit = account.isActive;
+          _currentDebt = account.currentDebt;
+          _creditLimitCtrl.text = account.creditLimit.toStringAsFixed(2);
+          _isLoadingCredit = false;
+        });
+      } else if (mounted) {
+        setState(() => _isLoadingCredit = false);
+      }
+    } else if (state is CustomerFormCreditLoading && mounted) {
+      setState(() => _isLoadingCredit = true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final isLoyaltyEnabled =
-        context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
+    if (widget.isDialog) {
+      return BlocConsumer<CustomerFormCubit, CustomerFormState>(
+        listener: _onStateListener,
+        builder: (context, state) => _buildSheetBody(context, state, null),
+      );
+    }
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -159,54 +232,51 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
       expand: false,
       builder: (_, scrollCtrl) {
         return BlocConsumer<CustomerFormCubit, CustomerFormState>(
-          listener: (context, state) {
-            if (state is CustomerFormSuccess) {
-              Navigator.pop(context, true);
-            } else if (state is CustomerFormError) {
-              _showError(state.message);
-            } else if (state is CustomerFormCreditLoaded) {
-              final account = state.creditAccount;
-              if (account != null && mounted) {
-                setState(() {
-                  _creditExistsInDb = true;
-                  _creditId = account.id;
-                  _creditIsActive = account.isActive;
-                  _hasCredit = account.isActive;
-                  _currentDebt = account.currentDebt;
-                  _creditLimitCtrl.text = account.creditLimit.toStringAsFixed(
-                    2,
-                  );
-                  _isLoadingCredit = false;
-                });
-              } else if (mounted) {
-                setState(() => _isLoadingCredit = false);
-              }
-            } else if (state is CustomerFormCreditLoading && mounted) {
-              setState(() => _isLoadingCredit = true);
-            }
-          },
-          builder: (context, state) {
-            final isSaving = state is CustomerFormSaving;
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                children: [
-                  // Handle
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
+          listener: _onStateListener,
+          builder:
+              (context, state) =>
+                  _buildSheetBody(context, state, scrollCtrl),
+        );
+      },
+    );
+  }
 
-                  // Header
+  Widget _buildSheetBody(
+    BuildContext context,
+    CustomerFormState state,
+    ScrollController? scrollCtrl,
+  ) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final isLoyaltyEnabled =
+        context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
+    final isSaving = state is CustomerFormSaving;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius:
+            widget.isDialog
+                ? BorderRadius.circular(20)
+                : const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          // Handle
+          if (!widget.isDialog) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 4),
+          ] else
+            const SizedBox(height: 8),
+
+          // Header
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -646,10 +716,6 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
                 ],
               ),
             );
-          },
-        );
-      },
-    );
   }
 }
 

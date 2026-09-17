@@ -19,12 +19,13 @@ class CustomerListCard extends StatefulWidget {
 }
 
 class _CustomerListCardState extends State<CustomerListCard> {
+  bool _isPressed = false;
   bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedScale(
-      scale: _isHovered ? 0.98 : 1.0,
+      scale: _isPressed ? 0.98 : 1.0,
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOutCubic,
       child: Padding(
@@ -33,22 +34,22 @@ class _CustomerListCardState extends State<CustomerListCard> {
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            border: Border.all(
+              color: _isHovered
+                  ? AppColors.primary.withValues(alpha: 0.3)
+                  : AppColors.border,
+              width: _isHovered ? 1.2 : 1.0,
+            ),
+            boxShadow: AppColors.cardShadow(opacity: _isHovered ? 0.07 : 0.02),
           ),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              onTapDown: (_) => setState(() => _isHovered = true),
-              onTapUp: (_) => setState(() => _isHovered = false),
-              onTapCancel: () => setState(() => _isHovered = false),
+              onHover: (hovered) => setState(() => _isHovered = hovered),
+              onTapDown: (_) => setState(() => _isPressed = true),
+              onTapUp: (_) => setState(() => _isPressed = false),
+              onTapCancel: () => setState(() => _isPressed = false),
               onTap: widget.onTap,
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -77,19 +78,20 @@ class _CustomerListCardState extends State<CustomerListCard> {
                               if (!widget.customer.isActive)
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
+                                    horizontal: 7,
+                                    vertical: 2.5,
                                   ),
                                   margin: const EdgeInsets.only(left: 8),
                                   decoration: BoxDecoration(
-                                    color: Colors.grey.shade200,
-                                    borderRadius: BorderRadius.circular(4),
+                                    color: AppColors.slateLight.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: AppColors.border),
                                   ),
-                                  child: Text(
+                                  child: const Text(
                                     'Inactivo',
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: Colors.grey.shade600,
+                                      color: AppColors.slate,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -104,7 +106,7 @@ class _CustomerListCardState extends State<CustomerListCard> {
                                 const Icon(
                                   Icons.phone_rounded,
                                   size: 12,
-                                  color: Colors.grey,
+                                  color: AppColors.textMuted,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
@@ -122,7 +124,7 @@ class _CustomerListCardState extends State<CustomerListCard> {
                               _Tag(
                                 icon: Icons.shopping_bag_rounded,
                                 text: '${widget.customer.orderCount} compras',
-                                color: Colors.blue,
+                                color: AppColors.info,
                               ),
                               const SizedBox(width: 8),
                               if (widget.customer.currentDebt > 0)
