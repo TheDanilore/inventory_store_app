@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
@@ -49,15 +50,22 @@ class CustomerDetailScreen extends StatelessWidget {
           create: (_) => sl<CustomerCreditsCubit>()..loadCreditData(targetId),
         ),
       ],
-      child: _CustomerDetailContent(onViewAllOrders: onViewAllOrders),
+      child: _CustomerDetailContent(
+        customerId: targetId,
+        onViewAllOrders: onViewAllOrders,
+      ),
     );
   }
 }
 
 class _CustomerDetailContent extends StatelessWidget {
+  final String customerId;
   final VoidCallback onViewAllOrders;
 
-  const _CustomerDetailContent({required this.onViewAllOrders});
+  const _CustomerDetailContent({
+    required this.customerId,
+    required this.onViewAllOrders,
+  });
 
   void _openEditCustomer(BuildContext context) async {
     final state = context.read<CustomerDetailCubit>().state;
@@ -73,11 +81,17 @@ class _CustomerDetailContent extends StatelessWidget {
   }
 
   void _refreshData(BuildContext context) {
-    final state = context.read<CustomerDetailCubit>().state;
-    if (state is CustomerDetailLoaded) {
-      context.read<CustomerDetailCubit>().loadCustomer(state.customer.id);
-      context.read<CustomerLocationsCubit>().loadLocations(state.customer.id);
-      context.read<CustomerCreditsCubit>().loadCreditData(state.customer.id);
+    final targetId = customerId.isNotEmpty
+        ? customerId
+        : (context.read<CustomerDetailCubit>().state is CustomerDetailLoaded
+            ? (context.read<CustomerDetailCubit>().state as CustomerDetailLoaded)
+                .customer
+                .id
+            : '');
+    if (targetId.isNotEmpty) {
+      context.read<CustomerDetailCubit>().loadCustomer(targetId);
+      context.read<CustomerLocationsCubit>().loadLocations(targetId);
+      context.read<CustomerCreditsCubit>().loadCreditData(targetId);
     }
   }
 
@@ -90,39 +104,64 @@ class _CustomerDetailContent extends StatelessWidget {
         final error = state is CustomerDetailError ? state.message : null;
         final c = state is CustomerDetailLoaded ? state.customer : null;
 
-        return AdminLayout(
-          title: c?.fullName ?? 'Detalles del Cliente',
-          showBackButton: true,
-          onBack: () => context.go('/admin/customers'),
-          body: RefreshIndicator(
-            color: Theme.of(context).colorScheme.primary,
-            onRefresh: () async => _refreshData(context),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isTablet = constraints.maxWidth > 750;
-                final isLoyaltyEnabled = context.select<AppConfigCubit, bool>(
-                  (c) => c.loyaltyGlobalEnabled,
-                );
-
-                if (isTablet) {
-                  return _buildTabletLayout(
-                    context,
-                    state,
-                    isLoyaltyEnabled,
-                    isLoading,
-                    error,
-                    c,
-                  );
+        return CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.keyE, alt: true): () =>
+                _openEditCustomer(context),
+            const SingleActivator(LogicalKeyboardKey.keyP, alt: true):
+                onViewAllOrders,
+            const SingleActivator(LogicalKeyboardKey.escape): () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/admin/customers');
+              }
+            },
+          },
+          child: Focus(
+            autofocus: true,
+            child: AdminLayout(
+              title: c?.fullName ?? 'Detalles del Cliente',
+              showBackButton: true,
+              onBack: () {
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/admin/customers');
                 }
-                return _buildMobileLayout(
-                  context,
-                  state,
-                  isLoyaltyEnabled,
-                  isLoading,
-                  error,
-                  c,
-                );
               },
+              body: RefreshIndicator(
+                color: Theme.of(context).colorScheme.primary,
+                onRefresh: () async => _refreshData(context),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isTablet = constraints.maxWidth > 750;
+                    final isLoyaltyEnabled =
+                        context.select<AppConfigCubit, bool>(
+                          (c) => c.loyaltyGlobalEnabled,
+                        );
+
+                    if (isTablet) {
+                      return _buildTabletLayout(
+                        context,
+                        state,
+                        isLoyaltyEnabled,
+                        isLoading,
+                        error,
+                        c,
+                      );
+                    }
+                    return _buildMobileLayout(
+                      context,
+                      state,
+                      isLoyaltyEnabled,
+                      isLoading,
+                      error,
+                      c,
+                    );
+                  },
+                ),
+              ),
             ),
           ),
         );

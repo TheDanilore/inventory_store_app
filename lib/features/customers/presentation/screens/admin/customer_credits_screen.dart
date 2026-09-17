@@ -164,13 +164,13 @@ class _CustomerCreditsScreenContentState
 
         return CallbackShortcuts(
           bindings: {
-            const SingleActivator(LogicalKeyboardKey.slash): () {
+            const SingleActivator(LogicalKeyboardKey.keyK, alt: true): () {
               _searchFocusNode.requestFocus();
             },
             const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
               _searchFocusNode.requestFocus();
             },
-            const SingleActivator(LogicalKeyboardKey.keyN): () {
+            const SingleActivator(LogicalKeyboardKey.keyN, alt: true): () {
               _openCreateAccountModal();
             },
             const SingleActivator(LogicalKeyboardKey.keyN, control: true): () {
@@ -545,7 +545,7 @@ class _CustomerCreditsScreenContentState
                               border: Border.all(color: AppColors.border),
                             ),
                             child: const Text(
-                              '/',
+                              'Alt + K',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: AppColors.textMuted,
@@ -587,7 +587,7 @@ class _CustomerCreditsScreenContentState
                   ),
                   SizedBox(width: 6),
                   Text(
-                    '[N]',
+                    '[Alt + N]',
                     style: TextStyle(fontSize: 11, color: Colors.white70),
                   ),
                 ],

@@ -1,5 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_usecase.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/get_customer_recent_orders_usecase.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/get_customer_top_products_usecase.dart';
@@ -22,18 +26,25 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
   Future<void> loadCustomer(String customerId) async {
     emit(CustomerDetailLoading());
     try {
-      final customer = await _getCustomerDetailUseCase(customerId);
-      final recentOrders = await _getRecentOrdersUseCase(customerId);
-      final topProducts = await _getTopProductsUseCase(customerId);
+      final results = await Future.wait([
+        _getCustomerDetailUseCase(customerId),
+        _getRecentOrdersUseCase(customerId),
+        _getTopProductsUseCase(customerId),
+      ]);
 
       emit(
         CustomerDetailLoaded(
-          customer: customer,
-          recentOrders: recentOrders,
-          topProducts: topProducts,
+          customer: results[0] as CustomerEntity,
+          recentOrders: results[1] as List<RecentOrderEntity>,
+          topProducts: results[2] as List<TopProductEntity>,
         ),
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      LoggerService.e(
+        'Error loading customer detail for $customerId',
+        error: e,
+        stackTrace: stackTrace,
+      );
       emit(CustomerDetailError(e.toString()));
     }
   }
@@ -63,7 +74,12 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
       } else {
         await loadCustomer(customerId);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      LoggerService.e(
+        'Error updating customer $customerId',
+        error: e,
+        stackTrace: stackTrace,
+      );
       emit(CustomerDetailError(e.toString()));
       if (previousState is CustomerDetailLoaded) {
         emit(previousState);

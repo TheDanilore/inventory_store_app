@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
@@ -447,7 +448,9 @@ class CustomersRepositoryImpl implements CustomersRepository {
     try {
       final res = await _supabase
           .from('orders')
-          .select()
+          .select(
+            'id, created_at, total_amount, amount_paid, discount_amount, status, payment_status, payment_method, points_earned, points_used, due_date',
+          )
           .eq('customer_id', customerId)
           .order('created_at', ascending: false)
           .limit(10);
@@ -470,7 +473,12 @@ class CustomersRepositoryImpl implements CustomersRepository {
                   : null,
         );
       }).toList();
-    } catch (_) {
+    } catch (e, stackTrace) {
+      LoggerService.e(
+        'Error fetching customer recent orders for $customerId',
+        error: e,
+        stackTrace: stackTrace,
+      );
       return [];
     }
   }
@@ -512,7 +520,12 @@ class CustomersRepositoryImpl implements CustomersRepository {
           totalSpent: e.value.spent,
         );
       }).toList();
-    } catch (_) {
+    } catch (e, stackTrace) {
+      LoggerService.e(
+        'Error fetching customer top products for $customerId',
+        error: e,
+        stackTrace: stackTrace,
+      );
       return [];
     }
   }

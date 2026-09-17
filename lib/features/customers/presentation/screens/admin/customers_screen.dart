@@ -212,17 +212,13 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
 
         return CallbackShortcuts(
           bindings: <ShortcutActivator, VoidCallback>{
-            const SingleActivator(LogicalKeyboardKey.keyN): () {
-              if (!_searchFocusNode.hasFocus) {
-                _openCreateCustomer();
-              }
+            const SingleActivator(LogicalKeyboardKey.keyN, alt: true): () {
+              _openCreateCustomer();
             },
             const SingleActivator(LogicalKeyboardKey.keyN, control: true):
                 _openCreateCustomer,
-            const SingleActivator(LogicalKeyboardKey.slash): () {
-              if (!_searchFocusNode.hasFocus) {
-                _searchFocusNode.requestFocus();
-              }
+            const SingleActivator(LogicalKeyboardKey.keyK, alt: true): () {
+              _searchFocusNode.requestFocus();
             },
             const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
               _searchFocusNode.requestFocus();
@@ -465,7 +461,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
-                        'N',
+                        'Alt + N',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -741,7 +737,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Text(
-                    '/',
+                    'Alt + K',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,

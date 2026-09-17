@@ -196,10 +196,11 @@ class _CustomerCreditMovementsScreenContentState
   Widget build(BuildContext context) {
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyA): _openPaymentModal,
+        const SingleActivator(LogicalKeyboardKey.keyA, alt: true):
+            _openPaymentModal,
         const SingleActivator(LogicalKeyboardKey.keyA, control: true):
             _openPaymentModal,
-        const SingleActivator(LogicalKeyboardKey.keyE): _exportToPdf,
+        const SingleActivator(LogicalKeyboardKey.keyE, alt: true): _exportToPdf,
         const SingleActivator(LogicalKeyboardKey.keyE, control: true):
             _exportToPdf,
         const SingleActivator(LogicalKeyboardKey.keyP, control: true):
@@ -268,7 +269,7 @@ class _CustomerCreditMovementsScreenContentState
                                 ),
                               )
                               : const Icon(Icons.picture_as_pdf_rounded),
-                      tooltip: 'Exportar PDF [E]',
+                      tooltip: 'Exportar PDF [Alt + E]',
                       onPressed: state.isExporting ? null : _exportToPdf,
                     ),
                   ],
@@ -380,7 +381,7 @@ class _CustomerCreditMovementsScreenContentState
                             ),
                             SizedBox(width: 6),
                             Text(
-                              '[A]',
+                              '[Alt + A]',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.white70,
@@ -426,7 +427,7 @@ class _CustomerCreditMovementsScreenContentState
                             ),
                             SizedBox(width: 6),
                             Text(
-                              '[E]',
+                              '[Alt + E]',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: AppColors.textMuted,
