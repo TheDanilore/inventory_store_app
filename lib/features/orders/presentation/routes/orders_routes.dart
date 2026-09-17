@@ -18,9 +18,24 @@ class OrdersRoutes {
         final orderId =
             state.uri.queryParameters['selectedId'] ??
             state.uri.queryParameters['orderId'];
+        final customerId = state.uri.queryParameters['customerId'];
+        final customerName = state.uri.queryParameters['customerName'];
+
         return BlocProvider(
-          create: (_) => sl<OrdersCubit>()..loadOrders(reset: true),
-          child: OrdersScreen(targetOrderId: orderId),
+          create: (_) {
+            final cubit = sl<OrdersCubit>();
+            if (customerId != null && customerId.isNotEmpty) {
+              cubit.setCustomerIdFilter(customerId);
+            }
+            return cubit..loadOrders(reset: true);
+          },
+          child: OrdersScreen(
+            targetOrderId: orderId,
+            customTitle:
+                (customerName != null && customerName.isNotEmpty)
+                    ? 'Pedidos de $customerName'
+                    : null,
+          ),
         );
       },
     ),

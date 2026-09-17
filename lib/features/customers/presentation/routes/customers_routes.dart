@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
@@ -15,8 +14,6 @@ import 'package:inventory_store_app/features/auth/presentation/screens/profile_s
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
-import 'package:inventory_store_app/features/orders/presentation/bloc/orders/orders_cubit.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/admin/orders_screen.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 
 class CustomersRoutes {
@@ -49,21 +46,13 @@ class CustomersRoutes {
           customerId: id,
           customer: customer,
           onViewAllOrders: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder:
-                    (_) => BlocProvider(
-                      create: (_) => sl<OrdersCubit>(),
-                      child: OrdersScreen(
-                        customTitle:
-                            customer != null && customer.fullName.isNotEmpty
-                                ? 'Pedidos de ${customer.fullName}'
-                                : 'Pedidos del cliente',
-                      ),
-                    ),
-              ),
-            );
+            final targetId = customer?.id ?? id;
+            final targetName = customer?.fullName ?? '';
+            final query =
+                targetName.isNotEmpty
+                    ? '?customerId=$targetId&customerName=${Uri.encodeComponent(targetName)}'
+                    : '?customerId=$targetId';
+            context.push('/admin/orders$query');
           },
         );
       },

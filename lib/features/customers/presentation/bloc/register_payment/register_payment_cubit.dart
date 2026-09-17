@@ -26,7 +26,7 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
     try {
       final futures = await Future.wait([
         _getPendingCustomerOrdersUc(customerId),
-        _getFinancialAccountsUc(page: 1, pageSize: 100),
+        _getFinancialAccountsUc(page: 0, pageSize: 50),
       ]);
 
       final ordersResult = futures[0] as dynamic;
@@ -210,9 +210,17 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
       return;
     }
 
-    if (state.selectedAccount != null &&
-        state.selectedAccount!.type == 'CAJA' &&
-        state.activeShift == null) {
+    if (state.selectedAccount == null) {
+      emit(
+        state.copyWith(
+          errorMessage:
+              'Debes seleccionar una cuenta de destino (Caja o Banco).',
+        ),
+      );
+      return;
+    }
+
+    if (state.selectedAccount!.type == 'CAJA' && state.activeShift == null) {
       emit(
         state.copyWith(
           errorMessage:
@@ -235,7 +243,7 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
     try {
       await onSavePayment(
         amount,
-        state.selectedAccount?.id,
+        state.selectedAccount!.id,
         state.selectedOrder?.id,
         notesText.isEmpty ? 'Abono registrado a crédito' : notesText,
       );

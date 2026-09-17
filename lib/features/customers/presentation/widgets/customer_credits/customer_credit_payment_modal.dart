@@ -154,6 +154,7 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
         final isSubmitDisabled =
             state.isSaving ||
             !hasDebt ||
+            state.selectedAccount == null ||
             cajaSinTurno ||
             state.amountError != null ||
             _amountCtrl.text.trim().isEmpty;
@@ -488,20 +489,63 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
           const SizedBox(height: 6),
           if (state.isLoading && state.accounts.isEmpty)
             const SizedBox(
-              height: 40,
+              height: 44,
               child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             )
-          else
+          else if (state.accounts.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: AppColors.danger.withValues(alpha: 0.3),
+                ),
+                borderRadius: BorderRadius.circular(12),
+                color: AppColors.dangerLight.withValues(alpha: 0.3),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    size: 16,
+                    color: AppColors.danger,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'No hay cuentas de caja o banco activas disponibles.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.danger,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else ...[
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                border: Border.all(color: AppColors.border),
+                border: Border.all(
+                  color:
+                      state.selectedAccount == null
+                          ? AppColors.danger.withValues(alpha: 0.5)
+                          : AppColors.border,
+                ),
                 borderRadius: BorderRadius.circular(12),
                 color: AppColors.surface,
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<FinancialAccountEntity>(
                   value: state.selectedAccount,
+                  hint: const Text(
+                    'Seleccionar cuenta (Caja / Banco)...',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                   isExpanded: true,
                   items:
                       state.accounts.map((acc) {
@@ -533,6 +577,19 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
                 ),
               ),
             ),
+            if (state.selectedAccount == null)
+              const Padding(
+                padding: EdgeInsets.only(top: 4, left: 4),
+                child: Text(
+                  'Obligatorio: Selecciona la cuenta donde ingresa el dinero',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+          ],
 
           // Alerta de Turno Abierto o Cerrado
           if (state.selectedAccount != null &&

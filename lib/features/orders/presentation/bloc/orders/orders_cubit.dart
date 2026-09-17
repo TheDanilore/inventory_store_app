@@ -153,6 +153,15 @@ class OrdersCubit extends Cubit<OrdersState> {
     loadOrders(reset: true);
   }
 
+  void setCustomerIdFilter(String? val) {
+    if (state.customerIdFilter == val) return;
+    if (val == null || val.isEmpty) {
+      emit(state.copyWith(clearCustomerId: true));
+    } else {
+      emit(state.copyWith(customerIdFilter: val));
+    }
+  }
+
   Future<Either<Failure, List<OrderItemEntity>>> fetchOrderItems(
     String orderId,
   ) async {

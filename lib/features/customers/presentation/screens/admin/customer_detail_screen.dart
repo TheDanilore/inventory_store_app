@@ -100,8 +100,9 @@ class _CustomerDetailContent extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final isTablet = constraints.maxWidth > 750;
-                final isLoyaltyEnabled =
-                    context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
+                final isLoyaltyEnabled = context.select<AppConfigCubit, bool>(
+                  (c) => c.loyaltyGlobalEnabled,
+                );
 
                 if (isTablet) {
                   return _buildTabletLayout(
@@ -171,9 +172,7 @@ class _CustomerDetailContent extends StatelessWidget {
                 totalSpent: c!.totalRevenue,
                 orderCount: c.orderCount,
                 avgOrder:
-                    state.recentOrders.isNotEmpty
-                        ? c.totalRevenue / c.orderCount
-                        : 0,
+                    (c.orderCount > 0) ? (c.totalRevenue / c.orderCount) : 0.0,
                 walletBalance: c.walletBalance,
                 isLoyaltyEnabled: isLoyaltyEnabled,
               ),
@@ -188,10 +187,12 @@ class _CustomerDetailContent extends StatelessWidget {
                       creditId: creditState.creditAccount.id,
                       customer: c,
                       movements: creditState.movements,
-                      onPaymentRegistered:
-                          () => context
-                              .read<CustomerCreditsCubit>()
-                              .loadCreditData(c.id),
+                      onPaymentRegistered: () {
+                        context
+                            .read<CustomerCreditsCubit>()
+                            .loadCreditData(c.id);
+                        context.read<CustomerDetailCubit>().loadCustomer(c.id);
+                      },
                     );
                   }
                   return const SizedBox.shrink();
@@ -264,9 +265,9 @@ class _CustomerDetailContent extends StatelessWidget {
                       totalSpent: c!.totalRevenue,
                       orderCount: c.orderCount,
                       avgOrder:
-                          state.recentOrders.isNotEmpty
-                              ? c.totalRevenue / c.orderCount
-                              : 0,
+                          (c.orderCount > 0)
+                              ? (c.totalRevenue / c.orderCount)
+                              : 0.0,
                       walletBalance: c.walletBalance,
                       isLoyaltyEnabled: isLoyaltyEnabled,
                     ),
@@ -281,10 +282,14 @@ class _CustomerDetailContent extends StatelessWidget {
                             creditId: creditState.creditAccount.id,
                             customer: c,
                             movements: creditState.movements,
-                            onPaymentRegistered:
-                                () => context
-                                    .read<CustomerCreditsCubit>()
-                                    .loadCreditData(c.id),
+                            onPaymentRegistered: () {
+                              context
+                                  .read<CustomerCreditsCubit>()
+                                  .loadCreditData(c.id);
+                              context
+                                  .read<CustomerDetailCubit>()
+                                  .loadCustomer(c.id);
+                            },
                           );
                         }
                         return const SizedBox.shrink();
