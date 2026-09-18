@@ -10,7 +10,6 @@ import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
-import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_usecase.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/credit_movements/customer_credit_movements_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/credit_movements/customer_credit_movements_state.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/credit_movements/date_divider.dart';
@@ -48,6 +47,7 @@ class CustomerCreditMovementsScreen extends StatelessWidget {
                 customerName: customerName,
                 currentDebt: currentDebt,
                 creditLimit: creditLimit,
+                customerId: customerId,
               ),
       child: _CustomerCreditMovementsScreenContent(
         creditId: creditId,
@@ -82,8 +82,6 @@ class _CustomerCreditMovementsScreenContent extends StatefulWidget {
 
 class _CustomerCreditMovementsScreenContentState
     extends State<_CustomerCreditMovementsScreenContent> {
-  String _typeFilter = 'ALL'; // 'ALL', 'PAYMENT', 'CHARGE'
-
   void _openPaymentModal() {
     final cubit = context.read<CustomerCreditMovementsCubit>();
     final creditEntity = CustomerCreditEntity(
@@ -100,9 +98,7 @@ class _CustomerCreditMovementsScreenContentState
       account: creditEntity,
       onSaved: () => cubit.loadData(),
       onSavePayment: (amount, accountId, orderId, notes, shiftId) async {
-        await sl<RegisterCreditPaymentUseCase>()(
-          customerId: widget.customerId,
-          creditId: widget.creditId,
+        await cubit.registerPayment(
           amount: amount,
           accountId: accountId,
           orderId: orderId,
@@ -184,12 +180,6 @@ class _CustomerCreditMovementsScreenContentState
   List<CreditMovementEntity> _filterMovements(
     List<CreditMovementEntity> movements,
   ) {
-    if (_typeFilter == 'PAYMENT') {
-      return movements.where((m) => m.movementType == 'PAYMENT').toList();
-    }
-    if (_typeFilter == 'CHARGE') {
-      return movements.where((m) => m.movementType == 'CHARGE').toList();
-    }
     return movements;
   }
 
@@ -478,15 +468,15 @@ class _CustomerCreditMovementsScreenContentState
                               title: 'Sin movimientos registrados',
                               message:
                                   state.dateFilter != 'all' ||
-                                          _typeFilter != 'ALL'
+                                          state.typeFilter != 'ALL'
                                       ? 'No se encontraron movimientos para los filtros seleccionados.'
                                       : 'Esta cuenta aún no presenta cargos ni abonos.',
                               action:
                                   state.dateFilter != 'all' ||
-                                          _typeFilter != 'ALL'
+                                          state.typeFilter != 'ALL'
                                       ? FilledButton.tonal(
                                         onPressed: () {
-                                          setState(() => _typeFilter = 'ALL');
+                                          cubit.setTypeFilter('ALL');
                                           cubit.setDateFilter('all');
                                         },
                                         child: const Text('Restablecer filtros'),
@@ -595,7 +585,7 @@ class _CustomerCreditMovementsScreenContentState
                               message: 'No hay movimientos en este periodo.',
                               action: FilledButton(
                                 onPressed: () {
-                                  setState(() => _typeFilter = 'ALL');
+                                  cubit.setTypeFilter('ALL');
                                   cubit.setDateFilter('all');
                                 },
                                 child: const Text('Ver todos'),
@@ -668,31 +658,28 @@ class _CustomerCreditMovementsScreenContentState
               children: [
                 _TypePill(
                   label: 'Todos',
-                  count: state.movements.length,
-                  isSelected: _typeFilter == 'ALL',
-                  onTap: () => setState(() => _typeFilter = 'ALL'),
+                  count:
+                      (state.chargeCount + state.paymentCount) > 0
+                          ? (state.chargeCount + state.paymentCount)
+                          : state.totalCount,
+                  isSelected: state.typeFilter == 'ALL',
+                  onTap: () => cubit.setTypeFilter('ALL'),
                 ),
                 const SizedBox(width: 8),
                 _TypePill(
                   label: 'Abonos (-)',
-                  count:
-                      state.movements
-                          .where((m) => m.movementType == 'PAYMENT')
-                          .length,
-                  isSelected: _typeFilter == 'PAYMENT',
+                  count: state.paymentCount,
+                  isSelected: state.typeFilter == 'PAYMENT',
                   color: const Color(0xFF16A34A),
-                  onTap: () => setState(() => _typeFilter = 'PAYMENT'),
+                  onTap: () => cubit.setTypeFilter('PAYMENT'),
                 ),
                 const SizedBox(width: 8),
                 _TypePill(
                   label: 'Cargos (+)',
-                  count:
-                      state.movements
-                          .where((m) => m.movementType == 'CHARGE')
-                          .length,
-                  isSelected: _typeFilter == 'CHARGE',
+                  count: state.chargeCount,
+                  isSelected: state.typeFilter == 'CHARGE',
                   color: const Color(0xFFEA580C),
-                  onTap: () => setState(() => _typeFilter = 'CHARGE'),
+                  onTap: () => cubit.setTypeFilter('CHARGE'),
                 ),
                 const SizedBox(width: 12),
                 Container(width: 1, height: 24, color: AppColors.border),
@@ -800,7 +787,7 @@ class _CustomerCreditMovementsScreenContentState
                         message: 'No hay registros en este periodo.',
                         action: FilledButton(
                           onPressed: () {
-                            setState(() => _typeFilter = 'ALL');
+                            cubit.setTypeFilter('ALL');
                             cubit.setDateFilter('all');
                           },
                           child: const Text('Ver todos'),
@@ -856,10 +843,12 @@ class _CustomerCreditMovementsScreenContentState
     required CustomerCreditMovementsCubit cubit,
     required bool isDesktop,
   }) {
-    final paymentsCount =
-        state.movements.where((m) => m.movementType == 'PAYMENT').length;
-    final chargesCount =
-        state.movements.where((m) => m.movementType == 'CHARGE').length;
+    final totalMovementsCount =
+        (state.chargeCount + state.paymentCount) > 0
+            ? (state.chargeCount + state.paymentCount)
+            : state.totalCount;
+    final paymentsCount = state.paymentCount;
+    final chargesCount = state.chargeCount;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 12, 16, 10),
@@ -881,25 +870,25 @@ class _CustomerCreditMovementsScreenContentState
           // Type Pills
           _TypePill(
             label: 'Todos',
-            count: state.movements.length,
-            isSelected: _typeFilter == 'ALL',
-            onTap: () => setState(() => _typeFilter = 'ALL'),
+            count: totalMovementsCount,
+            isSelected: state.typeFilter == 'ALL',
+            onTap: () => cubit.setTypeFilter('ALL'),
           ),
           const SizedBox(width: 8),
           _TypePill(
             label: 'Abonos (-)',
             count: paymentsCount,
-            isSelected: _typeFilter == 'PAYMENT',
+            isSelected: state.typeFilter == 'PAYMENT',
             color: const Color(0xFF16A34A),
-            onTap: () => setState(() => _typeFilter = 'PAYMENT'),
+            onTap: () => cubit.setTypeFilter('PAYMENT'),
           ),
           const SizedBox(width: 8),
           _TypePill(
             label: 'Cargos (+)',
             count: chargesCount,
-            isSelected: _typeFilter == 'CHARGE',
+            isSelected: state.typeFilter == 'CHARGE',
             color: const Color(0xFFEA580C),
-            onTap: () => setState(() => _typeFilter = 'CHARGE'),
+            onTap: () => cubit.setTypeFilter('CHARGE'),
           ),
 
           const Spacer(),
@@ -1203,22 +1192,16 @@ class _MovementsLedgerDataTable extends StatelessWidget {
           ),
           const Divider(height: 1, color: AppColors.border),
 
-          // Table Rows
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: movements.length,
-            separatorBuilder:
-                (_, _) => const Divider(height: 1, color: AppColors.border),
-            itemBuilder: (context, index) {
-              final movement = movements[index];
-              return _DesktopLedgerRow(
-                movement: movement,
-                onOpenOrder: onOpenOrder,
-                onCopy: onCopy,
-              );
-            },
-          ),
+          // Table Rows (Iteración directa optimizada sin anidar viewports de scroll)
+          for (int i = 0; i < movements.length; i++) ...[
+            if (i > 0) const Divider(height: 1, color: AppColors.border),
+            _DesktopLedgerRow(
+              key: ValueKey(movements[i].id),
+              movement: movements[i],
+              onOpenOrder: onOpenOrder,
+              onCopy: onCopy,
+            ),
+          ],
         ],
       ),
     );
@@ -1231,6 +1214,7 @@ class _DesktopLedgerRow extends StatefulWidget {
   final void Function(String text, String label) onCopy;
 
   const _DesktopLedgerRow({
+    super.key,
     required this.movement,
     required this.onOpenOrder,
     required this.onCopy,

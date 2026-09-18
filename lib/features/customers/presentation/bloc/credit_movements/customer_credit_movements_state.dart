@@ -3,6 +3,7 @@ import 'package:inventory_store_app/features/customers/domain/entities/credit_mo
 
 class CustomerCreditMovementsState extends Equatable {
   final String creditId;
+  final String customerId;
   final String customerName;
   final double currentDebt;
   final double creditLimit;
@@ -16,12 +17,16 @@ class CustomerCreditMovementsState extends Equatable {
 
   final double totalCharged;
   final double totalPaid;
+  final int chargeCount;
+  final int paymentCount;
   final String dateFilter;
+  final String typeFilter; // 'ALL', 'PAYMENT', 'CHARGE'
   final String? error;
   final bool exportSuccess;
 
   const CustomerCreditMovementsState({
     required this.creditId,
+    this.customerId = '',
     required this.customerName,
     required this.currentDebt,
     required this.creditLimit,
@@ -33,7 +38,10 @@ class CustomerCreditMovementsState extends Equatable {
     this.pageSize = 24,
     this.totalCharged = 0.0,
     this.totalPaid = 0.0,
+    this.chargeCount = 0,
+    this.paymentCount = 0,
     this.dateFilter = 'all',
+    this.typeFilter = 'ALL',
     this.error,
     this.exportSuccess = false,
   });
@@ -44,6 +52,7 @@ class CustomerCreditMovementsState extends Equatable {
 
   CustomerCreditMovementsState copyWith({
     String? creditId,
+    String? customerId,
     String? customerName,
     double? currentDebt,
     double? creditLimit,
@@ -55,12 +64,16 @@ class CustomerCreditMovementsState extends Equatable {
     int? pageSize,
     double? totalCharged,
     double? totalPaid,
+    int? chargeCount,
+    int? paymentCount,
     String? dateFilter,
+    String? typeFilter,
     String? error,
     bool? exportSuccess,
   }) {
     return CustomerCreditMovementsState(
       creditId: creditId ?? this.creditId,
+      customerId: customerId ?? this.customerId,
       customerName: customerName ?? this.customerName,
       currentDebt: currentDebt ?? this.currentDebt,
       creditLimit: creditLimit ?? this.creditLimit,
@@ -72,16 +85,19 @@ class CustomerCreditMovementsState extends Equatable {
       pageSize: pageSize ?? this.pageSize,
       totalCharged: totalCharged ?? this.totalCharged,
       totalPaid: totalPaid ?? this.totalPaid,
+      chargeCount: chargeCount ?? this.chargeCount,
+      paymentCount: paymentCount ?? this.paymentCount,
       dateFilter: dateFilter ?? this.dateFilter,
+      typeFilter: typeFilter ?? this.typeFilter,
       error: error,
-      exportSuccess:
-          exportSuccess ?? false, // Reset by default unless explicitly true
+      exportSuccess: exportSuccess ?? false,
     );
   }
 
   @override
   List<Object?> get props => [
     creditId,
+    customerId,
     customerName,
     currentDebt,
     creditLimit,
@@ -93,7 +109,10 @@ class CustomerCreditMovementsState extends Equatable {
     pageSize,
     totalCharged,
     totalPaid,
+    chargeCount,
+    paymentCount,
     dateFilter,
+    typeFilter,
     error,
     exportSuccess,
   ];

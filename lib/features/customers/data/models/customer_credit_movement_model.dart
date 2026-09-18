@@ -37,6 +37,30 @@ class CustomerCreditMovementModel {
 
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
   factory CustomerCreditMovementModel.fromJson(Map<String, dynamic> json) {
+    // Mapeo resiliente de responsable (nombre de perfil creador)
+    String? createdByName = json['created_by_name'] as String?;
+    if (createdByName == null) {
+      if (json['profiles'] is Map) {
+        createdByName = (json['profiles'] as Map)['full_name'] as String?;
+      } else if (json['creator'] is Map) {
+        createdByName = (json['creator'] as Map)['full_name'] as String?;
+      }
+    }
+
+    // Mapeo resiliente de datos de pedido relacionado
+    String? customerName = json['customer_name'] as String?;
+    String? orderPaymentMethod = json['order_payment_method'] as String?;
+    double? orderTotalAmount = (json['order_total_amount'] as num?)?.toDouble();
+    String? orderNumber = json['order_number'] as String?;
+
+    if (json['orders'] is Map) {
+      final orderMap = json['orders'] as Map;
+      customerName ??= orderMap['customer_name'] as String?;
+      orderPaymentMethod ??= orderMap['payment_method'] as String?;
+      orderTotalAmount ??= (orderMap['total_amount'] as num?)?.toDouble();
+      orderNumber ??= orderMap['id']?.toString();
+    }
+
     return CustomerCreditMovementModel(
       id: json['id'] as String,
       customerCreditId: json['customer_credit_id'] as String,
@@ -51,12 +75,11 @@ class CustomerCreditMovementModel {
               ? DateTime.parse(json['created_at'] as String).toLocal()
               : null,
       createdBy: json['created_by'] as String?,
-
-      createdByName: json['created_by_name'] as String?,
-      customerName: json['customer_name'] as String?,
-      orderPaymentMethod: json['order_payment_method'] as String?,
-      orderTotalAmount: (json['order_total_amount'] as num?)?.toDouble(),
-      orderNumber: json['order_number'] as String?,
+      createdByName: createdByName,
+      customerName: customerName,
+      orderPaymentMethod: orderPaymentMethod,
+      orderTotalAmount: orderTotalAmount,
+      orderNumber: orderNumber,
     );
   }
 

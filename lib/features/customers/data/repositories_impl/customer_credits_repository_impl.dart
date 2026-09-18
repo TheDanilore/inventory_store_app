@@ -307,17 +307,23 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
   }
 
   @override
-  Future<List<CreditMovementEntity>> getCreditMovements({
+  Future<({List<CreditMovementEntity> items, int totalCount})> getCreditMovements({
     required String creditId,
     required int limit,
     required int offset,
     String? dateFilter,
+    String? movementType,
   }) async {
+    // 1. Intentar consultar vista con nombres y pedidos pre-unidos
     try {
       var query = _supabase
-          .from('customer_credit_movements')
+          .from('customer_credit_movements_summary')
           .select()
           .eq('customer_credit_id', creditId);
+
+      if (movementType != null && movementType != 'ALL') {
+        query = query.eq('movement_type', movementType);
+      }
 
       if (dateFilter != null && dateFilter != 'all') {
         final now = DateTime.now();
@@ -332,64 +338,159 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
 
       final response = await query
           .order('created_at', ascending: false)
-          .range(offset, offset + limit - 1);
+          .range(offset, offset + limit - 1)
+          .count(CountOption.exact);
 
-      return (response as List)
-          .map((e) => CustomerCreditMovementModel.fromJson(e).toEntity())
+      final totalCount = response.count;
+      final items = (response.data as List)
+          .map(
+            (e) =>
+                CustomerCreditMovementModel.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ).toEntity(),
+          )
           .toList();
-    } on PostgrestException catch (e, st) {
-      LoggerService.e(
-        'PostgrestException en getCreditMovements: ${e.message}',
+
+      return (items: items, totalCount: totalCount);
+    } catch (viewErr) {
+      LoggerService.w(
+        'customer_credit_movements_summary falló, intentando con joins en tabla: $viewErr',
         tag: 'CUSTOMER_CREDITS_REPO',
-        error: e,
-        stackTrace: st,
       );
-      throw ServerException(message: 'Error al obtener movimientos: ${e.message}');
-    } catch (e, st) {
-      LoggerService.e(
-        'Error inesperado en getCreditMovements',
-        tag: 'CUSTOMER_CREDITS_REPO',
-        error: e,
-        stackTrace: st,
-      );
-      throw ServerException(message: 'Error al obtener movimientos: $e');
+
+      // 2. Fallback resiliente directo a tabla con select explícito
+      try {
+        var fbQuery = _supabase
+            .from('customer_credit_movements')
+            .select('''
+              id,
+              customer_credit_id,
+              order_id,
+              movement_type,
+              amount,
+              payment_method,
+              notes,
+              created_at,
+              created_by,
+              creator:profiles!customer_credit_movements_created_by_fkey ( full_name ),
+              orders!customer_credit_movements_order_id_fkey ( id, customer_name, payment_method, total_amount )
+            ''')
+            .eq('customer_credit_id', creditId);
+
+        if (movementType != null && movementType != 'ALL') {
+          fbQuery = fbQuery.eq('movement_type', movementType);
+        }
+
+        if (dateFilter != null && dateFilter != 'all') {
+          final now = DateTime.now();
+          if (dateFilter == '30_days') {
+            final date = now.subtract(const Duration(days: 30)).toIso8601String();
+            fbQuery = fbQuery.gte('created_at', date);
+          } else if (dateFilter == 'this_month') {
+            final date = DateTime(now.year, now.month, 1).toIso8601String();
+            fbQuery = fbQuery.gte('created_at', date);
+          }
+        }
+
+        final fbResponse = await fbQuery
+            .order('created_at', ascending: false)
+            .range(offset, offset + limit - 1)
+            .count(CountOption.exact);
+
+        final totalCount = fbResponse.count;
+        final items = (fbResponse.data as List)
+            .map(
+              (e) =>
+                  CustomerCreditMovementModel.fromJson(
+                    Map<String, dynamic>.from(e as Map),
+                  ).toEntity(),
+            )
+            .toList();
+
+        return (items: items, totalCount: totalCount);
+      } on PostgrestException catch (e, st) {
+        LoggerService.e(
+          'PostgrestException en getCreditMovements: ${e.message}',
+          tag: 'CUSTOMER_CREDITS_REPO',
+          error: e,
+          stackTrace: st,
+        );
+        throw ServerException(
+          message: 'Error al obtener movimientos: ${e.message}',
+        );
+      } catch (e, st) {
+        LoggerService.e(
+          'Error inesperado en getCreditMovements',
+          tag: 'CUSTOMER_CREDITS_REPO',
+          error: e,
+          stackTrace: st,
+        );
+        throw ServerException(message: 'Error al obtener movimientos: $e');
+      }
     }
   }
 
   @override
-  Future<({double totalCharged, double totalPaid})> getCreditMovementsTotals({
+  Future<({double totalCharged, double totalPaid, int chargeCount, int paymentCount})> getCreditMovementsTotals({
     required String creditId,
     String? dateFilter,
   }) async {
-    var query = _supabase
-        .from('customer_credit_movements')
-        .select('movement_type, amount')
-        .eq('customer_credit_id', creditId);
+    try {
+      var query = _supabase
+          .from('customer_credit_movements')
+          .select('movement_type, amount')
+          .eq('customer_credit_id', creditId);
 
-    if (dateFilter != null && dateFilter != 'all') {
-      final now = DateTime.now();
-      if (dateFilter == '30_days') {
-        final date = now.subtract(const Duration(days: 30)).toIso8601String();
-        query = query.gte('created_at', date);
-      } else if (dateFilter == 'this_month') {
-        final date = DateTime(now.year, now.month, 1).toIso8601String();
-        query = query.gte('created_at', date);
+      if (dateFilter != null && dateFilter != 'all') {
+        final now = DateTime.now();
+        if (dateFilter == '30_days') {
+          final date = now.subtract(const Duration(days: 30)).toIso8601String();
+          query = query.gte('created_at', date);
+        } else if (dateFilter == 'this_month') {
+          final date = DateTime(now.year, now.month, 1).toIso8601String();
+          query = query.gte('created_at', date);
+        }
       }
-    }
 
-    final response = await query;
-    double totalCharged = 0;
-    double totalPaid = 0;
-    for (var row in (response as List)) {
-      final amount = (row['amount'] as num).toDouble();
-      if (row['movement_type'] == 'CHARGE') {
-        totalCharged += amount;
-      } else {
-        totalPaid += amount;
+      final response = await query;
+      double totalCharged = 0;
+      double totalPaid = 0;
+      int chargeCount = 0;
+      int paymentCount = 0;
+      for (var row in (response as List)) {
+        final amount = (row['amount'] as num).toDouble();
+        if (row['movement_type'] == 'CHARGE') {
+          totalCharged += amount;
+          chargeCount++;
+        } else {
+          totalPaid += amount;
+          paymentCount++;
+        }
       }
-    }
 
-    return (totalCharged: totalCharged, totalPaid: totalPaid);
+      return (
+        totalCharged: totalCharged,
+        totalPaid: totalPaid,
+        chargeCount: chargeCount,
+        paymentCount: paymentCount,
+      );
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en getCreditMovementsTotals: ${e.message}',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      return (totalCharged: 0.0, totalPaid: 0.0, chargeCount: 0, paymentCount: 0);
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en getCreditMovementsTotals',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      return (totalCharged: 0.0, totalPaid: 0.0, chargeCount: 0, paymentCount: 0);
+    }
   }
 
   @override

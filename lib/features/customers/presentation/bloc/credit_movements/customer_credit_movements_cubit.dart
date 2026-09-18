@@ -1,5 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customer_credits_repository.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/credit_movements/customer_credit_movements_state.dart';
 
@@ -22,10 +25,12 @@ class CustomerCreditMovementsCubit extends Cubit<CustomerCreditMovementsState> {
     required String customerName,
     required double currentDebt,
     required double creditLimit,
+    String customerId = '',
   }) {
     emit(
       state.copyWith(
         creditId: creditId,
+        customerId: customerId,
         customerName: customerName,
         currentDebt: currentDebt,
         creditLimit: creditLimit,
@@ -40,12 +45,15 @@ class CustomerCreditMovementsCubit extends Cubit<CustomerCreditMovementsState> {
     try {
       final dateFilterParam =
           state.dateFilter == 'all' ? null : state.dateFilter;
+      final movementTypeParam =
+          state.typeFilter == 'ALL' ? null : state.typeFilter;
 
       final movementsFuture = _repository.getCreditMovements(
         creditId: state.creditId,
         limit: state.pageSize,
         offset: state.currentPage * state.pageSize,
         dateFilter: dateFilterParam,
+        movementType: movementTypeParam,
       );
 
       final totalsFuture = _repository.getCreditMovementsTotals(
@@ -53,39 +61,94 @@ class CustomerCreditMovementsCubit extends Cubit<CustomerCreditMovementsState> {
         dateFilter: dateFilterParam,
       );
 
-      final results = await Future.wait([movementsFuture, totalsFuture]);
-      final movements =
-          results[0]
-              as List; // In real impl, you'd get total count. We will simulate count or check if list is complete
-      // If the backend doesn't return count directly, we might assume if movements.length < pageSize, that's the end. Or the endpoint returns a paginated object.
-      // Based on old provider `({List<CustomerCreditMovementModel> movements, int count})`, if the repo now just returns List, we may need to handle it.
-      // Wait, the new repo interface `getCreditMovements` returns `List<CreditMovementEntity>`. It doesn't return total count. We'll set totalCount to current page items + page size to allow next page if it's full.
+      // Si tenemos customerId, refrescamos el estado actual de la cuenta para mantener el saldo al día
+      final accountFuture =
+          state.customerId.isNotEmpty
+              ? _repository.getCreditAccountByCustomer(state.customerId)
+              : Future.value(null);
 
+      final results = await Future.wait([
+        movementsFuture,
+        totalsFuture,
+        accountFuture,
+      ]);
+
+      final movementsResult =
+          results[0] as ({List<CreditMovementEntity> items, int totalCount});
       final totalResult =
-          results[1] as ({double totalCharged, double totalPaid});
+          results[1]
+              as ({
+                double totalCharged,
+                double totalPaid,
+                int chargeCount,
+                int paymentCount,
+              });
+      final updatedAccount = results[2] as CustomerCreditEntity?;
 
-      int simulatedTotalCount =
-          state.currentPage * state.pageSize + movements.length;
-      if (movements.length == state.pageSize) {
-        simulatedTotalCount += state.pageSize; // assume more available
-      }
+      final items = movementsResult.items;
 
       emit(
         state.copyWith(
           isLoading: false,
-          movements: movements.cast(),
-          totalCount: simulatedTotalCount,
+          movements: items,
+          totalCount: movementsResult.totalCount,
           totalCharged: totalResult.totalCharged,
           totalPaid: totalResult.totalPaid,
+          chargeCount: totalResult.chargeCount,
+          paymentCount: totalResult.paymentCount,
+          currentDebt:
+              updatedAccount != null
+                  ? updatedAccount.currentDebt
+                  : state.currentDebt,
+          creditLimit:
+              updatedAccount != null
+                  ? updatedAccount.creditLimit
+                  : state.creditLimit,
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error cargando movimientos de crédito para creditId: ${state.creditId}',
+        tag: 'CUSTOMER_CREDIT_MOVEMENTS_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
       emit(
         state.copyWith(
           isLoading: false,
           error: 'Error al cargar los movimientos: $e',
         ),
       );
+    }
+  }
+
+  Future<void> registerPayment({
+    required double amount,
+    String? accountId,
+    String? orderId,
+    String? notes,
+    String? shiftId,
+  }) async {
+    try {
+      await _repository.registerPayment(
+        customerId: state.customerId,
+        creditId: state.creditId,
+        amount: amount,
+        accountId: accountId,
+        orderId: orderId,
+        notes: notes,
+        shiftId: shiftId,
+      );
+      // Recargar datos y saldo inmediatamente
+      await loadData();
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al registrar abono en CustomerCreditMovementsCubit',
+        tag: 'CUSTOMER_CREDIT_MOVEMENTS_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
     }
   }
 
@@ -101,17 +164,29 @@ class CustomerCreditMovementsCubit extends Cubit<CustomerCreditMovementsState> {
     await loadData();
   }
 
+  Future<void> setTypeFilter(String filter) async {
+    if (filter == state.typeFilter) return;
+    emit(state.copyWith(typeFilter: filter, currentPage: 0));
+    await loadData();
+  }
+
   Future<void> exportToPdf() async {
     if (state.isExporting) return;
 
     emit(state.copyWith(isExporting: true, error: null));
 
     try {
-      // Simulate PDF generation
+      // Simular exportación a PDF
       await Future.delayed(const Duration(seconds: 2));
 
       emit(state.copyWith(isExporting: false, exportSuccess: true));
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al exportar PDF de movimientos',
+        tag: 'CUSTOMER_CREDIT_MOVEMENTS_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
       emit(
         state.copyWith(
           isExporting: false,

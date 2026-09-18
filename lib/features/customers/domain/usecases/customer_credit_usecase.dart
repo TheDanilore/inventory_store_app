@@ -84,15 +84,19 @@ class GetCreditMovementsUseCase {
 
   GetCreditMovementsUseCase(this.repository);
 
-  Future<List<CreditMovementEntity>> call({
+  Future<({List<CreditMovementEntity> items, int totalCount})> call({
     required String creditId,
     required int limit,
     required int offset,
+    String? dateFilter,
+    String? movementType,
   }) {
     return repository.getCreditMovements(
       creditId: creditId,
       limit: limit,
       offset: offset,
+      dateFilter: dateFilter,
+      movementType: movementType,
     );
   }
 }

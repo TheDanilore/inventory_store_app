@@ -25,7 +25,7 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
     try {
       final account = await _getCreditAccountByCustomerUseCase(customerId);
       if (account != null) {
-        final movements = await _getCreditMovementsUseCase(
+        final movementsResult = await _getCreditMovementsUseCase(
           creditId: account.id,
           limit: _movementsLimit,
           offset: 0,
@@ -33,8 +33,10 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
         emit(
           CustomerCreditsLoaded(
             creditAccount: account,
-            movements: movements,
-            hasReachedMaxMovements: movements.length < _movementsLimit,
+            movements: movementsResult.items,
+            hasReachedMaxMovements:
+                movementsResult.items.length >= movementsResult.totalCount ||
+                movementsResult.items.length < _movementsLimit,
           ),
         );
       } else {
@@ -59,15 +61,21 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
     if (currentState is CustomerCreditsLoaded &&
         !currentState.hasReachedMaxMovements) {
       try {
-        final newMovements = await _getCreditMovementsUseCase(
+        final newMovementsResult = await _getCreditMovementsUseCase(
           creditId: currentState.creditAccount.id,
           limit: _movementsLimit,
           offset: currentState.movements.length,
         );
+        final combinedMovements = [
+          ...currentState.movements,
+          ...newMovementsResult.items,
+        ];
         emit(
           currentState.copyWith(
-            movements: [...currentState.movements, ...newMovements],
-            hasReachedMaxMovements: newMovements.length < _movementsLimit,
+            movements: combinedMovements,
+            hasReachedMaxMovements:
+                combinedMovements.length >= newMovementsResult.totalCount ||
+                newMovementsResult.items.isEmpty,
           ),
         );
       } catch (e, st) {
