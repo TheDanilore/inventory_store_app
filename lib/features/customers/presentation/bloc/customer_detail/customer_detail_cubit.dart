@@ -23,8 +23,23 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
     this._getTopProductsUseCase,
   ) : super(CustomerDetailInitial());
 
+  void initWithCustomer(CustomerEntity customer) {
+    if (state is CustomerDetailInitial) {
+      emit(
+        CustomerDetailLoaded(
+          customer: customer,
+          recentOrders: const [],
+          topProducts: const [],
+        ),
+      );
+    }
+  }
+
   Future<void> loadCustomer(String customerId) async {
-    emit(CustomerDetailLoading());
+    final previousState = state;
+    if (previousState is! CustomerDetailLoaded) {
+      emit(CustomerDetailLoading());
+    }
     try {
       final results = await Future.wait([
         _getCustomerDetailUseCase(customerId),
@@ -45,7 +60,11 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
         error: e,
         stackTrace: stackTrace,
       );
-      emit(CustomerDetailError(e.toString()));
+      if (previousState is CustomerDetailLoaded) {
+        emit(previousState);
+      } else {
+        emit(CustomerDetailError(e.toString()));
+      }
     }
   }
 

@@ -41,7 +41,13 @@ class CustomerDetailScreen extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (_) => sl<CustomerDetailCubit>()..loadCustomer(targetId),
+          create: (_) {
+            final cubit = sl<CustomerDetailCubit>();
+            if (customer != null) {
+              cubit.initWithCustomer(customer!);
+            }
+            return cubit..loadCustomer(targetId);
+          },
         ),
         BlocProvider(
           create: (_) => sl<CustomerLocationsCubit>()..loadLocations(targetId),
@@ -196,10 +202,37 @@ class _CustomerDetailContent extends StatelessWidget {
           SliverFillRemaining(
             hasScrollBody: false,
             child: Center(
-              child: Text(
-                error,
-                style: const TextStyle(color: AppColors.danger),
-                textAlign: TextAlign.center,
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: AppColors.danger,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      error,
+                      style: const TextStyle(
+                        color: AppColors.danger,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: () => _refreshData(context),
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: const Text('Reintentar'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           )
@@ -289,10 +322,37 @@ class _CustomerDetailContent extends StatelessWidget {
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(
-                    child: Text(
-                      error,
-                      style: const TextStyle(color: AppColors.danger),
-                      textAlign: TextAlign.center,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            color: AppColors.danger,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            error,
+                            style: const TextStyle(
+                              color: AppColors.danger,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed: () => _refreshData(context),
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: const Text('Reintentar'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 )

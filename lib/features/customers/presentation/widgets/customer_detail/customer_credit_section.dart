@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
@@ -189,13 +190,46 @@ class CustomerCreditSection extends StatelessWidget {
             const SizedBox(height: 12),
             const Divider(height: 1),
             const SizedBox(height: 10),
-            const Text(
-              'Movimientos recientes',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Movimientos recientes',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final queryParams = {
+                      'name': customer.fullName,
+                      'debt': debt.toString(),
+                      'limit': limit.toString(),
+                      'customerId': customer.id,
+                    };
+                    final uri = Uri(
+                      path: '/admin/customer-credit-movements/$creditId',
+                      queryParameters: queryParams,
+                    );
+                    context.push(uri.toString());
+                  },
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'Ver todos →',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             ...movements.take(5).map((m) => _CreditMovementRow(movement: m)),

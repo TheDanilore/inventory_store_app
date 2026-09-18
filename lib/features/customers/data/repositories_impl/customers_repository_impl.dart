@@ -128,50 +128,62 @@ class CustomersRepositoryImpl implements CustomersRepository {
 
   @override
   Future<CustomerEntity> getCustomerDetail(String customerId) async {
-    final res =
-        await _supabase.from('profiles').select().eq('id', customerId).single();
+    try {
+      final res =
+          await _supabase.from('profiles').select().eq('id', customerId).single();
 
-    final ordersRes = await _supabase
-        .from('orders')
-        .select('total_amount')
-        .eq('customer_id', customerId)
-        .eq('status', 'COMPLETED');
+      final ordersRes = await _supabase
+          .from('orders')
+          .select('total_amount')
+          .eq('customer_id', customerId)
+          .eq('status', 'COMPLETED');
 
-    final creditRes =
-        await _supabase
-            .from('customer_credits')
-            .select('current_debt, credit_limit')
-            .eq('profile_id', customerId)
-            .maybeSingle();
+      final creditRes =
+          await _supabase
+              .from('customer_credits')
+              .select('current_debt, credit_limit')
+              .eq('profile_id', customerId)
+              .maybeSingle();
 
-    double totalSpent = 0.0;
-    for (var row in ordersRes) {
-      totalSpent += (row['total_amount'] as num?)?.toDouble() ?? 0.0;
+      double totalSpent = 0.0;
+      for (var row in ordersRes) {
+        totalSpent += (row['total_amount'] as num?)?.toDouble() ?? 0.0;
+      }
+
+      double currentDebt = 0.0;
+      double creditLimit = 0.0;
+      if (creditRes != null) {
+        currentDebt = (creditRes['current_debt'] as num?)?.toDouble() ?? 0.0;
+        creditLimit = (creditRes['credit_limit'] as num?)?.toDouble() ?? 0.0;
+      }
+
+      return CustomerEntity(
+        id: res['id'] as String,
+        fullName: res['full_name'] as String? ?? 'Cliente',
+        phone: res['phone'] as String?,
+        documentNumber: res['document_number'] as String?,
+        documentType: res['document_type'] as String?,
+        avatarUrl: res['avatar_url'] as String?,
+        walletBalance: (res['wallet_balance'] as num?)?.toDouble() ?? 0.0,
+        isActive: res['is_active'] as bool? ?? true,
+        createdAt:
+            res['created_at'] != null ? DateTime.parse(res['created_at']) : null,
+        currentDebt: currentDebt,
+        creditLimit: creditLimit,
+        totalRevenue: totalSpent,
+        orderCount: ordersRes.length,
+      );
+    } catch (e, stackTrace) {
+      LoggerService.e(
+        'Error fetching customer detail for $customerId',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      throw AppException(
+        message: 'Error al obtener detalle del cliente: ${e.toString()}',
+        originalError: e,
+      );
     }
-
-    double currentDebt = 0.0;
-    double creditLimit = 0.0;
-    if (creditRes != null) {
-      currentDebt = (creditRes['current_debt'] as num?)?.toDouble() ?? 0.0;
-      creditLimit = (creditRes['credit_limit'] as num?)?.toDouble() ?? 0.0;
-    }
-
-    return CustomerEntity(
-      id: res['id'] as String,
-      fullName: res['full_name'] as String? ?? 'Cliente',
-      phone: res['phone'] as String?,
-      documentNumber: res['document_number'] as String?,
-      documentType: res['document_type'] as String?,
-      avatarUrl: res['avatar_url'] as String?,
-      walletBalance: (res['wallet_balance'] as num?)?.toDouble() ?? 0.0,
-      isActive: res['is_active'] as bool? ?? true,
-      createdAt:
-          res['created_at'] != null ? DateTime.parse(res['created_at']) : null,
-      currentDebt: currentDebt,
-      creditLimit: creditLimit,
-      totalRevenue: totalSpent,
-      orderCount: ordersRes.length,
-    );
   }
 
   @override
@@ -652,7 +664,8 @@ class CustomersRepositoryImpl implements CustomersRepository {
             'quantity, applied_price, products(name), order:orders!inner(customer_id, status)',
           )
           .eq('order.customer_id', customerId)
-          .eq('order.status', 'COMPLETED');
+          .eq('order.status', 'COMPLETED')
+          .limit(200);
 
       final productMap = <String, ({int qty, double spent})>{};
       for (var row in res) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -129,170 +130,177 @@ class _OrderRow extends StatelessWidget {
             : order.id.toUpperCase();
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Column(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color:
-                      _isCancelled
-                          ? AppColors.dangerLight
-                          : AppColors.background,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  _isCancelled
-                      ? Icons.remove_shopping_cart_rounded
-                      : Icons.shopping_bag_outlined,
-                  size: 16,
-                  color: _isCancelled ? AppColors.danger : AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: '#$shortId ',
-                            style: TextStyle(
-                              color:
-                                  _isCancelled
-                                      ? AppColors.textMuted
-                                      : AppColors.primary,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          TextSpan(
-                            text:
-                                '• ${DateFormat('d MMM yyyy', 'es').format(order.createdAt)}',
-                          ),
-                        ],
-                      ),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        decoration:
-                            _isCancelled ? TextDecoration.lineThrough : null,
-                        color:
-                            _isCancelled
-                                ? AppColors.textMuted
-                                : AppColors.textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+          InkWell(
+            onTap: () => context.push('/admin/orders?selectedId=${order.id}'),
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color:
+                          _isCancelled
+                              ? AppColors.dangerLight
+                              : AppColors.background,
+                      shape: BoxShape.circle,
                     ),
-                    Row(
+                    child: Icon(
+                      _isCancelled
+                          ? Icons.remove_shopping_cart_rounded
+                          : Icons.shopping_bag_outlined,
+                      size: 16,
+                      color: _isCancelled ? AppColors.danger : AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _methodLabel(order.paymentMethod),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textMuted,
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: '#$shortId ',
+                                style: TextStyle(
+                                  color:
+                                      _isCancelled
+                                          ? AppColors.textMuted
+                                          : AppColors.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              TextSpan(
+                                text:
+                                    '• ${DateFormat('d MMM yyyy', 'es').format(order.createdAt)}',
+                              ),
+                            ],
                           ),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            decoration:
+                                _isCancelled ? TextDecoration.lineThrough : null,
+                            color:
+                                _isCancelled
+                                    ? AppColors.textMuted
+                                    : AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        if (!_isCancelled && order.pointsEarned > 0) ...[
-                          const SizedBox(width: 6),
+                        Row(
+                          children: [
+                            Text(
+                              _methodLabel(order.paymentMethod),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                            if (!_isCancelled && order.pointsEarned > 0) ...[
+                              const SizedBox(width: 6),
+                              Text(
+                                '+${order.pointsEarned}pts',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.amber,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                            if (!_isCancelled && order.pointsUsed > 0) ...[
+                              const SizedBox(width: 4),
+                              Text(
+                                '-${order.pointsUsed}pts',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        if (hasDiscount && !_isCancelled)
                           Text(
-                            '+${order.pointsEarned}pts',
+                            'Descuento: S/ ${order.discountAmount.toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontSize: 11,
-                              color: Colors.amber,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        if (hasPending && order.dueDate != null)
+                          Text(
+                            'Vence: ${DateFormat('d MMM yyyy', 'es').format(order.dueDate!)}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color:
+                                  order.dueDate!.isBefore(DateTime.now())
+                                      ? AppColors.danger
+                                      : Colors.orange,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ],
-                        if (!_isCancelled && order.pointsUsed > 0) ...[
-                          const SizedBox(width: 4),
-                          Text(
-                            '-${order.pointsUsed}pts',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
-                    if (hasDiscount && !_isCancelled)
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
                       Text(
-                        'Descuento: S/ ${order.discountAmount.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.success,
-                        ),
-                      ),
-                    if (hasPending && order.dueDate != null)
-                      Text(
-                        'Vence: ${DateFormat('d MMM yyyy', 'es').format(order.dueDate!)}',
+                        'S/ ${order.totalAmount.toStringAsFixed(2)}',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          decoration:
+                              _isCancelled ? TextDecoration.lineThrough : null,
                           color:
-                              order.dueDate!.isBefore(DateTime.now())
-                                  ? AppColors.danger
-                                  : Colors.orange,
-                          fontWeight: FontWeight.w600,
+                              _isCancelled
+                                  ? AppColors.textMuted
+                                  : AppColors.textPrimary,
                         ),
                       ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'S/ ${order.totalAmount.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      decoration:
-                          _isCancelled ? TextDecoration.lineThrough : null,
-                      color:
-                          _isCancelled
-                              ? AppColors.textMuted
-                              : AppColors.textPrimary,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _statusColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      _statusLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: _statusColor,
-                        fontWeight: FontWeight.bold,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _statusColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _statusLabel,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _statusColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
+                      if (hasPending)
+                        Text(
+                          'Debe S/ ${order.pendingAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.danger,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
                   ),
-                  if (hasPending)
-                    Text(
-                      'Debe S/ ${order.pendingAmount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.danger,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
                 ],
               ),
-            ],
+            ),
           ),
           if (!isLast)
             const Padding(
-              padding: EdgeInsets.only(top: 8),
+              padding: EdgeInsets.only(top: 4),
               child: Divider(height: 1, color: AppColors.border),
             ),
         ],

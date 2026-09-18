@@ -67,7 +67,9 @@ class CustomerHeaderCard extends StatelessWidget {
             child:
                 c.avatarUrl == null
                     ? Text(
-                      c.fullName.substring(0, 1).toUpperCase(),
+                      c.fullName.trim().isNotEmpty
+                          ? c.fullName.trim()[0].toUpperCase()
+                          : 'C',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 28,
