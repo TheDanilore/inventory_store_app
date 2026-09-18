@@ -68,9 +68,12 @@ class _OrderRow extends StatelessWidget {
   const _OrderRow({required this.order, this.isLast = false});
 
   bool get _isCancelled => order.status.toUpperCase() == 'CANCELLED';
+  bool get _isPendingDraft => order.status.toUpperCase() == 'PENDING';
+  bool get _isCompleted => order.status.toUpperCase() == 'COMPLETED';
 
   Color get _statusColor {
     if (_isCancelled) return AppColors.danger;
+    if (_isPendingDraft) return Colors.purple;
     switch (order.paymentStatus) {
       case 'PAID':
         return AppColors.success;
@@ -85,11 +88,12 @@ class _OrderRow extends StatelessWidget {
 
   String get _statusLabel {
     if (_isCancelled) return 'Cancelado';
+    if (_isPendingDraft) return 'Borrador';
     switch (order.paymentStatus) {
       case 'PAID':
         return 'Pagado';
       case 'PENDING':
-        return 'Pendiente';
+        return 'Por Pagar';
       case 'PARTIAL':
         return 'Parcial';
       default:
@@ -115,7 +119,7 @@ class _OrderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasPending =
-        !_isCancelled &&
+        _isCompleted &&
         order.paymentStatus != 'PAID' &&
         order.pendingAmount > 0;
     final hasDiscount = order.discountAmount > 0;

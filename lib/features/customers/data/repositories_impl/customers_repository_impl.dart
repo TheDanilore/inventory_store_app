@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/errors/app_exception.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
@@ -19,101 +20,110 @@ class CustomersRepositoryImpl implements CustomersRepository {
     String? query,
     bool showOnlyWithDebt = false,
   }) async {
-    dynamic queryBuilder = _supabase
-        .from('profiles')
-        .select(
-          'id, full_name, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at${showOnlyWithDebt ? ', customer_credits:customer_credits!customer_credits_profile_id_fkey!inner(current_debt, credit_limit)' : ''}',
+    try {
+      dynamic queryBuilder = _supabase
+          .from('profiles')
+          .select(
+            'id, full_name, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at${showOnlyWithDebt ? ', customer_credits:customer_credits!customer_credits_profile_id_fkey!inner(current_debt, credit_limit)' : ''}',
+          );
+
+      queryBuilder = queryBuilder.eq('role', 'customer');
+
+      if (query != null && query.isNotEmpty) {
+        queryBuilder = queryBuilder.or(
+          'full_name.ilike.%$query%,document_number.ilike.%$query%,phone.ilike.%$query%',
         );
-
-    queryBuilder = queryBuilder.eq('role', 'customer');
-
-    if (query != null && query.isNotEmpty) {
-      queryBuilder = queryBuilder.or(
-        'full_name.ilike.%$query%,document_number.ilike.%$query%,phone.ilike.%$query%',
-      );
-    }
-
-    if (showOnlyWithDebt) {
-      queryBuilder = queryBuilder.gt('customer_credits.current_debt', 0);
-    }
-
-    // Ordenar los ms recientes primero, a menos que estemos buscando (relevancia)
-    if (query == null || query.isEmpty) {
-      queryBuilder = queryBuilder.order('created_at', ascending: false);
-    }
-
-    final res = await queryBuilder.range(offset, offset + limit - 1);
-
-    if (res.isEmpty) return [];
-
-    final cIds = res.map((e) => e['id'] as String).toList();
-
-    // Traer aggregados
-    final ordersRes = await _supabase
-        .from('orders')
-        .select('customer_id, total_amount')
-        .eq('status', 'COMPLETED')
-        .inFilter('customer_id', cIds);
-
-    final creditsRes = await _supabase
-        .from('customer_credits')
-        .select('profile_id, current_debt, credit_limit')
-        .inFilter('profile_id', cIds);
-
-    return res.map<CustomerEntity>((json) {
-      final id = json['id'] as String;
-
-      double currentDebt = 0.0;
-      double creditLimit = 0.0;
-
-      if (showOnlyWithDebt && json['customer_credits'] != null) {
-        final creditData = json['customer_credits'];
-        Map<String, dynamic>? creditObj;
-        if (creditData is Map<String, dynamic>) {
-          creditObj = creditData;
-        } else if (creditData is List && creditData.isNotEmpty) {
-          creditObj = creditData.first as Map<String, dynamic>?;
-        }
-        if (creditObj != null) {
-          currentDebt = (creditObj['current_debt'] as num?)?.toDouble() ?? 0.0;
-          creditLimit = (creditObj['credit_limit'] as num?)?.toDouble() ?? 0.0;
-        }
-      } else {
-        // Viene del query separado
-        final creditRowMatch = creditsRes.where((c) => c['profile_id'] == id);
-        final creditRow =
-            creditRowMatch.isNotEmpty ? creditRowMatch.first : null;
-        if (creditRow != null) {
-          currentDebt = (creditRow['current_debt'] as num?)?.toDouble() ?? 0.0;
-          creditLimit = (creditRow['credit_limit'] as num?)?.toDouble() ?? 0.0;
-        }
       }
 
-      final customerOrders =
-          ordersRes.where((o) => o['customer_id'] == id).toList();
-      double totalSpent = 0.0;
-      for (var o in customerOrders) {
-        totalSpent += (o['total_amount'] as num?)?.toDouble() ?? 0.0;
+      if (showOnlyWithDebt) {
+        queryBuilder = queryBuilder.gt('customer_credits.current_debt', 0);
       }
 
-      return CustomerEntity(
-        id: id,
-        fullName: json['full_name'] as String? ?? 'Cliente',
-        phone: json['phone'] as String?,
-        documentNumber: json['document_number'] as String?,
-        documentType: json['document_type'] as String?,
-        avatarUrl: json['avatar_url'] as String?,
-        walletBalance: (json['wallet_balance'] as num?)?.toDouble() ?? 0.0,
-        isActive: json['is_active'] as bool? ?? true,
-        createdAt:
-            json['created_at'] != null
-                ? DateTime.parse(json['created_at'])
-                : null,
-        currentDebt: currentDebt,
-        creditLimit: creditLimit,
-        totalRevenue: totalSpent,
+      // Ordenar los más recientes primero, a menos que estemos buscando (relevancia)
+      if (query == null || query.isEmpty) {
+        queryBuilder = queryBuilder.order('created_at', ascending: false);
+      }
+
+      final res = await queryBuilder.range(offset, offset + limit - 1);
+
+      if (res.isEmpty) return [];
+
+      final cIds = res.map((e) => e['id'] as String).toList();
+
+      // Traer agregados
+      final ordersRes = await _supabase
+          .from('orders')
+          .select('customer_id, total_amount')
+          .eq('status', 'COMPLETED')
+          .inFilter('customer_id', cIds);
+
+      final creditsRes = await _supabase
+          .from('customer_credits')
+          .select('profile_id, current_debt, credit_limit')
+          .inFilter('profile_id', cIds);
+
+      return res.map<CustomerEntity>((json) {
+        final id = json['id'] as String;
+
+        double currentDebt = 0.0;
+        double creditLimit = 0.0;
+
+        if (showOnlyWithDebt && json['customer_credits'] != null) {
+          final creditData = json['customer_credits'];
+          Map<String, dynamic>? creditObj;
+          if (creditData is Map<String, dynamic>) {
+            creditObj = creditData;
+          } else if (creditData is List && creditData.isNotEmpty) {
+            creditObj = creditData.first as Map<String, dynamic>?;
+          }
+          if (creditObj != null) {
+            currentDebt = (creditObj['current_debt'] as num?)?.toDouble() ?? 0.0;
+            creditLimit = (creditObj['credit_limit'] as num?)?.toDouble() ?? 0.0;
+          }
+        } else {
+          // Viene del query separado
+          final creditRowMatch = creditsRes.where((c) => c['profile_id'] == id);
+          final creditRow =
+              creditRowMatch.isNotEmpty ? creditRowMatch.first : null;
+          if (creditRow != null) {
+            currentDebt = (creditRow['current_debt'] as num?)?.toDouble() ?? 0.0;
+            creditLimit = (creditRow['credit_limit'] as num?)?.toDouble() ?? 0.0;
+          }
+        }
+
+        final customerOrders =
+            ordersRes.where((o) => o['customer_id'] == id).toList();
+        double totalSpent = 0.0;
+        for (var o in customerOrders) {
+          totalSpent += (o['total_amount'] as num?)?.toDouble() ?? 0.0;
+        }
+
+        return CustomerEntity(
+          id: id,
+          fullName: json['full_name'] as String? ?? 'Cliente',
+          phone: json['phone'] as String?,
+          documentNumber: json['document_number'] as String?,
+          documentType: json['document_type'] as String?,
+          avatarUrl: json['avatar_url'] as String?,
+          walletBalance: (json['wallet_balance'] as num?)?.toDouble() ?? 0.0,
+          isActive: json['is_active'] as bool? ?? true,
+          createdAt:
+              json['created_at'] != null
+                  ? DateTime.parse(json['created_at'])
+                  : null,
+          currentDebt: currentDebt,
+          creditLimit: creditLimit,
+          totalRevenue: totalSpent,
+          orderCount: customerOrders.length,
+        );
+      }).toList();
+    } catch (e, stack) {
+      LoggerService.e('Error en getCustomers', error: e, stackTrace: stack);
+      throw AppException(
+        message: 'Error al cargar la lista de clientes',
+        originalError: e,
       );
-    }).toList();
+    }
   }
 
   @override
@@ -349,96 +359,180 @@ class CustomersRepositoryImpl implements CustomersRepository {
 
   @override
   Future<Map<String, dynamic>> getGlobalStats() async {
-    final profilesRes = await _supabase
-        .from('profiles')
-        .select('is_active')
-        .eq('role', 'customer');
-
-    final activeCount = profilesRes.where((p) => p['is_active'] == true).length;
-    final inactiveCount =
-        profilesRes.where((p) => p['is_active'] == false).length;
-    final totalCount = profilesRes.length;
-
-    final ordersRes = await _supabase
-        .from('orders')
-        .select('total_amount')
-        .eq('status', 'COMPLETED');
-
-    double totalRevenue = 0.0;
-    for (var row in ordersRes) {
-      totalRevenue += (row['total_amount'] as num?)?.toDouble() ?? 0.0;
-    }
-
-    final creditsRes = await _supabase
-        .from('customer_credits')
-        .select('current_debt');
-    double totalDebt = 0.0;
-    int debtCustomersCount = 0;
-    for (var row in creditsRes) {
-      final debt = (row['current_debt'] as num?)?.toDouble() ?? 0.0;
-      totalDebt += debt;
-      if (debt > 0) {
-        debtCustomersCount++;
+    try {
+      final res = await _supabase.rpc('get_customers_global_stats_rpc');
+      if (res != null && res is Map) {
+        return {
+          'totalCount': (res['total_count'] as num?)?.toInt() ?? 0,
+          'totalCustomersCount': (res['total_count'] as num?)?.toInt() ?? 0,
+          'activeCount': (res['active_count'] as num?)?.toInt() ?? 0,
+          'activeCustomersCount': (res['active_count'] as num?)?.toInt() ?? 0,
+          'inactiveCount': (res['inactive_count'] as num?)?.toInt() ?? 0,
+          'totalRevenue': (res['total_revenue'] as num?)?.toDouble() ?? 0.0,
+          'totalDebt': (res['total_debt'] as num?)?.toDouble() ?? 0.0,
+          'debtCustomersCount': (res['debt_customers_count'] as num?)?.toInt() ?? 0,
+        };
       }
+    } catch (rpcErr) {
+      LoggerService.w(
+        'RPC get_customers_global_stats_rpc no disponible o falló, usando fallback cliente: $rpcErr',
+      );
     }
 
-    return {
-      'totalCount': totalCount,
-      'totalCustomersCount': totalCount,
-      'activeCount': activeCount,
-      'activeCustomersCount': activeCount,
-      'inactiveCount': inactiveCount,
-      'totalRevenue': totalRevenue,
-      'totalDebt': totalDebt,
-      'debtCustomersCount': debtCustomersCount,
-    };
+    try {
+      final profilesRes = await _supabase
+          .from('profiles')
+          .select('is_active')
+          .eq('role', 'customer');
+
+      final activeCount =
+          profilesRes.where((p) => p['is_active'] == true).length;
+      final inactiveCount =
+          profilesRes.where((p) => p['is_active'] == false).length;
+      final totalCount = profilesRes.length;
+
+      final ordersRes = await _supabase
+          .from('orders')
+          .select('total_amount')
+          .eq('status', 'COMPLETED');
+
+      double totalRevenue = 0.0;
+      for (var row in ordersRes) {
+        totalRevenue += (row['total_amount'] as num?)?.toDouble() ?? 0.0;
+      }
+
+      final creditsRes = await _supabase
+          .from('customer_credits')
+          .select('current_debt');
+      double totalDebt = 0.0;
+      int debtCustomersCount = 0;
+      for (var row in creditsRes) {
+        final debt = (row['current_debt'] as num?)?.toDouble() ?? 0.0;
+        totalDebt += debt;
+        if (debt > 0) {
+          debtCustomersCount++;
+        }
+      }
+
+      return {
+        'totalCount': totalCount,
+        'totalCustomersCount': totalCount,
+        'activeCount': activeCount,
+        'activeCustomersCount': activeCount,
+        'inactiveCount': inactiveCount,
+        'totalRevenue': totalRevenue,
+        'totalDebt': totalDebt,
+        'debtCustomersCount': debtCustomersCount,
+      };
+    } catch (e, stack) {
+      LoggerService.e(
+        'Error en getGlobalStats fallback',
+        error: e,
+        stackTrace: stack,
+      );
+      throw AppException(
+        message: 'Error al cargar estadísticas globales de clientes',
+        originalError: e,
+      );
+    }
   }
 
   @override
   Future<List<CustomerEntity>> getTopCustomers(int limit) async {
-    final ordersRes = await _supabase
-        .from('orders')
-        .select('customer_id, total_amount')
-        .eq('status', 'COMPLETED');
-
-    final revMap = <String, double>{};
-    for (var row in ordersRes) {
-      final cid = row['customer_id'] as String?;
-      if (cid != null) {
-        revMap[cid] =
-            (revMap[cid] ?? 0.0) +
-            ((row['total_amount'] as num?)?.toDouble() ?? 0.0);
+    try {
+      final res = await _supabase.rpc(
+        'get_top_customers_rpc',
+        params: {'p_limit': limit},
+      );
+      if (res != null && res is List) {
+        return res.map<CustomerEntity>((row) {
+          return CustomerEntity(
+            id: row['id'] as String,
+            fullName: row['full_name'] as String? ?? 'Cliente',
+            phone: row['phone'] as String?,
+            documentNumber: row['document_number'] as String?,
+            documentType: row['document_type'] as String?,
+            avatarUrl: row['avatar_url'] as String?,
+            walletBalance: (row['wallet_balance'] as num?)?.toDouble() ?? 0.0,
+            isActive: row['is_active'] as bool? ?? true,
+            createdAt:
+                row['created_at'] != null
+                    ? DateTime.tryParse(row['created_at'].toString())
+                    : null,
+            totalRevenue: (row['total_spent'] as num?)?.toDouble() ?? 0.0,
+            orderCount: (row['order_count'] as num?)?.toInt() ?? 0,
+          );
+        }).toList();
       }
+    } catch (rpcErr) {
+      LoggerService.w(
+        'RPC get_top_customers_rpc no disponible o falló, usando fallback cliente: $rpcErr',
+      );
     }
 
-    var sortedEntries =
-        revMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    final topIds = sortedEntries.take(limit).map((e) => e.key).toList();
+    try {
+      final ordersRes = await _supabase
+          .from('orders')
+          .select('customer_id, total_amount')
+          .eq('status', 'COMPLETED');
 
-    if (topIds.isEmpty) return [];
+      final revMap = <String, double>{};
+      final countMap = <String, int>{};
+      for (var row in ordersRes) {
+        final cid = row['customer_id'] as String?;
+        if (cid != null) {
+          revMap[cid] =
+              (revMap[cid] ?? 0.0) +
+              ((row['total_amount'] as num?)?.toDouble() ?? 0.0);
+          countMap[cid] = (countMap[cid] ?? 0) + 1;
+        }
+      }
 
-    final topProfilesRes = await _supabase
-        .from('profiles')
-        .select()
-        .inFilter('id', topIds);
+      var sortedEntries =
+          revMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+      final topIds = sortedEntries.take(limit).map((e) => e.key).toList();
 
-    return topProfilesRes.map<CustomerEntity>((json) {
-      return CustomerEntity(
-        id: json['id'] as String,
-        fullName: json['full_name'] as String? ?? 'Cliente',
-        phone: json['phone'] as String?,
-        documentNumber: json['document_number'] as String?,
-        documentType: json['document_type'] as String?,
-        avatarUrl: json['avatar_url'] as String?,
-        walletBalance: (json['wallet_balance'] as num?)?.toDouble() ?? 0.0,
-        isActive: json['is_active'] as bool? ?? true,
-        createdAt:
-            json['created_at'] != null
-                ? DateTime.parse(json['created_at'])
-                : null,
-        totalRevenue: revMap[json['id'] as String] ?? 0.0,
+      if (topIds.isEmpty) return [];
+
+      final topProfilesRes = await _supabase
+          .from('profiles')
+          .select()
+          .inFilter('id', topIds);
+
+      final list =
+          topProfilesRes.map<CustomerEntity>((json) {
+            final cid = json['id'] as String;
+            return CustomerEntity(
+              id: cid,
+              fullName: json['full_name'] as String? ?? 'Cliente',
+              phone: json['phone'] as String?,
+              documentNumber: json['document_number'] as String?,
+              documentType: json['document_type'] as String?,
+              avatarUrl: json['avatar_url'] as String?,
+              walletBalance: (json['wallet_balance'] as num?)?.toDouble() ?? 0.0,
+              isActive: json['is_active'] as bool? ?? true,
+              createdAt:
+                  json['created_at'] != null
+                      ? DateTime.parse(json['created_at'])
+                      : null,
+              totalRevenue: revMap[cid] ?? 0.0,
+              orderCount: countMap[cid] ?? 0,
+            );
+          }).toList();
+
+      list.sort((a, b) => b.totalRevenue.compareTo(a.totalRevenue));
+      return list;
+    } catch (e, stack) {
+      LoggerService.e(
+        'Error en getTopCustomers fallback',
+        error: e,
+        stackTrace: stack,
       );
-    }).toList();
+      throw AppException(
+        message: 'Error al obtener clientes destacados',
+        originalError: e,
+      );
+    }
   }
 
   @override

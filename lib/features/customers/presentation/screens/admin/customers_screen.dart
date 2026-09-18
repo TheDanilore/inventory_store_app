@@ -1034,26 +1034,21 @@ class _DesktopCustomersTable extends StatelessWidget {
           ),
 
           // Table Rows
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: customers.length,
-            separatorBuilder:
-                (_, _) => const Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: AppColors.divider,
-                ),
-            itemBuilder: (context, index) {
-              final c = customers[index];
-              return _DesktopCustomerRow(
-                customer: c,
-                onOpen: () => onOpenDetail(c),
-                onEdit: () => onEditCustomer(c),
-                onContextMenu: (pos) => onContextMenu(context, pos, c),
-              );
-            },
-          ),
+          for (int i = 0; i < customers.length; i++) ...[
+            if (i > 0)
+              const Divider(
+                height: 1,
+                thickness: 1,
+                color: AppColors.divider,
+              ),
+            _DesktopCustomerRow(
+              key: ValueKey(customers[i].id),
+              customer: customers[i],
+              onOpen: () => onOpenDetail(customers[i]),
+              onEdit: () => onEditCustomer(customers[i]),
+              onContextMenu: (pos) => onContextMenu(context, pos, customers[i]),
+            ),
+          ],
 
           if (!hasReachedMax)
             InkWell(
@@ -1087,6 +1082,7 @@ class _DesktopCustomerRow extends StatefulWidget {
   final ValueChanged<Offset> onContextMenu;
 
   const _DesktopCustomerRow({
+    super.key,
     required this.customer,
     required this.onOpen,
     required this.onEdit,

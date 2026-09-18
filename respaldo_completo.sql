@@ -6575,6 +6575,88 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
 
+-- RPC: Estadísticas globales de clientes con cero consumo innecesario de Data Egress
+CREATE OR REPLACE FUNCTION "public"."get_customers_global_stats_rpc"()
+RETURNS "jsonb"
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+AS $$
+DECLARE
+    v_total_customers INT;
+    v_active_customers INT;
+    v_inactive_customers INT;
+    v_total_revenue NUMERIC;
+    v_total_debt NUMERIC;
+    v_debt_customers_count INT;
+BEGIN
+    SELECT COUNT(*),
+           COUNT(*) FILTER (WHERE is_active = true),
+           COUNT(*) FILTER (WHERE is_active = false)
+      INTO v_total_customers, v_active_customers, v_inactive_customers
+      FROM public.profiles
+     WHERE role = 'customer';
+
+    SELECT COALESCE(SUM(total_amount), 0)
+      INTO v_total_revenue
+      FROM public.orders
+     WHERE status = 'COMPLETED';
+
+    SELECT COALESCE(SUM(current_debt), 0),
+           COUNT(*) FILTER (WHERE current_debt > 0)
+      INTO v_total_debt, v_debt_customers_count
+      FROM public.customer_credits;
+
+    RETURN jsonb_build_object(
+        'totalCustomersCount', v_total_customers,
+        'activeCustomersCount', v_active_customers,
+        'inactiveCustomersCount', v_inactive_customers,
+        'totalRevenue', v_total_revenue,
+        'totalDebt', v_total_debt,
+        'debtCustomersCount', v_debt_customers_count
+    );
+END;
+$$;
+
+GRANT ALL ON FUNCTION "public"."get_customers_global_stats_rpc"() TO "anon", "authenticated", "service_role";
+
+-- RPC: Top compradores agregados en servidor (cero transferencia masiva de órdenes a Flutter)
+CREATE OR REPLACE FUNCTION "public"."get_top_customers_rpc"("p_limit" int DEFAULT 5)
+RETURNS TABLE (
+    id uuid,
+    full_name text,
+    phone text,
+    document_number text,
+    document_type text,
+    avatar_url text,
+    wallet_balance numeric,
+    is_active boolean,
+    created_at timestamptz,
+    total_revenue numeric,
+    order_count bigint
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+AS $$
+    SELECT 
+        p.id,
+        p.full_name,
+        p.phone,
+        p.document_number,
+        p.document_type,
+        p.avatar_url,
+        p.wallet_balance,
+        p.is_active,
+        p.created_at,
+        COALESCE(SUM(o.total_amount), 0) AS total_revenue,
+        COUNT(o.id) AS order_count
+    FROM public.profiles p
+    JOIN public.orders o ON o.customer_id = p.id
+    WHERE p.role = 'customer' AND o.status = 'COMPLETED'
+    GROUP BY p.id
+    ORDER BY total_revenue DESC
+    LIMIT p_limit;
+$$;
+
+GRANT ALL ON FUNCTION "public"."get_top_customers_rpc"(int) TO "anon", "authenticated", "service_role";
+
 
 
 

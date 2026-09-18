@@ -435,8 +435,25 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
                                   keyboardType: TextInputType.number,
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(15),
+                                    LengthLimitingTextInputFormatter(
+                                      _docType == 'DNI'
+                                          ? 8
+                                          : _docType == 'RUC'
+                                          ? 11
+                                          : 15,
+                                    ),
                                   ],
+                                  validator: (v) {
+                                    final text = v?.trim() ?? '';
+                                    if (text.isEmpty) return null;
+                                    if (_docType == 'DNI' && text.length != 8) {
+                                      return 'DNI debe tener 8 dígitos';
+                                    }
+                                    if (_docType == 'RUC' && text.length != 11) {
+                                      return 'RUC debe tener 11 dígitos';
+                                    }
+                                    return null;
+                                  },
                                 ),
                               ),
                             ],
