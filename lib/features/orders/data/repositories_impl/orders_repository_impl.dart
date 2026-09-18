@@ -90,18 +90,31 @@ class OrdersRepositoryImpl implements OrdersRepository {
           .from('orders')
           .select('id, total_amount, amount_paid, payment_status, created_at')
           .eq('customer_id', customerId)
+          .eq('status', 'COMPLETED')
           .inFilter('payment_status', ['PENDING', 'PARTIAL'])
           .order('created_at', ascending: true);
 
       // We only need basic fields for pending orders in the UI
       final orders = data.map((json) => OrderModel.fromJson(json)).toList();
       return Right(orders);
-    } catch (e, st) {
-      developer.log(
-        'Error en getPendingOrdersByCustomer',
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en getPendingOrdersByCustomer: ${e.message}',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
+      );
+      return Left(
+        ServerFailure(
+          message: 'Error al consultar órdenes pendientes: ${e.message}',
+        ),
+      );
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en getPendingOrdersByCustomer',
+        tag: 'ORDERS_REPO',
+        error: e,
+        stackTrace: st,
       );
       return Left(ServerFailure(message: 'Error fetching pending orders: $e'));
     }

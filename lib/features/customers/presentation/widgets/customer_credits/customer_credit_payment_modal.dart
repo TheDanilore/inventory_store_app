@@ -372,7 +372,7 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
               final pending = _pendingOf(order);
               final isPartial = order.paymentStatus == 'PARTIAL';
               final shortId = order.id.split('-').first;
-              final pointsEarned = (order.totalAmount * 0.03 / 0.01).floor();
+              final pointsEarned = order.pointsEarned;
 
               return _OrderSelectionTile(
                 label: 'Pedido #$shortId',

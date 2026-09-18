@@ -163,13 +163,14 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
     if (state.selectedOrder != null) {
       final pending =
           state.selectedOrder!.totalAmount - state.selectedOrder!.amountPaid;
+      final effectiveMax = pending < maxDebt ? pending : maxDebt;
 
-      if (amount > pending) {
+      if (amount > effectiveMax) {
         emit(
           state.copyWith(
             amount: value,
             amountError:
-                'Máximo para este pedido: S/ ${pending.toStringAsFixed(2)}',
+                'Máximo permitido para este pedido: S/ ${effectiveMax.toStringAsFixed(2)}',
           ),
         );
         return;
