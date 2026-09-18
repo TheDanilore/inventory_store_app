@@ -898,6 +898,52 @@ $$;
 ALTER FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text" DEFAULT ''::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_total_debt numeric := 0;
+  v_active_count int := 0;
+  v_suspended_count int := 0;
+  v_maxed_out_count int := 0;
+  v_debt_count int := 0;
+  v_result jsonb;
+BEGIN
+  SELECT 
+    COALESCE(SUM(cc.current_debt), 0),
+    COUNT(*) FILTER (WHERE cc.is_active = true),
+    COUNT(*) FILTER (WHERE cc.is_active = false),
+    COUNT(*) FILTER (WHERE cc.is_active = true AND cc.credit_limit > 0 AND cc.current_debt >= cc.credit_limit),
+    COUNT(*) FILTER (WHERE cc.is_active = true AND cc.current_debt > 0)
+  INTO 
+    v_total_debt, 
+    v_active_count, 
+    v_suspended_count, 
+    v_maxed_out_count, 
+    v_debt_count
+  FROM customer_credits cc
+  JOIN profiles p ON p.id = cc.profile_id
+  WHERE p_search_query = '' 
+     OR p.full_name ILIKE '%' || p_search_query || '%'
+     OR p.document_number ILIKE '%' || p_search_query || '%'
+     OR p.phone ILIKE '%' || p_search_query || '%';
+
+  v_result := jsonb_build_object(
+    'totalDebt', v_total_debt,
+    'activeAccounts', v_active_count,
+    'suspendedAccounts', v_suspended_count,
+    'maxedOutAccounts', v_maxed_out_count,
+    'debtCount', v_debt_count
+  );
+
+  RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_top_customers"("p_limit" integer DEFAULT 10) RETURNS TABLE("id" "uuid", "full_name" "text", "avatar_url" "text", "is_active" boolean, "wallet_balance" integer, "created_at" timestamp with time zone, "total_revenue" numeric)
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -6056,6 +6102,10 @@ GRANT ALL ON FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "
 GRANT ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") TO "service_role";
 
 
 

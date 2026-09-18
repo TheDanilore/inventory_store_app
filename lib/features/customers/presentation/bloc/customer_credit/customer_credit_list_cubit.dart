@@ -9,12 +9,14 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
   final GetCreditAccountsUseCase _getCreditAccountsUseCase;
   final ToggleCreditStatusUseCase _toggleCreditStatusUseCase;
   final CreateCreditAccountUseCase _createCreditAccountUseCase;
+  final UpdateCreditLimitUseCase _updateCreditLimitUseCase;
   final RegisterCreditPaymentUseCase _registerCreditPaymentUseCase;
 
   CustomerCreditListCubit(
     this._getCreditAccountsUseCase,
     this._toggleCreditStatusUseCase,
     this._createCreditAccountUseCase,
+    this._updateCreditLimitUseCase,
     this._registerCreditPaymentUseCase,
   ) : super(const CustomerCreditListState());
 
@@ -58,7 +60,13 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
           maxedOutAccounts: result.maxedOutAccounts,
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al cargar cuentas de crédito en CustomerCreditListCubit',
+        tag: 'CUSTOMER_CREDIT_LIST_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
       String errorMessage = 'Error al cargar los créditos.';
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
@@ -94,7 +102,13 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
     try {
       await _toggleCreditStatusUseCase(creditId, isActive);
       await loadData();
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al cambiar estado de cuenta en CustomerCreditListCubit',
+        tag: 'CUSTOMER_CREDIT_LIST_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
@@ -112,8 +126,29 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
         creditLimit: limit,
       );
       await loadData(page: 1);
-    } catch (e) {
-      throw Exception('Error al crear la cuenta de crédito.');
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al crear cuenta de crédito en CustomerCreditListCubit',
+        tag: 'CUSTOMER_CREDIT_LIST_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
+      throw Exception('Error al crear la cuenta de crédito: $e');
+    }
+  }
+
+  Future<void> updateCreditLimit(String creditId, double newLimit) async {
+    try {
+      await _updateCreditLimitUseCase(creditId: creditId, newLimit: newLimit);
+      await loadData();
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al actualizar límite de crédito en CustomerCreditListCubit',
+        tag: 'CUSTOMER_CREDIT_LIST_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
+      throw Exception('Error al actualizar el límite de crédito: $e');
     }
   }
 

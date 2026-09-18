@@ -1233,14 +1233,6 @@ extension GetItInjectableX on _i174.GetIt {
         getWarehouses: gh<_i71.GetWarehousesUseCase>(),
       ),
     );
-    gh.factory<_i851.CustomerCreditListCubit>(
-      () => _i851.CustomerCreditListCubit(
-        gh<_i749.GetCreditAccountsUseCase>(),
-        gh<_i749.ToggleCreditStatusUseCase>(),
-        gh<_i749.CreateCreditAccountUseCase>(),
-        gh<_i749.RegisterCreditPaymentUseCase>(),
-      ),
-    );
     gh.factory<_i315.GetPendingCustomerOrdersUc>(
       () => _i315.GetPendingCustomerOrdersUc(gh<_i992.OrdersRepository>()),
     );
@@ -1375,6 +1367,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i753.GetActiveProductsAndVariantsUseCase>(
       () => _i753.GetActiveProductsAndVariantsUseCase(
         gh<_i570.ProductsRepository>(),
+      ),
+    );
+    gh.factory<_i851.CustomerCreditListCubit>(
+      () => _i851.CustomerCreditListCubit(
+        gh<_i749.GetCreditAccountsUseCase>(),
+        gh<_i749.ToggleCreditStatusUseCase>(),
+        gh<_i749.CreateCreditAccountUseCase>(),
+        gh<_i749.UpdateCreditLimitUseCase>(),
+        gh<_i749.RegisterCreditPaymentUseCase>(),
       ),
     );
     gh.factory<_i828.GetDefaultAddressUc>(

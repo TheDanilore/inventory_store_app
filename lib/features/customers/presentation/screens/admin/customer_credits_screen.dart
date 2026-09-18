@@ -180,7 +180,8 @@ class _CustomerCreditsScreenContentState
             const SingleActivator(LogicalKeyboardKey.escape): () {
               if (_searchCtrl.text.isNotEmpty) {
                 _searchCtrl.clear();
-                _onSearchChanged('');
+                _debounce?.cancel();
+                context.read<CustomerCreditListCubit>().setSearch('');
               } else {
                 _searchFocusNode.unfocus();
               }
@@ -1227,25 +1228,19 @@ class _CustomerCreditsDataTable extends StatelessWidget {
           ),
           const Divider(height: 1, color: AppColors.border),
 
-          // Table Rows
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: accounts.length,
-            separatorBuilder:
-                (_, _) => const Divider(height: 1, color: AppColors.border),
-            itemBuilder: (context, index) {
-              final account = accounts[index];
-              return _DesktopTableRow(
-                account: account,
-                onPayTap: () => onPayTap(account),
-                onHistoryTap: () => onHistoryTap(account),
-                onEditTap: () => onEditTap(account),
-                onToggleStatusTap: () => onToggleStatusTap(account),
-                onCopy: onCopy,
-              );
-            },
-          ),
+          // Table Rows (direct list without shrinkWrap viewport overhead)
+          for (int i = 0; i < accounts.length; i++) ...[
+            if (i > 0) const Divider(height: 1, color: AppColors.border),
+            _DesktopTableRow(
+              key: ValueKey(accounts[i].id),
+              account: accounts[i],
+              onPayTap: () => onPayTap(accounts[i]),
+              onHistoryTap: () => onHistoryTap(accounts[i]),
+              onEditTap: () => onEditTap(accounts[i]),
+              onToggleStatusTap: () => onToggleStatusTap(accounts[i]),
+              onCopy: onCopy,
+            ),
+          ],
         ],
       ),
     );
@@ -1261,6 +1256,7 @@ class _DesktopTableRow extends StatefulWidget {
   final void Function(String text, String label) onCopy;
 
   const _DesktopTableRow({
+    super.key,
     required this.account,
     required this.onPayTap,
     required this.onHistoryTap,

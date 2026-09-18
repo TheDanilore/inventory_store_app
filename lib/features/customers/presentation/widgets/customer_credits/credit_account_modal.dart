@@ -193,8 +193,7 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
       final cubit = context.read<CustomerCreditListCubit>();
 
       if (_isEditing) {
-        // Asumiendo que agregaste updateCreditLimit al cubit
-        // await cubit.updateCreditLimit(widget.accountToEdit!.id, limitVal);
+        await cubit.updateCreditLimit(widget.accountToEdit!.id, limitVal);
       } else {
         await cubit.createCreditAccount(_selectedProfileId!, limitVal);
       }

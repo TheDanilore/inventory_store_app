@@ -22,119 +22,154 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
     String? query,
     bool showOnlyWithDebt = false,
   }) async {
-    const selectFields = '''
-      id,
-      profile_id,
-      credit_limit,
-      current_debt,
-      is_active,
-      created_at,
-      updated_at,
-      profiles!customer_credits_profile_id_fkey ( id, full_name, phone, document_number, document_type )
-    ''';
+    try {
+      final cleanQuery = query?.trim() ?? '';
 
-    var queryBuilder = _supabase.from('customer_credits').select(selectFields);
-    var countBuilder = _supabase.from('customer_credits').select('id');
+      // 1. Estadísticas Globales mediante RPC (Cero Data Egress) con Fallback defensivo
+      double totalDebt = 0;
+      int activeAccounts = 0;
+      int suspendedAccounts = 0;
+      int maxedOutAccounts = 0;
 
-    if (query != null && query.isNotEmpty) {
-      final profilesResp = await _supabase
-          .from('profiles')
-          .select('id')
-          .or(
-            'full_name.ilike.%$query%,document_number.ilike.%$query%,phone.ilike.%$query%',
-          );
-      final matchingProfileIds =
-          (profilesResp as List).map((e) => e['id'] as String).toList();
-      if (matchingProfileIds.isNotEmpty) {
-        queryBuilder = queryBuilder.inFilter('profile_id', matchingProfileIds);
-        countBuilder = countBuilder.inFilter('profile_id', matchingProfileIds);
-      } else {
-        queryBuilder = queryBuilder.eq(
-          'profile_id',
-          '00000000-0000-0000-0000-000000000000',
+      try {
+        final statsResult = await _supabase.rpc(
+          'get_customer_credits_stats_rpc',
+          params: {'p_search_query': cleanQuery},
         );
-        countBuilder = countBuilder.eq(
-          'profile_id',
-          '00000000-0000-0000-0000-000000000000',
-        );
-      }
-    }
-
-    if (showOnlyWithDebt) {
-      queryBuilder = queryBuilder.gt('current_debt', 0);
-      countBuilder = countBuilder.gt('current_debt', 0);
-    }
-
-    final countRes = await countBuilder;
-    final totalCount = (countRes as List).length;
-
-    final response = await queryBuilder.range(offset, offset + limit - 1);
-
-    final accounts =
-        (response as List)
-            .map((e) => CreditAccountModel.fromJoin(e).toEntity())
-            .toList();
-
-    // Stats
-    final statsResponse = await _supabase
-        .from('customer_credits')
-        .select('current_debt, is_active, credit_limit');
-
-    double totalDebt = 0;
-    int activeAccounts = 0;
-    int suspendedAccounts = 0;
-    int maxedOutAccounts = 0;
-
-    for (var row in (statsResponse as List)) {
-      final debt = (row['current_debt'] as num).toDouble();
-      final creditLimit = (row['credit_limit'] as num).toDouble();
-      final isActive = row['is_active'] as bool;
-
-      totalDebt += debt;
-      if (isActive) {
-        activeAccounts++;
-        if (creditLimit > 0 && debt >= creditLimit) {
-          maxedOutAccounts++;
+        if (statsResult is Map) {
+          totalDebt = (statsResult['totalDebt'] as num?)?.toDouble() ?? 0.0;
+          activeAccounts = (statsResult['activeAccounts'] as num?)?.toInt() ?? 0;
+          suspendedAccounts = (statsResult['suspendedAccounts'] as num?)?.toInt() ?? 0;
+          maxedOutAccounts = (statsResult['maxedOutAccounts'] as num?)?.toInt() ?? 0;
         }
-      } else {
-        suspendedAccounts++;
-      }
-    }
+      } catch (statsErr) {
+        LoggerService.w(
+          'get_customer_credits_stats_rpc no disponible o falló, usando fallback: $statsErr',
+          tag: 'CUSTOMER_CREDITS_REPO',
+        );
+        final statsResponse = await _supabase
+            .from('customer_credits')
+            .select('current_debt, is_active, credit_limit');
+        for (var row in (statsResponse as List)) {
+          final debt = (row['current_debt'] as num).toDouble();
+          final creditLimit = (row['credit_limit'] as num).toDouble();
+          final isActive = row['is_active'] as bool;
 
-    return CustomerCreditListResultEntity(
-      accounts: accounts,
-      totalCount: totalCount,
-      totalDebt: totalDebt,
-      activeAccounts: activeAccounts,
-      suspendedAccounts: suspendedAccounts,
-      maxedOutAccounts: maxedOutAccounts,
-    );
+          totalDebt += debt;
+          if (isActive) {
+            activeAccounts++;
+            if (creditLimit > 0 && debt >= creditLimit) {
+              maxedOutAccounts++;
+            }
+          } else {
+            suspendedAccounts++;
+          }
+        }
+      }
+
+      // 2. Consulta unificada paginada con conteo exacto nativo de PostgREST
+      const selectFields = '''
+        id,
+        profile_id,
+        credit_limit,
+        current_debt,
+        is_active,
+        created_at,
+        updated_at,
+        profiles!customer_credits_profile_id_fkey!inner ( id, full_name, phone, document_number, document_type )
+      ''';
+
+      var queryBuilder = _supabase.from('customer_credits').select(selectFields);
+
+      if (cleanQuery.isNotEmpty) {
+        queryBuilder = queryBuilder.or(
+          'profiles.full_name.ilike.%$cleanQuery%,profiles.document_number.ilike.%$cleanQuery%,profiles.phone.ilike.%$cleanQuery%',
+        );
+      }
+
+      if (showOnlyWithDebt) {
+        queryBuilder = queryBuilder.gt('current_debt', 0);
+      }
+
+      final response = await queryBuilder
+          .order('current_debt', ascending: false)
+          .range(offset, offset + limit - 1)
+          .count(CountOption.exact);
+
+      final totalCount = response.count;
+      final accounts = (response.data as List)
+          .map((e) => CreditAccountModel.fromJoin(e).toEntity())
+          .toList();
+
+      return CustomerCreditListResultEntity(
+        accounts: accounts,
+        totalCount: totalCount,
+        totalDebt: totalDebt,
+        activeAccounts: activeAccounts,
+        suspendedAccounts: suspendedAccounts,
+        maxedOutAccounts: maxedOutAccounts,
+      );
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en getCreditAccounts: ${e.message}',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error en base de datos: ${e.message}');
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en getCreditAccounts',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error al consultar créditos: $e');
+    }
   }
 
   @override
   Future<CustomerCreditEntity?> getCreditAccountByCustomer(
     String customerId,
   ) async {
-    final resp =
-        await _supabase
-            .from('customer_credits')
-            .select('''
-          id,
-          profile_id,
-          credit_limit,
-          current_debt,
-          is_active,
-          created_at,
-          updated_at,
-          profiles!customer_credits_profile_id_fkey ( id, full_name, phone, document_number, document_type )
-        ''')
-            .eq('profile_id', customerId)
-            .maybeSingle();
+    try {
+      final resp =
+          await _supabase
+              .from('customer_credits')
+              .select('''
+            id,
+            profile_id,
+            credit_limit,
+            current_debt,
+            is_active,
+            created_at,
+            updated_at,
+            profiles!customer_credits_profile_id_fkey ( id, full_name, phone, document_number, document_type )
+          ''')
+              .eq('profile_id', customerId)
+              .maybeSingle();
 
-    if (resp != null) {
-      return CreditAccountModel.fromJoin(resp).toEntity();
+      if (resp != null) {
+        return CreditAccountModel.fromJoin(resp).toEntity();
+      }
+      return null;
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en getCreditAccountByCustomer: ${e.message}',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error al obtener cuenta: ${e.message}');
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en getCreditAccountByCustomer',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error al obtener cuenta: $e');
     }
-    return null;
   }
 
   @override
@@ -142,43 +177,61 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
     required String customerId,
     required double creditLimit,
   }) async {
-    // Check if exists
-    final exist =
+    try {
+      // Check if exists
+      final exist =
+          await _supabase
+              .from('customer_credits')
+              .select('id')
+              .eq('profile_id', customerId)
+              .maybeSingle();
+
+      if (exist != null) {
+        // Activar y actualizar
         await _supabase
             .from('customer_credits')
-            .select('id')
-            .eq('profile_id', customerId)
-            .maybeSingle();
+            .update({'is_active': true, 'credit_limit': creditLimit})
+            .eq('profile_id', customerId);
+      } else {
+        await _supabase.from('customer_credits').insert({
+          'profile_id': customerId,
+          'credit_limit': creditLimit,
+        });
+      }
 
-    if (exist != null) {
-      // Activar y actualizar
-      await _supabase
-          .from('customer_credits')
-          .update({'is_active': true, 'credit_limit': creditLimit})
-          .eq('profile_id', customerId);
-    } else {
-      await _supabase.from('customer_credits').insert({
-        'profile_id': customerId,
-        'credit_limit': creditLimit,
-      });
+      final resp =
+          await _supabase
+              .from('customer_credits')
+              .select('''
+            id,
+            profile_id,
+            credit_limit,
+            current_debt,
+            is_active,
+            created_at,
+            updated_at,
+            profiles!customer_credits_profile_id_fkey ( id, full_name, phone, document_number, document_type )
+          ''')
+              .eq('profile_id', customerId)
+              .single();
+      return CreditAccountModel.fromJoin(resp).toEntity();
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en createCreditAccount: ${e.message}',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error al crear cuenta: ${e.message}');
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en createCreditAccount',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error al crear cuenta de crédito: $e');
     }
-
-    final resp =
-        await _supabase
-            .from('customer_credits')
-            .select('''
-          id,
-          profile_id,
-          credit_limit,
-          current_debt,
-          is_active,
-          created_at,
-          updated_at,
-          profiles!customer_credits_profile_id_fkey ( id, full_name, phone, document_number, document_type )
-        ''')
-            .eq('profile_id', customerId)
-            .single();
-    return CreditAccountModel.fromJoin(resp).toEntity();
   }
 
   @override
@@ -186,35 +239,71 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
     required String creditId,
     required double newLimit,
   }) async {
-    await _supabase
-        .from('customer_credits')
-        .update({'credit_limit': newLimit})
-        .eq('id', creditId);
+    try {
+      await _supabase
+          .from('customer_credits')
+          .update({'credit_limit': newLimit})
+          .eq('id', creditId);
 
-    final resp =
-        await _supabase
-            .from('customer_credits')
-            .select('''
-          id,
-          profile_id,
-          credit_limit,
-          current_debt,
-          is_active,
-          created_at,
-          updated_at,
-          profiles!customer_credits_profile_id_fkey ( id, full_name, phone, document_number, document_type )
-        ''')
-            .eq('id', creditId)
-            .single();
-    return CreditAccountModel.fromJoin(resp).toEntity();
+      final resp =
+          await _supabase
+              .from('customer_credits')
+              .select('''
+            id,
+            profile_id,
+            credit_limit,
+            current_debt,
+            is_active,
+            created_at,
+            updated_at,
+            profiles!customer_credits_profile_id_fkey ( id, full_name, phone, document_number, document_type )
+          ''')
+              .eq('id', creditId)
+              .single();
+      return CreditAccountModel.fromJoin(resp).toEntity();
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en updateCreditLimit: ${e.message}',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error al actualizar límite: ${e.message}');
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en updateCreditLimit',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error al actualizar límite: $e');
+    }
   }
 
   @override
   Future<void> toggleCreditStatus(String creditId, bool isActive) async {
-    await _supabase
-        .from('customer_credits')
-        .update({'is_active': isActive})
-        .eq('id', creditId);
+    try {
+      await _supabase
+          .from('customer_credits')
+          .update({'is_active': isActive})
+          .eq('id', creditId);
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en toggleCreditStatus: ${e.message}',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error al cambiar estado: ${e.message}');
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en toggleCreditStatus',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error al cambiar estado de crédito: $e');
+    }
   }
 
   @override
@@ -224,29 +313,47 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
     required int offset,
     String? dateFilter,
   }) async {
-    var query = _supabase
-        .from('customer_credit_movements')
-        .select()
-        .eq('customer_credit_id', creditId);
+    try {
+      var query = _supabase
+          .from('customer_credit_movements')
+          .select()
+          .eq('customer_credit_id', creditId);
 
-    if (dateFilter != null && dateFilter != 'all') {
-      final now = DateTime.now();
-      if (dateFilter == '30_days') {
-        final date = now.subtract(const Duration(days: 30)).toIso8601String();
-        query = query.gte('created_at', date);
-      } else if (dateFilter == 'this_month') {
-        final date = DateTime(now.year, now.month, 1).toIso8601String();
-        query = query.gte('created_at', date);
+      if (dateFilter != null && dateFilter != 'all') {
+        final now = DateTime.now();
+        if (dateFilter == '30_days') {
+          final date = now.subtract(const Duration(days: 30)).toIso8601String();
+          query = query.gte('created_at', date);
+        } else if (dateFilter == 'this_month') {
+          final date = DateTime(now.year, now.month, 1).toIso8601String();
+          query = query.gte('created_at', date);
+        }
       }
+
+      final response = await query
+          .order('created_at', ascending: false)
+          .range(offset, offset + limit - 1);
+
+      return (response as List)
+          .map((e) => CustomerCreditMovementModel.fromJson(e).toEntity())
+          .toList();
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en getCreditMovements: ${e.message}',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error al obtener movimientos: ${e.message}');
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en getCreditMovements',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error al obtener movimientos: $e');
     }
-
-    final response = await query
-        .order('created_at', ascending: false)
-        .range(offset, offset + limit - 1);
-
-    return (response as List)
-        .map((e) => CustomerCreditMovementModel.fromJson(e).toEntity())
-        .toList();
   }
 
   @override
