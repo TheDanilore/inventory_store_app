@@ -271,26 +271,29 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                   slivers: [
                     const SliverToBoxAdapter(child: CustomersStatsHeader()),
                     const SliverToBoxAdapter(child: TopCustomersSection()),
-                    BlocBuilder<CustomersStatsCubit, CustomersStatsState>(
-                      builder: (context, statsState) {
-                        int totalCount = 0;
-                        int debtCount = 0;
+                    BlocSelector<CustomersStatsCubit, CustomersStatsState,
+                        ({int total, int debt})>(
+                      selector: (statsState) {
                         if (statsState is CustomersStatsLoaded) {
-                          totalCount = statsState.totalCustomersCount;
-                          debtCount = statsState.debtCustomersCount;
+                          return (
+                            total: statsState.totalCustomersCount,
+                            debt: statsState.debtCustomersCount,
+                          );
                         }
-
+                        return (total: 0, debt: 0);
+                      },
+                      builder: (context, counts) {
                         if (isDesktop) {
                           return _buildDesktopToolbarSliver(
-                            totalCount,
-                            debtCount,
+                            counts.total,
+                            counts.debt,
                           );
                         }
 
                         return SliverMainAxisGroup(
                           slivers: [
                             _buildMobileSearchSliver(),
-                            _buildMobileTabsSliver(totalCount, debtCount),
+                            _buildMobileTabsSliver(counts.total, counts.debt),
                           ],
                         );
                       },

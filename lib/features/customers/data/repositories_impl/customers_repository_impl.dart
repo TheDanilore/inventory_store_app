@@ -261,100 +261,124 @@ class CustomersRepositoryImpl implements CustomersRepository {
     required bool creditIsActive,
     required double newCreditLimit,
   }) async {
-    String? adminProfileId;
-    final authUserId = _supabase.auth.currentUser?.id;
-    if (authUserId != null) {
-      final adminResp =
-          await _supabase
-              .from('profiles')
-              .select('id')
-              .eq('auth_user_id', authUserId)
-              .maybeSingle();
-      if (adminResp != null) adminProfileId = adminResp['id'] as String;
-    }
-
-    final profileData = {
-      'full_name': fullName,
-      'phone': phone,
-      'document_type': documentType,
-      'document_number': documentNumber,
-      'is_active': isActive,
-    };
-
-    String finalProfileId;
-
-    if (customerId != null) {
-      // Editar
-      await _supabase.from('profiles').update(profileData).eq('id', customerId);
-      finalProfileId = customerId;
-
-      if (walletAdjustDelta != 0) {
-        await _supabase
-            .from('profiles')
-            .update({
-              'wallet_balance': currentWalletBalance + walletAdjustDelta,
-            })
-            .eq('id', finalProfileId);
-
-        await _supabase.from('wallet_movements').insert({
-          'profile_id': finalProfileId,
-          'points': walletAdjustDelta,
-          'movement_type':
-              walletAdjustDelta > 0 ? 'ADMIN_ADD' : 'ADMIN_SUBTRACT',
-          'description':
-              walletAdjustDelta > 0
-                  ? 'Ajuste manual (+$walletAdjustDelta monedas)'
-                  : 'Ajuste manual ($walletAdjustDelta monedas)',
-        });
+    try {
+      String? adminProfileId;
+      final authUserId = _supabase.auth.currentUser?.id;
+      if (authUserId != null) {
+        final adminResp =
+            await _supabase
+                .from('profiles')
+                .select('id')
+                .eq('auth_user_id', authUserId)
+                .maybeSingle();
+        if (adminResp != null) adminProfileId = adminResp['id'] as String;
       }
-    } else {
-      // Crear
-      final inserted =
+
+      final profileData = {
+        'full_name': fullName,
+        'phone': phone,
+        'document_type': documentType,
+        'document_number': documentNumber,
+        'is_active': isActive,
+      };
+
+      String finalProfileId;
+
+      if (customerId != null) {
+        // Editar
+        await _supabase.from('profiles').update(profileData).eq('id', customerId);
+        finalProfileId = customerId;
+
+        if (walletAdjustDelta != 0) {
           await _supabase
               .from('profiles')
-              .insert({...profileData, 'role': 'customer'})
-              .select('id')
-              .single();
-      finalProfileId = inserted['id'] as String;
-    }
+              .update({
+                'wallet_balance': currentWalletBalance + walletAdjustDelta,
+              })
+              .eq('id', finalProfileId);
 
-    // Creditos
-    if (hasCredit) {
-      if (creditExistsInDb && creditId != null) {
+          await _supabase.from('wallet_movements').insert({
+            'profile_id': finalProfileId,
+            'points': walletAdjustDelta,
+            'movement_type':
+                walletAdjustDelta > 0 ? 'ADMIN_ADD' : 'ADMIN_SUBTRACT',
+            'description':
+                walletAdjustDelta > 0
+                    ? 'Ajuste manual (+$walletAdjustDelta monedas)'
+                    : 'Ajuste manual ($walletAdjustDelta monedas)',
+          });
+        }
+      } else {
+        // Crear
+        final inserted =
+            await _supabase
+                .from('profiles')
+                .insert({...profileData, 'role': 'customer'})
+                .select('id')
+                .single();
+        finalProfileId = inserted['id'] as String;
+      }
+
+      // Creditos
+      if (hasCredit) {
+        if (creditExistsInDb && creditId != null) {
+          await _supabase
+              .from('customer_credits')
+              .update({
+                'credit_limit': newCreditLimit,
+                'is_active': true,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', creditId);
+        } else {
+          await _supabase.from('customer_credits').insert({
+            'profile_id': finalProfileId,
+            'credit_limit': newCreditLimit,
+            'current_debt': 0.0,
+            'is_active': true,
+            'created_by': adminProfileId,
+          });
+        }
+      } else if (creditExistsInDb && creditId != null && creditIsActive) {
         await _supabase
             .from('customer_credits')
             .update({
-              'credit_limit': newCreditLimit,
-              'is_active': true,
+              'is_active': false,
               'updated_at': DateTime.now().toIso8601String(),
             })
             .eq('id', creditId);
-      } else {
-        await _supabase.from('customer_credits').insert({
-          'profile_id': finalProfileId,
-          'credit_limit': newCreditLimit,
-          'current_debt': 0.0,
-          'is_active': true,
-          'created_by': adminProfileId,
-        });
       }
-    } else if (creditExistsInDb && creditId != null && creditIsActive) {
-      await _supabase
-          .from('customer_credits')
-          .update({
-            'is_active': false,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', creditId);
+    } catch (e, stack) {
+      LoggerService.e(
+        'Error en saveCustomerFullProfile',
+        error: e,
+        stackTrace: stack,
+      );
+      throw AppException(
+        message: 'Error al guardar el perfil del cliente',
+        originalError: e,
+      );
     }
   }
 
   @override
   Future<void> toggleCustomerStatus(String customerId, bool isActive) async {
-    await _supabase
-        .from('profiles')
-        .update({'is_active': isActive})
-        .eq('id', customerId);
+    try {
+      await _supabase
+          .from('profiles')
+          .update({'is_active': isActive})
+          .eq('id', customerId);
+    } catch (e, stack) {
+      LoggerService.e(
+        'Error en toggleCustomerStatus para $customerId',
+        error: e,
+        stackTrace: stack,
+      );
+      throw AppException(
+        message: 'Error al cambiar estado del cliente',
+        originalError: e,
+      );
+    }
   }
 
   @override
@@ -362,15 +386,46 @@ class CustomersRepositoryImpl implements CustomersRepository {
     try {
       final res = await _supabase.rpc('get_customers_global_stats_rpc');
       if (res != null && res is Map) {
+        final totalCustomers = (res['totalCustomersCount'] ??
+                res['total_customers_count'] ??
+                res['total_count'] ??
+                res['totalCount'] as num?)
+            ?.toInt() ??
+            0;
+        final activeCustomers = (res['activeCustomersCount'] ??
+                res['active_customers_count'] ??
+                res['active_count'] ??
+                res['activeCount'] as num?)
+            ?.toInt() ??
+            0;
+        final inactiveCustomers = (res['inactiveCustomersCount'] ??
+                res['inactive_customers_count'] ??
+                res['inactive_count'] ??
+                res['inactiveCount'] as num?)
+            ?.toInt() ??
+            0;
+        final totalRevenue = (res['totalRevenue'] ??
+                res['total_revenue'] as num?)
+            ?.toDouble() ??
+            0.0;
+        final totalDebt = (res['totalDebt'] ??
+                res['total_debt'] as num?)
+            ?.toDouble() ??
+            0.0;
+        final debtCustomers = (res['debtCustomersCount'] ??
+                res['debt_customers_count'] as num?)
+            ?.toInt() ??
+            0;
+
         return {
-          'totalCount': (res['total_count'] as num?)?.toInt() ?? 0,
-          'totalCustomersCount': (res['total_count'] as num?)?.toInt() ?? 0,
-          'activeCount': (res['active_count'] as num?)?.toInt() ?? 0,
-          'activeCustomersCount': (res['active_count'] as num?)?.toInt() ?? 0,
-          'inactiveCount': (res['inactive_count'] as num?)?.toInt() ?? 0,
-          'totalRevenue': (res['total_revenue'] as num?)?.toDouble() ?? 0.0,
-          'totalDebt': (res['total_debt'] as num?)?.toDouble() ?? 0.0,
-          'debtCustomersCount': (res['debt_customers_count'] as num?)?.toInt() ?? 0,
+          'totalCount': totalCustomers,
+          'totalCustomersCount': totalCustomers,
+          'activeCount': activeCustomers,
+          'activeCustomersCount': activeCustomers,
+          'inactiveCount': inactiveCustomers,
+          'totalRevenue': totalRevenue,
+          'totalDebt': totalDebt,
+          'debtCustomersCount': debtCustomers,
         };
       }
     } catch (rpcErr) {
@@ -446,6 +501,15 @@ class CustomersRepositoryImpl implements CustomersRepository {
       );
       if (res != null && res is List) {
         return res.map<CustomerEntity>((row) {
+          final totalRev = (row['total_revenue'] ??
+                  row['totalRevenue'] ??
+                  row['total_spent'] as num?)
+              ?.toDouble() ??
+              0.0;
+          final orderCount = (row['order_count'] ??
+                  row['orderCount'] as num?)
+              ?.toInt() ??
+              0;
           return CustomerEntity(
             id: row['id'] as String,
             fullName: row['full_name'] as String? ?? 'Cliente',
@@ -459,8 +523,8 @@ class CustomersRepositoryImpl implements CustomersRepository {
                 row['created_at'] != null
                     ? DateTime.tryParse(row['created_at'].toString())
                     : null,
-            totalRevenue: (row['total_spent'] as num?)?.toDouble() ?? 0.0,
-            orderCount: (row['order_count'] as num?)?.toInt() ?? 0,
+            totalRevenue: totalRev,
+            orderCount: orderCount,
           );
         }).toList();
       }

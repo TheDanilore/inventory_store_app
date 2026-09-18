@@ -24,11 +24,8 @@ class CustomersRoutes {
         return MultiBlocProvider(
           providers: [
             BlocProvider(create: (_) => sl<CustomersCubit>()),
-            // Agregamos los Cubits faltantes e inicializamos sus datos
-            BlocProvider(create: (_) => sl<CustomersStatsCubit>()..loadStats()),
-            BlocProvider(
-              create: (_) => sl<TopCustomersCubit>()..loadTopCustomers(),
-            ),
+            BlocProvider(create: (_) => sl<CustomersStatsCubit>()),
+            BlocProvider(create: (_) => sl<TopCustomersCubit>()),
           ],
           child: const CustomersScreen(),
         );

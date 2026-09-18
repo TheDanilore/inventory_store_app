@@ -115,7 +115,37 @@ class TopCustomersSection extends StatelessWidget {
             ],
           );
         } else if (state is TopCustomersError) {
-          return Center(child: Text('Error: ${state.message}'));
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.dangerLight,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'No se pudo cargar el ranking de compradores: ${state.message}',
+                    style: const TextStyle(fontSize: 12.5, color: AppColors.danger),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => context.read<TopCustomersCubit>().loadTopCustomers(),
+                  icon: const Icon(Icons.refresh_rounded, size: 16, color: AppColors.danger),
+                  label: const Text(
+                    'Reintentar',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.danger),
+                  ),
+                ),
+              ],
+            ),
+          );
         }
         return const SizedBox.shrink();
       },
