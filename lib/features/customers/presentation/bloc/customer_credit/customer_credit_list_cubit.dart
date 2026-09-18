@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_usecase.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit/customer_credit_list_state.dart';
 
@@ -123,6 +124,7 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
     String? accountId,
     String? orderId,
     String? notes,
+    String? shiftId,
   }) async {
     try {
       await _registerCreditPaymentUseCase(
@@ -132,10 +134,17 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
         accountId: accountId,
         orderId: orderId,
         notes: notes,
+        shiftId: shiftId,
       );
       await loadData();
-    } catch (e) {
-      throw Exception('Error al registrar el pago.');
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al registrar el pago de crédito en CustomerCreditListCubit',
+        tag: 'CUSTOMER_CREDIT_LIST_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
     }
   }
 }

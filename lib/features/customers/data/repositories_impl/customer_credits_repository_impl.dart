@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/errors/app_exception.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/customers/data/models/customer_credit_model.dart';
 import 'package:inventory_store_app/features/customers/data/models/customer_credit_movement_model.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
@@ -291,17 +293,48 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
     String? accountId,
     String? orderId,
     String? notes,
+    String? shiftId,
   }) async {
-    await _supabase.rpc(
-      'register_credit_payment_rpc',
-      params: {
-        'p_customer_id': customerId,
-        'p_credit_id': creditId,
-        'p_amount': amount,
-        'p_account_id': accountId,
-        'p_order_id': orderId,
-        'p_notes': notes,
-      },
-    );
+    try {
+      final response = await _supabase.rpc(
+        'register_credit_payment_rpc',
+        params: {
+          'p_customer_id': customerId,
+          'p_credit_id': creditId.isNotEmpty ? creditId : null,
+          'p_amount': amount,
+          'p_account_id': accountId,
+          'p_order_id': orderId,
+          'p_notes': notes,
+          'p_shift_id': shiftId,
+        },
+      );
+
+      final result = response as Map<String, dynamic>?;
+      final didSucceed = result?['success'] == true;
+      if (!didSucceed) {
+        final errMsg =
+            result?['error'] as String? ??
+            result?['detail'] as String? ??
+            'Error desconocido del servidor al registrar abono.';
+        throw ServerException(message: errMsg);
+      }
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en register_credit_payment_rpc: ${e.message}',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error de base de datos: ${e.message}');
+    } catch (e, st) {
+      if (e is ServerException) rethrow;
+      LoggerService.e(
+        'Error inesperado en register_credit_payment_rpc',
+        tag: 'CUSTOMER_CREDITS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      throw ServerException(message: 'Error inesperado: $e');
+    }
   }
 }

@@ -1,12 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/get_financial_accounts_usecase.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/get_pending_customer_orders_uc.dart';
 import 'package:inventory_store_app/features/pos/domain/usecases/check_active_shift_uc.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/register_payment/register_payment_state.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
-import 'dart:developer' as developer;
 
 @injectable
 class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
@@ -34,9 +34,9 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
 
       List<OrderEntity> pendingOrders = [];
       ordersResult.fold(
-        (l) => developer.log(
+        (l) => LoggerService.w(
           'orders error: ${l.message}',
-          name: 'RegisterPaymentCubit',
+          tag: 'REGISTER_PAYMENT_CUBIT',
         ),
         (r) => pendingOrders = r as List<OrderEntity>,
       );
@@ -45,9 +45,9 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
       if (accountsResult is List<FinancialAccountEntity>) {
         accounts = accountsResult.where((a) => a.isActive).toList();
       } else {
-        developer.log(
+        LoggerService.w(
           'accounts error: invalid type or result',
-          name: 'RegisterPaymentCubit',
+          tag: 'REGISTER_PAYMENT_CUBIT',
         );
       }
 
@@ -70,11 +70,11 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
         await _checkActiveShift(selectedAccount.id);
       }
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'loadInitialData error',
         error: e,
         stackTrace: st,
-        name: 'RegisterPaymentCubit',
+        tag: 'REGISTER_PAYMENT_CUBIT',
       );
       emit(
         state.copyWith(
@@ -93,11 +93,11 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
         (r) => emit(state.copyWith(activeShift: r)),
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'checkActiveShift error',
         error: e,
         stackTrace: st,
-        name: 'RegisterPaymentCubit',
+        tag: 'REGISTER_PAYMENT_CUBIT',
       );
       emit(state.copyWith(clearActiveShift: true));
     }
@@ -197,6 +197,7 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
       String? accountId,
       String? orderId,
       String? notes,
+      String? shiftId,
     )
     onSavePayment,
     required String notesText,
@@ -241,19 +242,23 @@ class RegisterPaymentCubit extends Cubit<RegisterPaymentState> {
     );
 
     try {
+      final shiftId =
+          state.selectedAccount!.type == 'CAJA' ? state.activeShift?.id : null;
+
       await onSavePayment(
         amount,
         state.selectedAccount!.id,
         state.selectedOrder?.id,
         notesText.isEmpty ? 'Abono registrado a crédito' : notesText,
+        shiftId,
       );
       emit(state.copyWith(isSaving: false, isSuccess: true));
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'submitPayment error',
         error: e,
         stackTrace: st,
-        name: 'RegisterPaymentCubit',
+        tag: 'REGISTER_PAYMENT_CUBIT',
       );
       emit(
         state.copyWith(

@@ -1950,6 +1950,57 @@ BEGIN
         END IF;
     END LOOP;
 
+    -- Si queda remanente no ligado a una orden (abono a cuenta global o deuda general)
+    IF v_remaining > 0 THEN
+        INSERT INTO public.account_movements (
+            account_id,
+            movement_type,
+            amount,
+            description,
+            reference_type,
+            reference_id,
+            shift_id,
+            created_by,
+            created_at
+        ) VALUES (
+            p_account_id,
+            'INCOME',
+            v_remaining,
+            COALESCE(p_notes, 'Abono registrado a cuenta de crédito'),
+            'customer_credits',
+            p_credit_id,
+            p_shift_id,
+            v_created_by,
+            v_now
+        );
+
+        UPDATE public.financial_accounts
+           SET balance = balance + v_remaining
+         WHERE id = p_account_id;
+
+        IF p_credit_id IS NOT NULL THEN
+            INSERT INTO public.customer_credit_movements (
+                customer_credit_id,
+                order_id,
+                movement_type,
+                amount,
+                payment_method,
+                notes,
+                created_by,
+                created_at
+            ) VALUES (
+                p_credit_id,
+                NULL,
+                'PAYMENT',
+                v_remaining,
+                v_account.name,
+                p_notes,
+                v_created_by,
+                v_now
+            );
+        END IF;
+    END IF;
+
     -- 3. BLINDAJE DE DEUDA TOTAL (CUSTOMER CREDITS)
     IF p_credit_id IS NOT NULL THEN
         SELECT current_debt

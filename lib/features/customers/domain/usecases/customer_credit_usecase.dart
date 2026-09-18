@@ -110,6 +110,7 @@ class RegisterCreditPaymentUseCase {
     String? accountId,
     String? orderId,
     String? notes,
+    String? shiftId,
   }) {
     return repository.registerPayment(
       customerId: customerId,
@@ -118,6 +119,7 @@ class RegisterCreditPaymentUseCase {
       accountId: accountId,
       orderId: orderId,
       notes: notes,
+      shiftId: shiftId,
     );
   }
 }

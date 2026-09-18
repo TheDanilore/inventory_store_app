@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
@@ -17,6 +18,7 @@ class CustomerCreditPaymentModal extends StatelessWidget {
     String? accountId,
     String? orderId,
     String? notes,
+    String? shiftId,
   )
   onSavePayment;
 
@@ -36,6 +38,7 @@ class CustomerCreditPaymentModal extends StatelessWidget {
       String? accountId,
       String? orderId,
       String? notes,
+      String? shiftId,
     )
     onSavePayment,
   }) {
@@ -90,6 +93,7 @@ class _RegisterPaymentModalView extends StatefulWidget {
     String? accountId,
     String? orderId,
     String? notes,
+    String? shiftId,
   )
   onSavePayment;
 
@@ -428,12 +432,15 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
           TextField(
             controller: _amountCtrl,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+            ],
             onChanged: (val) {
               final maxDebt =
                   state.selectedOrder != null
                       ? _pendingOf(state.selectedOrder!)
                       : debt;
-              cubit.validateAmount(val, maxDebt);
+              cubit.validateAmount(val.trim(), maxDebt);
             },
             decoration: InputDecoration(
               hintText: '0.00',

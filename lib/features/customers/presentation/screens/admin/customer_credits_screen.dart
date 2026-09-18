@@ -92,7 +92,7 @@ class _CustomerCreditsScreenContentState
       context,
       account: account,
       onSaved: () => cubit.loadData(),
-      onSavePayment: (amount, accountId, orderId, notes) async {
+      onSavePayment: (amount, accountId, orderId, notes, shiftId) async {
         await cubit.registerPayment(
           customerId: account.profileId,
           creditId: account.id,
@@ -100,6 +100,7 @@ class _CustomerCreditsScreenContentState
           accountId: accountId,
           orderId: orderId,
           notes: notes,
+          shiftId: shiftId,
         );
       },
     );

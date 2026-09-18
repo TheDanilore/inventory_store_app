@@ -44,5 +44,6 @@ abstract class CustomerCreditsRepository {
     String? accountId,
     String? orderId,
     String? notes,
+    String? shiftId,
   });
 }

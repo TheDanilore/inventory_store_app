@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_usecase.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit/customer_credits_state.dart';
 
@@ -43,7 +43,13 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
           const CustomerCreditsError('El cliente no tiene línea de crédito.'),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error cargando crédito del cliente: $customerId',
+        tag: 'CUSTOMER_CREDITS_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
       emit(CustomerCreditsError(e.toString()));
     }
   }
@@ -64,8 +70,13 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
             hasReachedMaxMovements: newMovements.length < _movementsLimit,
           ),
         );
-      } catch (e) {
-        // Ignore error or show snackbar
+      } catch (e, st) {
+        LoggerService.w(
+          'Error cargando más movimientos de crédito',
+          tag: 'CUSTOMER_CREDITS_CUBIT',
+          error: e,
+          stackTrace: st,
+        );
       }
     }
   }
@@ -84,7 +95,13 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
           hasReachedMaxMovements: true,
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error creando cuenta de crédito para cliente: $customerId',
+        tag: 'CUSTOMER_CREDITS_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
       emit(CustomerCreditsError(e.toString()));
     }
   }
@@ -94,6 +111,7 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
     String? accountId,
     String? orderId,
     String? notes,
+    String? shiftId,
   }) async {
     final currentState = state;
     if (currentState is CustomerCreditsLoaded) {
@@ -105,12 +123,20 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
           accountId: accountId,
           orderId: orderId,
           notes: notes,
+          shiftId: shiftId,
         );
         // Reload all data to refresh debt and movements
         await loadCreditData(currentState.creditAccount.profileId);
-      } catch (e) {
+      } catch (e, st) {
+        LoggerService.e(
+          'Error registrando pago de crédito para ${currentState.creditAccount.profileId}',
+          tag: 'CUSTOMER_CREDITS_CUBIT',
+          error: e,
+          stackTrace: st,
+        );
         emit(CustomerCreditsError(e.toString()));
         emit(currentState);
+        rethrow;
       }
     }
   }
