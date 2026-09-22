@@ -64,7 +64,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
 
   void _openProductDetail(InventoryStockItem item) {
     context.push(
-      '/admin/product/${item.productId}?variantId=${item.variantId}',
+      '/product/${item.productId}?variantId=${item.variantId}',
     );
   }
 
@@ -601,7 +601,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                                 .textSecondary,
                                                         onPressed:
                                                             () => context.push(
-                                                              '/admin/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
+                                                              '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
                                                             ),
                                                         splashRadius: 16,
                                                       ),

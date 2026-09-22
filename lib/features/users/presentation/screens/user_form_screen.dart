@@ -184,7 +184,7 @@ class _UserFormContentState extends State<_UserFormContent> {
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go('/admin/users');
+      context.go('/users');
     }
   }
 
@@ -201,7 +201,7 @@ class _UserFormContentState extends State<_UserFormContent> {
           if (context.canPop()) {
             context.pop(true);
           } else {
-            context.go('/admin/users');
+            context.go('/users');
           }
         } else if (state is UserFormError) {
           AppSnackbar.show(

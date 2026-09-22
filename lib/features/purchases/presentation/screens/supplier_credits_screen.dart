@@ -106,7 +106,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
       case SupplierAccountAction.viewHistory:
         if (!mounted) return;
         context.push(
-          '/admin/supplier-credit-movements/${account.creditId}?name=${Uri.encodeComponent(account.supplierName)}&debt=${account.currentDebt}&limit=${account.creditLimit}',
+          '/supplier-credit-movements/${account.creditId}?name=${Uri.encodeComponent(account.supplierName)}&debt=${account.currentDebt}&limit=${account.creditLimit}',
           extra: {
             'supplierName': account.supplierName,
             'currentDebt': account.currentDebt,

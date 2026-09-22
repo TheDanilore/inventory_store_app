@@ -19,8 +19,6 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredien
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/bulk_import/bulk_import_cubit.dart';
 
-import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
-
 class CatalogRoutes {
   static List<RouteBase> topLevelRoutes(AuthCubit authCubit) => [
     GoRoute(
@@ -36,44 +34,11 @@ class CatalogRoutes {
         );
       },
     ),
-    GoRoute(
-      path: '/product/:id',
-      builder: (context, state) {
-        final productId = state.pathParameters['id'];
-        final variantId = state.uri.queryParameters['variantId'];
-        final extra = state.extra;
-        final ProductEntity? product = extra is ProductEntity ? extra : null;
-
-        return MultiBlocProvider(
-          providers: [
-            BlocProvider(
-              create: (_) => sl<CartCubit>()..initCart(cartType: 'customer'),
-            ),
-          ],
-          child:
-              product != null
-                  ? ProductDetailScreen(
-                    product: product,
-                    isAdmin: false,
-                    initialVariantId: variantId,
-                  )
-                  : (productId != null
-                      ? ProductLoader(
-                        productId: productId,
-                        isAdmin: false,
-                        initialVariantId: variantId,
-                      )
-                      : const Scaffold(
-                        body: Center(child: Text('Producto no encontrado')),
-                      )),
-        );
-      },
-    ),
   ];
 
   static List<RouteBase> get adminRoutes => [
     GoRoute(
-      path: '/admin/active-ingredients',
+      path: '/active-ingredients',
       builder:
           (context, state) => BlocProvider(
             create: (_) => sl<IngredientsCubit>()..loadIngredients(),
@@ -81,7 +46,7 @@ class CatalogRoutes {
           ),
     ),
     GoRoute(
-      path: '/admin/attributes',
+      path: '/attributes',
       builder:
           (context, state) => BlocProvider(
             create: (_) => sl<AttributesCubit>()..loadAttributes(),
@@ -89,7 +54,7 @@ class CatalogRoutes {
           ),
     ),
     GoRoute(
-      path: '/admin/categories',
+      path: '/categories',
       builder:
           (context, state) => BlocProvider(
             create: (_) => sl<CategoriesCubit>()..loadCategories(),
@@ -97,7 +62,7 @@ class CatalogRoutes {
           ),
     ),
     GoRoute(
-      path: '/admin/products',
+      path: '/products',
       builder:
           (context, state) => BlocProvider(
             create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
@@ -105,7 +70,7 @@ class CatalogRoutes {
           ),
     ),
     GoRoute(
-      path: '/admin/products/bulk-import',
+      path: '/products/bulk-import',
       builder:
           (context, state) => MultiBlocProvider(
             providers: [
@@ -116,7 +81,7 @@ class CatalogRoutes {
           ),
     ),
     GoRoute(
-      path: '/admin/products/product-form',
+      path: '/products/product-form',
       builder: (context, state) {
         final args = state.extra as Map<String, dynamic>? ?? {};
         return ProductFormScreen(
@@ -128,7 +93,7 @@ class CatalogRoutes {
       },
     ),
     GoRoute(
-      path: '/admin/products/product-form/:id',
+      path: '/products/product-form/:id',
       builder: (context, state) {
         final productId = state.pathParameters['id'];
         final args = state.extra as Map<String, dynamic>? ?? {};
@@ -143,7 +108,7 @@ class CatalogRoutes {
       },
     ),
     GoRoute(
-      path: '/admin/product/:id',
+      path: '/product/:id',
       builder: (context, state) {
         final productId = state.pathParameters['id'];
         final variantId = state.uri.queryParameters['variantId'];
@@ -153,7 +118,6 @@ class CatalogRoutes {
         if (product != null) {
           return ProductDetailScreen(
             product: product,
-            isAdmin: true,
             initialVariantId: variantId,
           );
         }
@@ -161,7 +125,6 @@ class CatalogRoutes {
         if (productId != null) {
           return ProductLoader(
             productId: productId,
-            isAdmin: true,
             initialVariantId: variantId,
           );
         }

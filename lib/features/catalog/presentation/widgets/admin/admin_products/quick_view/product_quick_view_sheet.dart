@@ -361,7 +361,7 @@ class ProductQuickViewContent extends StatelessWidget {
                           Navigator.pop(context);
                           final cleanName = product.name.trim();
                           final encodedSearch = Uri.encodeComponent(cleanName);
-                          context.push('/admin/inventory?search=$encodedSearch');
+                          context.push('/inventory?search=$encodedSearch');
                         },
                         icon: const Icon(Icons.open_in_new_rounded, size: 12),
                         label: const Text(

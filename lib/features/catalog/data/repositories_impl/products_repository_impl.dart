@@ -1,4 +1,3 @@
-import 'dart:developer' as developer;
 import 'dart:typed_data';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/core/utils/isolate_utils.dart';
@@ -1325,7 +1324,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
         try {
           await _supabase.storage.from('products').remove(uploadedPaths);
         } catch (err) {
-          developer.log('Rollback failed for images', error: err);
+          LoggerService.e('Rollback failed for images: $err');
         }
       }
       return _handleError(e, st);
@@ -1431,14 +1430,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
           }).toList();
           
           await _supabase.storage.from('products').remove(paths);
-        } catch (e) {
-          developer.log('ProductsRepositoryImpl: Error al borrar imágenes del bucket', error: e);
+        } catch (e, st) {
+          LoggerService.e('Error al borrar imágenes del bucket', tag: 'PRODUCTS_REPO', error: e, stackTrace: st);
         }
       }
 
       return const Right(null);
     } catch (e, st) {
-      developer.log('ProductsRepositoryImpl: Error al eliminar producto', error: e, stackTrace: st);
       return _handleError(e, st);
     }
   }

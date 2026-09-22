@@ -82,7 +82,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
 
   void _openDetail(CustomerEntity customer) {
     context.go(
-      '/admin/customers/customer-detail/${customer.id}',
+      '/customers/customer-detail/${customer.id}',
       extra: customer,
     );
   }

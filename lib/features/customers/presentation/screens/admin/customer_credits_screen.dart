@@ -110,7 +110,7 @@ class _CustomerCreditsScreenContentState
     final cubit = context.read<CustomerCreditListCubit>();
     context
         .push(
-          '/admin/customer-credit-movements/${account.id}?name=${Uri.encodeComponent(account.customerName ?? '')}&debt=${account.currentDebt}&limit=${account.creditLimit}&customerId=${account.profileId}',
+          '/customer-credit-movements/${account.id}?name=${Uri.encodeComponent(account.customerName ?? '')}&debt=${account.currentDebt}&limit=${account.creditLimit}&customerId=${account.profileId}',
           extra: {
             'customerName': account.customerName,
             'currentDebt': account.currentDebt,

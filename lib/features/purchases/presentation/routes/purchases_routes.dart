@@ -15,7 +15,7 @@ import 'package:inventory_store_app/features/purchases/presentation/screens/supp
 class PurchasesRoutes {
   static List<RouteBase> get adminRoutes => [
     GoRoute(
-      path: '/admin/purchase-orders/form',
+      path: '/purchase-orders/form',
       builder: (context, state) {
         final editOrderId = state.uri.queryParameters['editOrderId'];
         return BlocProvider(
@@ -25,7 +25,7 @@ class PurchasesRoutes {
       },
     ),
     GoRoute(
-      path: '/admin/purchase-orders',
+      path: '/purchase-orders',
       builder: (context, state) {
         final orderId =
             state.uri.queryParameters['selectedId'] ??
@@ -37,7 +37,7 @@ class PurchasesRoutes {
       },
     ),
     GoRoute(
-      path: '/admin/supplier-credit-movements/:creditId',
+      path: '/supplier-credit-movements/:creditId',
       builder: (context, state) {
         final creditId = state.pathParameters['creditId'] ?? '';
         final args = state.extra as Map<String, dynamic>? ?? {};
@@ -65,7 +65,7 @@ class PurchasesRoutes {
       },
     ),
     GoRoute(
-      path: '/admin/supplier-credits',
+      path: '/supplier-credits',
       builder:
           (context, state) => BlocProvider(
             create: (_) => sl<SupplierCreditsCubit>(),
@@ -73,7 +73,7 @@ class PurchasesRoutes {
           ),
     ),
     GoRoute(
-      path: '/admin/suppliers',
+      path: '/suppliers',
       builder:
           (context, state) => BlocProvider(
             create: (_) => sl<SuppliersCubit>(),

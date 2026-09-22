@@ -131,14 +131,10 @@ class _AppDrawerState extends State<AppDrawer> {
                   _DrawerItem(
                     icon: Icons.grid_view_rounded,
                     title: 'Catálogo',
-                    routePath: isAdmin ? '/admin' : '/',
+                    routePath: '/',
                     onTap: () {
                       Navigator.pop(context);
-                      if (isAdmin) {
-                        context.go('/admin');
-                      } else {
-                        context.go('/');
-                      }
+                      context.go('/');
                     },
                   ),
                 ),
@@ -147,302 +143,287 @@ class _AppDrawerState extends State<AppDrawer> {
                   _DrawerItem(
                     icon: Icons.bar_chart_rounded,
                     title: 'Dashboard',
-                    routePath: '/admin/dashboard',
+                    routePath: '/dashboard',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go('/admin/dashboard');
+                      context.go('/dashboard');
                     },
                   ),
                 ),
-                if (!isAdmin)
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.shopping_cart_outlined,
-                      title: 'Mi Carrito',
-                      routePath: '/cart',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/cart');
-                      },
-                    ),
-                  ),
 
                 // ── GESTIÓN COMERCIAL ──────────────────────────────
-                if (isAdmin) ...[
-                  const _SectionDivider(),
-                  _buildSectionTitle('GESTIÓN COMERCIAL'),
+                const _SectionDivider(),
+                _buildSectionTitle('GESTIÓN COMERCIAL'),
 
-                  // Pedidos (con badge dinámico consumido directamente desde el Cubit)
-                  BlocBuilder<SidebarBadgeCubit, SidebarBadgeState>(
-                    builder: (ctx, state) {
-                      Widget? badge;
-                      if (state is SidebarBadgeLoaded && state.count > 0) {
-                        badge = _buildBadge(state.count);
-                      } else if (state is SidebarBadgeError) {
-                        badge = const Icon(
-                          Icons.warning_rounded,
-                          color: AppColors.error,
-                          size: 14,
-                        );
-                      }
-                      return _buildItem(
-                        context,
-                        _DrawerItem(
-                          icon: Icons.receipt_long_rounded,
-                          title: 'Pedidos',
-                          routePath: '/admin/orders',
-                          trailing: badge,
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/admin/orders');
-                          },
-                        ),
+                // Pedidos (con badge dinámico consumido directamente desde el Cubit)
+                BlocBuilder<SidebarBadgeCubit, SidebarBadgeState>(
+                  builder: (ctx, state) {
+                    Widget? badge;
+                    if (state is SidebarBadgeLoaded && state.count > 0) {
+                      badge = _buildBadge(state.count);
+                    } else if (state is SidebarBadgeError) {
+                      badge = const Icon(
+                        Icons.warning_rounded,
+                        color: AppColors.error,
+                        size: 14,
                       );
+                    }
+                    return _buildItem(
+                      context,
+                      _DrawerItem(
+                        icon: Icons.receipt_long_rounded,
+                        title: 'Pedidos',
+                        routePath: '/orders',
+                        trailing: badge,
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/orders');
+                        },
+                      ),
+                    );
+                  },
+                ),
+
+                // ── Compras (con sub-ítems) ─────────────────────────
+                _ExpandableDrawerGroup(
+                  _DrawerItem(
+                    icon: Icons.shopping_bag_outlined,
+                    title: 'Compras',
+                    routePath: '',
+                    children: [
+                      _DrawerSubItem(
+                        icon: Icons.receipt_long_rounded,
+                        title: 'Órdenes de compra',
+                        routePath: '/purchase-orders',
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/purchase-orders');
+                        },
+                      ),
+                      _DrawerSubItem(
+                        icon: Icons.add_rounded,
+                        title: 'Entradas inventario',
+                        routePath: '/inventory-entries',
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/inventory-entries');
+                        },
+                      ),
+                      _DrawerSubItem(
+                        icon: Icons.credit_score_rounded,
+                        title: 'Créditos proveedores',
+                        routePath: '/supplier-credits',
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/supplier-credits');
+                        },
+                      ),
+                      _DrawerSubItem(
+                        icon: Icons.local_shipping_outlined,
+                        title: 'Proveedores',
+                        routePath: '/suppliers',
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/suppliers');
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Inventario (con sub-ítems) ─────────────────────────
+                _ExpandableDrawerGroup(
+                  _DrawerItem(
+                    icon: Icons.inventory_2_outlined,
+                    title: 'Inventario',
+                    routePath: '',
+                    children: [
+                      _DrawerSubItem(
+                        icon: Icons.category_outlined,
+                        title: 'Productos',
+                        routePath: '/products',
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/products');
+                        },
+                      ),
+                      _DrawerSubItem(
+                        icon: Icons.grid_view_rounded,
+                        title: 'Stock inventario',
+                        routePath: '/inventory',
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/inventory');
+                        },
+                      ),
+                      _DrawerSubItem(
+                        icon: Icons.article_outlined,
+                        title: 'Kardex',
+                        routePath: '/kardex',
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/kardex');
+                        },
+                      ),
+                      _DrawerSubItem(
+                        icon: Icons.remove_rounded,
+                        title: 'Salidas inventario',
+                        routePath: '/inventory-exits',
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/inventory-exits');
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Clientes y Créditos (con sub-ítems) ─────────────────
+                _ExpandableDrawerGroup(
+                  _DrawerItem(
+                    icon: Icons.people_outline_rounded,
+                    title: 'Clientes y Créditos',
+                    routePath: '',
+                    children: [
+                      _DrawerSubItem(
+                        icon: Icons.person_outline_rounded,
+                        title: 'Clientes',
+                        routePath: '/customers',
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/customers');
+                        },
+                      ),
+                      _DrawerSubItem(
+                        icon: Icons.credit_score_rounded,
+                        title: 'Créditos clientes',
+                        routePath: '/customer-credits',
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/customer-credits');
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── CONFIGURACIÓN ERP ──────────────────────────────
+                const _SectionDivider(),
+                _buildSectionTitle('CONFIGURACIÓN ERP'),
+
+                _buildItem(
+                  context,
+                  _DrawerItem(
+                    icon: Icons.account_balance_wallet_outlined,
+                    title: 'Cuentas',
+                    routePath: '/financial-accounts',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.go('/financial-accounts');
                     },
                   ),
+                ),
 
-                  // ── Compras (con sub-ítems) ─────────────────────────
-                  _ExpandableDrawerGroup(
-                    _DrawerItem(
-                      icon: Icons.shopping_bag_outlined,
-                      title: 'Compras',
-                      routePath: '',
-                      children: [
-                        _DrawerSubItem(
-                          icon: Icons.receipt_long_rounded,
-                          title: 'Órdenes de compra',
-                          routePath: '/admin/purchase-orders',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/admin/purchase-orders');
-                          },
-                        ),
-                        _DrawerSubItem(
-                          icon: Icons.add_rounded,
-                          title: 'Entradas inventario',
-                          routePath: '/admin/inventory-entries',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/admin/inventory-entries');
-                          },
-                        ),
-                        _DrawerSubItem(
-                          icon: Icons.credit_score_rounded,
-                          title: 'Créditos proveedores',
-                          routePath: '/admin/supplier-credits',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/admin/supplier-credits');
-                          },
-                        ),
-                        _DrawerSubItem(
-                          icon: Icons.local_shipping_outlined,
-                          title: 'Proveedores',
-                          routePath: '/admin/suppliers',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/admin/suppliers');
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // ── Inventario (con sub-ítems) ─────────────────────────
-                  _ExpandableDrawerGroup(
-                    _DrawerItem(
-                      icon: Icons.inventory_2_outlined,
-                      title: 'Inventario',
-                      routePath: '',
-                      children: [
-                        _DrawerSubItem(
-                          icon: Icons.category_outlined,
-                          title: 'Productos',
-                          routePath: '/admin/products',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/admin/products');
-                          },
-                        ),
-                        _DrawerSubItem(
-                          icon: Icons.grid_view_rounded,
-                          title: 'Stock inventario',
-                          routePath: '/admin/inventory',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/admin/inventory');
-                          },
-                        ),
-                        _DrawerSubItem(
-                          icon: Icons.article_outlined,
-                          title: 'Kardex',
-                          routePath: '/admin/kardex',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/admin/kardex');
-                          },
-                        ),
-                        _DrawerSubItem(
-                          icon: Icons.remove_rounded,
-                          title: 'Salidas inventario',
-                          routePath: '/admin/inventory-exits',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/admin/inventory-exits');
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // ── Clientes y Créditos (con sub-ítems) ─────────────────
-                  _ExpandableDrawerGroup(
-                    _DrawerItem(
-                      icon: Icons.people_outline_rounded,
-                      title: 'Clientes y Créditos',
-                      routePath: '',
-                      children: [
-                        _DrawerSubItem(
-                          icon: Icons.person_outline_rounded,
-                          title: 'Clientes',
-                          routePath: '/admin/customers',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/admin/customers');
-                          },
-                        ),
-                        _DrawerSubItem(
-                          icon: Icons.credit_score_rounded,
-                          title: 'Créditos clientes',
-                          routePath: '/admin/customer-credits',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/admin/customer-credits');
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // ── CONFIGURACIÓN ERP ──────────────────────────────
-                  const _SectionDivider(),
-                  _buildSectionTitle('CONFIGURACIÓN ERP'),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.account_balance_wallet_outlined,
-                      title: 'Cuentas',
-                      routePath: '/admin/financial-accounts',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/admin/financial-accounts');
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.category_outlined,
-                      title: 'Categorías',
-                      routePath: '/admin/categories',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/admin/categories');
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.warehouse_outlined,
-                      title: 'Almacenes',
-                      routePath: '/admin/warehouses',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/admin/warehouses');
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.tune_rounded,
-                      title: 'Atributos',
-                      routePath: '/admin/attributes',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/admin/attributes');
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.science_rounded,
-                      title: 'Ingredientes Activos',
-                      routePath: '/admin/active-ingredients',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/admin/active-ingredients');
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.people_outline_rounded,
-                      title: 'Usuarios',
-                      routePath: '/admin/users',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/admin/users');
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.storefront_rounded,
-                      title: 'Negocio',
-                      routePath: '/admin/business-info',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/admin/business-info');
-                      },
-                    ),
-                  ),
-
-                  BlocSelector<AppConfigCubit, AppConfigState, bool>(
-                    selector:
-                        (s) => s.businessInfo?.loyaltyGlobalEnabled ?? true,
-                    builder: (context, loyaltyEnabled) {
-                      if (!loyaltyEnabled) return const SizedBox.shrink();
-                      return _buildItem(
-                        context,
-                        _DrawerItem(
-                          icon: Icons.stars_rounded,
-                          title: 'Puntos y Monedas',
-                          routePath: '/admin/points-settings',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/admin/points-settings');
-                          },
-                        ),
-                      );
+                _buildItem(
+                  context,
+                  _DrawerItem(
+                    icon: Icons.category_outlined,
+                    title: 'Categorías',
+                    routePath: '/categories',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.go('/categories');
                     },
+                  ),
+                ),
+
+                _buildItem(
+                  context,
+                  _DrawerItem(
+                    icon: Icons.warehouse_outlined,
+                    title: 'Almacenes',
+                    routePath: '/warehouses',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.go('/warehouses');
+                    },
+                  ),
+                ),
+
+                _buildItem(
+                  context,
+                  _DrawerItem(
+                    icon: Icons.tune_rounded,
+                    title: 'Atributos',
+                    routePath: '/attributes',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.go('/attributes');
+                    },
+                  ),
+                ),
+
+                _buildItem(
+                  context,
+                  _DrawerItem(
+                    icon: Icons.science_rounded,
+                    title: 'Ingredientes Activos',
+                    routePath: '/active-ingredients',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.go('/active-ingredients');
+                    },
+                  ),
+                ),
+
+                _buildItem(
+                  context,
+                  _DrawerItem(
+                    icon: Icons.people_outline_rounded,
+                    title: 'Usuarios',
+                    routePath: '/users',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.go('/users');
+                    },
+                  ),
+                ),
+
+                _buildItem(
+                  context,
+                  _DrawerItem(
+                    icon: Icons.storefront_rounded,
+                    title: 'Negocio',
+                    routePath: '/business-info',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.go('/business-info');
+                    },
+                  ),
+                ),
+
+                BlocSelector<AppConfigCubit, AppConfigState, bool>(
+                  selector:
+                      (s) => s.businessInfo?.loyaltyGlobalEnabled ?? true,
+                  builder: (context, loyaltyEnabled) {
+                    if (!loyaltyEnabled) return const SizedBox.shrink();
+                    return _buildItem(
+                      context,
+                      _DrawerItem(
+                        icon: Icons.stars_rounded,
+                        title: 'Puntos y Monedas',
+                        routePath: '/points-settings',
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/points-settings');
+                        },
+                      ),
+                    );
+                  },
                   ),
                 ],
-              ],
+              ),
             ),
-          ),
           ),
 
           // ─────────────────────────────────────────
@@ -530,9 +511,7 @@ class _AppDrawerState extends State<AppDrawer> {
   bool _isItemActive(String routePath, String currentPath) {
     if (routePath.isEmpty) return false;
     if (currentPath == routePath) return true;
-    if (routePath != '/admin' &&
-        routePath != '/' &&
-        currentPath.startsWith('$routePath/')) {
+    if (routePath != '/' && currentPath.startsWith('$routePath/')) {
       return true;
     }
     return false;
@@ -552,9 +531,7 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
   bool _isItemActive(String routePath, String currentPath) {
     if (routePath.isEmpty) return false;
     if (currentPath == routePath) return true;
-    if (routePath != '/admin' &&
-        routePath != '/' &&
-        currentPath.startsWith('$routePath/')) {
+    if (routePath != '/' && currentPath.startsWith('$routePath/')) {
       return true;
     }
     return false;
@@ -979,11 +956,7 @@ class _DrawerFooter extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       onTap: () {
                         Navigator.pop(context);
-                        if (isAdmin) {
-                          context.go('/admin/profile');
-                        } else {
-                          context.go('/profile');
-                        }
+                        context.go('/profile');
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(

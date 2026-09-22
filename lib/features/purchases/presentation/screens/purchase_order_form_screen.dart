@@ -170,7 +170,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
       if (context.canPop()) {
         context.pop(true);
       } else {
-        context.go('/admin/purchase-orders');
+        context.go('/purchase-orders');
       }
     } else if (newState is PurchaseOrderFormLoaded &&
         newState.errorMessage != null &&
@@ -330,7 +330,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                         if (context.canPop()) {
                           context.pop();
                         } else {
-                          context.go('/admin/purchase-orders');
+                          context.go('/purchase-orders');
                         }
                       },
                       icon: const Icon(Icons.arrow_back_rounded),
@@ -381,7 +381,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                 if (context.canPop()) {
                   context.pop(result);
                 } else {
-                  context.go('/admin/purchase-orders');
+                  context.go('/purchase-orders');
                 }
               }
               return;
@@ -392,7 +392,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
               if (context.canPop()) {
                 context.pop(result);
               } else {
-                context.go('/admin/purchase-orders');
+                context.go('/purchase-orders');
               }
               return;
             }
@@ -445,13 +445,13 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
               if (context.canPop()) {
                 context.pop(result);
               } else {
-                context.go('/admin/purchase-orders');
+                context.go('/purchase-orders');
               }
             } else if (action == 'draft') {
               if (context.canPop()) {
                 context.pop(result);
               } else {
-                context.go('/admin/purchase-orders');
+                context.go('/purchase-orders');
               }
             }
           },

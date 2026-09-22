@@ -80,9 +80,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
       final isTablet = MediaQuery.sizeOf(context).width >= 800;
       if (isTablet) {
         if (entry != null) {
-          context.replace('/admin/inventory-entries?selectedId=${entry.id}');
+          context.replace('/inventory-entries?selectedId=${entry.id}');
         } else {
-          context.replace('/admin/inventory-entries');
+          context.replace('/inventory-entries');
         }
       }
     }
@@ -260,7 +260,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         padding: const EdgeInsets.only(right: 8),
         child: FilledButton.icon(
           onPressed: () async {
-            await context.push('/admin/inventory-entries/form');
+            await context.push('/inventory-entries/form');
             _checkDraft();
           },
           style: FilledButton.styleFrom(
@@ -287,7 +287,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
     return FilledButton.icon(
       onPressed: () async {
-        await context.push('/admin/inventory-entries/form');
+        await context.push('/inventory-entries/form');
         _checkDraft();
       },
       icon: Icon(
@@ -690,7 +690,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                   ),
                   FilledButton.tonal(
                     onPressed: () async {
-                      await context.push('/admin/inventory-entries/form');
+                      await context.push('/inventory-entries/form');
                       _checkDraft();
                     },
                     style: FilledButton.styleFrom(
@@ -1120,7 +1120,7 @@ class _EntryCard extends StatelessWidget {
                             child: InkWell(
                               onTap: () {
                                 context.go(
-                                  '/admin/purchase-orders?selectedId=${entry.purchaseOrderId}',
+                                  '/purchase-orders?selectedId=${entry.purchaseOrderId}',
                                 );
                               },
                               borderRadius: BorderRadius.circular(6),

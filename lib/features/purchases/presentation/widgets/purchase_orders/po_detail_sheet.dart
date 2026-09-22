@@ -478,7 +478,7 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
       Navigator.pop(context);
     }
     await context.push(
-      '/admin/purchase-orders/form?editOrderId=${widget.po.id}',
+      '/purchase-orders/form?editOrderId=${widget.po.id}',
     );
     widget.onPaymentSuccess?.call();
   }

@@ -107,7 +107,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   const AdminSidebarItem(
                     icon: Icons.grid_view_rounded,
                     title: 'Catálogo',
-                    routePath: '/admin',
+                    routePath: '/',
                   ),
                 ),
                 _buildSidebarTile(
@@ -115,7 +115,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   const AdminSidebarItem(
                     icon: Icons.bar_chart_rounded,
                     title: 'Dashboard',
-                    routePath: '/admin/dashboard',
+                    routePath: '/dashboard',
                   ),
                 ),
 
@@ -148,7 +148,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                       AdminSidebarItem(
                         icon: Icons.receipt_long_rounded,
                         title: 'Pedidos',
-                        routePath: '/admin/orders',
+                        routePath: '/orders',
                         trailing: badge,
                       ),
                     );
@@ -165,22 +165,22 @@ class _AdminSidebarState extends State<AdminSidebar> {
                       AdminSidebarItem(
                         icon: Icons.receipt_long_rounded,
                         title: 'Órdenes de compra',
-                        routePath: '/admin/purchase-orders',
+                        routePath: '/purchase-orders',
                       ),
                       AdminSidebarItem(
                         icon: Icons.add_rounded,
                         title: 'Entradas inventario',
-                        routePath: '/admin/inventory-entries',
+                        routePath: '/inventory-entries',
                       ),
                       AdminSidebarItem(
                         icon: Icons.credit_score_rounded,
                         title: 'Créditos proveedores',
-                        routePath: '/admin/supplier-credits',
+                        routePath: '/supplier-credits',
                       ),
                       AdminSidebarItem(
                         icon: Icons.local_shipping_outlined,
                         title: 'Proveedores',
-                        routePath: '/admin/suppliers',
+                        routePath: '/suppliers',
                       ),
                     ],
                   ),
@@ -196,22 +196,22 @@ class _AdminSidebarState extends State<AdminSidebar> {
                       AdminSidebarItem(
                         icon: Icons.category_outlined,
                         title: 'Productos',
-                        routePath: '/admin/products',
+                        routePath: '/products',
                       ),
                       AdminSidebarItem(
                         icon: Icons.grid_view_rounded,
                         title: 'Stock inventario',
-                        routePath: '/admin/inventory',
+                        routePath: '/inventory',
                       ),
                       AdminSidebarItem(
                         icon: Icons.article_outlined,
                         title: 'Kardex',
-                        routePath: '/admin/kardex',
+                        routePath: '/kardex',
                       ),
                       AdminSidebarItem(
                         icon: Icons.remove_rounded,
                         title: 'Salidas inventario',
-                        routePath: '/admin/inventory-exits',
+                        routePath: '/inventory-exits',
                       ),
                     ],
                   ),
@@ -227,12 +227,12 @@ class _AdminSidebarState extends State<AdminSidebar> {
                       AdminSidebarItem(
                         icon: Icons.person_outline_rounded,
                         title: 'Clientes',
-                        routePath: '/admin/customers',
+                        routePath: '/customers',
                       ),
                       AdminSidebarItem(
                         icon: Icons.credit_score_rounded,
                         title: 'Créditos clientes',
-                        routePath: '/admin/customer-credits',
+                        routePath: '/customer-credits',
                       ),
                     ],
                   ),
@@ -254,7 +254,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   const AdminSidebarItem(
                     icon: Icons.account_balance_wallet_outlined,
                     title: 'Cuentas',
-                    routePath: '/admin/financial-accounts',
+                    routePath: '/financial-accounts',
                   ),
                 ),
                 _buildSidebarTile(
@@ -262,7 +262,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   const AdminSidebarItem(
                     icon: Icons.category_outlined,
                     title: 'Categorías',
-                    routePath: '/admin/categories',
+                    routePath: '/categories',
                   ),
                 ),
                 _buildSidebarTile(
@@ -270,7 +270,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   const AdminSidebarItem(
                     icon: Icons.warehouse_outlined,
                     title: 'Almacenes',
-                    routePath: '/admin/warehouses',
+                    routePath: '/warehouses',
                   ),
                 ),
                 _buildSidebarTile(
@@ -278,7 +278,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   const AdminSidebarItem(
                     icon: Icons.tune_rounded,
                     title: 'Atributos',
-                    routePath: '/admin/attributes',
+                    routePath: '/attributes',
                   ),
                 ),
                 _buildSidebarTile(
@@ -286,7 +286,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   const AdminSidebarItem(
                     icon: Icons.science_rounded,
                     title: 'Ingredientes Activos',
-                    routePath: '/admin/active-ingredients',
+                    routePath: '/active-ingredients',
                   ),
                 ),
                 _buildSidebarTile(
@@ -294,7 +294,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   const AdminSidebarItem(
                     icon: Icons.people_outline_rounded,
                     title: 'Usuarios',
-                    routePath: '/admin/users',
+                    routePath: '/users',
                   ),
                 ),
                 _buildSidebarTile(
@@ -302,7 +302,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   const AdminSidebarItem(
                     icon: Icons.storefront_rounded,
                     title: 'Negocio',
-                    routePath: '/admin/business-info',
+                    routePath: '/business-info',
                   ),
                 ),
                 BlocSelector<AppConfigCubit, AppConfigState, bool>(
@@ -314,7 +314,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                       const AdminSidebarItem(
                         icon: Icons.stars_rounded,
                         title: 'Puntos y Monedas',
-                        routePath: '/admin/points-settings',
+                        routePath: '/points-settings',
                       ),
                     );
                   },
@@ -446,10 +446,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
   bool _isItemActive(String routePath, String currentPath) {
     if (routePath.isEmpty) return false;
     if (currentPath == routePath) return true;
-    // Regla genérica: captura /form, /:id y cualquier sub-ruta.
-    // Las 6 excepciones hardcodeadas anteriores eran redundantes:
-    // startsWith('$routePath/') las cubría en todos los casos.
-    if (routePath != '/admin' && currentPath.startsWith('$routePath/')) {
+    if (routePath != '/' && currentPath.startsWith('$routePath/')) {
       return true;
     }
     return false;
@@ -611,7 +608,7 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
   bool _isItemActive(String routePath, String currentPath) {
     if (routePath.isEmpty) return false;
     if (currentPath == routePath) return true;
-    if (routePath != '/admin' && currentPath.startsWith('$routePath/')) {
+    if (routePath != '/' && currentPath.startsWith('$routePath/')) {
       return true;
     }
     return false;

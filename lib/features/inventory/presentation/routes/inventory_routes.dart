@@ -20,7 +20,7 @@ import 'package:inventory_store_app/features/inventory/presentation/screens/ware
 class InventoryRoutes {
   static List<RouteBase> get adminRoutes => [
     GoRoute(
-      path: '/admin/inventory-entries',
+      path: '/inventory-entries',
       builder: (context, state) {
         final entryId =
             state.uri.queryParameters['selectedId'] ??
@@ -32,7 +32,7 @@ class InventoryRoutes {
       },
     ),
     GoRoute(
-      path: '/admin/inventory-entries/form',
+      path: '/inventory-entries/form',
       builder: (context, state) {
         final args = state.extra as Map<String, dynamic>? ?? {};
         final poId =
@@ -63,7 +63,7 @@ class InventoryRoutes {
       },
     ),
     GoRoute(
-      path: '/admin/inventory-exits/form',
+      path: '/inventory-exits/form',
       builder:
           (context, state) => BlocProvider(
             create: (_) => sl<InventoryExitFormCubit>(),
@@ -71,7 +71,7 @@ class InventoryRoutes {
           ),
     ),
     GoRoute(
-      path: '/admin/inventory-exits',
+      path: '/inventory-exits',
       builder:
           (context, state) => BlocProvider(
             create: (_) => sl<InventoryExitsCubit>()..initLoad(),
@@ -79,7 +79,7 @@ class InventoryRoutes {
           ),
     ),
     GoRoute(
-      path: '/admin/inventory',
+      path: '/inventory',
       builder: (context, state) {
         final search = state.uri.queryParameters['search'];
         return BlocProvider(
@@ -89,7 +89,7 @@ class InventoryRoutes {
       },
     ),
     GoRoute(
-      path: '/admin/kardex',
+      path: '/kardex',
       builder: (context, state) {
         final productId = state.uri.queryParameters['productId'];
         final productName = state.uri.queryParameters['productName'];
@@ -111,7 +111,7 @@ class InventoryRoutes {
       },
     ),
     GoRoute(
-      path: '/admin/warehouses',
+      path: '/warehouses',
       builder:
           (context, state) => BlocProvider(
             create: (_) => sl<WarehousesCubit>()..loadWarehouses(),

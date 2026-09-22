@@ -21,7 +21,7 @@ class PosCartFab extends StatelessWidget {
           child: InkWell(
             onTap: () async {
               HapticFeedback.lightImpact();
-              await context.push('/admin/pos');
+              await context.push('/pos');
             },
             borderRadius: BorderRadius.circular(16),
             splashColor: Colors.white.withValues(alpha: 0.2),

@@ -1,6 +1,6 @@
-import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_by_id_usecase.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_extra_data_usecase.dart';
@@ -20,17 +20,15 @@ import 'package:injectable/injectable.dart';
 @injectable
 class ProductDetailCubit extends Cubit<ProductDetailState> {
   ProductEntity? product;
-  bool isAdmin = false;
+  bool get isAdmin => true;
+  set isAdmin(bool value) {}
   String? initialVariantId;
 
   final GetProductByIdUseCase _getProductById;
   final GetProductExtraDataUseCase _getExtraData;
   final GetAdminFinancialDataUseCase _getAdminData;
-  final CheckWishlistStateUseCase _checkWishlist;
-  final ToggleWishlistUseCase _toggleWishlist;
-  final GetCurrentProfileIdUseCase _getProfileId;
+  final GetCurrentProfileIdUseCase? _getProfileId;
   final ExportProductPdfUseCase _exportProductPdf;
-  final CheckCustomerPurchaseUseCase _checkPurchase;
   final AddProductReviewUseCase _addReview;
 
   Future<T> _unwrap<T>(Future<Either<Failure, T>> future) async {
@@ -45,34 +43,32 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     required GetProductByIdUseCase getProductById,
     required GetProductExtraDataUseCase getExtraData,
     required GetAdminFinancialDataUseCase getAdminData,
-    required CheckWishlistStateUseCase checkWishlist,
-    required ToggleWishlistUseCase toggleWishlist,
-    required GetCurrentProfileIdUseCase getProfileId,
+    CheckWishlistStateUseCase? checkWishlist,
+    ToggleWishlistUseCase? toggleWishlist,
+    GetCurrentProfileIdUseCase? getProfileId,
     required ExportProductPdfUseCase exportProductPdf,
-    required CheckCustomerPurchaseUseCase checkPurchase,
+    CheckCustomerPurchaseUseCase? checkPurchase,
     required AddProductReviewUseCase addReview,
   }) : _getProductById = getProductById,
        _getExtraData = getExtraData,
        _getAdminData = getAdminData,
-       _checkWishlist = checkWishlist,
-       _toggleWishlist = toggleWishlist,
        _getProfileId = getProfileId,
        _exportProductPdf = exportProductPdf,
-       _checkPurchase = checkPurchase,
        _addReview = addReview,
        super(const ProductDetailState());
 
   /// Carga el producto mediante su ID y luego inicializa la data extra.
   Future<void> loadProduct(
     String productId, {
-    bool isAdmin = false,
+    bool? isAdmin,
     String? initialVariantId,
   }) async {
-    this.isAdmin = isAdmin;
     this.initialVariantId = initialVariantId;
     emit(state.copyWith(viewState: ViewState.loading));
 
     final result = await _getProductById(productId);
+    if (isClosed) return;
+
     result.fold(
       (failure) => emit(
         state.copyWith(
@@ -100,11 +96,10 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
 
   void loadInitialData({
     required ProductEntity product,
-    bool isAdmin = false,
+    bool? isAdmin,
     String? initialVariantId,
   }) {
     this.product = product;
-    this.isAdmin = isAdmin;
     final effectiveVariantId = initialVariantId ??
         (product.productVariants.isNotEmpty
             ? product.productVariants.first.id
@@ -128,44 +123,15 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
   Future<void> loadData() async {
     if (product == null) return;
     emit(state.copyWith(viewState: ViewState.loading));
-    await _fetchWishlistState();
     await _fetchExtraData();
+    if (isClosed) return;
     emit(state.copyWith(viewState: ViewState.success));
-  }
-
-  Future<void> _fetchWishlistState() async {
-    if (isAdmin) {
-      emit(state.copyWith(isWishlistLoading: false));
-      return;
-    }
-
-    try {
-      _profileId ??= await _unwrap(_getProfileId.call());
-      final pid = _profileId;
-      if (pid == null) {
-        emit(state.copyWith(isWishlisted: false, isWishlistLoading: false));
-        return;
-      }
-      final isWishlisted = await _unwrap(
-        _checkWishlist.call(productId: product!.id, profileId: pid),
-      );
-      emit(
-        state.copyWith(isWishlisted: isWishlisted, isWishlistLoading: false),
-      );
-    } catch (e, st) {
-      developer.log(
-        'Error al verificar el estado de wishlist del producto',
-        error: e,
-        stackTrace: st,
-        name: 'ProductDetailCubit',
-      );
-      emit(state.copyWith(isWishlisted: false, isWishlistLoading: false));
-    }
   }
 
   Future<void> _fetchExtraData() async {
     try {
       final extraData = await _unwrap(_getExtraData.call(product!.id));
+      if (isClosed) return;
 
       final images = extraData.images;
       final variants = extraData.variants;
@@ -183,69 +149,69 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
       double reinvestmentNeeded = 0.0;
       double totalRevenue = 0.0;
       double inventoryValue = 0.0;
-      List<VariantFinancialSummaryEntity> variantSummaries = [];
+      final List<VariantFinancialSummaryEntity> variantSummaries = [];
 
-      if (isAdmin) {
-        final adminData = await _unwrap(_getAdminData.call(product!.id));
+      final adminData = await _unwrap(_getAdminData.call(product!.id));
+      if (isClosed) return;
 
-        final Map<String, Map<String, double>> variantSales = {};
-        for (final row in adminData) {
-          final q = (row['quantity'] as num?)?.toInt() ?? 0;
-          final uc = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
-          final ap = (row['applied_price'] as num?)?.toDouble() ?? 0.0;
+      final Map<String, Map<String, double>> variantSales = {};
+      for (final row in adminData) {
+        final q = (row['quantity'] as num?)?.toInt() ?? 0;
+        final uc = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
+        final ap = (row['applied_price'] as num?)?.toDouble() ?? 0.0;
 
-          totalSold += q;
-          reinvestmentNeeded += (q * uc);
-          totalRevenue += (q * ap);
+        totalSold += q;
+        reinvestmentNeeded += (q * uc);
+        totalRevenue += (q * ap);
 
-          final vid = row['variant_id']?.toString() ?? '';
-          if (vid.isNotEmpty) {
-            variantSales.putIfAbsent(
-              vid,
-              () => {'qty': 0, 'cost': 0, 'revenue': 0},
-            );
-            variantSales[vid]!['qty'] = variantSales[vid]!['qty']! + q;
-            variantSales[vid]!['cost'] = variantSales[vid]!['cost']! + (q * uc);
-            variantSales[vid]!['revenue'] =
-                variantSales[vid]!['revenue']! + (q * ap);
-          }
+        final vid = row['variant_id']?.toString() ?? '';
+        if (vid.isNotEmpty) {
+          variantSales.putIfAbsent(
+            vid,
+            () => {'qty': 0, 'cost': 0, 'revenue': 0},
+          );
+          variantSales[vid]!['qty'] = variantSales[vid]!['qty']! + q;
+          variantSales[vid]!['cost'] = variantSales[vid]!['cost']! + (q * uc);
+          variantSales[vid]!['revenue'] =
+              variantSales[vid]!['revenue']! + (q * ap);
         }
-
-        for (final v in variants) {
-          final cost = (v.unitCost ?? 0) > 0 ? v.unitCost! : 0.0;
-          int variantStock = 0;
-          for (final row in extraData.stocks) {
-            if (row['variant_id'] == v.id) {
-              variantStock += (row['available_quantity'] as num?)?.toInt() ?? 0;
-            }
-          }
-          final vInv = variantStock * cost;
-          inventoryValue += vInv;
-
-          final s = variantSales[v.id];
-          if (s != null) {
-            variantSummaries.add(
-              VariantFinancialSummaryEntity(
-                variant: v,
-                unitCost: cost,
-                stockQuantity: variantStock,
-                inventoryValue: vInv,
-                soldQuantity: s['qty']!.round(),
-                soldCost: s['cost']!,
-                soldRevenue: s['revenue']!,
-              ),
-            );
-          }
-        }
-
-        variantSummaries.sort(
-          (a, b) => b.soldQuantity.compareTo(a.soldQuantity),
-        );
       }
+
+      for (final v in variants) {
+        final cost = (v.unitCost ?? 0) > 0 ? v.unitCost! : 0.0;
+        int variantStock = 0;
+        for (final row in extraData.stocks) {
+          if (row['variant_id'] == v.id) {
+            variantStock += (row['available_quantity'] as num?)?.toInt() ?? 0;
+          }
+        }
+        final vInv = variantStock * cost;
+        inventoryValue += vInv;
+
+        final s = variantSales[v.id];
+        if (s != null) {
+          variantSummaries.add(
+            VariantFinancialSummaryEntity(
+              variant: v,
+              unitCost: cost,
+              stockQuantity: variantStock,
+              inventoryValue: vInv,
+              soldQuantity: s['qty']!.round(),
+              soldCost: s['cost']!,
+              soldRevenue: s['revenue']!,
+            ),
+          );
+        }
+      }
+
+      variantSummaries.sort(
+        (a, b) => b.soldQuantity.compareTo(a.soldQuantity),
+      );
 
       final resolvedVariantId = state.selectedVariantId ??
           (variants.isNotEmpty ? variants.first.id : null);
 
+      if (isClosed) return;
       emit(
         state.copyWith(
           selectedVariantId: resolvedVariantId,
@@ -264,32 +230,12 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
         ),
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error al descargar información transaccional y variantes del producto',
         error: e,
         stackTrace: st,
-        name: 'ProductDetailCubit',
+        tag: 'ProductDetailCubit',
       );
-    }
-  }
-
-  Future<void> toggleWishlist() async {
-    final pid = _profileId;
-    if (pid == null) return;
-
-    final currentStatus = state.isWishlisted;
-    emit(state.copyWith(isWishlistLoading: true));
-    try {
-      final success = await _unwrap(
-        _toggleWishlist.call(
-          productId: product!.id,
-          profileId: pid,
-          currentStatus: currentStatus,
-        ),
-      );
-      emit(state.copyWith(isWishlisted: success));
-    } finally {
-      emit(state.copyWith(isWishlistLoading: false));
     }
   }
 
@@ -387,13 +333,13 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
       variants: state.variants,
       stockByVariant: stockMap,
     );
+    if (isClosed) return;
 
     result.fold(
       (failure) {
-        developer.log(
-          'Error al generar y exportar PDF del producto',
-          error: failure.message,
-          name: 'ProductDetailCubit',
+        LoggerService.e(
+          'Error al generar y exportar PDF del producto: ${failure.message}',
+          tag: 'ProductDetailCubit',
         );
         emit(
           state.copyWith(
@@ -412,85 +358,57 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     required String userName,
     required int rating,
     String? comment,
-    required bool isAdminSubmission,
+    bool isAdminSubmission = true,
   }) async {
     if (product == null) return;
 
+    if (userName.trim().isEmpty) {
+      emit(
+        state.copyWith(
+          viewState: ViewState.error,
+          errorMessage: 'Ingresa el nombre del cliente.',
+        ),
+      );
+      return;
+    }
+
     emit(state.copyWith(viewState: ViewState.loading));
     try {
-      if (isAdminSubmission) {
-        if (userName.trim().isEmpty) {
-          emit(
-            state.copyWith(
-              viewState: ViewState.error,
-              errorMessage: 'Ingresa el nombre del cliente.',
-            ),
-          );
-          return;
-        }
-        await _unwrap(
-          _addReview.call(
-            productId: product!.id,
-            profileId: _profileId ?? '',
-            userName: userName.trim(),
-            rating: rating,
-            comment:
-                comment?.trim().isNotEmpty == true ? comment!.trim() : null,
-          ),
-        );
-      } else {
-        final pid = _profileId ?? await _unwrap(_getProfileId.call());
-        _profileId = pid;
-        if (pid == null) {
-          emit(
-            state.copyWith(
-              viewState: ViewState.error,
-              errorMessage: 'Inicia sesión para opinar.',
-            ),
-          );
-          return;
-        }
+      final pid = _profileId ??
+          (_getProfileId != null
+              ? (await _unwrap(_getProfileId.call()))
+              : null) ??
+          '';
+      _profileId = pid;
 
-        final hasPurchased = await _unwrap(
-          _checkPurchase.call(productId: product!.id, profileId: pid),
-        );
-        if (!hasPurchased) {
-          emit(
-            state.copyWith(
-              viewState: ViewState.error,
-              errorMessage: 'Debes haber comprado este producto para opinar.',
-            ),
-          );
-          return;
-        }
+      await _unwrap(
+        _addReview.call(
+          productId: product!.id,
+          profileId: pid,
+          userName: userName.trim(),
+          rating: rating,
+          comment:
+              comment?.trim().isNotEmpty == true ? comment!.trim() : null,
+        ),
+      );
 
-        await _unwrap(
-          _addReview.call(
-            productId: product!.id,
-            profileId: pid,
-            userName: userName,
-            rating: rating,
-            comment:
-                comment?.trim().isNotEmpty == true ? comment!.trim() : null,
-          ),
-        );
-      }
-
+      if (isClosed) return;
       emit(
         state.copyWith(
           viewState: ViewState.success,
-          successMessage: 'Reseña enviada, ¡gracias!',
+          successMessage: 'Reseña enviada con éxito',
         ),
       );
 
       await loadData();
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error al enviar reseña de producto',
         error: e,
         stackTrace: st,
-        name: 'ProductDetailCubit',
+        tag: 'ProductDetailCubit',
       );
+      if (isClosed) return;
       emit(
         state.copyWith(
           viewState: ViewState.error,
@@ -500,18 +418,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     }
   }
 
-  Future<bool> canReview() async {
-    if (isAdmin) return true;
-    try {
-      final pid = _profileId ?? await _unwrap(_getProfileId.call());
-      if (pid == null) return false;
-      return await _unwrap(
-        _checkPurchase.call(productId: product!.id, profileId: pid),
-      );
-    } catch (e) {
-      return false;
-    }
-  }
+  Future<bool> canReview() async => true;
 
   bool validateCartAddition(int qty) {
     final stock = state.effectiveStock;

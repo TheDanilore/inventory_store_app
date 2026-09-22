@@ -162,7 +162,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                               searchByIngredient: searchByIngredient,
                               onToggleIngredientSearch:
                                   context.read<AdminCatalogCubit>().toggleSearchByIngredient,
-                              onBack: () => context.go('/admin'),
+                              onBack: () => context.go('/'),
                             );
                           },
                         ),
@@ -305,7 +305,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                       final totalAmount = cartState.totalAmount;
 
                       return FloatingActionButton.extended(
-                        onPressed: () => context.push('/admin/pos-checkout'),
+                        onPressed: () => context.push('/pos-checkout'),
                         backgroundColor:
                             hasItems
                                 ? AppColors.primary

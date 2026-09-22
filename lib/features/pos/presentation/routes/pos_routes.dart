@@ -6,15 +6,15 @@ import 'package:inventory_store_app/features/pos/presentation/screens/pos_checko
 class PosRoutes {
   static List<RouteBase> get adminRoutes => [
     GoRoute(
-      path: '/admin/pos',
+      path: '/pos',
       builder: (context, state) => const AdminPosScreen(),
     ),
     GoRoute(
-      path: '/admin/pos-checkout',
+      path: '/pos-checkout',
       builder: (context, state) => const PosCheckoutScreen(),
     ),
     GoRoute(
-      path: '/admin/all-cash-shifts',
+      path: '/all-cash-shifts',
       builder: (context, state) => const AllCashShiftsScreen(),
     ),
   ];

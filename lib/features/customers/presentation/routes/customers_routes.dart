@@ -8,18 +8,12 @@ import 'package:inventory_store_app/features/customers/presentation/screens/admi
 import 'package:inventory_store_app/features/customers/presentation/screens/admin/customer_credits_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/admin/customer_detail_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/admin/customers_screen.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/location_management_screen.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/customer/wishlist_screen.dart';
-import 'package:inventory_store_app/features/auth/presentation/screens/profile_screen.dart';
-import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
-import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 
 class CustomersRoutes {
   static List<RouteBase> get adminRoutes => [
     GoRoute(
-      path: '/admin/customers',
+      path: '/customers',
       builder: (context, state) {
         return MultiBlocProvider(
           providers: [
@@ -32,7 +26,7 @@ class CustomersRoutes {
       },
     ),
     GoRoute(
-      path: '/admin/customers/customer-detail/:id',
+      path: '/customers/customer-detail/:id',
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
         final customer =
@@ -49,17 +43,17 @@ class CustomersRoutes {
                 targetName.isNotEmpty
                     ? '?customerId=$targetId&customerName=${Uri.encodeComponent(targetName)}'
                     : '?customerId=$targetId';
-            context.push('/admin/orders$query');
+            context.push('/orders$query');
           },
         );
       },
     ),
     GoRoute(
-      path: '/admin/customer-credits',
+      path: '/customer-credits',
       builder: (context, state) => const CustomerCreditsScreen(),
     ),
     GoRoute(
-      path: '/admin/customer-credit-movements/:creditId',
+      path: '/customer-credit-movements/:creditId',
       builder: (context, state) {
         final creditId = state.pathParameters['creditId'] ?? '';
         final args = state.extra as Map<String, dynamic>? ?? {};
@@ -92,35 +86,7 @@ class CustomersRoutes {
     ),
   ];
 
-  static List<RouteBase> get topLevelRoutes => [
-    GoRoute(
-      path: '/locations',
-      builder: (context, state) {
-        final customerId =
-            context.read<AuthCubit>().state.currentUser?.id ?? '';
-        return LocationManagementScreen(customerId: customerId);
-      },
-    ),
-    GoRoute(
-      path: '/wishlist',
-      builder: (context, state) {
-        return MultiBlocProvider(
-          providers: [
-            BlocProvider(
-              create: (_) => sl<CartCubit>()..initCart(cartType: 'customer'),
-            ),
-            BlocProvider(create: (_) => sl<WalletCubit>()),
-          ],
-          child: const WishlistScreen(),
-        );
-      },
-    ),
-  ];
+  static List<RouteBase> get topLevelRoutes => [];
 
-  static List<RouteBase> get customerRoutes => [
-    GoRoute(
-      path: '/profile',
-      builder: (context, state) => const ProfileScreen(openedFromAdmin: false),
-    ),
-  ];
+  static List<RouteBase> get customerRoutes => [];
 }

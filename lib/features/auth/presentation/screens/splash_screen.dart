@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 
 class SplashScreen extends StatefulWidget {
   final Future<void> Function(BuildContext context)? onInitialize;
@@ -28,20 +29,22 @@ class _SplashScreenState extends State<SplashScreen> {
       try {
         await widget.onInitialize!(context);
       } catch (e, st) {
-        developer.log(
+        LoggerService.e(
           'Error o timeout cargando inicialización',
+          tag: 'SplashScreen',
           error: e,
           stackTrace: st,
-          name: 'SplashScreen',
         );
       }
     }
 
     if (!mounted) return;
 
-    // Llamamos al Cubit para que verifique la sesin.
-    // GoRouter reaccionará automáticamente al cambio de estado gracias a GoRouterRefreshStream
-    await context.read<AuthCubit>().checkSession();
+    // Optimización: Solo verificamos sesión si no fue resuelta previamente para evitar Data Egress duplicado
+    final authCubit = context.read<AuthCubit>();
+    if (authCubit.state.authStatus == AuthStatus.initial) {
+      await authCubit.checkSession();
+    }
   }
 
   @override

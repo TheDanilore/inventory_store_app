@@ -172,7 +172,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
           },
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () {
-              context.go('/admin/inventory-exits/form');
+              context.go('/inventory-exits/form');
             },
             icon: const Icon(Icons.remove_circle_outline_rounded),
             label: const Text(
@@ -351,7 +351,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                     ),
                     FilledButton.tonal(
                       onPressed: () {
-                        context.go('/admin/inventory-exits/form');
+                        context.go('/inventory-exits/form');
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.warning.withValues(

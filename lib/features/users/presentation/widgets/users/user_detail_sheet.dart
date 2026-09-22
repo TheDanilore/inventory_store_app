@@ -74,7 +74,7 @@ class _UserDetailContentState extends State<_UserDetailContent> {
     final user = state.user;
     Navigator.of(context).pop();
     context.go(
-      '/admin/users/form',
+      '/users/form',
       extra: {
         'existingUser': user,
         'initialRole': user.role,

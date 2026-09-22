@@ -469,7 +469,7 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                                     Navigator.of(context).pop();
                                   }
                                   context.go(
-                                    '/admin/purchase-orders?selectedId=${entry.purchaseOrderId}',
+                                    '/purchase-orders?selectedId=${entry.purchaseOrderId}',
                                   );
                                 },
                                 icon: const Icon(

@@ -221,7 +221,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                       cubit.toggleSearchByIngredient,
                                   onAddProduct:
                                       () => context.go(
-                                        '/admin/products/product-form',
+                                        '/products/product-form',
                                       ),
                                 ),
                                 if (state.actionState == ViewState.loading)
@@ -353,7 +353,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     chipsSliver: chipsSliver,
                     onEdit: (product) async {
                       context.go(
-                        '/admin/products/product-form/${product.id}',
+                        '/products/product-form/${product.id}',
                         extra: {'productToEdit': product},
                       );
                     },
@@ -416,7 +416,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         elevation: 4,
                         shadowColor: Colors.black.withValues(alpha: 0.25),
                         child: InkWell(
-                          onTap: () => context.go('/admin/pos'),
+                          onTap: () => context.go('/pos'),
                           borderRadius: BorderRadius.circular(16),
                           splashColor: Colors.white.withValues(alpha: 0.15),
                           highlightColor: Colors.white.withValues(alpha: 0.08),
@@ -435,7 +435,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     const SizedBox(height: 12),
                     CatalogAddProductFab(
                       onTap: () {
-                        context.go('/admin/products/product-form');
+                        context.go('/products/product-form');
                       },
                     ),
                   ],
@@ -452,7 +452,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
           actions: [
             if (isDesktop)
               ElevatedButton.icon(
-                onPressed: () => context.go('/admin/pos'),
+                onPressed: () => context.go('/pos'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -508,7 +508,8 @@ class _CatalogHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _CatalogHeaderDelegate oldDelegate) {
-    return maxHeight != oldDelegate.maxHeight ||
+    return child != oldDelegate.child ||
+        maxHeight != oldDelegate.maxHeight ||
         minHeight != oldDelegate.minHeight;
   }
 }

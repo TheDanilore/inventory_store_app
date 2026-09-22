@@ -27,7 +27,7 @@ class AuthRoutes {
 
   static List<RouteBase> get adminRoutes => [
     GoRoute(
-      path: '/admin/profile',
+      path: '/profile',
       builder:
           (context, state) => const AdminLayout(
             title: 'Perfil',

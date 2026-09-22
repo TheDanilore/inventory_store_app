@@ -9,7 +9,7 @@ import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/c
 class FinancialRoutes {
   static List<RouteBase> get adminRoutes => [
     GoRoute(
-      path: '/admin/financial-accounts',
+      path: '/financial-accounts',
       builder:
           (context, state) => MultiBlocProvider(
             providers: [

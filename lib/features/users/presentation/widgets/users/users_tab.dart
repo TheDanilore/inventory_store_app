@@ -180,7 +180,7 @@ class _UsersTabState extends State<UsersTab>
 
   void _onEditUser(BuildContext context, UserEntity user) {
     context.go(
-      '/admin/users/form',
+      '/users/form',
       extra: {'existingUser': user, 'initialRole': user.role},
     );
   }

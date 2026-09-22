@@ -85,9 +85,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
       final isWide = MediaQuery.sizeOf(context).width >= 800;
       if (isWide) {
         if (order != null) {
-          context.replace('/admin/orders?selectedId=${order.id}');
+          context.replace('/orders?selectedId=${order.id}');
         } else {
-          context.replace('/admin/orders');
+          context.replace('/orders');
         }
       }
     }

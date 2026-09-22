@@ -85,7 +85,7 @@ class TopCustomersSection extends StatelessWidget {
                     const Spacer(),
                     TextButton(
                       onPressed:
-                          () => context.go('/admin/customers/top-customers'),
+                          () => context.go('/customers/top-customers'),
                       child: const Text('Ver todos'),
                     ),
                   ],
@@ -105,7 +105,7 @@ class TopCustomersSection extends StatelessWidget {
                       medal: _medals[i],
                       onTap:
                           (c) => context.go(
-                            '/admin/customers/customer-detail/${c.id}',
+                            '/customers/customer-detail/${c.id}',
                             extra: c,
                           ),
                     );

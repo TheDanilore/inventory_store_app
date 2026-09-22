@@ -174,7 +174,7 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
                         child: OutlinedButton.icon(
                           onPressed: () {
                             Navigator.pop(context);
-                            context.push('/admin/all-cash-shifts');
+                            context.push('/all-cash-shifts');
                           },
                           icon: const Icon(
                             Icons.point_of_sale_rounded,
@@ -208,7 +208,7 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
                               Navigator.pop(context);
                               if (kIsWeb) {
                                 final uri = Uri.base.replace(
-                                  path: '/admin/inventory',
+                                  path: '/inventory',
                                   queryParameters: {},
                                 );
                                 await launchUrl(
@@ -216,7 +216,7 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
                                   webOnlyWindowName: '_blank',
                                 );
                               } else {
-                                context.push('/admin/inventory');
+                                context.push('/inventory');
                               }
                             },
                             icon: Icon(

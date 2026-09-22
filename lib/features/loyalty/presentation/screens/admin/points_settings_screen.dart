@@ -426,7 +426,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton.icon(
-                  onPressed: () => context.go('/admin/business-info'),
+                  onPressed: () => context.go('/business-info'),
                   icon: const Icon(Icons.arrow_forward_rounded, size: 16),
                   label: const Text('Ir a Negocio'),
                   style: ElevatedButton.styleFrom(

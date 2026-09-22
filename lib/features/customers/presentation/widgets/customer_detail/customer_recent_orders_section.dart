@@ -134,7 +134,7 @@ class _OrderRow extends StatelessWidget {
       child: Column(
         children: [
           InkWell(
-            onTap: () => context.push('/admin/orders?selectedId=${order.id}'),
+            onTap: () => context.push('/orders?selectedId=${order.id}'),
             borderRadius: BorderRadius.circular(10),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),

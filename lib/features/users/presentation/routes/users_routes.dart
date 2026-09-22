@@ -6,11 +6,11 @@ import 'package:inventory_store_app/features/users/presentation/screens/users_ma
 class UsersRoutes {
   static List<RouteBase> get adminRoutes => [
     GoRoute(
-      path: '/admin/users',
+      path: '/users',
       builder: (context, state) => const UsersManagementScreen(),
     ),
     GoRoute(
-      path: '/admin/users/form',
+      path: '/users/form',
       builder: (context, state) {
         final extra = state.extra;
         UserEntity? user;

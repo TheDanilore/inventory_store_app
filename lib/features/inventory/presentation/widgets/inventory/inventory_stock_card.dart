@@ -51,7 +51,7 @@ class InventoryStockCard extends StatelessWidget {
               onTap ??
               () {
                 context.go(
-                  '/admin/product/${item.productId}?variantId=${item.variantId}',
+                  '/product/${item.productId}?variantId=${item.variantId}',
                 );
               },
           borderRadius: BorderRadius.circular(16),
@@ -318,7 +318,7 @@ class InventoryStockCard extends StatelessWidget {
                     InkWell(
                       onTap: () {
                         context.push(
-                          '/admin/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
+                          '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
                         );
                       },
                       borderRadius: BorderRadius.circular(6),

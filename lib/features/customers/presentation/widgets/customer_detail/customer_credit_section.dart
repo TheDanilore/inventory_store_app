@@ -210,7 +210,7 @@ class CustomerCreditSection extends StatelessWidget {
                       'customerId': customer.id,
                     };
                     final uri = Uri(
-                      path: '/admin/customer-credit-movements/$creditId',
+                      path: '/customer-credit-movements/$creditId',
                       queryParameters: queryParams,
                     );
                     context.push(uri.toString());

@@ -357,7 +357,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
         type: SnackbarType.success,
       );
       if (!context.mounted) return;
-      context.go('/admin/inventory-exits');
+      context.go('/inventory-exits');
     } else {
       AppSnackbar.show(
         context,
@@ -403,7 +403,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
               if (context.canPop()) {
                 context.pop(result);
               } else {
-                context.go('/admin/inventory-exits');
+                context.go('/inventory-exits');
               }
               return;
             }
@@ -456,13 +456,13 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
               if (context.canPop()) {
                 context.pop(result);
               } else {
-                context.go('/admin/inventory-exits');
+                context.go('/inventory-exits');
               }
             } else if (action == 'draft') {
               if (context.canPop()) {
                 context.pop(result);
               } else {
-                context.go('/admin/inventory-exits');
+                context.go('/inventory-exits');
               }
             }
           },

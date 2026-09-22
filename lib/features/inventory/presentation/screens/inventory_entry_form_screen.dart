@@ -171,11 +171,11 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
           Navigator.of(context).pop(true);
         } else {
           context.go(
-            '/admin/purchase-orders?selectedId=${widget.purchaseOrderId}',
+            '/purchase-orders?selectedId=${widget.purchaseOrderId}',
           );
         }
       } else {
-        context.go('/admin/inventory-entries');
+        context.go('/inventory-entries');
       }
     } else if (cubit.state.errorMessage.isNotEmpty) {
       AppSnackbar.show(
@@ -232,7 +232,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         Navigator.of(context).pop(false);
       } else {
         context.go(
-          '/admin/purchase-orders?selectedId=${widget.purchaseOrderId}',
+          '/purchase-orders?selectedId=${widget.purchaseOrderId}',
         );
       }
       return;
@@ -243,7 +243,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       } else {
-        context.go('/admin/inventory-entries');
+        context.go('/inventory-entries');
       }
       return;
     }
@@ -294,13 +294,13 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       } else {
-        context.go('/admin/inventory-entries');
+        context.go('/inventory-entries');
       }
     } else if (action == 'draft') {
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       } else {
-        context.go('/admin/inventory-entries');
+        context.go('/inventory-entries');
       }
     }
   }

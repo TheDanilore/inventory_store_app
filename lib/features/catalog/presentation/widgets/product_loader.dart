@@ -8,13 +8,11 @@ import 'package:inventory_store_app/features/catalog/presentation/screens/produc
 
 class ProductLoader extends StatelessWidget {
   final String productId;
-  final bool isAdmin;
   final String? initialVariantId;
 
   const ProductLoader({
     super.key,
     required this.productId,
-    required this.isAdmin,
     this.initialVariantId,
   });
 
@@ -25,12 +23,10 @@ class ProductLoader extends StatelessWidget {
           (_) =>
               sl<ProductDetailCubit>()..loadProduct(
                 productId,
-                isAdmin: isAdmin,
                 initialVariantId: initialVariantId,
               ),
       child: BlocBuilder<ProductDetailCubit, ProductDetailState>(
         builder: (context, state) {
-          // 1. Verificamos si está cargando o en estado inicial
           if (state.viewState == ViewState.initial ||
               state.viewState == ViewState.loading) {
             return const Scaffold(
@@ -38,7 +34,6 @@ class ProductLoader extends StatelessWidget {
             );
           }
 
-          // 2. Verificamos si hubo un error
           if (state.viewState == ViewState.error) {
             return Scaffold(
               body: Center(
@@ -47,7 +42,6 @@ class ProductLoader extends StatelessWidget {
             );
           }
 
-          // 3. Verificamos si se cargó exitosamente
           if (state.viewState == ViewState.success) {
             final product = state.product;
             if (product == null) {
@@ -58,7 +52,6 @@ class ProductLoader extends StatelessWidget {
 
             return ProductDetailScreen(
               product: product,
-              isAdmin: isAdmin,
               initialVariantId: initialVariantId,
             );
           }

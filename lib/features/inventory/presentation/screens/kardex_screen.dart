@@ -94,11 +94,11 @@ class _KardexScreenState extends State<KardexScreen> {
   }
 
   void _openExitScreen(BuildContext context) {
-    context.go('/admin/inventory-exits/form');
+    context.go('/inventory-exits/form');
   }
 
   void _openEntryScreen(BuildContext context) {
-    context.go('/admin/inventory-entries/form');
+    context.go('/inventory-entries/form');
   }
 
   void _onSelectMovement(KardexMovementEntity item, bool isDesktop) {

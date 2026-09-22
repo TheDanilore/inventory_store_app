@@ -1,62 +1,38 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-
-import 'package:flutter/foundation.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_state.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_admin_info_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_availability_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_batches_card.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_quick_decisions_card.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_reviews_card.dart';
-
-import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_variant_picker_sheet.dart';
-import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
-
-import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_cubit.dart';
-import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_state.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_gallery_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_top_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_price_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_bottom_bar.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_input_field.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_description_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_details_card.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_gallery_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_ingredients_card.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_input_field.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_price_section.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_quick_decisions_card.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_reviews_card.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_top_section.dart';
 
 class ProductDetailScreen extends StatelessWidget {
   final ProductEntity product;
-  final bool isAdmin;
   final String? initialVariantId;
   final bool isEmbedded;
-  final Widget? cartActionWidget;
-  final void Function(
-    BuildContext context,
-    ProductEntity product,
-    int qty,
-    ProductVariantEntity? selectedVariant,
-    String? effectiveImageUrl,
-    double effectivePrice,
-  )?
-  onAddToCart;
 
   const ProductDetailScreen({
     super.key,
     required this.product,
-    this.isAdmin = false,
     this.initialVariantId,
     this.isEmbedded = false,
-    this.cartActionWidget,
-    this.onAddToCart,
   });
 
   @override
@@ -66,7 +42,6 @@ class ProductDetailScreen extends StatelessWidget {
           (_) =>
               sl<ProductDetailCubit>()..loadInitialData(
                 product: product,
-                isAdmin: isAdmin,
                 initialVariantId: initialVariantId,
               ),
       child: BlocListener<ProductDetailCubit, ProductDetailState>(
@@ -76,28 +51,24 @@ class ProductDetailScreen extends StatelessWidget {
                 previous.successMessage != current.successMessage,
         listener: (context, state) {
           if (state.errorMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.errorMessage!),
-                backgroundColor: Colors.red,
-              ),
+            AppSnackbar.show(
+              context,
+              message: state.errorMessage!,
+              type: SnackbarType.error,
             );
             context.read<ProductDetailCubit>().clearMessages();
           }
           if (state.successMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.successMessage!),
-                backgroundColor: Colors.green,
-              ),
+            AppSnackbar.show(
+              context,
+              message: state.successMessage!,
+              type: SnackbarType.success,
             );
             context.read<ProductDetailCubit>().clearMessages();
           }
         },
         child: _ProductDetailScreenContent(
           isEmbedded: isEmbedded,
-          cartActionWidget: cartActionWidget,
-          onAddToCart: onAddToCart,
           product: product,
         ),
       ),
@@ -107,22 +78,10 @@ class ProductDetailScreen extends StatelessWidget {
 
 class _ProductDetailScreenContent extends StatefulWidget {
   final bool isEmbedded;
-  final Widget? cartActionWidget;
   final ProductEntity product;
-  final void Function(
-    BuildContext context,
-    ProductEntity product,
-    int qty,
-    ProductVariantEntity? selectedVariant,
-    String? effectiveImageUrl,
-    double effectivePrice,
-  )?
-  onAddToCart;
 
   const _ProductDetailScreenContent({
     this.isEmbedded = false,
-    this.cartActionWidget,
-    this.onAddToCart,
     required this.product,
   });
 
@@ -136,17 +95,8 @@ class _ProductDetailScreenContentState
   final PageController _pageController = PageController();
 
   ProductDetailCubit get cubit => context.read<ProductDetailCubit>();
-  // Use read (not watch) so this getter is safe inside async event handlers.
-  // Reactivity is handled by the BlocBuilder wrapping build().
   ProductDetailState get state => context.read<ProductDetailCubit>().state;
-
   ProductEntity get product => widget.product;
-  bool get isAdmin => cubit.isAdmin;
-
-  @override
-  void initState() {
-    super.initState();
-  }
 
   @override
   void dispose() {
@@ -155,9 +105,6 @@ class _ProductDetailScreenContentState
   }
 
   // DERIVED GETTERS
-
-  bool get _isWishlistLoading => state.isWishlistLoading;
-  bool get _isWishlisted => state.isWishlisted;
   bool get _showVariantImage => state.showVariantImage;
   List<ProductVariantEntity> get _variants => state.variants;
   List<Map<String, dynamic>> get _reviewsList => state.reviewsList;
@@ -175,12 +122,13 @@ class _ProductDetailScreenContentState
   double get _effectivePrice => state.effectivePrice;
   int get _effectiveStock => state.effectiveStock;
   bool get _isActive => state.isActive;
-  bool get _canBuy => state.canBuy;
   List<String> get _attributeKeys => state.attributeKeys;
   String? get _selectedVariantImageUrl => state.selectedVariantImageUrl;
   List<ProductImageEntity> get _galleryImages => state.images;
+
   String? _variantImageUrl(ProductVariantEntity variant) =>
       state.variantImageUrl(variant);
+
   String _fmt(String value) {
     final n = value.replaceAll('_', ' ').trim();
     if (n.isEmpty) return value;
@@ -193,112 +141,8 @@ class _ProductDetailScreenContentState
         .join(' ');
   }
 
-  Future<void> _toggleWishlist() async {
-    final wasWishlisted = cubit.state.isWishlisted;
-    try {
-      await cubit.toggleWishlist();
-      if (!mounted) return;
-      AppSnackbar.show(
-        context,
-        message:
-            !wasWishlisted ? 'Guardado en favoritos' : 'Eliminado de favoritos',
-        type: !wasWishlisted ? SnackbarType.success : SnackbarType.info,
-      );
-    } catch (_) {
-      if (!mounted) return;
-      AppSnackbar.show(
-        context,
-        message: 'Error al actualizar favoritos',
-        type: SnackbarType.error,
-      );
-    }
-  }
-
   void _onGalleryChanged(int index) {
     cubit.setImageIndex(index);
-  }
-
-  // CART & REVIEWS
-
-  void _addToCart() {
-    final qty = state.selectedQty;
-    final stock = state.effectiveStock;
-    final variants = state.variants;
-    final selectedVariant = state.selectedVariant;
-    final effectivePrice = state.effectivePrice;
-
-    final String? effectiveImageUrl =
-        state.selectedVariantImageUrl ??
-        (state.images.isNotEmpty
-            ? state.images[0].imageUrl
-            : widget.product.primaryImageUrl);
-
-    if (variants.isNotEmpty && selectedVariant == null) {
-      if (widget.onAddToCart != null) {
-        widget.onAddToCart?.call(
-          context,
-          widget.product,
-          qty,
-          selectedVariant,
-          effectiveImageUrl,
-          effectivePrice,
-        );
-      } else {
-        final cartCubit = context.read<CartCubit>();
-        CartVariantPickerSheet.show(
-          context: context,
-          cartCubit: cartCubit,
-          product: widget.product,
-        );
-      }
-      return;
-    }
-
-    if (!cubit.validateCartAddition(qty)) {
-      return;
-    }
-
-    if (widget.onAddToCart != null) {
-      widget.onAddToCart?.call(
-        context,
-        widget.product,
-        qty,
-        selectedVariant,
-        effectiveImageUrl,
-        effectivePrice,
-      );
-    } else {
-      context.read<CartCubit>().addItem(
-        CartItemEntity(
-          productId: widget.product.id,
-          productName: widget.product.name,
-          cartKey: CartItemEntity.buildKey(
-            widget.product.id,
-            selectedVariant?.id,
-          ),
-          quantity: qty,
-          unitPrice: effectivePrice,
-          unitCost:
-              selectedVariant?.unitCost ??
-              widget.product.defaultVariant?.unitCost ??
-              0.0,
-          availableStock: stock,
-          usesBatches: widget.product.usesBatches,
-          imageUrl: effectiveImageUrl,
-          variantLabel: selectedVariant?.label,
-        ),
-      );
-    }
-
-    // Solo vibrar si no es web para evitar MissingPluginException
-    if (!kIsWeb) {
-      Vibration.vibrate(duration: 50, amplitude: 128);
-    }
-    AppSnackbar.show(
-      context,
-      message: '¡Añadido al carrito!',
-      type: SnackbarType.success,
-    );
   }
 
   void _showSnack(String msg, {bool isSuccess = false, bool isError = false}) {
@@ -315,139 +159,231 @@ class _ProductDetailScreenContentState
     );
   }
 
-  Future<void> _showQuantityDialog() async {
-    final ctrl = TextEditingController(text: '$_selectedQty');
-    try {
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder:
-            (sheetContext) => Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-              ),
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const Text(
-                      'Cantidad',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      'Máx. $_effectiveStock disponibles',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: TextField(
-                        controller: ctrl,
-                        keyboardType: TextInputType.number,
-                        autofocus: true,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                        ),
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(vertical: 16),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          final n = int.tryParse(ctrl.text.trim());
-                          if (n != null && n > 0) {
-                            cubit.setQty(n.clamp(1, _effectiveStock));
-                          }
-                          Navigator.pop(sheetContext);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Confirmar Cantidad',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+  Future<void> _exportPdf() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (dialogCtx) => const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 20),
+                Text('Generando PDF...', textAlign: TextAlign.center),
+              ],
             ),
-      );
+          ),
+    );
+
+    try {
+      if (cubit.state.product == null) return;
+      await cubit.exportProductPdf();
+    } catch (e) {
+      if (mounted) {
+        _showSnack('Error al generar PDF: $e', isError: true);
+      }
     } finally {
-      ctrl.dispose();
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
     }
   }
 
-  // REVIEWS
+  void _showVariantPickerModal() {
+    if (_variants.isEmpty) return;
 
-  Future<void> _onAddReviewTapped() async {
-    if (isAdmin) {
-      _showReviewDialog(isAdmin: true);
-      return;
-    }
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder:
+          (sheetCtx) => Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetCtx).size.height * 0.7,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Variantes del Producto',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        onPressed: () => Navigator.pop(sheetCtx),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _variants.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 10),
+                    itemBuilder: (ctx, index) {
+                      final v = _variants[index];
+                      final isSelected = v.id == _selectedVariantId;
+                      final imgUrl =
+                          _variantImageUrl(v) ?? product.primaryImageUrl;
 
-    final canReview = await cubit.canReview();
-    if (!canReview) {
-      _showSnack(
-        'Debes iniciar sesión y haber comprado este producto para opinar.',
-      );
-      return;
-    }
-
-    if (!mounted) return;
-    final authCubit = context.read<AuthCubit>();
-    final currentUser = authCubit.state.currentUser;
-    final defaultName = currentUser?.fullName ?? 'Usuario';
-
-    _showReviewDialog(isAdmin: false, defaultName: defaultName);
+                      return InkWell(
+                        onTap: () {
+                          cubit.setVariant(v.id);
+                          cubit.selectVariantImage(v.id);
+                          Navigator.pop(sheetCtx);
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color:
+                                isSelected
+                                    ? AppColors.primary.withValues(alpha: 0.06)
+                                    : AppColors.surface,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color:
+                                  isSelected
+                                      ? AppColors.primary
+                                      : AppColors.border,
+                              width: isSelected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child:
+                                    imgUrl != null && imgUrl.isNotEmpty
+                                        ? CachedNetworkImage(
+                                          imageUrl: imgUrl,
+                                          width: 48,
+                                          height: 48,
+                                          fit: BoxFit.cover,
+                                          errorWidget:
+                                              (context, url, error) => Container(
+                                                width: 48,
+                                                height: 48,
+                                                color: Colors.grey.shade200,
+                                                child: const Icon(
+                                                  Icons.image_not_supported,
+                                                  size: 20,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                        )
+                                        : Container(
+                                          width: 48,
+                                          height: 48,
+                                          color: Colors.grey.shade200,
+                                          child: const Icon(
+                                            Icons.inventory_2_outlined,
+                                            size: 20,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      v.label,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight:
+                                            isSelected
+                                                ? FontWeight.w800
+                                                : FontWeight.w600,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      'SKU: ${v.sku ?? "N/A"}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '\$${(v.salePrice ?? 0.0).toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                  if (v.wholesalePrice != null)
+                                    Text(
+                                      'Mayoreo: \$${v.wholesalePrice!.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              if (isSelected) ...[
+                                const SizedBox(width: 10),
+                                const Icon(
+                                  Icons.check_circle_rounded,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+    );
   }
 
-  void _showReviewDialog({required bool isAdmin, String? defaultName}) {
+  void _showAddReviewDialog() {
     int selectedRating = 5;
     final commentCtrl = TextEditingController();
-    final nameCtrl = TextEditingController(text: defaultName ?? '');
+    final nameCtrl = TextEditingController();
     bool isSubmitting = false;
 
     showDialog(
@@ -481,7 +417,7 @@ class _ProductDetailScreenContentState
                         ),
                         const SizedBox(height: 12),
                         const Text(
-                          '¿Qué te pareció?',
+                          'Registrar Opinión de Cliente',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -511,35 +447,15 @@ class _ProductDetailScreenContentState
                           ),
                         ),
                         const SizedBox(height: 20),
-                        if (isAdmin)
-                          ProductInputField(
-                            controller: nameCtrl,
-                            hint: 'Nombre del cliente',
-                            label: 'Nombre',
-                          )
-                        else
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.background,
-                              borderRadius: BorderRadius.circular(
-                                AppColors.radiusSm,
-                              ),
-                            ),
-                            child: Text(
-                              'Publicando como: $defaultName',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
+                        ProductInputField(
+                          controller: nameCtrl,
+                          hint: 'Nombre del cliente',
+                          label: 'Nombre',
+                        ),
                         const SizedBox(height: 12),
                         ProductInputField(
                           controller: commentCtrl,
-                          hint: 'Cuéntanos qué te pareció...',
+                          hint: 'Comentario u opinión...',
                           label: 'Comentario',
                           maxLines: 3,
                         ),
@@ -581,12 +497,12 @@ class _ProductDetailScreenContentState
                                     isSubmitting
                                         ? null
                                         : () async {
-                                          final name =
-                                              isAdmin
-                                                  ? nameCtrl.text.trim()
-                                                  : (defaultName ?? '');
-                                          if (name.isEmpty && isAdmin) {
-                                            _showSnack('Ingresa el nombre.');
+                                          final name = nameCtrl.text.trim();
+                                          if (name.isEmpty) {
+                                            _showSnack(
+                                              'Ingresa el nombre del cliente.',
+                                              isError: true,
+                                            );
                                             return;
                                           }
                                           setS(() => isSubmitting = true);
@@ -595,7 +511,7 @@ class _ProductDetailScreenContentState
                                             userName: name,
                                             rating: selectedRating,
                                             comment: commentCtrl.text.trim(),
-                                            isAdminSubmission: isAdmin,
+                                            isAdminSubmission: true,
                                           );
 
                                           if (!context.mounted) return;
@@ -661,8 +577,6 @@ class _ProductDetailScreenContentState
     return list;
   }
 
-  // BUILD
-
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ProductDetailCubit, ProductDetailState>(
@@ -697,7 +611,7 @@ class _ProductDetailScreenContentState
                       bottom: 8,
                     ),
                     child: CircleAvatar(
-                      backgroundColor: Colors.white.withValues(alpha: 0.8),
+                      backgroundColor: Colors.white.withValues(alpha: 0.85),
                       child: IconButton(
                         icon: const Icon(
                           Icons.arrow_back_ios_new_rounded,
@@ -708,103 +622,28 @@ class _ProductDetailScreenContentState
                           if (context.canPop()) {
                             context.pop();
                           } else {
-                            context.go(isAdmin ? '/admin' : '/');
+                            context.go('/');
                           }
                         },
                       ),
                     ),
                   ),
           actions: [
-            if (isAdmin) ...[
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
-                child: CircleAvatar(
-                  backgroundColor: Colors.white.withValues(alpha: 0.8),
-                  child: PopupMenuButton<String>(
-                    icon: const Icon(
-                      Icons.more_vert_rounded,
-                      size: 20,
-                      color: Colors.black87,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    onSelected: (value) async {
-                      if (value == 'export') {
-                        final currentState = state;
-                        final Map<String, int> stockMap = {};
-                        for (final row in currentState.warehouseStocks) {
-                          final variantId = row['variant_id'] as String?;
-                          final stock =
-                              (row['available_quantity'] as num?)?.toInt() ?? 0;
-                          if (variantId != null) {
-                            stockMap.update(
-                              variantId,
-                              (current) => current + stock,
-                              ifAbsent: () => stock,
-                            );
-                          }
-                        }
-                        // Mostrar diálogo de carga
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder:
-                              (dialogCtx) => const AlertDialog(
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    CircularProgressIndicator(),
-                                    SizedBox(height: 20),
-                                    Text(
-                                      'Generando PDF...',
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                        );
-                        try {
-                          if (currentState.product == null) return;
-                          await context
-                              .read<ProductDetailCubit>()
-                              .exportProductPdf();
-                        } catch (e) {
-                          if (context.mounted) {
-                            _showSnack('Error al generar PDF: $e');
-                          }
-                        } finally {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
-                        }
-                      }
-                    },
-                    itemBuilder:
-                        (context) => [
-                          const PopupMenuItem(
-                            value: 'export',
-                            child: Text('Exportar PDF'),
-                          ),
-                        ],
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
+              child: CircleAvatar(
+                backgroundColor: Colors.white.withValues(alpha: 0.85),
+                child: IconButton(
+                  tooltip: 'Exportar PDF',
+                  icon: const Icon(
+                    Icons.picture_as_pdf_outlined,
+                    size: 20,
+                    color: AppColors.primary,
                   ),
+                  onPressed: _exportPdf,
                 ),
               ),
-            ] else ...[
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0, top: 8, bottom: 8),
-                child: _buildWishlistButton(),
-              ),
-              if (widget.cartActionWidget != null)
-                Padding(
-                  padding: const EdgeInsets.only(
-                    right: 16.0,
-                    top: 8,
-                    bottom: 8,
-                  ),
-                  child: widget.cartActionWidget,
-                ),
-            ],
+            ),
           ],
           flexibleSpace: FlexibleSpaceBar(
             stretchModes: const [StretchMode.zoomBackground],
@@ -853,21 +692,19 @@ class _ProductDetailScreenContentState
 
               _buildOptionsTile(),
 
-              if (isAdmin) ProductAvailabilityCard(),
-              if (isAdmin) const SizedBox(height: 16),
+              const ProductAvailabilityCard(),
+              const SizedBox(height: 16),
 
-              if (isAdmin && product.usesBatches) ...[
+              if (product.usesBatches) ...[
                 const ProductBatchesCard(),
                 const SizedBox(height: 16),
               ],
 
-              if (isAdmin) ...[
-                ProductAdminInfoCard(),
-                const SizedBox(height: 16),
+              const ProductAdminInfoCard(),
+              const SizedBox(height: 16),
 
-                ProductQuickDecisionsCard(),
-                const SizedBox(height: 16),
-              ],
+              const ProductQuickDecisionsCard(),
+              const SizedBox(height: 16),
 
               ProductDetailsCard(details: mergedDetails),
               if (mergedDetails.isNotEmpty) const SizedBox(height: 16),
@@ -885,7 +722,7 @@ class _ProductDetailScreenContentState
                 averageRating: _averageRating,
                 totalReviews: _reviewsList.length,
                 reviews: _reviewsList,
-                onAddReview: _onAddReviewTapped,
+                onAddReview: _showAddReviewDialog,
               ),
             ]),
           ),
@@ -914,7 +751,7 @@ class _ProductDetailScreenContentState
                   if (context.canPop()) {
                     context.pop();
                   } else {
-                    context.go(isAdmin ? '/admin' : '/');
+                    context.go('/');
                   }
                 },
               ),
@@ -929,7 +766,15 @@ class _ProductDetailScreenContentState
               actions: [
                 Padding(
                   padding: const EdgeInsets.only(right: 16),
-                  child: _buildWishlistButton(),
+                  child: IconButton(
+                    tooltip: 'Exportar PDF',
+                    icon: const Icon(
+                      Icons.picture_as_pdf_outlined,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                    onPressed: _exportPdf,
+                  ),
                 ),
               ],
             ),
@@ -983,7 +828,7 @@ class _ProductDetailScreenContentState
                       ),
                       const SizedBox(width: 24),
 
-                      // ── Columna Derecha: Información y Compra (55%) ─────────
+                      // ── Columna Derecha: Información ERP (55%) ─────────────
                       Expanded(
                         flex: 55,
                         child: SingleChildScrollView(
@@ -1010,18 +855,16 @@ class _ProductDetailScreenContentState
 
                               _buildOptionsTile(),
 
-                              if (isAdmin) ProductAvailabilityCard(),
-                              if (isAdmin) const SizedBox(height: 16),
-                              if (isAdmin && product.usesBatches) ...[
+                              const ProductAvailabilityCard(),
+                              const SizedBox(height: 16),
+                              if (product.usesBatches) ...[
                                 const ProductBatchesCard(),
                                 const SizedBox(height: 16),
                               ],
-                              if (isAdmin) ...[
-                                ProductAdminInfoCard(),
-                                const SizedBox(height: 16),
-                                ProductQuickDecisionsCard(),
-                                const SizedBox(height: 16),
-                              ],
+                              const ProductAdminInfoCard(),
+                              const SizedBox(height: 16),
+                              const ProductQuickDecisionsCard(),
+                              const SizedBox(height: 16),
                               ProductDetailsCard(details: mergedDetails),
                               const SizedBox(height: 16),
                               if (_activeIngredients.isNotEmpty) ...[
@@ -1038,41 +881,8 @@ class _ProductDetailScreenContentState
                                 averageRating: _averageRating,
                                 totalReviews: _reviewsList.length,
                                 reviews: _reviewsList,
-                                onAddReview: _onAddReviewTapped,
+                                onAddReview: _showAddReviewDialog,
                               ),
-                              const SizedBox(height: 24),
-                              if (!isAdmin)
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(
-                                      AppColors.radiusLg,
-                                    ),
-                                    border: Border.all(color: AppColors.border),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.05,
-                                        ),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ProductBottomBar(
-                                    canBuy: _canBuy,
-                                    isActive: _isActive,
-                                    effectiveStock: _effectiveStock,
-                                    effectivePrice: _effectivePrice,
-                                    selectedQty: _selectedQty,
-                                    onDecrement:
-                                        () => cubit.setQty(_selectedQty - 1),
-                                    onIncrement:
-                                        () => cubit.setQty(_selectedQty + 1),
-                                    onQtyTap: _showQuantityDialog,
-                                    onAddToCart: _addToCart,
-                                  ),
-                                ),
                             ],
                           ),
                         ),
@@ -1089,24 +899,9 @@ class _ProductDetailScreenContentState
           return Container(color: AppColors.background, child: content);
         }
 
-        if (isAdmin) {
-          return Scaffold(backgroundColor: AppColors.background, body: content);
-        }
-
         return Scaffold(
           backgroundColor: AppColors.background,
           body: content,
-          bottomNavigationBar: ProductBottomBar(
-            canBuy: _canBuy,
-            isActive: _isActive,
-            effectiveStock: _effectiveStock,
-            effectivePrice: _effectivePrice,
-            selectedQty: _selectedQty,
-            onDecrement: () => cubit.setQty(_selectedQty - 1),
-            onIncrement: () => cubit.setQty(_selectedQty + 1),
-            onQtyTap: _showQuantityDialog,
-            onAddToCart: _addToCart,
-          ),
         );
       },
     );
@@ -1114,6 +909,7 @@ class _ProductDetailScreenContentState
 
   Widget _buildOptionsTile() {
     if (_variants.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1121,36 +917,7 @@ class _ProductDetailScreenContentState
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: () {
-              final s = context.read<ProductDetailCubit>().state;
-              final effectiveImageUrl =
-                  s.selectedVariantImageUrl ??
-                  (s.images.isNotEmpty
-                      ? s.images[0].imageUrl
-                      : widget.product.primaryImageUrl);
-              if (widget.onAddToCart != null) {
-                widget.onAddToCart?.call(
-                  context,
-                  widget.product,
-                  s.selectedQty,
-                  null,
-                  effectiveImageUrl,
-                  s.effectivePrice,
-                );
-              } else {
-                final cartCubit = context.read<CartCubit>();
-                final productDetailCubit = context.read<ProductDetailCubit>();
-                CartVariantPickerSheet.show(
-                  context: context,
-                  cartCubit: cartCubit,
-                  product: widget.product,
-                  onVariantSelected: (variant) {
-                    productDetailCubit.setVariant(variant.id);
-                    productDetailCubit.selectVariantImage(variant.id);
-                  },
-                );
-              }
-            },
+            onTap: _showVariantPickerModal,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
@@ -1163,7 +930,7 @@ class _ProductDetailScreenContentState
                         Row(
                           children: [
                             const Text(
-                              'Opciones',
+                              'Variantes',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -1174,7 +941,7 @@ class _ProductDetailScreenContentState
                             Expanded(
                               child: Text(
                                 _selectedVariant?.label ??
-                                    'Selecciona un modelo',
+                                    'Selecciona una variante',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textSecondary,
@@ -1189,7 +956,7 @@ class _ProductDetailScreenContentState
                           const SizedBox(height: 12),
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
-                            physics: const NeverScrollableScrollPhysics(),
+                            physics: const BouncingScrollPhysics(),
                             child: Row(
                               children:
                                   _thumbnailVariants.take(6).map((v) {
@@ -1198,47 +965,60 @@ class _ProductDetailScreenContentState
                                         product.primaryImageUrl;
                                     final isSelected =
                                         _selectedVariantId == v.id;
-                                    return Container(
-                                      width: 40,
-                                      height: 40,
-                                      margin: const EdgeInsets.only(right: 8),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color:
-                                              isSelected
-                                                  ? AppColors.primary
-                                                  : AppColors.border,
-                                          width: isSelected ? 2 : 1,
+
+                                    return GestureDetector(
+                                      onTap: () {
+                                        cubit.setVariant(v.id);
+                                        cubit.selectVariantImage(v.id);
+                                      },
+                                      child: Container(
+                                        width: 44,
+                                        height: 44,
+                                        margin: const EdgeInsets.only(right: 8),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color:
+                                                isSelected
+                                                    ? AppColors.primary
+                                                    : AppColors.border,
+                                            width: isSelected ? 2.5 : 1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(6),
-                                        child:
-                                            (imgUrl != null &&
-                                                    imgUrl.isNotEmpty)
-                                                ? CachedNetworkImage(
-                                                  imageUrl: imgUrl,
-                                                  fit: BoxFit.cover,
-                                                  placeholder:
-                                                      (
-                                                        context,
-                                                        url,
-                                                      ) => Container(
-                                                        color: AppColors.border,
-                                                      ),
-                                                  errorWidget:
-                                                      (
-                                                        context,
-                                                        url,
-                                                        error,
-                                                      ) => Container(
-                                                        color: AppColors.border,
-                                                      ),
-                                                )
-                                                : Container(
-                                                  color: AppColors.border,
-                                                ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          child:
+                                              (imgUrl != null &&
+                                                      imgUrl.isNotEmpty)
+                                                  ? CachedNetworkImage(
+                                                    imageUrl: imgUrl,
+                                                    fit: BoxFit.cover,
+                                                    placeholder:
+                                                        (
+                                                          context,
+                                                          url,
+                                                        ) => Container(
+                                                          color:
+                                                              AppColors.border,
+                                                        ),
+                                                    errorWidget:
+                                                        (
+                                                          context,
+                                                          url,
+                                                          error,
+                                                        ) => Container(
+                                                          color:
+                                                              AppColors.border,
+                                                        ),
+                                                  )
+                                                  : Container(
+                                                    color: AppColors.border,
+                                                  ),
+                                        ),
                                       ),
                                     );
                                   }).toList(),
@@ -1253,16 +1033,16 @@ class _ProductDetailScreenContentState
                     mainAxisSize: MainAxisSize.min,
                     children: const [
                       Text(
-                        'Más',
+                        'Ver todas',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
+                          color: AppColors.primary,
                         ),
                       ),
                       Icon(
                         Icons.chevron_right,
-                        color: AppColors.textSecondary,
+                        color: AppColors.primary,
                         size: 20,
                       ),
                     ],
@@ -1274,66 +1054,6 @@ class _ProductDetailScreenContentState
         ),
         const SizedBox(height: 10),
       ],
-    );
-  }
-
-  Widget _buildWishlistButton() {
-    if (_isWishlistLoading) {
-      return Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.8),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: const Center(
-          child: SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation(AppColors.danger),
-            ),
-          ),
-        ),
-      );
-    }
-    return GestureDetector(
-      onTap: _toggleWishlist,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 40,
-        height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color:
-              _isWishlisted
-                  ? AppColors.danger
-                  : Colors.white.withValues(alpha: 0.8),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Icon(
-          _isWishlisted
-              ? Icons.favorite_rounded
-              : Icons.favorite_border_rounded,
-          color: _isWishlisted ? Colors.white : AppColors.danger,
-          size: 20,
-        ),
-      ),
     );
   }
 }

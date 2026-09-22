@@ -148,7 +148,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       } else {
-        context.go('/admin/products');
+        context.go('/products');
       }
       return;
     }
@@ -161,7 +161,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
           if (Navigator.canPop(context)) {
             Navigator.pop(context);
           } else {
-            context.go('/admin/products');
+            context.go('/products');
           }
         }
       });
@@ -196,7 +196,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
           if (Navigator.canPop(context)) {
             Navigator.pop(context, true);
           } else {
-            context.go('/admin/products');
+            context.go('/products');
           }
           return;
         }
@@ -235,7 +235,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                     if (Navigator.canPop(context)) {
                       Navigator.pop(context, result);
                     } else {
-                      context.go('/admin/products');
+                      context.go('/products');
                     }
                   }
                 });
@@ -357,7 +357,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
             ),
             const SizedBox(height: 12),
             TextButton.icon(
-              onPressed: () => context.go('/admin/products'),
+              onPressed: () => context.go('/products'),
               icon: const Icon(Icons.arrow_back_rounded, size: 18),
               label: const Text('Volver al Inventario'),
               style: TextButton.styleFrom(

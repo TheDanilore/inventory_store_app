@@ -152,12 +152,12 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       onToggleActive: () => _toggleProductoActivo(product, cubit),
       onEdit: () {
         context.go(
-          '/admin/products/product-form/${product.id}',
+          '/products/product-form/${product.id}',
           extra: {'productToEdit': product},
         );
       },
       onOpenFullDetail: () {
-        context.go('/admin/product/${product.id}', extra: product);
+        context.go('/product/${product.id}', extra: product);
       },
     );
   }
@@ -194,7 +194,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
           ),
           NewProductIntent: CallbackAction<NewProductIntent>(
             onInvoke: (NewProductIntent intent) {
-              context.go('/admin/products/product-form');
+              context.go('/products/product-form');
               return null;
             },
           ),
@@ -240,7 +240,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                         icon: const Icon(Icons.upload_file_rounded),
                         tooltip: 'Importar Lote (CSV)',
                         onPressed:
-                            () => context.go('/admin/products/bulk-import'),
+                            () => context.go('/products/bulk-import'),
                       ),
                     ],
                     if (isDesktop) ...[
@@ -270,7 +270,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                       const SizedBox(width: 8),
                       OutlinedButton.icon(
                         onPressed:
-                            () => context.go('/admin/products/bulk-import'),
+                            () => context.go('/products/bulk-import'),
                         icon: const Icon(Icons.upload_file_rounded, size: 16),
                         label: const Text(
                           'Importar CSV',
@@ -290,7 +290,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                       const SizedBox(width: 8),
                       FilledButton.icon(
                         onPressed:
-                            () => context.go('/admin/products/product-form'),
+                            () => context.go('/products/product-form'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
@@ -319,7 +319,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                   ? FloatingActionButton.extended(
                                     onPressed:
                                         () => context.go(
-                                          '/admin/products/product-form',
+                                          '/products/product-form',
                                         ),
                                     backgroundColor: AppColors.primary,
                                     foregroundColor: Colors.white,
@@ -336,7 +336,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                   : FloatingActionButton(
                                     onPressed:
                                         () => context.go(
-                                          '/admin/products/product-form',
+                                          '/products/product-form',
                                         ),
                                     backgroundColor: AppColors.primary,
                                     foregroundColor: Colors.white,
@@ -586,7 +586,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
             onToggleActive: (p) => _toggleProductoActivo(p, cubit),
             onEdit: (p) {
               context.go(
-                '/admin/products/product-form/${p.id}',
+                '/products/product-form/${p.id}',
                 extra: {'productToEdit': p},
               );
             },
@@ -603,13 +603,13 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         onToggleActive: (p) => _toggleProductoActivo(p, cubit),
         onEdit: (p) {
           context.go(
-            '/admin/products/product-form/${p.id}',
+            '/products/product-form/${p.id}',
             extra: {'productToEdit': p},
           );
         },
         onDelete: (p) => _confirmDeleteProduct(p, cubit),
         onOpenFullDetail: (p) {
-          context.go('/admin/product/${p.id}', extra: p);
+          context.go('/product/${p.id}', extra: p);
         },
       );
     }

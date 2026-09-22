@@ -4,6 +4,7 @@ import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
 import 'package:inventory_store_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:inventory_store_app/features/auth/data/models/auth_user_model.dart';
@@ -37,17 +38,38 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final model = AuthUserModel.fromMap(data, session.user.email ?? '');
 
-      // Cache local de perfil: responsabilidad de infraestructura, pertenece aquí.
+      // Cache local de perfil con trazabilidad de errores
       try {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('profile_cache_full_name_', model.fullName);
         if (model.avatarUrl != null) {
           await prefs.setString('profile_cache_avatar_url_', model.avatarUrl!);
         }
-      } catch (_) {}
+      } catch (e, st) {
+        LoggerService.w(
+          'No se pudo persistir caché de perfil en SharedPreferences',
+          tag: 'AuthRepositoryImpl',
+          error: e,
+          stackTrace: st,
+        );
+      }
 
       return right(model.toEntity());
-    } catch (e) {
+    } on sb.PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException al obtener perfil de usuario',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
+      return left(Failure.from('Error de base de datos al obtener el perfil: ${e.message}'));
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado al obtener usuario actual',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from('Error al obtener usuario actual.'));
     }
   }
@@ -68,9 +90,21 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       return getCurrentUser();
-    } on sb.AuthException catch (e) {
+    } on sb.AuthException catch (e, st) {
+      LoggerService.w(
+        'Fallo de autenticación en login: ${e.message}',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from(_authErrorMessage(e)));
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado al iniciar sesión',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from('Error inesperado al iniciar sesión.'));
     }
   }
@@ -89,9 +123,21 @@ class AuthRepositoryImpl implements AuthRepository {
       return left(
         Failure.from('Error al crear cuenta en el servidor de autenticación.'),
       );
-    } on sb.AuthException catch (e) {
+    } on sb.AuthException catch (e, st) {
+      LoggerService.w(
+        'Fallo en registro: ${e.message}',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from(_authErrorMessage(e)));
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado al registrarse',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from('Error inesperado al registrarse.'));
     }
   }
@@ -105,29 +151,37 @@ class AuthRepositoryImpl implements AuthRepository {
     required bool isActive,
   }) async {
     try {
-      await _supabase.from('profiles').upsert({
-        'auth_user_id': authUserId,
-        'full_name': fullName,
-        'role': role,
-        'is_active': isActive,
-      }, onConflict: 'auth_user_id');
-
-      final data =
-          await _supabase
-              .from('profiles')
-              .select(
-                'id, auth_user_id, role, is_active, full_name, phone, document_type, document_number, avatar_url',
-              )
-              .eq('auth_user_id', authUserId)
-              .maybeSingle();
-
-      if (data == null) {
-        return left(Failure.from('Perfil creado pero no pudo ser recuperado.'));
-      }
+      // Inserción atómica con retorno inmediato en una sola consulta
+      final data = await _supabase
+          .from('profiles')
+          .upsert({
+            'auth_user_id': authUserId,
+            'full_name': fullName,
+            'role': role,
+            'is_active': isActive,
+          }, onConflict: 'auth_user_id')
+          .select(
+            'id, auth_user_id, role, is_active, full_name, phone, document_type, document_number, avatar_url',
+          )
+          .single();
 
       final model = AuthUserModel.fromMap(data, email);
       return right(model.toEntity());
-    } catch (e) {
+    } on sb.PostgrestException catch (e, st) {
+      LoggerService.e(
+        'Error de Postgrest al crear perfil',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
+      return left(Failure.from('Error en base de datos al crear perfil: ${e.message}'));
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado al crear perfil',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from('Error al crear perfil en base de datos.'));
     }
   }
@@ -137,7 +191,13 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       await _supabase.auth.signOut();
       return right(null);
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al cerrar sesión',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from('Error al cerrar sesión.'));
     }
   }
@@ -147,9 +207,21 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       await _supabase.auth.resetPasswordForEmail(email);
       return right(null);
-    } on sb.AuthException catch (e) {
+    } on sb.AuthException catch (e, st) {
+      LoggerService.w(
+        'AuthException en resetPassword: ${e.message}',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from(_authErrorMessage(e)));
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al enviar correo de recuperación',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from('Error al enviar correo de recuperación.'));
     }
   }
@@ -159,7 +231,21 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       await _supabase.auth.updateUser(sb.UserAttributes(password: newPassword));
       return right(null);
-    } catch (e) {
+    } on sb.AuthException catch (e, st) {
+      LoggerService.w(
+        'AuthException al cambiar contraseña: ${e.message}',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
+      return left(Failure.from(_authErrorMessage(e)));
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al cambiar contraseña',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from('Error al cambiar contraseña.'));
     }
   }
@@ -169,7 +255,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null || user.email == null) {
-        return left(Failure.from('No hay sesión.'));
+        return left(Failure.from('No hay sesión activa.'));
       }
 
       final res = await _supabase.auth.signInWithPassword(
@@ -181,12 +267,24 @@ class AuthRepositoryImpl implements AuthRepository {
       await _supabase.rpc('delete_user_account');
       await _supabase.auth.signOut();
       return right(null);
-    } on sb.AuthException catch (e) {
+    } on sb.AuthException catch (e, st) {
+      LoggerService.w(
+        'AuthException al eliminar cuenta: ${e.message}',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       if (e.message.toLowerCase().contains('invalid login credentials')) {
         return left(Failure.from('Contraseña incorrecta.'));
       }
       return left(Failure.from('Error de autenticación.'));
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al eliminar cuenta',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from('Error al eliminar cuenta.'));
     }
   }
@@ -197,10 +295,7 @@ class AuthRepositoryImpl implements AuthRepository {
     Uint8List? imageBytes,
   }) async {
     try {
-      // user.authUserId = auth.users.id (Supabase Auth UUID)
-      // user.id = profiles.id (PK del perfil, FK destino de wishlist, etc.)
       final authUserId = user.authUserId;
-
       String? finalAvatarUrl = user.avatarUrl;
 
       if (imageBytes != null) {
@@ -226,7 +321,14 @@ class AuthRepositoryImpl implements AuthRepository {
           if (oldPath.isNotEmpty) {
             try {
               await _supabase.storage.from('avatars').remove([oldPath]);
-            } catch (_) {}
+            } catch (e, st) {
+              LoggerService.w(
+                'No se pudo eliminar el avatar anterior en Storage: $oldPath',
+                tag: 'AuthRepositoryImpl',
+                error: e,
+                stackTrace: st,
+              );
+            }
           }
         }
       }
@@ -250,7 +352,21 @@ class AuthRepositoryImpl implements AuthRepository {
       );
 
       return right(updatedUser.toEntity());
-    } catch (e) {
+    } on sb.PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException al actualizar perfil',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
+      return left(Failure.from('Error de base de datos al actualizar perfil: ${e.message}'));
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado al actualizar el perfil',
+        tag: 'AuthRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from('Error al actualizar el perfil.'));
     }
   }

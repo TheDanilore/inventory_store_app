@@ -76,7 +76,7 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                 onTap: widget.onTap ??
                     () {
                       context.push(
-                        '/admin/product/${widget.batch.productId}?variantId=${widget.batch.variantId}',
+                        '/product/${widget.batch.productId}?variantId=${widget.batch.variantId}',
                       );
                     },
                 child: Padding(
@@ -396,12 +396,12 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
     switch (value) {
       case 'kardex':
         context.push(
-          '/admin/kardex?productId=${widget.batch.productId}&variantId=${widget.batch.variantId}&batchId=${widget.batch.id}&batchNumber=${Uri.encodeComponent(widget.batch.batchNumber)}&productName=${Uri.encodeComponent(widget.batch.productName ?? '')}&variantName=${Uri.encodeComponent(widget.batch.variantAttrs ?? widget.batch.sku ?? '')}',
+          '/kardex?productId=${widget.batch.productId}&variantId=${widget.batch.variantId}&batchId=${widget.batch.id}&batchNumber=${Uri.encodeComponent(widget.batch.batchNumber)}&productName=${Uri.encodeComponent(widget.batch.productName ?? '')}&variantName=${Uri.encodeComponent(widget.batch.variantAttrs ?? widget.batch.sku ?? '')}',
         );
         break;
       case 'product':
         context.push(
-          '/admin/product/${widget.batch.productId}?variantId=${widget.batch.variantId}',
+          '/product/${widget.batch.productId}?variantId=${widget.batch.variantId}',
         );
         break;
       case 'copy':

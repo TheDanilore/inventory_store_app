@@ -107,7 +107,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
 
   Future<void> _navigateToCreateUser() async {
     final res = await context.push<bool>(
-      '/admin/users/form',
+      '/users/form',
       extra: {'initialRole': _currentRoleConstant},
     );
     if (res == true && mounted) {

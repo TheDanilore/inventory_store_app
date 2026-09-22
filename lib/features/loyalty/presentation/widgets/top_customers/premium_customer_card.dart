@@ -102,7 +102,7 @@ class _PremiumCustomerCardState extends State<PremiumCustomerCard> {
             borderRadius: BorderRadius.circular(16),
             onTap: () {
               context.go(
-                '/admin/customers/customer-detail/${widget.customer.id}',
+                '/customers/customer-detail/${widget.customer.id}',
                 extra: widget.customer,
               );
             },

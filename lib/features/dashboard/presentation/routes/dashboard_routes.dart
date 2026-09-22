@@ -4,7 +4,7 @@ import 'package:inventory_store_app/features/dashboard/presentation/screens/dash
 class DashboardRoutes {
   static List<RouteBase> get adminRoutes => [
     GoRoute(
-      path: '/admin/dashboard',
+      path: '/dashboard',
       builder: (context, state) => const DashboardScreen(),
     ),
   ];

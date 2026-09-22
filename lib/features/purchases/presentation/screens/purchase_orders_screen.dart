@@ -114,9 +114,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       final isTablet = MediaQuery.sizeOf(context).width >= 800;
       if (isTablet) {
         if (po != null) {
-          context.replace('/admin/purchase-orders?selectedId=${po.id}');
+          context.replace('/purchase-orders?selectedId=${po.id}');
         } else {
-          context.replace('/admin/purchase-orders');
+          context.replace('/purchase-orders');
         }
       }
     }
@@ -256,7 +256,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     if (isHeader) {
       return FilledButton.icon(
         onPressed: () {
-          context.go('/admin/purchase-orders/form');
+          context.go('/purchase-orders/form');
         },
         icon: Icon(
           _hasDraft ? Icons.edit_note_rounded : Icons.add_rounded,
@@ -280,7 +280,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
     return FloatingActionButton.extended(
       onPressed: () {
-        context.go('/admin/purchase-orders/form');
+        context.go('/purchase-orders/form');
       },
       icon: Icon(_hasDraft ? Icons.edit_note_rounded : Icons.add_rounded),
       label: Text(
@@ -413,7 +413,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     if (!context.mounted) return;
 
     final received = await context.push<bool>(
-      '/admin/inventory-entries/form?purchaseOrderId=${po.id}',
+      '/inventory-entries/form?purchaseOrderId=${po.id}',
       extra: {
         'purchaseOrderId': po.id,
         'prefillSupplierId': po.supplierId,
@@ -496,7 +496,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                     padding: const EdgeInsets.only(right: 8),
                     child: FilledButton.icon(
                       onPressed: () {
-                        context.push('/admin/purchase-orders/form');
+                        context.push('/purchase-orders/form');
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -630,7 +630,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                             ),
                             FilledButton.tonal(
                               onPressed: () {
-                                context.go('/admin/purchase-orders/form');
+                                context.go('/purchase-orders/form');
                               },
                               style: FilledButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(

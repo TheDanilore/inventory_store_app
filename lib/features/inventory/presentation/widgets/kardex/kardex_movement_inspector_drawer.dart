@@ -489,7 +489,7 @@ class KardexMovementInspectorDrawer extends StatelessWidget {
             onPressed: () {
               // Navegar al detalle de producto
               context.push(
-                '/admin/product/${item.productName}?variantId=${item.variantId}',
+                '/product/${item.productName}?variantId=${item.variantId}',
               );
             },
             style: ElevatedButton.styleFrom(

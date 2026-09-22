@@ -8,8 +8,6 @@ import 'package:inventory_store_app/features/catalog/domain/entities/variant_fin
 class ProductDetailState extends Equatable {
   final ProductEntity? product;
   final ViewState viewState;
-  final bool isWishlistLoading;
-  final bool isWishlisted;
   final bool showVariantImage;
   final String? errorMessage;
   final String? successMessage;
@@ -37,8 +35,6 @@ class ProductDetailState extends Equatable {
   const ProductDetailState({
     this.product,
     this.viewState = ViewState.initial,
-    this.isWishlistLoading = true,
-    this.isWishlisted = false,
     this.showVariantImage = false,
     this.errorMessage,
     this.successMessage,
@@ -63,8 +59,6 @@ class ProductDetailState extends Equatable {
   ProductDetailState copyWith({
     ProductEntity? product,
     ViewState? viewState,
-    bool? isWishlistLoading,
-    bool? isWishlisted,
     bool? showVariantImage,
     String? errorMessage,
     String? successMessage,
@@ -88,10 +82,7 @@ class ProductDetailState extends Equatable {
   }) {
     return ProductDetailState(
       product: product ?? this.product,
-      // viewState maneja los estados Initial, Loading, Error y Loaded de la Fuente 3
       viewState: viewState ?? this.viewState,
-      isWishlistLoading: isWishlistLoading ?? this.isWishlistLoading,
-      isWishlisted: isWishlisted ?? this.isWishlisted,
       showVariantImage: showVariantImage ?? this.showVariantImage,
       errorMessage: clearMessages ? null : (errorMessage ?? this.errorMessage),
       successMessage:
@@ -275,8 +266,6 @@ class ProductDetailState extends Equatable {
   List<Object?> get props => [
     product,
     viewState,
-    isWishlistLoading,
-    isWishlisted,
     showVariantImage,
     errorMessage,
     successMessage,

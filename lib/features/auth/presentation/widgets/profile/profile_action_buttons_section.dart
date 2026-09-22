@@ -8,14 +8,14 @@ import 'package:go_router/go_router.dart';
 class ProfileActionButtonsSection extends StatelessWidget {
   final bool isAdmin;
   final bool openedFromAdmin;
-  final VoidCallback onToggleView;
+  final VoidCallback? onToggleView;
   final VoidCallback onSignOut;
 
   const ProfileActionButtonsSection({
     super.key,
     required this.isAdmin,
-    required this.openedFromAdmin,
-    required this.onToggleView,
+    this.openedFromAdmin = true,
+    this.onToggleView,
     required this.onSignOut,
   });
 
@@ -143,21 +143,6 @@ class ProfileActionButtonsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (isAdmin) ...[
-            _ProfileActionTile(
-              icon:
-                  openedFromAdmin
-                      ? Icons.storefront_rounded
-                      : Icons.admin_panel_settings_rounded,
-              label:
-                  openedFromAdmin
-                      ? 'Ver Tienda como Cliente'
-                      : 'Volver a Vista Admin',
-              color: AppColors.info,
-              onTap: onToggleView,
-            ),
-            const SizedBox(height: 10),
-          ],
           _ProfileActionTile(
             icon: Icons.logout_rounded,
             label: 'Cerrar Sesión',

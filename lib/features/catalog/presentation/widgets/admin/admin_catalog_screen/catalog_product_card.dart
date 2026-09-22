@@ -147,7 +147,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
               }
             } else {
               context.go(
-                '/admin/product/${widget.product.id}',
+                '/product/${widget.product.id}',
                 extra: widget.product,
               );
             }

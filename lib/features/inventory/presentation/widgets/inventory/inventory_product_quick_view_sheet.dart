@@ -1163,7 +1163,7 @@ class _InventoryProductQuickViewContentState
                           onOpenKardex: () {
                             Navigator.pop(context);
                             context.push(
-                              '/admin/kardex?productId=${item.productId}&variantId=${v.id}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(displayTitle)}',
+                              '/kardex?productId=${item.productId}&variantId=${v.id}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(displayTitle)}',
                             );
                           },
                         );
@@ -1192,7 +1192,7 @@ class _InventoryProductQuickViewContentState
                   onPressed: () {
                     Navigator.pop(context);
                     context.push(
-                      '/admin/kardex?productId=${item.productId}&variantId=$_activeVariantId&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(_activeVariantTitle)}',
+                      '/kardex?productId=${item.productId}&variantId=$_activeVariantId&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(_activeVariantTitle)}',
                     );
                   },
                   icon: const Icon(Icons.receipt_long_rounded, size: 16),
@@ -1218,7 +1218,7 @@ class _InventoryProductQuickViewContentState
                   onPressed: () {
                     Navigator.pop(context);
                     context.push(
-                      '/admin/products/product-form/${item.productId}',
+                      '/products/product-form/${item.productId}',
                       extra: {'productToEdit': product},
                     );
                   },
@@ -1245,7 +1245,7 @@ class _InventoryProductQuickViewContentState
                   onPressed: () {
                     Navigator.pop(context);
                     context.push(
-                      '/admin/product/${item.productId}?variantId=$_activeVariantId',
+                      '/product/${item.productId}?variantId=$_activeVariantId',
                     );
                   },
                   icon: const Icon(Icons.open_in_new_rounded, size: 16),

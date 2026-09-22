@@ -472,7 +472,7 @@ class InventoryBatchDetailPane extends StatelessWidget {
         ElevatedButton.icon(
           onPressed: () {
             context.push(
-              '/admin/kardex?productId=${batch.productId}&variantId=${batch.variantId}&batchId=${batch.id}&batchNumber=${Uri.encodeComponent(batch.batchNumber)}&productName=${Uri.encodeComponent(batch.productName ?? '')}&variantName=${Uri.encodeComponent(batch.variantAttrs ?? batch.sku ?? '')}',
+              '/kardex?productId=${batch.productId}&variantId=${batch.variantId}&batchId=${batch.id}&batchNumber=${Uri.encodeComponent(batch.batchNumber)}&productName=${Uri.encodeComponent(batch.productName ?? '')}&variantName=${Uri.encodeComponent(batch.variantAttrs ?? batch.sku ?? '')}',
             );
           },
           icon: const Icon(Icons.receipt_long_rounded, size: 18),
@@ -492,7 +492,7 @@ class InventoryBatchDetailPane extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: () {
             context.push(
-              '/admin/product/${batch.productId}?variantId=${batch.variantId}',
+              '/product/${batch.productId}?variantId=${batch.variantId}',
             );
           },
           icon: const Icon(Icons.open_in_new_rounded, size: 16),

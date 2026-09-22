@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -104,6 +103,11 @@ class _LoginScreenState extends State<LoginScreen>
     return BlocConsumer<AuthCubit, AuthState>(
       listenWhen:
           (previous, current) => previous.viewState != current.viewState,
+      buildWhen:
+          (previous, current) =>
+              previous.viewState != current.viewState ||
+              previous.isLoginMode != current.isLoginMode ||
+              previous.errorMessage != current.errorMessage,
       listener: (context, state) {
         if (state.viewState == ViewState.error && state.errorMessage != null) {
           AppSnackbar.show(
@@ -121,11 +125,7 @@ class _LoginScreenState extends State<LoginScreen>
               type: SnackbarType.success,
             );
           }
-          if (state.currentUser?.role == AppRoles.admin) {
-            context.go('/admin');
-          } else {
-            context.go('/');
-          }
+          context.go('/');
         }
       },
       builder: (context, state) {
@@ -163,25 +163,27 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             child: Stack(
               children: [
-                AnimatedBuilder(
-                  animation: _blobAnim,
-                  builder: (context, child) {
-                    return Positioned(
-                      top: -100,
-                      left: -100,
-                      child: Transform.scale(
-                        scale: _blobAnim.value,
-                        child: Container(
-                          width: 380,
-                          height: 380,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.05),
+                Positioned(
+                  top: -100,
+                  left: -100,
+                  child: RepaintBoundary(
+                    child: AnimatedBuilder(
+                      animation: _blobAnim,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _blobAnim.value,
+                          child: Container(
+                            width: 380,
+                            height: 380,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.05),
+                            ),
                           ),
-                        ),
-                      ),
-                    );
-                  },
+                        );
+                      },
+                    ),
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.all(60.0),
@@ -298,46 +300,50 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildMobileLayout(BuildContext context, AuthState state) {
     return Stack(
       children: [
-        // Blobs decorativos
-        AnimatedBuilder(
-          animation: _blobAnim,
-          builder: (context, child) {
-            return Positioned(
-              top: -80,
-              right: -80,
-              child: Transform.scale(
-                scale: _blobAnim.value,
-                child: Container(
-                  width: 260,
-                  height: 260,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.primary.withValues(alpha: 0.06),
+        // Blobs decorativos con RepaintBoundary para evitar repintados continuos
+        Positioned(
+          top: -80,
+          right: -80,
+          child: RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _blobAnim,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _blobAnim.value,
+                  child: Container(
+                    width: 260,
+                    height: 260,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.primary.withValues(alpha: 0.06),
+                    ),
                   ),
-                ),
-              ),
-            );
-          },
+                );
+              },
+            ),
+          ),
         ),
-        AnimatedBuilder(
-          animation: _blobAnim,
-          builder: (context, child) {
-            return Positioned(
-              top: 40,
-              left: -60,
-              child: Transform.scale(
-                scale: 2.0 - _blobAnim.value,
-                child: Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.accent.withValues(alpha: 0.05),
+        Positioned(
+          top: 40,
+          left: -60,
+          child: RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _blobAnim,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: 2.0 - _blobAnim.value,
+                  child: Container(
+                    width: 180,
+                    height: 180,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.accent.withValues(alpha: 0.05),
+                    ),
                   ),
-                ),
-              ),
-            );
-          },
+                );
+              },
+            ),
+          ),
         ),
 
         SafeArea(
@@ -396,24 +402,21 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildBackButton(BuildContext context) {
+    if (!context.canPop()) {
+      return const SizedBox.shrink();
+    }
     final isDesktop = MediaQuery.of(context).size.width >= 1024;
 
     if (isDesktop) {
       return TextButton.icon(
-        onPressed: () {
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go('/');
-          }
-        },
+        onPressed: () => context.pop(),
         icon: const Icon(
           Icons.arrow_back_rounded,
           size: 16,
           color: AppColors.textSecondary,
         ),
         label: const Text(
-          'Volver a la Tienda',
+          'Volver',
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 13,
@@ -445,13 +448,7 @@ class _LoginScreenState extends State<LoginScreen>
               color: AppColors.textPrimary,
             ),
           ),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/');
-            }
-          },
+          onPressed: () => context.pop(),
         ),
       ),
     );

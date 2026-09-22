@@ -98,7 +98,7 @@ class _AdminLayoutState extends State<AdminLayout> {
     if (user == null) {
       context.go('/login');
     } else {
-      context.push('/admin/profile');
+      context.push('/profile');
     }
   }
 
@@ -299,8 +299,8 @@ class _AdminLayoutState extends State<AdminLayout> {
     final currentUri = GoRouterState.of(context).uri;
     final pathSegments = currentUri.pathSegments;
 
-    // Si tiene más de 2 segmentos (ej. /admin/customers/form), vamos al padre (/admin/customers)
-    if (pathSegments.length > 2 && pathSegments.first == 'admin') {
+    // Si tiene más de 1 segmento (ej. /customers/customer-detail), vamos al padre (/customers)
+    if (pathSegments.length > 1) {
       final parentPath =
           '/${pathSegments.sublist(0, pathSegments.length - 1).join('/')}';
       context.go(parentPath);
@@ -308,43 +308,42 @@ class _AdminLayoutState extends State<AdminLayout> {
     }
 
     // Fallback genérico
-    context.go('/admin');
+    context.go('/');
   }
 
   static const _breadcrumbMap = <String, String>{
-    '/admin/purchase-orders/form':
+    '/purchase-orders/form':
         'Inicio  ›  Órdenes de Compra  ›  Nueva Orden',
-    '/admin/purchase-orders': 'Inicio  ›  Órdenes de Compra',
-    '/admin/inventory-entries/form':
+    '/purchase-orders': 'Inicio  ›  Órdenes de Compra',
+    '/inventory-entries/form':
         'Inicio  ›  Entradas de Inventario  ›  Nueva Entrada',
-    '/admin/inventory-entries': 'Inicio  ›  Entradas de Inventario',
-    '/admin/inventory-exits/form':
+    '/inventory-entries': 'Inicio  ›  Entradas de Inventario',
+    '/inventory-exits/form':
         'Inicio  ›  Salidas de Inventario  ›  Nueva Salida',
-    '/admin/inventory-exits': 'Inicio  ›  Salidas de Inventario',
-    '/admin/products/form': 'Inicio  ›  Productos  ›  Formulario',
-    '/admin/products': 'Inicio  ›  Productos',
-    '/admin/catalog/form': 'Inicio  ›  Catálogo  ›  Formulario',
-    '/admin/catalog': 'Inicio  ›  Catálogo',
-    '/admin/users/form': 'Inicio  ›  Usuarios  ›  Formulario Usuario',
-    '/admin/users': 'Inicio  ›  Usuarios',
-    '/admin/customer-credit-movements':
+    '/inventory-exits': 'Inicio  ›  Salidas de Inventario',
+    '/products/product-form': 'Inicio  ›  Productos  ›  Formulario',
+    '/products': 'Inicio  ›  Productos',
+    '/': 'Inicio  ›  Catálogo',
+    '/users/form': 'Inicio  ›  Usuarios  ›  Formulario Usuario',
+    '/users': 'Inicio  ›  Usuarios',
+    '/customer-credit-movements':
         'Inicio  ›  Créditos Clientes  ›  Movimientos',
-    '/admin/customer-credits': 'Inicio  ›  Créditos Clientes',
-    '/admin/customers/customer-detail': 'Inicio  ›  Clientes  ›  Detalle',
-    '/admin/customers': 'Inicio  ›  Clientes',
-    '/admin/supplier-credits': 'Inicio  ›  Créditos Proveedores',
-    '/admin/suppliers': 'Inicio  ›  Proveedores',
-    '/admin/orders': 'Inicio  ›  Pedidos',
-    '/admin/kardex': 'Inicio  ›  Kardex',
-    '/admin/financial-accounts': 'Inicio  ›  Cuentas Financieras',
-    '/admin/categories': 'Inicio  ›  Categorías',
-    '/admin/warehouses': 'Inicio  ›  Almacenes',
-    '/admin/attributes': 'Inicio  ›  Atributos',
-    '/admin/active-ingredients': 'Inicio  ›  Ingredientes Activos',
-    '/admin/business-info': 'Inicio  ›  Información de la Empresa',
-    '/admin/points-settings': 'Inicio  ›  Ajustes de Puntos',
-    '/admin/inventory': 'Inicio  ›  Inventario',
-    '/admin/dashboard': 'Inicio  ›  Dashboard',
+    '/customer-credits': 'Inicio  ›  Créditos Clientes',
+    '/customers/customer-detail': 'Inicio  ›  Clientes  ›  Detalle',
+    '/customers': 'Inicio  ›  Clientes',
+    '/supplier-credits': 'Inicio  ›  Créditos Proveedores',
+    '/suppliers': 'Inicio  ›  Proveedores',
+    '/orders': 'Inicio  ›  Pedidos',
+    '/kardex': 'Inicio  ›  Kardex',
+    '/financial-accounts': 'Inicio  ›  Cuentas Financieras',
+    '/categories': 'Inicio  ›  Categorías',
+    '/warehouses': 'Inicio  ›  Almacenes',
+    '/attributes': 'Inicio  ›  Atributos',
+    '/active-ingredients': 'Inicio  ›  Ingredientes Activos',
+    '/business-info': 'Inicio  ›  Información de la Empresa',
+    '/points-settings': 'Inicio  ›  Ajustes de Puntos',
+    '/inventory': 'Inicio  ›  Inventario',
+    '/dashboard': 'Inicio  ›  Dashboard',
   };
 
   String _buildBreadcrumbText(BuildContext context) {
@@ -353,12 +352,13 @@ class _AdminLayoutState extends State<AdminLayout> {
     }
     try {
       final path = GoRouterState.of(context).uri.path;
-      if (path.isEmpty || path == '/admin') {
+      if (path.isEmpty || path == '/') {
         return 'Panel de Administración ERP';
       }
 
       for (final entry in _breadcrumbMap.entries) {
-        if (path.startsWith(entry.key)) return entry.value;
+        if (entry.key == '/') continue;
+        if (path == entry.key || path.startsWith('${entry.key}/')) return entry.value;
       }
       return 'Panel de Administración ERP';
     } catch (e, st) {

@@ -120,7 +120,7 @@ class _CustomerDetailContent extends StatelessWidget {
               if (context.canPop()) {
                 context.pop();
               } else {
-                context.go('/admin/customers');
+                context.go('/customers');
               }
             },
           },
@@ -133,7 +133,7 @@ class _CustomerDetailContent extends StatelessWidget {
                 if (context.canPop()) {
                   context.pop();
                 } else {
-                  context.go('/admin/customers');
+                  context.go('/customers');
                 }
               },
               body: RefreshIndicator(

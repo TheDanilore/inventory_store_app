@@ -1,28 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/router/go_router_refresh_stream.dart';
-import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 import 'dart:developer' as developer;
 import 'package:inventory_store_app/features/app_config/presentation/routes/app_config_routes.dart';
 import 'package:inventory_store_app/features/auth/presentation/routes/auth_routes.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
-import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog/customer_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/routes/catalog_routes.dart';
 import 'package:inventory_store_app/features/customers/presentation/routes/customers_routes.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_cart_fab.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/routes/dashboard_routes.dart';
 import 'package:inventory_store_app/features/financial/presentation/routes/financial_routes.dart';
 import 'package:inventory_store_app/features/inventory/presentation/routes/inventory_routes.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/routes/loyalty_routes.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/bloc/points/points_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/routes/orders_routes.dart';
 import 'package:inventory_store_app/features/pos/presentation/routes/pos_routes.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
@@ -30,8 +24,6 @@ import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/c
 import 'package:inventory_store_app/features/purchases/presentation/routes/purchases_routes.dart';
 import 'package:inventory_store_app/features/users/presentation/routes/users_routes.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/admin_catalog_screen.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/customer/customer_catalog_screen.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
@@ -93,8 +85,8 @@ class AppRouter {
                   const SizedBox(height: 24),
                   FilledButton.icon(
                     onPressed: () => context.go('/'),
-                    icon: const Icon(Icons.home_rounded),
-                    label: const Text('Ir al Inicio'),
+                    icon: const Icon(Icons.dashboard_rounded),
+                    label: const Text('Ir al Panel de Administración'),
                   ),
                 ],
               ),
@@ -111,9 +103,7 @@ class AppRouter {
         }
 
         if (authState.authStatus == AuthStatus.unauthenticated) {
-          if (currentPath.startsWith('/admin')) return '/';
-          if (isSplash) return '/';
-          return null;
+          return (isSplash || isLogin) ? null : '/login';
         }
 
         if (authState.authStatus == AuthStatus.authenticated &&
@@ -128,11 +118,8 @@ class AppRouter {
           return '/login';
         }
 
+        // Si ya está autenticado y accede a splash o login, dirigir a raíz '/'
         if (isSplash || isLogin) {
-          return role == AppRoles.admin ? '/admin' : '/';
-        }
-
-        if (currentPath.startsWith('/admin') && role != AppRoles.admin) {
           return '/';
         }
 
@@ -141,8 +128,6 @@ class AppRouter {
       routes: [
         ...AuthRoutes.topLevelRoutes,
         ...CatalogRoutes.topLevelRoutes(authCubit),
-        ...CustomersRoutes.topLevelRoutes,
-        ...OrdersRoutes.topLevelRoutes,
 
         // ADMIN ROUTES
         ShellRoute(
@@ -163,7 +148,7 @@ class AppRouter {
               ),
           routes: [
             GoRoute(
-              path: '/admin',
+              path: '/',
               builder:
                   (context, state) => AdminCatalogScreen(
                     floatingActionButton: const PosCartFab(),
@@ -172,7 +157,7 @@ class AppRouter {
                       if (auth.state.currentUser == null) {
                         context.go('/login');
                       } else {
-                        context.push('/admin/profile');
+                        context.push('/profile');
                       }
                     },
                   ),
@@ -190,92 +175,6 @@ class AppRouter {
             ...PurchasesRoutes.adminRoutes,
             ...UsersRoutes.adminRoutes,
           ],
-        ),
-
-        // CUSTOMER ROUTES
-        StatefulShellRoute.indexedStack(
-          builder:
-              (context, state, navigationShell) => MultiBlocProvider(
-                providers: [
-                  BlocProvider(
-                    create:
-                        (_) => sl<CartCubit>()..initCart(cartType: 'customer'),
-                  ),
-                  BlocProvider(create: (_) => sl<WalletCubit>()),
-                ],
-                child: CustomerLayout(
-                  title: 'Danilore Store',
-                  body: navigationShell,
-                  showAppBar:
-                      navigationShell.currentIndex !=
-                      0, // Show for all except Catalog
-                  showWalletChip: true,
-                  showCartIcon: false,
-                  showProfileIcon: false,
-                  showBackButton: false,
-                  currentIndex: navigationShell.currentIndex,
-                ),
-              ),
-          branches: [
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/',
-                  builder: (context, state) {
-                    final config = context.watch<AppConfigCubit>();
-                    return BlocProvider(
-                      create:
-                          (_) => sl<CustomerCatalogCubit>()..loadInitialData(),
-                      child: CustomerCatalogScreen(
-                        businessName: config.businessName,
-                        businessAddress: config.businessAddress,
-                        onAddToCart: (product) async {
-                          await CartVariantPickerSheet.show(
-                            context: context,
-                            cartCubit: context.read<CartCubit>(),
-                            product: product,
-                          );
-                        },
-                      ),
-                    );
-                  },
-                  routes: CatalogRoutes.customerRoutes,
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                OrdersRoutes.customerRoutes.firstWhere(
-                  (route) => (route as GoRoute).path == '/cart',
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                ...CustomersRoutes.customerRoutes,
-                ...OrdersRoutes.customerRoutes.where(
-                  (route) => (route as GoRoute).path != '/cart',
-                ),
-              ],
-            ),
-          ],
-        ),
-
-        // LOYALTY ROUTES (Sin AppBar del indexedStack para usar su propio CustomerLayout con retroceso)
-        ShellRoute(
-          builder:
-              (context, state, child) => MultiBlocProvider(
-                providers: [
-                  BlocProvider(create: (_) => sl<PointsCubit>()),
-                  BlocProvider(create: (_) => sl<WalletCubit>()),
-                  BlocProvider(
-                    create:
-                        (_) => sl<CartCubit>()..initCart(cartType: 'customer'),
-                  ),
-                ],
-                child: child,
-              ),
-          routes: LoyaltyRoutes.customerRoutes,
         ),
       ],
     );
