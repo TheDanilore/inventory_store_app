@@ -186,4 +186,40 @@ void main() {
     await cubit.refreshProducts();
     expect(mockGetProductsUC.callCount, 2);
   });
+
+  test('submitSearch trims whitespace and queries immediately', () async {
+    expect(cubit.state.searchTerm, '');
+
+    cubit.submitSearch('  Paracetamol  ');
+    await pumpEventQueue();
+
+    expect(cubit.state.searchTerm, 'Paracetamol');
+    expect(mockGetProductsUC.callCount, 1);
+  });
+
+  test('submitSearch with identical term is a no-op (anti-redundancy check)', () async {
+    cubit.submitSearch('Ibuprofeno');
+    await pumpEventQueue();
+    expect(mockGetProductsUC.callCount, 1);
+
+    // Call submitSearch with exact same term (or extra whitespace)
+    cubit.submitSearch('  Ibuprofeno  ');
+    await pumpEventQueue();
+
+    // Call count remains 1 because redundant execution was blocked
+    expect(mockGetProductsUC.callCount, 1);
+  });
+
+  test('clearSearch resets searchTerm to empty string and reloads base catalog', () async {
+    cubit.submitSearch('Antibiotico');
+    await pumpEventQueue();
+    expect(cubit.state.searchTerm, 'Antibiotico');
+    expect(mockGetProductsUC.callCount, 1);
+
+    cubit.clearSearch();
+    await pumpEventQueue();
+    expect(cubit.state.searchTerm, '');
+    // Initial fetch was empty search (not performed), then 'Antibiotico' (1), then clearSearch (2)
+    expect(mockGetProductsUC.callCount, 2);
+  });
 }

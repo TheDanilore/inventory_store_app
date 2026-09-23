@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 /// Barra superior del catálogo admin: buscador con botón 'X', historial reciente + toggle de ingrediente activo.
@@ -7,7 +8,8 @@ class CatalogHeader extends StatefulWidget {
   final TextEditingController searchController;
   final bool isExporting;
   final VoidCallback onExport;
-  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<String>? onSearchChanged;
+  final ValueChanged<String>? onSearchSubmitted;
   final bool searchByIngredient;
   final ValueChanged<bool> onToggleIngredientSearch;
   final VoidCallback onAddProduct;
@@ -20,7 +22,8 @@ class CatalogHeader extends StatefulWidget {
     required this.searchController,
     required this.isExporting,
     required this.onExport,
-    required this.onSearchChanged,
+    this.onSearchChanged,
+    this.onSearchSubmitted,
     required this.searchByIngredient,
     required this.onToggleIngredientSearch,
     required this.onAddProduct,
@@ -74,16 +77,34 @@ class _CatalogHeaderState extends State<CatalogHeader> {
     }
   }
 
-  void _selectHistoryItem(String term) {
-    widget.searchController.text = term;
-    widget.onSearchChanged(term);
+  void _executeSearch(String term) {
+    final cleaned = term.trim();
     _searchFocusNode.unfocus();
     _hideOverlay();
+    if (cleaned.isNotEmpty) {
+      _addToHistory(cleaned);
+    }
+    if (widget.onSearchSubmitted != null) {
+      widget.onSearchSubmitted!(cleaned);
+    } else {
+      widget.onSearchChanged?.call(cleaned);
+    }
+  }
+
+  void _selectHistoryItem(String term) {
+    widget.searchController.text = term;
+    _executeSearch(term);
   }
 
   void _clearSearch() {
     widget.searchController.clear();
-    widget.onSearchChanged('');
+    _searchFocusNode.unfocus();
+    _hideOverlay();
+    if (widget.onSearchSubmitted != null) {
+      widget.onSearchSubmitted!('');
+    } else {
+      widget.onSearchChanged?.call('');
+    }
   }
 
   void _showOverlay() {
@@ -236,7 +257,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
     );
   }
 
-  Widget _buildSearchField() {
+  Widget _buildSearchField({bool isDesktop = false}) {
     return CompositedTransformTarget(
       link: _layerLink,
       child: AnimatedContainer(
@@ -262,8 +283,9 @@ class _CatalogHeaderState extends State<CatalogHeader> {
               child: TextField(
                 controller: widget.searchController,
                 focusNode: widget.searchFocusNode,
+                textInputAction: TextInputAction.search,
+                onSubmitted: _executeSearch,
                 onChanged: widget.onSearchChanged,
-                onSubmitted: (val) => _addToHistory(val),
                 style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.textPrimary,
@@ -315,6 +337,61 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                 ),
               ),
             ),
+            // ── Botón dedicado "Buscar" ─────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Material(
+                color:
+                    widget.searchByIngredient
+                        ? const Color(0xFF059669)
+                        : AppColors.primary,
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    _executeSearch(widget.searchController.text);
+                  },
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  splashColor: Colors.white.withValues(alpha: 0.2),
+                  highlightColor: Colors.white.withValues(alpha: 0.1),
+                  child: Container(
+                    height: 34,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isDesktop ? 12 : 10,
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.search_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                        if (isDesktop) ...[
+                          const SizedBox(width: 5),
+                          const Text(
+                            'Buscar',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              width: 1,
+              height: 22,
+              color: AppColors.border,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+            ),
             Tooltip(
               message: 'Buscar por ingrediente activo',
               child: GestureDetector(
@@ -323,7 +400,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                       !widget.searchByIngredient,
                     ),
                 child: Container(
-                  padding: const EdgeInsets.only(left: 8, right: 14),
+                  padding: const EdgeInsets.only(left: 6, right: 12),
                   color: Colors.transparent,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -339,7 +416,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                                   : AppColors.textMuted,
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 5),
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
                         width: 32,
@@ -422,7 +499,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
               ),
               const SizedBox(width: 12),
             ],
-            Expanded(child: _buildSearchField()),
+            Expanded(child: _buildSearchField(isDesktop: true)),
             if (!widget.isPosMode) ...[
               const SizedBox(width: 16),
               ElevatedButton.icon(
@@ -536,7 +613,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
               ),
               const SizedBox(width: 8),
             ],
-            Expanded(child: _buildSearchField()),
+            Expanded(child: _buildSearchField(isDesktop: false)),
           ],
         ),
         AnimatedSize(

@@ -85,15 +85,21 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
   // Filters
 
-  void setSearchTerm(String term) {
+  void submitSearch(String term, {bool force = false}) {
     final cleaned = term.trim();
-    if (state.searchTerm == cleaned) return;
+    if (!force && state.searchTerm == cleaned) return;
 
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () {
-      emit(state.copyWith(searchTerm: cleaned, currentPage: 0));
-      refreshProducts();
-    });
+    emit(state.copyWith(searchTerm: cleaned, currentPage: 0));
+    refreshProducts();
+  }
+
+  void clearSearch() {
+    submitSearch('', force: true);
+  }
+
+  void setSearchTerm(String term) {
+    submitSearch(term);
   }
 
   void setCategory(String? categoryId) {
@@ -290,6 +296,12 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
     return result.fold(
       (failure) {
+        LoggerService.e(
+          'Error al alternar estado activo del producto ${product.id}: ${failure.message}',
+          tag: 'ADMIN_CATALOG_CUBIT',
+          error: failure,
+          stackTrace: StackTrace.current,
+        );
         emit(
           state.copyWith(
             actionState: ViewState.error,
@@ -325,6 +337,12 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
     return result.fold(
       (failure) {
+        LoggerService.e(
+          'Error al eliminar producto $productId: ${failure.message}',
+          tag: 'ADMIN_CATALOG_CUBIT',
+          error: failure,
+          stackTrace: StackTrace.current,
+        );
         emit(
           state.copyWith(
             actionState: ViewState.error,
@@ -377,26 +395,27 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         offset: 0,
         sortByPriceAsc: true,
       );
-      final resUnwrapped = result.fold((failure) => failure, (data) => data);
-      if (resUnwrapped is! ({List<ProductEntity> products, int totalCount})) {
-        final failureMsg =
-            resUnwrapped is Exception
-                ? resUnwrapped.toString()
-                : (resUnwrapped as dynamic).message ?? 'Error desconocido';
-        LoggerService.e(
-          'Error al cargar productos para PDF: $failureMsg',
-          tag: 'ADMIN_CATALOG_CUBIT',
-        );
-        emit(
-          state.copyWith(
-            actionState: ViewState.error,
-            errorMessage: 'Error al cargar productos: $failureMsg',
-          ),
-        );
-        return;
-      }
 
-      final allProducts = resUnwrapped.products;
+      final allProducts = result.fold(
+        (failure) {
+          LoggerService.e(
+            'Error al cargar productos para PDF: ${failure.message}',
+            tag: 'ADMIN_CATALOG_CUBIT',
+            error: failure,
+            stackTrace: StackTrace.current,
+          );
+          emit(
+            state.copyWith(
+              actionState: ViewState.error,
+              errorMessage: 'Error al cargar productos: ${failure.message}',
+            ),
+          );
+          return null;
+        },
+        (data) => data.products,
+      );
+
+      if (allProducts == null) return;
       if (allProducts.isEmpty) {
         emit(
           state.copyWith(

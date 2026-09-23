@@ -165,8 +165,15 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         final isDesktop = constraints.maxWidth >= 900;
         final cubit = context.read<AdminCatalogCubit>();
 
-        final bodyContent = BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
-          buildWhen:
+        final bodyContent = BlocListener<AdminCatalogCubit, AdminCatalogState>(
+          listenWhen: (prev, current) => prev.searchTerm != current.searchTerm,
+          listener: (context, state) {
+            if (_searchCtrl.text != state.searchTerm) {
+              _searchCtrl.text = state.searchTerm;
+            }
+          },
+          child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+            buildWhen:
               (prev, current) =>
                   prev.catalogState != current.catalogState ||
                   prev.products != current.products ||
@@ -219,7 +226,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                         cubit,
                                         state,
                                       ),
-                                  onSearchChanged: cubit.setSearchTerm,
+                                  onSearchSubmitted: cubit.submitSearch,
                                   searchByIngredient: state.searchByIngredient,
                                   onToggleIngredientSearch:
                                       cubit.toggleSearchByIngredient,
@@ -329,9 +336,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                             onRetry: () {
                               if (state.searchTerm.isNotEmpty) {
                                 _searchCtrl.clear();
-                                cubit.setSearchTerm('');
+                                cubit.clearSearch();
                               } else {
-                                cubit.refreshProducts();
+                                cubit.refreshProducts(forceRefresh: true);
                               }
                             },
                           ),
@@ -406,7 +413,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
             return catalogBody;
           },
-        );
+        ),
+      );
 
         final floatingBtn =
             isDesktop
