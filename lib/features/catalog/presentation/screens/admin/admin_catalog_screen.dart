@@ -104,7 +104,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         await _exportCatalogPdf(ctx, cubit, state);
         break;
       case 'sync':
-        await cubit.refreshProducts();
+        await cubit.forceSync();
         if (ctx.mounted) {
           AppSnackbar.show(
             ctx,
@@ -194,6 +194,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   delegate: _CatalogHeaderDelegate(
                     minHeight: 64.0,
                     maxHeight: state.searchByIngredient ? 115.0 : 64.0,
+                    isExporting: state.actionState == ViewState.loading,
+                    searchByIngredient: state.searchByIngredient,
                     child: ClipRect(
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
@@ -352,6 +354,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         widget.onAddToCart ??
                         (product) => PosAddToCartSheet.show(context, product),
                     onToggleActive: (p) => _toggleProductoActivo(p, cubit),
+                    onProductTap: widget.onProductTap,
                     searchByIngredient: state.searchByIngredient,
                     matchedIngredients: state.matchedIngredients,
                     bottomPadding: fabsBottomPadding,
@@ -479,7 +482,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               ),
           ],
           body: bodyContent,
-          floatingActionButton: floatingBtn,
+          floatingActionButton: widget.floatingActionButton ?? floatingBtn,
         );
       },
     );
@@ -490,11 +493,15 @@ class _CatalogHeaderDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
   final double minHeight;
   final double maxHeight;
+  final bool isExporting;
+  final bool searchByIngredient;
 
   _CatalogHeaderDelegate({
     required this.child,
     required this.minHeight,
     required this.maxHeight,
+    required this.isExporting,
+    required this.searchByIngredient,
   });
 
   @override
@@ -514,8 +521,9 @@ class _CatalogHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _CatalogHeaderDelegate oldDelegate) {
-    return child != oldDelegate.child ||
-        maxHeight != oldDelegate.maxHeight ||
-        minHeight != oldDelegate.minHeight;
+    return maxHeight != oldDelegate.maxHeight ||
+        minHeight != oldDelegate.minHeight ||
+        isExporting != oldDelegate.isExporting ||
+        searchByIngredient != oldDelegate.searchByIngredient;
   }
 }

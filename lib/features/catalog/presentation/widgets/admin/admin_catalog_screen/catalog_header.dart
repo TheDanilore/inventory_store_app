@@ -209,7 +209,9 @@ class _CatalogHeaderState extends State<CatalogHeader> {
   }
 
   void _hideOverlay() {
-    _overlayEntry?.remove();
+    if (_overlayEntry?.mounted ?? false) {
+      _overlayEntry?.remove();
+    }
     _overlayEntry = null;
   }
 
@@ -260,12 +262,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
               child: TextField(
                 controller: widget.searchController,
                 focusNode: widget.searchFocusNode,
-                onChanged: (val) {
-                  widget.onSearchChanged(val);
-                  if (val.trim().length >= 3) {
-                    _addToHistory(val);
-                  }
-                },
+                onChanged: widget.onSearchChanged,
                 onSubmitted: (val) => _addToHistory(val),
                 style: const TextStyle(
                   fontSize: 14,

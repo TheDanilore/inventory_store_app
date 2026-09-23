@@ -11,6 +11,7 @@ class AdminProductCard extends StatefulWidget {
   final VoidCallback onSale;
   final Future<void> Function() onToggleActive;
   final VoidCallback onEdit;
+  final VoidCallback? onTap;
   final String? highlightIngredient;
   final bool isFullPosMode;
 
@@ -20,6 +21,7 @@ class AdminProductCard extends StatefulWidget {
     required this.onSale,
     required this.onToggleActive,
     required this.onEdit,
+    this.onTap,
     this.highlightIngredient,
     this.isFullPosMode = false,
   });
@@ -140,7 +142,9 @@ class _AdminProductCardState extends State<AdminProductCard> {
               (isPressed) => setState(() => _isCardPressed = isPressed),
           onHover: (hover) => setState(() => _isHovered = hover),
           onTap: () {
-            if (widget.isFullPosMode) {
+            if (widget.onTap != null) {
+              widget.onTap!();
+            } else if (widget.isFullPosMode) {
               if (!isAgotado && !isDesactivado) {
                 HapticFeedback.lightImpact();
                 widget.onSale();

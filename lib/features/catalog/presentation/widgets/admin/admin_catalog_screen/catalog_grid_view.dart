@@ -14,6 +14,7 @@ class CatalogGridScrollView extends StatelessWidget {
   final void Function(ProductEntity) onSale;
   final Future<void> Function(ProductEntity) onToggleActive;
   final void Function(ProductEntity) onEdit;
+  final void Function(ProductEntity)? onProductTap;
   final bool searchByIngredient;
   final Map<String, String> matchedIngredients;
   final double bottomPadding;
@@ -31,6 +32,7 @@ class CatalogGridScrollView extends StatelessWidget {
     required this.onSale,
     required this.onToggleActive,
     required this.onEdit,
+    this.onProductTap,
     this.headerSliver,
     this.chipsSliver,
     this.searchByIngredient = false,
@@ -94,6 +96,7 @@ class CatalogGridScrollView extends StatelessWidget {
                 onSale: () => onSale(product),
                 onToggleActive: () => onToggleActive(product),
                 onEdit: () => onEdit(product),
+                onTap: onProductTap != null ? () => onProductTap!(product) : null,
                 isFullPosMode: isPosMode,
                 highlightIngredient:
                     searchByIngredient ? matchedIngredients[product.id] : null,

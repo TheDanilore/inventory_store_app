@@ -100,10 +100,10 @@ class ProductsRepositoryImpl implements ProductsRepository {
     try {
       String variantSelect =
           forCustomer
-              ? 'product_variants(id, product_id, sku, sale_price, is_active, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name))))'
-              : 'product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name))))';
+              ? 'product_variants(id, product_id, sku, sale_price, is_active)'
+              : 'product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active)';
       String selectString =
-          'id, name, is_active, description, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), brands(id, name, logo_url), warehouse_stock_batches(id, product_id, variant_id, available_quantity), $variantSelect';
+          'id, name, is_active, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), brands(id, name, logo_url), warehouse_stock_batches(available_quantity), $variantSelect';
 
       if (searchByIngredient &&
           searchQuery != null &&
@@ -148,11 +148,12 @@ class ProductsRepositoryImpl implements ProductsRepository {
           stockQuery = stockQuery.eq('total_stock', 0);
         }
 
-        final summaryRes = await stockQuery;
+        // Limitamos a un máximo seguro de 150 IDs para prevenir desbordamiento de URL (HTTP 414 / 431)
+        final summaryRes = await stockQuery.limit(150);
         final matchingIds = <String>{};
         for (final row in List<Map<String, dynamic>>.from(summaryRes)) {
           final pid = row['product_id'] as String?;
-          if (pid != null) {
+          if (pid != null && pid.isNotEmpty) {
             matchingIds.add(pid);
           }
         }
@@ -164,9 +165,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
       var transformQuery = query.order('is_active', ascending: false); // Productos activos primero
 
-      transformQuery = sortOption == CatalogSortOption.recent
-          ? transformQuery.order('created_at', ascending: false)
-          : transformQuery.order('name', ascending: true);
+      if (sortOption == CatalogSortOption.recent) {
+        transformQuery = transformQuery.order('created_at', ascending: false);
+      } else if (sortOption == CatalogSortOption.nameAsc) {
+        transformQuery = transformQuery.order('name', ascending: true);
+      } else {
+        transformQuery = transformQuery.order('created_at', ascending: false);
+      }
       transformQuery = transformQuery.range(offset, offset + limit - 1);
       final response = await transformQuery.count(CountOption.exact);
 

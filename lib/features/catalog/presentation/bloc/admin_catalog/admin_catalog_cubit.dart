@@ -27,6 +27,11 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   final GetProductStockUC getProductStockUC;
 
   Timer? _debounce;
+  final Map<String, ({List<ProductEntity> products, int totalCount})> _productsCache = {};
+
+  String _buildCacheKey() {
+    return '${state.searchTerm}_${state.selectedCategoryId}_${state.selectedBrandId}_${state.filterIsActive}_${state.searchByIngredient}_${state.stockFilter}_${state.sortOption}_${state.currentPage}';
+  }
 
   AdminCatalogCubit({
     required this.getCategoriesUC,
@@ -151,12 +156,16 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     refreshProducts();
   }
 
-  Future<void> refreshProducts() async {
-    _loadProducts(resetPage: true);
+  Future<void> refreshProducts({bool forceRefresh = false}) async {
+    if (forceRefresh) {
+      _productsCache.clear();
+    }
+    await _loadProducts();
   }
 
   void decrementStockLocal(Map<String, int> soldQuantities) {
     if (state.products.isEmpty) return;
+    _productsCache.clear();
 
     final updatedProducts =
         state.products.map((product) {
@@ -174,7 +183,36 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     emit(state.copyWith(products: updatedProducts));
   }
 
-  Future<void> _loadProducts({bool resetPage = false}) async {
+  Future<void> _loadProducts() async {
+    final cacheKey = _buildCacheKey();
+    if (_productsCache.containsKey(cacheKey)) {
+      final cached = _productsCache[cacheKey]!;
+      final matchedMap = <String, String>{};
+      for (final p in cached.products) {
+        final ingName =
+            (p.details['active_ingredient'] ??
+                    p.details['active_ingredients'] ??
+                    p.details['principio_activo'] ??
+                    p.details['formula'])
+                ?.toString();
+        if (ingName != null && ingName.isNotEmpty) {
+          matchedMap[p.id] = ingName;
+        }
+      }
+
+      emit(
+        state.copyWith(
+          catalogState:
+              cached.products.isEmpty ? ViewState.empty : ViewState.success,
+          products: cached.products,
+          matchedIngredients: matchedMap,
+          totalCount: cached.totalCount,
+          clearError: true,
+        ),
+      );
+      return;
+    }
+
     emit(state.copyWith(catalogState: ViewState.loading, clearError: true));
 
     final offset = state.currentPage * AdminCatalogState.pageSize;
@@ -211,6 +249,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         );
       },
       (data) async {
+        _productsCache[cacheKey] = data;
         final enriched = data.products;
 
         final matchedMap = <String, String>{};
@@ -260,6 +299,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         return false;
       },
       (_) async {
+        _productsCache.clear();
         // Borrado optimista para ahorrar Data Egress
         final updatedProducts = state.products.map((p) {
           if (p.id == product.id) {
@@ -294,6 +334,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         return false;
       },
       (_) {
+        _productsCache.clear();
         // Optimización Data Egress: remover localmente en lugar de llamar refreshProducts()
         final updatedProducts = List<ProductEntity>.from(state.products)
             ..removeWhere((p) => p.id == productId);
@@ -309,10 +350,12 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   }
 
   Future<void> forceSync() async {
+    _productsCache.clear();
     emit(state.copyWith(actionState: ViewState.loading));
     await clearCatalogCacheUC();
     await _fetchCategories();
-    await refreshProducts();
+    await _fetchBrands();
+    await refreshProducts(forceRefresh: true);
     emit(state.copyWith(actionState: ViewState.success));
   }
 
@@ -426,6 +469,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   @override
   Future<void> close() {
     _debounce?.cancel();
+    _productsCache.clear();
     return super.close();
   }
 }
