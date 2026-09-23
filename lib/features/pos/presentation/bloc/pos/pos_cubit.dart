@@ -128,6 +128,22 @@ class PosCubit extends Cubit<PosState> {
     }
   }
 
+  void updateAccountBalanceLocal({
+    required String accountId,
+    required double deltaAmount,
+  }) {
+    final updated = state.accounts.map((acc) {
+      if (acc['id'] == accountId) {
+        final currentBal = (acc['balance'] as num?)?.toDouble() ?? 0.0;
+        final newMap = Map<String, dynamic>.from(acc);
+        newMap['balance'] = currentBal + deltaAmount;
+        return newMap;
+      }
+      return acc;
+    }).toList();
+    emit(state.copyWith(accounts: updated));
+  }
+
   void setBatchOverride(
     String cartKey,
     List<BatchAssignmentModel> assignments,

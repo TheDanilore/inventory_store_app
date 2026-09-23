@@ -41,6 +41,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
 
   Timer? _debounce;
   bool _lastSaleWasDraft = false;
+  double _lastSaleTotalAmount = 0.0;
   Map<String, int> _lastSoldQuantities = {};
 
   /// Mutex local anti-doble-tap que previene la ejecución simultánea de ventas.
@@ -146,6 +147,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
       cart: cartCubit.state,
       ratio: pointsToSolesRatio,
     );
+    _lastSaleTotalAmount = totalFinal;
 
     final validationError = PosCalculatorUtils.validateSalePreFlight(
       posState: posCubit.state,
@@ -319,8 +321,13 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
           _puntosCtrl.text = '0';
           _descuentoCtrl.clear();
 
-          // Refrescar saldos de cuentas (balance) tras la venta
-          posCubit.initPosData(forceRefresh: true);
+          // Refrescar saldos de cuenta de manera local y optimista sin data egress
+          if (posCubit.state.selectedAccountId != null && !_lastSaleWasDraft) {
+            posCubit.updateAccountBalanceLocal(
+              accountId: posCubit.state.selectedAccountId!,
+              deltaAmount: _lastSaleTotalAmount,
+            );
+          }
 
           widget.onSaleCompleted?.call(_lastSoldQuantities);
 
@@ -760,6 +767,16 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
             ],
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            validator: (v) => PosCalculatorUtils.validateDiscountInput(
+              text: v,
+              isPercentage: posState.isDiscountPercentage,
+              maxDiscountAmount: PosCalculatorUtils.getMaxCustomDiscount(
+                cartState,
+                ratio,
+                puntosSeguros,
+              ),
+              cartTotal: cartState.totalAmount,
+            ),
             decoration: InputDecoration(
               hintText: '0.00',
               prefixText: posState.isDiscountPercentage ? null : 'S/ ',
@@ -799,11 +816,19 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
               if (amt > maxDiscount) {
                 if (posState.isDiscountPercentage) {
                   final maxPerc = (maxDiscount / cartState.totalAmount) * 100;
-                  _descuentoCtrl.text = maxPerc.toStringAsFixed(2);
-                  context.read<PosCubit>().setDiscountText(_descuentoCtrl.text);
+                  final text = maxPerc.toStringAsFixed(2);
+                  _descuentoCtrl.value = TextEditingValue(
+                    text: text,
+                    selection: TextSelection.collapsed(offset: text.length),
+                  );
+                  context.read<PosCubit>().setDiscountText(text);
                 } else {
-                  _descuentoCtrl.text = maxDiscount.toStringAsFixed(2);
-                  context.read<PosCubit>().setDiscountText(_descuentoCtrl.text);
+                  final text = maxDiscount.toStringAsFixed(2);
+                  _descuentoCtrl.value = TextEditingValue(
+                    text: text,
+                    selection: TextSelection.collapsed(offset: text.length),
+                  );
+                  context.read<PosCubit>().setDiscountText(text);
                 }
               } else {
                 context.read<PosCubit>().setDiscountText(v);

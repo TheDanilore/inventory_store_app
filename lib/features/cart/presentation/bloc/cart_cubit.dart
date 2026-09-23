@@ -212,4 +212,26 @@ class CartCubit extends Cubit<CartState> {
       _saveLocal();
     }
   }
+
+  void updateBatchAvailableStock(Map<String, int> stockByVariantId) {
+    if (stockByVariantId.isEmpty || state.items.isEmpty) return;
+    final newItems = Map<String, CartItemEntity>.from(state.items);
+    bool changed = false;
+
+    for (final entry in newItems.entries) {
+      final vId = entry.value.variantId;
+      if (vId != null && stockByVariantId.containsKey(vId)) {
+        final newStock = stockByVariantId[vId]!;
+        if (entry.value.availableStock != newStock) {
+          newItems[entry.key] = entry.value.copyWith(availableStock: newStock);
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) {
+      emit(state.copyWith(items: newItems));
+      _saveLocal();
+    }
+  }
 }

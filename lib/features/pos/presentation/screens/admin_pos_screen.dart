@@ -55,7 +55,6 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _desktopPanelKey = GlobalKey<DesktopPosPanelState>();
-  Timer? _debounce;
 
   @override
   void initState() {
@@ -83,7 +82,6 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -310,7 +308,12 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                       final totalAmount = cartState.totalAmount;
 
                       return FloatingActionButton.extended(
-                        onPressed: () => context.push('/pos-checkout'),
+                        onPressed: () async {
+                          final sold = await context.push<Map<String, int>>('/pos-checkout');
+                          if (sold != null && context.mounted) {
+                            context.read<AdminCatalogCubit>().decrementStockLocal(sold);
+                          }
+                        },
                         backgroundColor:
                             hasItems
                                 ? AppColors.primary

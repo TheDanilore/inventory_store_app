@@ -52,8 +52,10 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   /// El estado PosStatus.loading tarda un frame en propagarse al botón;
   /// este flag bloquea la re-entrada de forma síncrona e inmediata.
   bool _isProcessing = false;
-
   bool _isLoadingInitialData = true;
+  bool _lastSaleWasDraft = false;
+  double _lastSaleTotalAmount = 0.0;
+  Map<String, int> _lastSoldQuantities = {};
 
   @override
   void initState() {
@@ -155,12 +157,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         }
       },
       (stockMap) {
-        for (final item in items) {
-          if (item.variantId != null) {
-            final stock = stockMap[item.variantId] ?? 0;
-            cartCubit.updateAvailableStock(item.cartKey, stock);
-          }
-        }
+        cartCubit.updateBatchAvailableStock(stockMap);
       },
     );
   }
@@ -244,6 +241,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       );
       if (confirmed != true) return;
     }
+
+    _lastSaleWasDraft = isDraft;
+    _lastSaleTotalAmount = totalFinal;
+    _lastSoldQuantities = {
+      for (final item in cartCubit.state.items.values)
+        item.productId: item.quantity,
+    };
 
     posCubit.setDiscountText(_descuentoCtrl.text);
     posCubit.setIsDiscountPercentage(_isDiscountPercentageNotifier.value);
@@ -421,6 +425,14 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
           posCubit.clearAllBatchOverrides();
           widget.onSaleCompleted?.call();
 
+          // Refrescar balance localmente sin data egress
+          if (posCubit.state.selectedAccountId != null && !_lastSaleWasDraft) {
+            posCubit.updateAccountBalanceLocal(
+              accountId: posCubit.state.selectedAccountId!,
+              deltaAmount: _lastSaleTotalAmount,
+            );
+          }
+
           await showDialog(
             context: context,
             barrierDismissible: false,
@@ -479,7 +491,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                 ),
           );
           if (context.mounted) {
-            Navigator.pop(context, true);
+            Navigator.pop(context, _lastSoldQuantities);
           }
           posCubit.resetStatus();
         }

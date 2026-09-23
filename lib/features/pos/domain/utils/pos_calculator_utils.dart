@@ -182,6 +182,37 @@ class PosCalculatorUtils {
       }
     }
 
+    if (posState.discountText.trim().isNotEmpty) {
+      final rawDiscount = double.tryParse(posState.discountText.trim());
+      if (rawDiscount == null || rawDiscount < 0) {
+        return 'El descuento ingresado no es un número válido.';
+      }
+      if (posState.isDiscountPercentage && rawDiscount > 100) {
+        return 'El porcentaje de descuento no puede superar el 100%.';
+      }
+      if (!posState.isDiscountPercentage && rawDiscount > cartState.totalAmount) {
+        return 'El descuento en soles no puede exceder el total de la venta.';
+      }
+    }
+
     return null; // Validación exitosa
+  }
+
+  static String? validateDiscountInput({
+    required String? text,
+    required bool isPercentage,
+    required double cartTotal,
+    double? maxDiscountAmount,
+  }) {
+    if (text == null || text.trim().isEmpty) return null;
+    final val = double.tryParse(text.trim());
+    if (val == null) return 'Número inválido';
+    if (val < 0) return 'No negativo';
+    if (isPercentage && val > 100) return 'Máximo 100%';
+    final limit = maxDiscountAmount ?? cartTotal;
+    if (!isPercentage && val > limit) {
+      return 'Excede máximo (S/ ${limit.toStringAsFixed(2)})';
+    }
+    return null;
   }
 }
