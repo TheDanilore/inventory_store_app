@@ -53,8 +53,12 @@ class LoggerService {
       stackTrace: stackTrace,
     );
 
-    if (kDebugMode && level == LogLevel.error && error != null) {
-      developer.log('─── StackTrace: ───\n$stackTrace', name: 'InventoryStoreERP');
+    if (kDebugMode) {
+      debugPrint(logMessage);
+      if (level == LogLevel.error && error != null) {
+        debugPrint('─── Error: $error');
+        debugPrint('─── StackTrace: ───\n$stackTrace');
+      }
     }
   }
 

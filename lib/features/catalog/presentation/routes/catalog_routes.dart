@@ -5,6 +5,7 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/attribute
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/active_ingredients_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/admin_products_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/attributes_management_screen.dart';
+import 'package:inventory_store_app/features/catalog/presentation/screens/admin/brands_management_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/categories_management_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/product_form_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/bulk_import_screen.dart';
@@ -14,6 +15,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/brands/brands_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/categories/categories_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredients/ingredients_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
@@ -59,6 +61,14 @@ class CatalogRoutes {
           (context, state) => BlocProvider(
             create: (_) => sl<CategoriesCubit>()..loadCategories(),
             child: const CategoriesManagementScreen(),
+          ),
+    ),
+    GoRoute(
+      path: '/brands',
+      builder:
+          (context, state) => BlocProvider(
+            create: (_) => sl<BrandsCubit>()..loadBrands(),
+            child: const BrandsManagementScreen(),
           ),
     ),
     GoRoute(

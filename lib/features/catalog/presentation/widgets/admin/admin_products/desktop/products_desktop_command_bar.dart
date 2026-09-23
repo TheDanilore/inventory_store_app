@@ -25,6 +25,7 @@ class ProductsDesktopCommandBar extends StatelessWidget {
     int count = 0;
     if (state.stockFilter != CatalogStockFilter.all) count++;
     if (state.selectedCategoryId != null) count++;
+    if (state.selectedBrandId != null) count++;
     if (state.filterIsActive != null) count++;
     if (state.searchByIngredient) count++;
     return count;
@@ -39,6 +40,11 @@ class ProductsDesktopCommandBar extends StatelessWidget {
       (c) => c.id == state.selectedCategoryId,
     );
     final selectedCategoryName = selectedCategory?.name ?? 'Categoría';
+
+    final selectedBrand = state.brands.firstWhereOrNull(
+      (b) => b.id == state.selectedBrandId,
+    );
+    final selectedBrandName = selectedBrand?.name ?? 'Marca';
 
     return Container(
       decoration: BoxDecoration(
@@ -443,6 +449,127 @@ class ProductsDesktopCommandBar extends StatelessWidget {
 
               const SizedBox(width: 8),
 
+              // Filtro Dropdown de Marca
+              if (state.brands.isNotEmpty) ...[
+                PopupMenuButton<String?>(
+                  tooltip: 'Filtrar por marca',
+                  onSelected: cubit.setBrand,
+                  itemBuilder: (context) {
+                    final items = <PopupMenuEntry<String?>>[
+                      PopupMenuItem<String?>(
+                        value: null,
+                        child: Row(
+                          children: [
+                            if (state.selectedBrandId == null)
+                              const Icon(
+                                Icons.check_rounded,
+                                size: 16,
+                                color: AppColors.primary,
+                              )
+                            else
+                              const SizedBox(width: 16),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Todas las marcas',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                    ];
+
+                    for (final brand in state.brands) {
+                      final isBrandSelected = state.selectedBrandId == brand.id;
+                      items.add(
+                        PopupMenuItem<String?>(
+                          value: brand.id,
+                          child: Row(
+                            children: [
+                              if (isBrandSelected)
+                                const Icon(
+                                  Icons.check_rounded,
+                                  size: 16,
+                                  color: AppColors.primary,
+                                )
+                              else
+                                const SizedBox(width: 16),
+                              const SizedBox(width: 8),
+                              Text(
+                                brand.name,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight:
+                                      isBrandSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                    return items;
+                  },
+                  child: Container(
+                    height: 32,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color:
+                          state.selectedBrandId != null
+                              ? AppColors.primary.withValues(alpha: 0.08)
+                              : AppColors.background,
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                      border: Border.all(
+                        color:
+                            state.selectedBrandId != null
+                                ? AppColors.primary.withValues(alpha: 0.3)
+                                : AppColors.border,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.verified_outlined,
+                          size: 14,
+                          color:
+                              state.selectedBrandId != null
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          selectedBrandName,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color:
+                                state.selectedBrandId != null
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 14,
+                          color:
+                              state.selectedBrandId != null
+                                  ? AppColors.primary
+                                  : AppColors.textMuted,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+
               // Filtro Dropdown de Estado (Activo / Inactivo)
               PopupMenuButton<bool?>(
                 tooltip: 'Filtrar por estado',
@@ -570,6 +697,7 @@ class ProductsDesktopCommandBar extends StatelessWidget {
                 TextButton.icon(
                   onPressed: () {
                     cubit.setCategory(null);
+                    cubit.setBrand(null);
                     cubit.setStockFilter(CatalogStockFilter.all);
                     cubit.setFilterIsActive(null);
                     if (state.searchByIngredient) {

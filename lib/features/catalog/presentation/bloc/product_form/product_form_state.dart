@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/brand_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_form_models.dart';
@@ -15,6 +16,10 @@ class ProductFormState extends Equatable {
   final bool isLoadingCategories;
   final List<CategoryEntity> categories;
   final String? selectedCategoryId;
+
+  final bool isLoadingBrands;
+  final List<BrandEntity> brands;
+  final String? selectedBrandId;
 
   final String productType;
   final bool stockControl;
@@ -48,6 +53,9 @@ class ProductFormState extends Equatable {
     this.isLoadingCategories = false,
     this.categories = const [],
     this.selectedCategoryId,
+    this.isLoadingBrands = false,
+    this.brands = const [],
+    this.selectedBrandId,
     this.productType = 'good',
     this.stockControl = true,
     this.batchManagementEnabled = false,
@@ -74,6 +82,9 @@ class ProductFormState extends Equatable {
     bool? isLoadingCategories,
     List<CategoryEntity>? categories,
     String? selectedCategoryId,
+    bool? isLoadingBrands,
+    List<BrandEntity>? brands,
+    String? selectedBrandId,
     String? productType,
     bool? stockControl,
     bool? batchManagementEnabled,
@@ -98,6 +109,9 @@ class ProductFormState extends Equatable {
       isLoadingCategories: isLoadingCategories ?? this.isLoadingCategories,
       categories: categories ?? this.categories,
       selectedCategoryId: selectedCategoryId ?? this.selectedCategoryId,
+      isLoadingBrands: isLoadingBrands ?? this.isLoadingBrands,
+      brands: brands ?? this.brands,
+      selectedBrandId: selectedBrandId ?? this.selectedBrandId,
       productType: productType ?? this.productType,
       stockControl: stockControl ?? this.stockControl,
       batchManagementEnabled:
@@ -125,6 +139,9 @@ class ProductFormState extends Equatable {
     isLoadingCategories,
     categories,
     selectedCategoryId,
+    isLoadingBrands,
+    brands,
+    selectedBrandId,
     productType,
     stockControl,
     batchManagementEnabled,

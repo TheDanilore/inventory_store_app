@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/brand_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
@@ -8,9 +9,11 @@ class AdminCatalogState extends Equatable {
   final ViewState catalogState;
   final ViewState actionState;
   final List<CategoryEntity> categories;
+  final List<BrandEntity> brands;
   final List<ProductEntity> products;
   final Map<String, String> matchedIngredients;
   final String? selectedCategoryId;
+  final String? selectedBrandId;
   final String searchTerm;
   final bool searchByIngredient;
   final bool? filterIsActive;
@@ -24,9 +27,11 @@ class AdminCatalogState extends Equatable {
     this.catalogState = ViewState.initial,
     this.actionState = ViewState.initial,
     this.categories = const [],
+    this.brands = const [],
     this.products = const [],
     this.matchedIngredients = const {},
     this.selectedCategoryId,
+    this.selectedBrandId,
     this.searchTerm = '',
     this.searchByIngredient = false,
     this.filterIsActive,
@@ -46,9 +51,11 @@ class AdminCatalogState extends Equatable {
     ViewState? catalogState,
     ViewState? actionState,
     List<CategoryEntity>? categories,
+    List<BrandEntity>? brands,
     List<ProductEntity>? products,
     Map<String, String>? matchedIngredients,
     String? selectedCategoryId,
+    String? selectedBrandId,
     String? searchTerm,
     bool? searchByIngredient,
     bool? filterIsActive,
@@ -58,6 +65,7 @@ class AdminCatalogState extends Equatable {
     int? currentPage,
     String? errorMessage,
     bool clearCategory = false,
+    bool clearBrand = false,
     bool clearError = false,
     bool clearFilterIsActive = false,
   }) {
@@ -65,12 +73,15 @@ class AdminCatalogState extends Equatable {
       catalogState: catalogState ?? this.catalogState,
       actionState: actionState ?? this.actionState,
       categories: categories ?? this.categories,
+      brands: brands ?? this.brands,
       products: products ?? this.products,
       matchedIngredients: matchedIngredients ?? this.matchedIngredients,
       selectedCategoryId:
           clearCategory
               ? null
               : (selectedCategoryId ?? this.selectedCategoryId),
+      selectedBrandId:
+          clearBrand ? null : (selectedBrandId ?? this.selectedBrandId),
       searchTerm: searchTerm ?? this.searchTerm,
       searchByIngredient: searchByIngredient ?? this.searchByIngredient,
       filterIsActive:
@@ -88,9 +99,11 @@ class AdminCatalogState extends Equatable {
     catalogState,
     actionState,
     categories,
+    brands,
     products,
     matchedIngredients,
     selectedCategoryId,
+    selectedBrandId,
     searchTerm,
     searchByIngredient,
     filterIsActive,

@@ -340,6 +340,19 @@ class _AppDrawerState extends State<AppDrawer> {
                 _buildItem(
                   context,
                   _DrawerItem(
+                    icon: Icons.branding_watermark_outlined,
+                    title: 'Marcas',
+                    routePath: '/brands',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.go('/brands');
+                    },
+                  ),
+                ),
+
+                _buildItem(
+                  context,
+                  _DrawerItem(
                     icon: Icons.warehouse_outlined,
                     title: 'Almacenes',
                     routePath: '/warehouses',

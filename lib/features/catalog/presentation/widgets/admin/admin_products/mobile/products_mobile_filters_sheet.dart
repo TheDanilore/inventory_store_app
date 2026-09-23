@@ -61,6 +61,7 @@ class ProductsMobileFiltersSheet {
                           TextButton(
                             onPressed: () {
                               cubit.setCategory(null);
+                              cubit.setBrand(null);
                               cubit.setStockFilter(CatalogStockFilter.all);
                               cubit.setFilterIsActive(null);
                               if (currentState.searchByIngredient) {
@@ -192,6 +193,48 @@ class ProductsMobileFiltersSheet {
                         ),
                       ),
                       const Divider(color: AppColors.divider, height: 24),
+
+                      // Sección: Marca
+                      if (currentState.brands.isNotEmpty) ...[
+                        const Text(
+                          'Marca',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              ChoiceChip(
+                                label: const Text('Todas'),
+                                selected: currentState.selectedBrandId == null,
+                                onSelected: (_) => cubit.setBrand(null),
+                              ),
+                              const SizedBox(width: 8),
+                              ...currentState.brands.map((brand) {
+                                final isSelected =
+                                    currentState.selectedBrandId == brand.id;
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: ChoiceChip(
+                                    label: Text(brand.name),
+                                    selected: isSelected,
+                                    onSelected:
+                                        (_) => cubit.setBrand(
+                                          isSelected ? null : brand.id,
+                                        ),
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                        const Divider(color: AppColors.divider, height: 24),
+                      ],
 
                       // Sección: Estado de Visibilidad
                       const Text(

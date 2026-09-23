@@ -16,15 +16,17 @@ class GetCurrentUserUseCase implements UseCase<UserEntity, NoParams> {
 
     return result.fold(
       (failure) async {
-        if (failure.message.contains('inactiva')) {
-          await repository.logout();
-        }
         return left(failure);
       },
       (user) async {
         if (!user.isActive) {
           await repository.logout();
-          return left(Failure.from('Tu cuenta está inactiva o bloqueada.'));
+          return left(
+            const ValidationFailure(
+              message:
+                  'Tu cuenta está inactiva o bloqueada. Contacta al administrador.',
+            ),
+          );
         }
         return right(user);
       },

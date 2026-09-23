@@ -87,6 +87,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
   getProducts({
     String? searchQuery,
     String? categoryId,
+    String? brandId,
     bool? isActive,
     bool searchByIngredient = false,
     bool forCustomer = false,
@@ -102,7 +103,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
               ? 'product_variants(id, product_id, sku, sale_price, is_active, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name))))'
               : 'product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name))))';
       String selectString =
-          'id, name, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), warehouse_stock_batches(id, product_id, variant_id, available_quantity), $variantSelect';
+          'id, name, is_active, description, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), brands(id, name, logo_url), warehouse_stock_batches(id, product_id, variant_id, available_quantity), $variantSelect';
 
       if (searchByIngredient &&
           searchQuery != null &&
@@ -121,6 +122,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
       }
       if (categoryId != null && categoryId.isNotEmpty) {
         query = query.eq('category_id', categoryId);
+      }
+      if (brandId != null && brandId.isNotEmpty) {
+        query = query.eq('brand_id', brandId);
       }
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         if (searchByIngredient) {
@@ -202,7 +206,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
           await _supabase
               .from('products')
               .select(
-                'id, name, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(*), categories(name), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name)))), warehouse_stock_batches(*)',
+                'id, name, is_active, description, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(*), categories(name), brands(id, name, logo_url), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name)))), warehouse_stock_batches(*)',
               )
               .eq('id', id)
               .maybeSingle();
@@ -767,6 +771,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
         'is_active': product.isActive,
         'description': product.description,
         'category_id': product.categoryId,
+        'brand_id': product.brandId,
         'details': product.details,
         'product_type': product.productType,
         'stock_control': product.stockControl,

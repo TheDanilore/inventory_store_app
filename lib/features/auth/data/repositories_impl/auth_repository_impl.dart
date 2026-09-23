@@ -20,7 +20,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final session = _supabase.auth.currentSession;
       if (session == null) {
-        return left(Failure.from('No hay sesión activa.'));
+        return left(const UnauthorizedFailure());
       }
 
       final data =
@@ -33,7 +33,7 @@ class AuthRepositoryImpl implements AuthRepository {
               .maybeSingle();
 
       if (data == null) {
-        return left(Failure.from('Perfil no encontrado.'));
+        return left(const NotFoundFailure(message: 'Perfil de usuario no encontrado.'));
       }
 
       final model = AuthUserModel.fromMap(data, session.user.email ?? '');
@@ -62,15 +62,27 @@ class AuthRepositoryImpl implements AuthRepository {
         error: e,
         stackTrace: st,
       );
-      return left(Failure.from('Error de base de datos al obtener el perfil: ${e.message}'));
+      return left(ServerFailure(
+        message: 'Error de base de datos al obtener el perfil: ${e.message}',
+        code: e.code ?? 'POSTGREST_ERROR',
+      ));
     } catch (e, st) {
       LoggerService.e(
-        'Error inesperado al obtener usuario actual',
+        'Error al obtener usuario actual',
         tag: 'AuthRepositoryImpl',
         error: e,
         stackTrace: st,
       );
-      return left(Failure.from('Error al obtener usuario actual.'));
+      final errorStr = e.toString().toLowerCase();
+      if (errorStr.contains('socket') ||
+          errorStr.contains('network') ||
+          errorStr.contains('failed host lookup') ||
+          errorStr.contains('connection refused') ||
+          errorStr.contains('clientexception') ||
+          errorStr.contains('timeout')) {
+        return left(const NetworkFailure());
+      }
+      return left(UnexpectedFailure(message: 'Error al obtener usuario actual: ${e.toString()}'));
     }
   }
 

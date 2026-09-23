@@ -5,7 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_cubit.dart';
 
 class ProductAdminInfoCard extends StatelessWidget {
-  const ProductAdminInfoCard({super.key});
+  final bool initiallyExpanded;
+  const ProductAdminInfoCard({super.key, this.initiallyExpanded = false});
 
   @override
   Widget build(BuildContext context) {
@@ -40,13 +41,14 @@ class ProductAdminInfoCard extends StatelessWidget {
     return Material(
       color: const Color(0xFFF8FAFC),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
+        borderRadius: BorderRadius.circular(AppColors.radius),
+        side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.0),
       ),
       clipBehavior: Clip.antiAlias,
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
+          initiallyExpanded: initiallyExpanded,
           collapsedIconColor: AppColors.slate,
           iconColor: AppColors.slate,
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -60,14 +62,14 @@ class ProductAdminInfoCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
-                  Icons.admin_panel_settings_rounded,
+                  Icons.analytics_outlined,
                   color: AppColors.slate,
                   size: 16,
                 ),
               ),
               const SizedBox(width: 9),
               const Text(
-                'Info interna',
+                'Métricas Avanzadas y Proyecciones',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,

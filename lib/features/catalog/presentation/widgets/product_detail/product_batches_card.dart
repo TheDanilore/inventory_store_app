@@ -5,7 +5,8 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/product_d
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class ProductBatchesCard extends StatelessWidget {
-  const ProductBatchesCard({super.key});
+  final bool initiallyExpanded;
+  const ProductBatchesCard({super.key, this.initiallyExpanded = false});
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +31,7 @@ class ProductBatchesCard extends StatelessWidget {
         child: Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
+            initiallyExpanded: initiallyExpanded,
             collapsedIconColor: AppColors.slate,
             iconColor: AppColors.slate,
             tilePadding: const EdgeInsets.symmetric(

@@ -11,6 +11,7 @@ class ProductModel {
   final bool isActive;
   final DateTime? createdAt;
   final String? categoryId;
+  final String? brandId;
   final String? description;
   final DateTime? updatedAt;
   final Map<String, dynamic> details;
@@ -38,6 +39,8 @@ class ProductModel {
   }
 
   final String? categoryName;
+  final String? brandName;
+  final String? brandLogoUrl;
   final List<ProductVariantModel> productVariants;
   final List<WarehouseStockBatchModel> warehouseStockBatches;
 
@@ -73,6 +76,7 @@ class ProductModel {
     this.isActive = true,
     this.createdAt,
     this.categoryId,
+    this.brandId,
     this.description,
     this.updatedAt,
     this.details = const {},
@@ -84,6 +88,8 @@ class ProductModel {
     this.images = const [],
     this.totalStock = 0,
     this.categoryName,
+    this.brandName,
+    this.brandLogoUrl,
     this.productVariants = const [],
     this.warehouseStockBatches = const [],
   });
@@ -91,6 +97,7 @@ class ProductModel {
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     final categoriesMap = json['categories'] as Map<String, dynamic>?;
+    final brandsMap = json['brands'] as Map<String, dynamic>?;
     final variantsList = json['product_variants'] as List? ?? [];
     final batchesList = json['warehouse_stock_batches'] as List? ?? [];
     final Map<String, dynamic> rawDetails = Map<String, dynamic>.from(
@@ -124,8 +131,10 @@ class ProductModel {
               ? DateTime.tryParse(json['created_at'] as String)
               : null,
       categoryId: json['category_id'] as String?,
-      // ¡Aquí obtenemos el nombre real desde la consulta de la base de datos!
       categoryName: categoriesMap?['name'] as String? ?? 'Sin categoría',
+      brandId: json['brand_id'] as String?,
+      brandName: brandsMap?['name'] as String?,
+      brandLogoUrl: brandsMap?['logo_url'] as String?,
       description: json['description'] as String?,
       updatedAt:
           json['updated_at'] != null
@@ -184,6 +193,7 @@ class ProductModel {
       'is_active': isActive,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       'category_id': categoryId,
+      'brand_id': brandId,
       'description': description,
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
       'details': details,
@@ -202,6 +212,7 @@ class ProductModel {
     bool? isActive,
     DateTime? createdAt,
     String? categoryId,
+    String? brandId,
     String? description,
     DateTime? updatedAt,
     Map<String, dynamic>? details,
@@ -213,6 +224,8 @@ class ProductModel {
     List<ProductImageModel>? images,
     int? totalStock,
     String? categoryName,
+    String? brandName,
+    String? brandLogoUrl,
     List<ProductVariantModel>? productVariants,
     List<WarehouseStockBatchModel>? warehouseStockBatches,
   }) {
@@ -222,6 +235,7 @@ class ProductModel {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       categoryId: categoryId ?? this.categoryId,
+      brandId: brandId ?? this.brandId,
       description: description ?? this.description,
       updatedAt: updatedAt ?? this.updatedAt,
       details: details ?? this.details,
@@ -233,6 +247,8 @@ class ProductModel {
       images: images ?? this.images,
       totalStock: totalStock ?? this.totalStock,
       categoryName: categoryName ?? this.categoryName,
+      brandName: brandName ?? this.brandName,
+      brandLogoUrl: brandLogoUrl ?? this.brandLogoUrl,
       productVariants: productVariants ?? this.productVariants,
       warehouseStockBatches:
           warehouseStockBatches ?? this.warehouseStockBatches,
@@ -246,6 +262,7 @@ class ProductModel {
       isActive: isActive,
       createdAt: createdAt,
       categoryId: categoryId,
+      brandId: brandId,
       description: description,
       updatedAt: updatedAt,
       details: details,
@@ -257,6 +274,8 @@ class ProductModel {
       images: images.map((img) => img.toEntity()).toList(),
       totalStock: totalStock,
       categoryName: categoryName,
+      brandName: brandName,
+      brandLogoUrl: brandLogoUrl,
       productVariants: productVariants.map((v) => v.toEntity()).toList(),
       warehouseStockBatches: warehouseStockBatches,
     );
@@ -269,6 +288,7 @@ class ProductModel {
       isActive: entity.isActive,
       createdAt: entity.createdAt,
       categoryId: entity.categoryId,
+      brandId: entity.brandId,
       description: entity.description,
       updatedAt: entity.updatedAt,
       details: entity.details,
@@ -283,6 +303,8 @@ class ProductModel {
               .toList(),
       totalStock: entity.totalStock,
       categoryName: entity.categoryName,
+      brandName: entity.brandName,
+      brandLogoUrl: entity.brandLogoUrl,
       productVariants:
           entity.productVariants
               .map((v) => ProductVariantModel.fromEntity(v))

@@ -12,9 +12,11 @@ import 'package:inventory_store_app/features/auth/domain/usecases/logout_uc.dart
 import 'package:inventory_store_app/features/auth/domain/usecases/register_uc.dart';
 import 'package:inventory_store_app/features/auth/domain/usecases/reset_password_uc.dart';
 import 'package:inventory_store_app/features/auth/domain/usecases/update_profile_uc.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 
-@injectable
+@lazySingleton
 class AuthCubit extends Cubit<AuthState> {
   final GetCurrentUserUseCase getCurrentUserUseCase;
   final LoginWithEmailUseCase loginUseCase;
@@ -24,6 +26,8 @@ class AuthCubit extends Cubit<AuthState> {
   final ChangePasswordUseCase changePasswordUseCase;
   final DeleteAccountUseCase deleteAccountUseCase;
   final UpdateProfileUseCase updateProfileUseCase;
+
+  bool _isCheckingSession = false;
 
   AuthCubit({
     required this.getCurrentUserUseCase,
@@ -40,22 +44,69 @@ class AuthCubit extends Cubit<AuthState> {
     emit(state.copyWith(isLoginMode: !state.isLoginMode));
   }
 
-  Future<void> checkSession() async {
-    final result = await getCurrentUserUseCase(const NoParams());
+  Future<void> checkSession({bool force = false}) async {
+    if (_isCheckingSession && !force) {
+      LoggerService.d('Verificación de sesión omitida: ya en curso', tag: 'AuthCubit');
+      return;
+    }
+    _isCheckingSession = true;
+    LoggerService.d('Iniciando verificación de sesión de usuario...', tag: 'AuthCubit');
 
-    result.fold(
-      (failure) {
-        emit(state.copyWith(authStatus: AuthStatus.unauthenticated));
-      },
-      (user) {
-        emit(
-          state.copyWith(
-            authStatus: AuthStatus.authenticated,
-            currentUser: user,
-          ),
-        );
-      },
-    );
+    try {
+      final result = await getCurrentUserUseCase(const NoParams());
+
+      result.fold(
+        (failure) {
+          LoggerService.w(
+            'Sesión no activa o fallida: ${failure.message} (${failure.runtimeType})',
+            tag: 'AuthCubit',
+          );
+          if (failure is NetworkFailure || failure is ServerFailure) {
+            emit(
+              state.copyWith(
+                authStatus: AuthStatus.error,
+                errorMessage: failure.message,
+              ),
+            );
+          } else {
+            emit(
+              state.copyWith(
+                authStatus: AuthStatus.unauthenticated,
+                errorMessage: failure.message,
+              ),
+            );
+          }
+        },
+        (user) {
+          LoggerService.i(
+            'Sesión activa detectada: ${user.fullName} (${user.role})',
+            tag: 'AuthCubit',
+          );
+          emit(
+            state.copyWith(
+              authStatus: AuthStatus.authenticated,
+              currentUser: user,
+              clearErrorMessage: true,
+            ),
+          );
+        },
+      );
+    } catch (e, st) {
+      LoggerService.e(
+        'Excepción no controlada al verificar sesión',
+        tag: 'AuthCubit',
+        error: e,
+        stackTrace: st,
+      );
+      emit(
+        state.copyWith(
+          authStatus: AuthStatus.unauthenticated,
+          errorMessage: 'Error al verificar sesión.',
+        ),
+      );
+    } finally {
+      _isCheckingSession = false;
+    }
   }
 
   Future<void> login(String email, String password) async {

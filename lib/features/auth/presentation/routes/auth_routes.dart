@@ -15,10 +15,9 @@ class AuthRoutes {
           (context, state) => SplashScreen(
             onInitialize: (ctx) async {
               final configCubit = ctx.read<AppConfigCubit>();
-              await Future.wait([
-                configCubit.loadConfig(),
-                configCubit.loadBusinessInfo(),
-              ]).timeout(const Duration(seconds: 5));
+              await configCubit.loadConfig().timeout(
+                const Duration(seconds: 5),
+              );
             },
           ),
     ),

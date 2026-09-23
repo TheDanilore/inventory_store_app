@@ -172,6 +172,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   prev.products != current.products ||
                   prev.categories != current.categories ||
                   prev.selectedCategoryId != current.selectedCategoryId ||
+                  prev.brands != current.brands ||
+                  prev.selectedBrandId != current.selectedBrandId ||
                   prev.searchTerm != current.searchTerm ||
                   prev.searchByIngredient != current.searchByIngredient ||
                   prev.filterIsActive != current.filterIsActive ||
@@ -239,12 +241,16 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 );
 
                 final chipsSliver =
-                    (state.categories.isNotEmpty && !state.searchByIngredient)
+                    ((state.categories.isNotEmpty || state.brands.isNotEmpty) &&
+                            !state.searchByIngredient)
                         ? SliverToBoxAdapter(
                           child: CategoryChips(
                             categories: state.categories,
                             selectedCategoryId: state.selectedCategoryId,
                             onSelected: cubit.setCategory,
+                            brands: state.brands,
+                            selectedBrandId: state.selectedBrandId,
+                            onBrandSelected: cubit.setBrand,
                             filterIsActive: state.filterIsActive,
                             onStatusSelected: cubit.setFilterIsActive,
                             sortOption: state.sortOption,

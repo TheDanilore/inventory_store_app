@@ -12,7 +12,7 @@ class FakeAuthCubit extends Cubit<AuthState> implements AuthCubit {
   FakeAuthCubit() : super(const AuthState());
 
   @override
-  Future<void> checkSession() async {}
+  Future<void> checkSession({bool force = false}) async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

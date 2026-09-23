@@ -337,6 +337,7 @@ class _AdminLayoutState extends State<AdminLayout> {
     '/kardex': 'Inicio  ›  Kardex',
     '/financial-accounts': 'Inicio  ›  Cuentas Financieras',
     '/categories': 'Inicio  ›  Categorías',
+    '/brands': 'Inicio  ›  Marcas',
     '/warehouses': 'Inicio  ›  Almacenes',
     '/attributes': 'Inicio  ›  Atributos',
     '/active-ingredients': 'Inicio  ›  Ingredientes Activos',

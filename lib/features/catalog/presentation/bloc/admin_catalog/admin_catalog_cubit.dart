@@ -6,6 +6,7 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_form_mutations_uc.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/get_brands_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_products_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_stock_uc.dart';
@@ -17,6 +18,7 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_cat
 @injectable
 class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   final GetCategoriesUC getCategoriesUC;
+  final GetBrandsUC getBrandsUC;
   final GetProductsUC getProductsUC;
   final SetProductActiveUC setProductActiveUC;
   final DeleteProductUC deleteProductUC;
@@ -28,6 +30,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
   AdminCatalogCubit({
     required this.getCategoriesUC,
+    required this.getBrandsUC,
     required this.getProductsUC,
     required this.setProductActiveUC,
     required this.deleteProductUC,
@@ -37,7 +40,10 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   }) : super(const AdminCatalogState());
 
   Future<void> loadInitialData() async {
-    await _fetchCategories();
+    await Future.wait([
+      _fetchCategories(),
+      _fetchBrands(),
+    ]);
     await refreshProducts();
   }
 
@@ -53,6 +59,23 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         stackTrace: StackTrace.current,
       );
     }, (cats) => emit(state.copyWith(categories: cats)));
+  }
+
+  // Brands
+
+  Future<void> _fetchBrands() async {
+    final result = await getBrandsUC(activeOnly: true);
+    result.fold(
+      (failure) {
+        LoggerService.e(
+          'Error al cargar marcas: ${failure.message}',
+          tag: 'ADMIN_CATALOG_CUBIT',
+          error: failure,
+          stackTrace: StackTrace.current,
+        );
+      },
+      (brands) => emit(state.copyWith(brands: brands)),
+    );
   }
 
   // Filters
@@ -74,6 +97,16 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       emit(state.copyWith(clearCategory: true, currentPage: 0));
     } else {
       emit(state.copyWith(selectedCategoryId: categoryId, currentPage: 0));
+    }
+    refreshProducts();
+  }
+
+  void setBrand(String? brandId) {
+    if (state.selectedBrandId == brandId) return;
+    if (brandId == null) {
+      emit(state.copyWith(clearBrand: true, currentPage: 0));
+    } else {
+      emit(state.copyWith(selectedBrandId: brandId, currentPage: 0));
     }
     refreshProducts();
   }
@@ -149,6 +182,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     final result = await getProductsUC(
       searchQuery: state.searchTerm,
       categoryId: state.selectedCategoryId,
+      brandId: state.selectedBrandId,
       isActive: state.filterIsActive,
       searchByIngredient: state.searchByIngredient,
       limit: AdminCatalogState.pageSize,
@@ -294,6 +328,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       final result = await getProductsUC(
         searchQuery: state.searchTerm,
         categoryId: state.selectedCategoryId,
+        brandId: state.selectedBrandId,
         isActive: state.filterIsActive,
         limit: 50,
         offset: 0,

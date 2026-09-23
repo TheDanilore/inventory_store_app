@@ -367,6 +367,34 @@ class _AdminProductCardState extends State<AdminProductCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (widget.product.brandName != null &&
+                          widget.product.brandName!.trim().isNotEmpty) ...[
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.verified_outlined,
+                              size: 11,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(width: 3),
+                            Flexible(
+                              child: Text(
+                                widget.product.brandName!.trim().toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textMuted,
+                                  letterSpacing: 0.4,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                      ],
                       Text(
                         widget.product.name,
                         style: TextStyle(

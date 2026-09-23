@@ -52,6 +52,8 @@ import '../../features/cart/domain/usecases/load_cart_uc.dart' as _i281;
 import '../../features/cart/domain/usecases/save_cart_uc.dart' as _i1022;
 import '../../features/cart/domain/usecases/sync_cart_uc.dart' as _i480;
 import '../../features/cart/presentation/bloc/cart_cubit.dart' as _i793;
+import '../../features/catalog/data/repositories_impl/brands_repository_impl.dart'
+    as _i84;
 import '../../features/catalog/data/repositories_impl/catalog_search_repository_impl.dart'
     as _i930;
 import '../../features/catalog/data/repositories_impl/categories_repository_impl.dart'
@@ -60,6 +62,8 @@ import '../../features/catalog/data/repositories_impl/ingredients_repository_imp
     as _i475;
 import '../../features/catalog/data/repositories_impl/products_repository_impl.dart'
     as _i215;
+import '../../features/catalog/domain/repositories/brands_repository.dart'
+    as _i198;
 import '../../features/catalog/domain/repositories/catalog_search_repository.dart'
     as _i540;
 import '../../features/catalog/domain/repositories/categories_repository.dart'
@@ -72,6 +76,8 @@ import '../../features/catalog/domain/usecases/add_product_review_usecase.dart'
     as _i288;
 import '../../features/catalog/domain/usecases/catalog_attribute_mutations_uc.dart'
     as _i382;
+import '../../features/catalog/domain/usecases/catalog_brand_mutations_uc.dart'
+    as _i1038;
 import '../../features/catalog/domain/usecases/catalog_category_mutations_uc.dart'
     as _i110;
 import '../../features/catalog/domain/usecases/catalog_form_mutations_uc.dart'
@@ -101,6 +107,7 @@ import '../../features/catalog/domain/usecases/get_active_products_and_variants_
 import '../../features/catalog/domain/usecases/get_admin_financial_data_usecase.dart'
     as _i712;
 import '../../features/catalog/domain/usecases/get_attributes_uc.dart' as _i487;
+import '../../features/catalog/domain/usecases/get_brands_uc.dart' as _i614;
 import '../../features/catalog/domain/usecases/get_categories_uc.dart' as _i700;
 import '../../features/catalog/domain/usecases/get_current_profile_id_usecase.dart'
     as _i927;
@@ -121,6 +128,8 @@ import '../../features/catalog/presentation/bloc/admin_catalog/admin_catalog_cub
     as _i613;
 import '../../features/catalog/presentation/bloc/attributes/attributes_cubit.dart'
     as _i129;
+import '../../features/catalog/presentation/bloc/brands/brands_cubit.dart'
+    as _i623;
 import '../../features/catalog/presentation/bloc/bulk_import/bulk_import_cubit.dart'
     as _i314;
 import '../../features/catalog/presentation/bloc/categories/categories_cubit.dart'
@@ -547,6 +556,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i422.InventoryRepository>(
       () => _i1035.InventoryRepositoryImpl(),
     );
+    gh.lazySingleton<_i198.BrandsRepository>(
+      () => _i84.BrandsRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
     gh.lazySingleton<_i540.CatalogSearchRepository>(
       () => _i930.CatalogSearchRepositoryImpl(),
     );
@@ -708,6 +720,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i153.ProcessCheckoutUseCase>(
       () => _i153.ProcessCheckoutUseCase(gh<_i511.PosRepository>()),
+    );
+    gh.lazySingleton<_i1038.DeleteBrandUC>(
+      () => _i1038.DeleteBrandUC(gh<_i198.BrandsRepository>()),
+    );
+    gh.lazySingleton<_i614.GetBrandsUC>(
+      () => _i614.GetBrandsUC(gh<_i198.BrandsRepository>()),
     );
     gh.lazySingleton<_i622.GetCriticalBatchesUseCase>(
       () => _i622.GetCriticalBatchesUseCase(gh<_i665.DashboardRepository>()),
@@ -1505,7 +1523,7 @@ extension GetItInjectableX on _i174.GetIt {
         repository: gh<_i992.OrdersRepository>(),
       ),
     );
-    gh.factory<_i52.AuthCubit>(
+    gh.lazySingleton<_i52.AuthCubit>(
       () => _i52.AuthCubit(
         getCurrentUserUseCase: gh<_i813.GetCurrentUserUseCase>(),
         loginUseCase: gh<_i177.LoginWithEmailUseCase>(),
@@ -1551,6 +1569,18 @@ extension GetItInjectableX on _i174.GetIt {
         checkActiveShiftUc: gh<_i1006.CheckActiveShiftUc>(),
       ),
     );
+    gh.lazySingleton<_i1038.CreateBrandUseCase>(
+      () => _i1038.CreateBrandUseCase(
+        gh<_i198.BrandsRepository>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
+    );
+    gh.lazySingleton<_i1038.UpdateBrandUC>(
+      () => _i1038.UpdateBrandUC(
+        gh<_i198.BrandsRepository>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
+    );
     gh.factory<_i833.UserFormCubit>(
       () => _i833.UserFormCubit(
         gh<_i12.CreateUserUseCase>(),
@@ -1561,6 +1591,18 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i401.InventoryExitFormCubit(
         getActiveWarehousesUseCase: gh<_i160.GetActiveWarehousesExitsUseCase>(),
         createInventoryExitUseCase: gh<_i738.CreateInventoryExitUseCase>(),
+      ),
+    );
+    gh.factory<_i613.AdminCatalogCubit>(
+      () => _i613.AdminCatalogCubit(
+        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
+        getBrandsUC: gh<_i614.GetBrandsUC>(),
+        getProductsUC: gh<_i222.GetProductsUC>(),
+        setProductActiveUC: gh<_i1067.SetProductActiveUC>(),
+        deleteProductUC: gh<_i1040.DeleteProductUC>(),
+        clearCatalogCacheUC: gh<_i1067.ClearCatalogCacheUC>(),
+        exportCatalogPdfUC: gh<_i961.ExportCatalogPdfUseCase>(),
+        getProductStockUC: gh<_i958.GetProductStockUC>(),
       ),
     );
     gh.factory<_i1028.WalletCubit>(
@@ -1612,6 +1654,14 @@ extension GetItInjectableX on _i174.GetIt {
         deleteAttributeValueUC: gh<_i382.DeleteAttributeValueUC>(),
       ),
     );
+    gh.factory<_i623.BrandsCubit>(
+      () => _i623.BrandsCubit(
+        getBrandsUC: gh<_i614.GetBrandsUC>(),
+        createBrandUseCase: gh<_i1038.CreateBrandUseCase>(),
+        updateBrandUC: gh<_i1038.UpdateBrandUC>(),
+        deleteBrandUC: gh<_i1038.DeleteBrandUC>(),
+      ),
+    );
     gh.factory<_i1039.ProductDetailCubit>(
       () => _i1039.ProductDetailCubit(
         getProductById: gh<_i309.GetProductByIdUseCase>(),
@@ -1635,17 +1685,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i1067.SaveVariantUC(
         gh<_i570.ProductsRepository>(),
         gh<_i927.GetCurrentProfileIdUseCase>(),
-      ),
-    );
-    gh.factory<_i613.AdminCatalogCubit>(
-      () => _i613.AdminCatalogCubit(
-        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
-        getProductsUC: gh<_i222.GetProductsUC>(),
-        setProductActiveUC: gh<_i1067.SetProductActiveUC>(),
-        deleteProductUC: gh<_i1040.DeleteProductUC>(),
-        clearCatalogCacheUC: gh<_i1067.ClearCatalogCacheUC>(),
-        exportCatalogPdfUC: gh<_i961.ExportCatalogPdfUseCase>(),
-        getProductStockUC: gh<_i958.GetProductStockUC>(),
       ),
     );
     gh.factory<_i808.OrderDetailCubit>(
@@ -1687,6 +1726,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i73.ProductFormCubit>(
       () => _i73.ProductFormCubit(
         gh<_i700.GetCategoriesUC>(),
+        gh<_i614.GetBrandsUC>(),
         gh<_i567.GetProductByIdUC>(),
         gh<_i597.GetProductIngredientsUC>(),
         gh<_i1014.DeleteProductImageUC>(),

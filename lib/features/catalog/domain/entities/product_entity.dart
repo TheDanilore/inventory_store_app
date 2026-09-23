@@ -8,6 +8,7 @@ class ProductEntity {
   final bool isActive;
   final DateTime? createdAt;
   final String? categoryId;
+  final String? brandId;
   final String? description;
   final DateTime? updatedAt;
   final Map<String, dynamic> details;
@@ -20,6 +21,8 @@ class ProductEntity {
   final List<ProductImageEntity> images;
   final int totalStock;
   final String? categoryName;
+  final String? brandName;
+  final String? brandLogoUrl;
   final List<ProductVariantEntity> productVariants;
   final List<WarehouseStockBatchModel> warehouseStockBatches;
 
@@ -67,6 +70,7 @@ class ProductEntity {
     this.isActive = true,
     this.createdAt,
     this.categoryId,
+    this.brandId,
     this.description,
     this.updatedAt,
     this.details = const {},
@@ -78,6 +82,8 @@ class ProductEntity {
     this.images = const [],
     this.totalStock = 0,
     this.categoryName,
+    this.brandName,
+    this.brandLogoUrl,
     this.productVariants = const [],
     this.warehouseStockBatches = const [],
   });
@@ -88,6 +94,7 @@ class ProductEntity {
     bool? isActive,
     DateTime? createdAt,
     String? categoryId,
+    String? brandId,
     String? description,
     DateTime? updatedAt,
     Map<String, dynamic>? details,
@@ -99,6 +106,8 @@ class ProductEntity {
     List<ProductImageEntity>? images,
     int? totalStock,
     String? categoryName,
+    String? brandName,
+    String? brandLogoUrl,
     List<ProductVariantEntity>? productVariants,
     List<WarehouseStockBatchModel>? warehouseStockBatches,
   }) {
@@ -108,6 +117,7 @@ class ProductEntity {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       categoryId: categoryId ?? this.categoryId,
+      brandId: brandId ?? this.brandId,
       description: description ?? this.description,
       updatedAt: updatedAt ?? this.updatedAt,
       details: details ?? this.details,
@@ -119,6 +129,8 @@ class ProductEntity {
       images: images ?? this.images,
       totalStock: totalStock ?? this.totalStock,
       categoryName: categoryName ?? this.categoryName,
+      brandName: brandName ?? this.brandName,
+      brandLogoUrl: brandLogoUrl ?? this.brandLogoUrl,
       productVariants: productVariants ?? this.productVariants,
       warehouseStockBatches:
           warehouseStockBatches ?? this.warehouseStockBatches,

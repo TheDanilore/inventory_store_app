@@ -6,12 +6,14 @@ import 'package:injectable/injectable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/brand_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_form_models.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_form_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/get_brands_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_by_id_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_image_ucs.dart';
@@ -26,6 +28,7 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/product_f
 @injectable
 class ProductFormCubit extends Cubit<ProductFormState> {
   final GetCategoriesUC _getCategoriesUC;
+  final GetBrandsUC _getBrandsUC;
   final GetProductByIdUC _getProductByIdUC;
   final GetProductIngredientsUC _getProductIngredientsUC;
   final DeleteProductImageUC _deleteProductImageUC;
@@ -50,6 +53,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   List<CategoryEntity> _categories = [];
   bool _isLoadingCategories = true;
 
+  String? _selectedBrandId;
+  List<BrandEntity> _brands = [];
+  bool _isLoadingBrands = true;
+
   bool _isInitializingData = false;
   bool _isSaving = false;
   bool _isDirty = false;
@@ -64,6 +71,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   ProductFormCubit(
     this._getCategoriesUC,
+    this._getBrandsUC,
     this._getProductByIdUC,
     this._getProductIngredientsUC,
     this._deleteProductImageUC,
@@ -116,6 +124,12 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     _syncState();
   }
 
+  void setSelectedBrand(String? id) {
+    _selectedBrandId = id;
+    markAsDirty();
+    _syncState();
+  }
+
   void _syncState() {
     emit(
       state.copyWith(
@@ -128,6 +142,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         isLoadingCategories: _isLoadingCategories,
         categories: _categories,
         selectedCategoryId: _selectedCategoryId,
+        isLoadingBrands: _isLoadingBrands,
+        brands: _brands,
+        selectedBrandId: _selectedBrandId,
         productType: _productType,
         stockControl: _stockControl,
         batchManagementEnabled: _batchManagementEnabled,
@@ -198,6 +215,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         nombre = targetProduct.name;
         desc = targetProduct.description ?? '';
         _selectedCategoryId = targetProduct.categoryId;
+        _selectedBrandId = targetProduct.brandId;
         _productType = targetProduct.productType;
         _stockControl = targetProduct.stockControl;
         _batchManagementEnabled = targetProduct.usesBatches;
@@ -221,11 +239,15 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
         await Future.wait([
           _fetchCategories(),
+          _fetchBrands(),
           _fetchIngredients(targetProduct.id),
         ]);
       } else {
         _variantDrafts = [VariantDraftFormModel()]; // Variante por defecto
-        await _fetchCategories();
+        await Future.wait([
+          _fetchCategories(),
+          _fetchBrands(),
+        ]);
       }
     } catch (e) {
       _hasErrorLoading = true;
@@ -249,6 +271,16 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   Future<void> _fetchCategories() async {
     _categories = await _unwrap(_getCategoriesUC.call());
     _isLoadingCategories = false;
+    _syncState();
+  }
+
+  Future<void> _fetchBrands() async {
+    try {
+      _brands = await _unwrap(_getBrandsUC.call());
+    } catch (_) {
+      _brands = [];
+    }
+    _isLoadingBrands = false;
     _syncState();
   }
 
@@ -620,6 +652,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         isActive: isUpdating ? _productToEdit!.isActive : true,
         description: desc.trim().isEmpty ? null : desc.trim(),
         categoryId: _selectedCategoryId,
+        brandId: _selectedBrandId,
         details: {
           for (final d in _detailRows)
             if (d.key.trim().isNotEmpty) d.key.trim(): d.value.trim(),

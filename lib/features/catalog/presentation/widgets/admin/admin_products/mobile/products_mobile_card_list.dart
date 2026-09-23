@@ -100,6 +100,18 @@ class ProductsMobileCardList extends StatelessWidget {
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
+                            if (product.brandName != null &&
+                                product.brandName!.isNotEmpty) ...[
+                              const SizedBox(width: 6),
+                              Text(
+                                '• ${product.brandName!}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF2563EB),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                             if (variantCount > 1) ...[
                               const SizedBox(width: 8),
                               Text(

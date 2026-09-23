@@ -97,7 +97,7 @@ flutter:
   # Debes declarar la carpeta o la imagen exacta aquí:
   assets:
     - assets/app_icon.png
-    # - env.json
+    - env.json
 
 flutter_launcher_icons:
   android: "launcher_icon"

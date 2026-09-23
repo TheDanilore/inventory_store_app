@@ -136,12 +136,17 @@ class AppConfigCubit extends Cubit<AppConfigState> {
     }, (url) => url);
   }
 
-  Future<void> loadConfig() async {
-    await fetchSettings();
-    await loadBusinessInfo();
+  Future<void> loadConfig({bool force = false}) async {
+    await Future.wait([
+      fetchSettings(force: force),
+      loadBusinessInfo(force: force),
+    ]);
   }
 
-  Future<void> fetchSettings() async {
+  Future<void> fetchSettings({bool force = false}) async {
+    if (state.status == ViewState.loading && !force) return;
+    if (state.values.isNotEmpty && !force) return;
+
     emit(state.copyWith(status: ViewState.loading, clearErrorMessage: true));
 
     final result = await getAppSettingsUseCase(const NoParams());

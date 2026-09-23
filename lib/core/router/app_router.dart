@@ -5,7 +5,7 @@ import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/router/go_router_refresh_stream.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/app_config/presentation/routes/app_config_routes.dart';
 import 'package:inventory_store_app/features/auth/presentation/routes/auth_routes.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
@@ -37,19 +37,24 @@ class AppRouter {
     try {
       final uri = Uri.base;
       final path = uri.path;
-      if (path.isNotEmpty && path != '/splash' && path != '/login') {
+      // Filtramos rutas internas o espurias (como comandos /goal)
+      if (path.isNotEmpty &&
+          path != '/' &&
+          path != '/splash' &&
+          path != '/login' &&
+          !path.startsWith('/goal')) {
         _pendingDeepLink = path + (uri.query.isNotEmpty ? '?${uri.query}' : '');
-        developer.log(
-          'deep link capturado -> $_pendingDeepLink',
-          name: 'AppRouter',
+        LoggerService.i(
+          'Deep link inicial capturado -> $_pendingDeepLink',
+          tag: 'AppRouter',
         );
       }
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error capturando initial route',
+        tag: 'AppRouter',
         error: e,
         stackTrace: st,
-        name: 'AppRouter',
       );
     }
   }
@@ -98,24 +103,34 @@ class AppRouter {
         final isSplash = currentPath == '/splash';
         final isLogin = currentPath == '/login';
 
-        if (authState.authStatus == AuthStatus.initial) {
+        LoggerService.d(
+          'Evaluando redirección: path=$currentPath, status=${authState.authStatus}',
+          tag: 'AppRouter',
+        );
+
+        if (authState.authStatus == AuthStatus.initial ||
+            authState.authStatus == AuthStatus.error) {
           return isSplash ? null : '/splash';
         }
 
+        // Si no está autenticado: si ya está en /login se queda, si está en /splash u otra ruta privada va a /login
         if (authState.authStatus == AuthStatus.unauthenticated) {
-          return (isSplash || isLogin) ? null : '/login';
+          return isLogin ? null : '/login';
         }
 
         if (authState.authStatus == AuthStatus.authenticated &&
             _pendingDeepLink != null) {
           final link = _pendingDeepLink!;
           _pendingDeepLink = null;
-          return link;
+          if (!link.startsWith('/goal') && link != '/splash' && link != '/login') {
+            return link;
+          }
+          return '/';
         }
 
         final role = authState.currentUser?.role;
         if (role == null) {
-          return '/login';
+          return isLogin ? null : '/login';
         }
 
         // Si ya está autenticado y accede a splash o login, dirigir a raíz '/'

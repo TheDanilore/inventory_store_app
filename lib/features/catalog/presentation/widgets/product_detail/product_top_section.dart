@@ -4,6 +4,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 class ProductTopSection extends StatelessWidget {
   final String name;
   final String? sku;
+  final String? brandName;
   final bool isActive;
   final int effectiveStock;
   final double averageRating;
@@ -12,7 +13,8 @@ class ProductTopSection extends StatelessWidget {
   const ProductTopSection({
     super.key,
     required this.name,
-    required this.sku,
+    this.sku,
+    this.brandName,
     required this.isActive,
     required this.effectiveStock,
     required this.averageRating,
@@ -31,7 +33,10 @@ class ProductTopSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 6,
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -48,8 +53,37 @@ class ProductTopSection extends StatelessWidget {
                 ),
               ),
             ),
-            if (sku != null && sku!.isNotEmpty) ...[
-              const SizedBox(width: 8),
+            if (brandName != null && brandName!.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.verified_rounded,
+                      size: 12,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      brandName!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (sku != null && sku!.isNotEmpty)
               Text(
                 'SKU $sku',
                 style: const TextStyle(
@@ -57,7 +91,6 @@ class ProductTopSection extends StatelessWidget {
                   color: AppColors.textMuted,
                 ),
               ),
-            ],
           ],
         ),
         const SizedBox(height: 10),

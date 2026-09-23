@@ -51,40 +51,105 @@ class ProductBasicInfoSection extends StatelessWidget {
             validator: (v) => v!.isEmpty ? 'Requerido' : null,
           ),
           const SizedBox(height: 16),
-          BlocBuilder<ProductFormCubit, ProductFormState>(
-            buildWhen:
-                (p, c) =>
-                    p.isLoadingCategories != c.isLoadingCategories ||
-                    p.categories != c.categories ||
-                    p.selectedCategoryId != c.selectedCategoryId,
-            builder: (context, state) {
-              if (state.isLoadingCategories) {
-                return const Center(child: CircularProgressIndicator());
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 500;
+
+              final categoryField = BlocBuilder<ProductFormCubit, ProductFormState>(
+                buildWhen:
+                    (p, c) =>
+                        p.isLoadingCategories != c.isLoadingCategories ||
+                        p.categories != c.categories ||
+                        p.selectedCategoryId != c.selectedCategoryId,
+                builder: (context, state) {
+                  if (state.isLoadingCategories) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  return DropdownButtonFormField<String>(
+                    initialValue: state.selectedCategoryId,
+                    decoration: InputDecoration(
+                      labelText: 'Categoría',
+                      prefixIcon: const Icon(Icons.category_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text('Sin categoría'),
+                      ),
+                      ...state.categories.map(
+                        (cat) =>
+                            DropdownMenuItem(value: cat.id!, child: Text(cat.name)),
+                      ),
+                    ],
+                    onChanged: cubit.setSelectedCategory,
+                  );
+                },
+              );
+
+              final brandField = BlocBuilder<ProductFormCubit, ProductFormState>(
+                buildWhen:
+                    (p, c) =>
+                        p.isLoadingBrands != c.isLoadingBrands ||
+                        p.brands != c.brands ||
+                        p.selectedBrandId != c.selectedBrandId,
+                builder: (context, state) {
+                  if (state.isLoadingBrands) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  return DropdownButtonFormField<String>(
+                    initialValue: state.selectedBrandId,
+                    decoration: InputDecoration(
+                      labelText: 'Marca / Fabricante',
+                      prefixIcon: const Icon(Icons.verified_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text('Sin marca'),
+                      ),
+                      ...state.brands.map(
+                        (brand) => DropdownMenuItem(
+                          value: brand.id!,
+                          child: Text(brand.name),
+                        ),
+                      ),
+                    ],
+                    onChanged: cubit.setSelectedBrand,
+                  );
+                },
+              );
+
+              if (isWide) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: categoryField),
+                    const SizedBox(width: 16),
+                    Expanded(child: brandField),
+                  ],
+                );
               }
-              return DropdownButtonFormField<String>(
-                initialValue: state.selectedCategoryId,
-                decoration: InputDecoration(
-                  labelText: 'Categoría',
-                  prefixIcon: const Icon(Icons.category_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('Sin categoría'),
-                  ),
-                  ...state.categories.map(
-                    (cat) =>
-                        DropdownMenuItem(value: cat.id!, child: Text(cat.name)),
-                  ),
+
+              return Column(
+                children: [
+                  categoryField,
+                  const SizedBox(height: 16),
+                  brandField,
                 ],
-                onChanged: cubit.setSelectedCategory,
               );
             },
           ),

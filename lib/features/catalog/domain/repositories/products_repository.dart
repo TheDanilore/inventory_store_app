@@ -14,6 +14,7 @@ abstract class ProductsRepository {
   getProducts({
     String? searchQuery,
     String? categoryId,
+    String? brandId,
     bool? isActive,
     bool searchByIngredient = false,
     bool forCustomer = false,

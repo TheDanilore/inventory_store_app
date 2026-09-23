@@ -171,15 +171,20 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                           buildWhen: (prev, current) =>
                               prev.categories != current.categories ||
                               prev.selectedCategoryId != current.selectedCategoryId ||
+                              prev.brands != current.brands ||
+                              prev.selectedBrandId != current.selectedBrandId ||
                               prev.filterIsActive != current.filterIsActive ||
                               prev.sortOption != current.sortOption ||
                               prev.stockFilter != current.stockFilter,
                           builder: (context, state) {
-                            if (state.categories.isEmpty) return const SizedBox.shrink();
+                            if (state.categories.isEmpty && state.brands.isEmpty) return const SizedBox.shrink();
                             return CategoryChips(
                               categories: state.categories,
                               selectedCategoryId: state.selectedCategoryId,
                               onSelected: context.read<AdminCatalogCubit>().setCategory,
+                              brands: state.brands,
+                              selectedBrandId: state.selectedBrandId,
+                              onBrandSelected: context.read<AdminCatalogCubit>().setBrand,
                               filterIsActive: state.filterIsActive,
                               onStatusSelected: context.read<AdminCatalogCubit>().setFilterIsActive,
                               sortOption: state.sortOption,

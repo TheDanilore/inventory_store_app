@@ -574,46 +574,290 @@ $$;
 ALTER FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."delete_active_ingredient_safely"("p_ingredient_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_usage_count INT := 0;
+    v_ingredient_name TEXT;
+    v_product_names TEXT;
+BEGIN
+    -- 1. Obtener el nombre del componente químico
+    SELECT name INTO v_ingredient_name 
+    FROM public.active_ingredients 
+    WHERE id = p_ingredient_id;
+
+    IF v_ingredient_name IS NULL THEN
+        RETURN jsonb_build_object(
+            'success', false, 
+            'message', 'El componente químico no fue encontrado en el catálogo.'
+        );
+    END IF;
+
+    -- 2. Validar si está asociado a algún producto en product_active_ingredients
+    SELECT COUNT(*), string_agg(p.name, ', ')
+    INTO v_usage_count, v_product_names
+    FROM public.product_active_ingredients pai
+    JOIN public.products p ON p.id = pai.product_id
+    WHERE pai.ingredient_id = p_ingredient_id;
+
+    -- 3. Si hay productos vinculados, ABORTAR y listar los nombres
+    IF v_usage_count > 0 THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'message', format(
+                'No se puede eliminar "%s": está siendo utilizado en %s producto(s) del catálogo (%s). Debes desvincularlo de las fichas de esos productos antes de eliminarlo.',
+                v_ingredient_name,
+                v_usage_count,
+                v_product_names
+            )
+        );
+    END IF;
+
+    -- 4. Si no tiene productos vinculados, ELIMINAR de forma segura
+    DELETE FROM public.active_ingredients WHERE id = p_ingredient_id;
+
+    RETURN jsonb_build_object(
+        'success', true, 
+        'message', format('Componente químico "%s" eliminado correctamente.', v_ingredient_name)
+    );
+
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object(
+        'success', false, 
+        'message', 'Error en el servidor al eliminar componente: ' || SQLERRM
+    );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."delete_active_ingredient_safely"("p_ingredient_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") RETURNS "text"[]
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 DECLARE
     v_image_urls TEXT[];
+    v_has_stock BOOLEAN := FALSE;
+    v_has_orders BOOLEAN := FALSE;
+    v_has_purchases BOOLEAN := FALSE;
+    v_has_movements BOOLEAN := FALSE;
+    v_has_exits BOOLEAN := FALSE;
+    v_total_stock NUMERIC := 0;
+    v_product_name TEXT;
 BEGIN
-    -- Recopilar URLs de imágenes para que el frontend (Dart) las borre del bucket
+    -- 0. Verificar si el producto existe y obtener su nombre
+    SELECT name INTO v_product_name FROM public.products WHERE id = p_product_id;
+    IF v_product_name IS NULL THEN
+        RAISE EXCEPTION 'El producto no fue encontrado en el catálogo.';
+    END IF;
+
+    -- 1. VALIDACIÓN DE STOCK FÍSICO ACTIVO
+    SELECT COALESCE(SUM(quantity), 0) INTO v_total_stock
+    FROM public.warehouse_stock_batches
+    WHERE variant_id IN (SELECT id FROM public.product_variants WHERE product_id = p_product_id);
+
+    IF v_total_stock > 0 THEN
+        RAISE EXCEPTION 'No se puede eliminar "%": cuenta con % unidades de stock físico en almacenes. Debes dar de baja el stock mediante una Salida de Inventario o transferirlo antes de eliminarlo.', v_product_name, v_total_stock;
+    END IF;
+
+    -- 2. VALIDACIÓN DE VENTAS / FACTURACIÓN (order_items)
+    SELECT EXISTS (
+        SELECT 1 FROM public.order_items
+        WHERE variant_id IN (SELECT id FROM public.product_variants WHERE product_id = p_product_id)
+           OR product_id = p_product_id
+    ) INTO v_has_orders;
+
+    IF v_has_orders THEN
+        RAISE EXCEPTION 'No se puede eliminar "%": tiene historial de ventas y pedidos registrados. Por normativa contable y tributaria, desactiva el producto (Inactivo) en lugar de eliminarlo.', v_product_name;
+    END IF;
+
+    -- 3. VALIDACIÓN DE ÓRDENES DE COMPRA (purchase_order_items)
+    SELECT EXISTS (
+        SELECT 1 FROM public.purchase_order_items
+        WHERE product_id = p_product_id
+           OR variant_id IN (SELECT id FROM public.product_variants WHERE product_id = p_product_id)
+    ) INTO v_has_purchases;
+
+    IF v_has_purchases THEN
+        RAISE EXCEPTION 'No se puede eliminar "%": está registrado en órdenes de compra a proveedores. Desactiva el producto para preservar la trazabilidad de abastecimiento.', v_product_name;
+    END IF;
+
+    -- 4. VALIDACIÓN DE MOVIMIENTOS HISTÓRICOS DE KARDEX (inventory_movements)
+    SELECT EXISTS (
+        SELECT 1 FROM public.inventory_movements
+        WHERE variant_id IN (SELECT id FROM public.product_variants WHERE product_id = p_product_id)
+           OR product_id = p_product_id
+    ) INTO v_has_movements;
+
+    IF v_has_movements THEN
+        RAISE EXCEPTION 'No se puede eliminar "%": cuenta con movimientos registrados en el Kardex de almacén. La auditoría de inventario exige conservar su registro histórico.', v_product_name;
+    END IF;
+
+    -- 5. VALIDACIÓN DE SALIDAS DE INVENTARIO / MERMAS (inventory_exit_items)
+    SELECT EXISTS (
+        SELECT 1 FROM public.inventory_exit_items
+        WHERE variant_id IN (SELECT id FROM public.product_variants WHERE product_id = p_product_id)
+    ) INTO v_has_exits;
+
+    IF v_has_exits THEN
+        RAISE EXCEPTION 'No se puede eliminar "%": tiene registros de bajas o salidas de almacén asociadas.', v_product_name;
+    END IF;
+
+    -- 6. RECOPILACIÓN DE IMÁGENES PARA PURGA EN STORAGE BUCKET
     SELECT array_agg(image_url) INTO v_image_urls 
-    FROM product_images 
+    FROM public.product_images 
     WHERE product_id = p_product_id AND image_url IS NOT NULL;
 
-    -- Intentamos borrar primero las variantes (las cuales pueden tener imágenes, etc.)
-    -- Si la variante está vinculada a ventas (order_items), carritos (cart_items),
-    -- movimientos de inventario (inventory_movements) o balances de stock (warehouse_stock_balances)
-    -- y esas claves foráneas NO tienen ON DELETE CASCADE, PostgreSQL lanzará un foreign_key_violation.
-    
-    -- Limpiamos atributos de variantes
-    DELETE FROM variant_attribute_values WHERE variant_id IN (SELECT id FROM product_variants WHERE product_id = p_product_id);
-    
-    -- Limpiamos imagenes (las que no estén asociadas con CASCADE)
-    DELETE FROM product_images WHERE product_id = p_product_id;
+    -- 7. PURGA DE REGISTROS VOLÁTILES NO AUDITABLES (Carritos de compras huérfanos)
+    DELETE FROM public.cart_items 
+    WHERE variant_id IN (SELECT id FROM public.product_variants WHERE product_id = p_product_id);
 
-    -- Intentamos borrar variantes
-    DELETE FROM product_variants WHERE product_id = p_product_id;
+    -- 8. PURGA DE CONFIGURACIONES DE CATÁLOGO DEL PRODUCTO
+    DELETE FROM public.variant_attribute_values 
+    WHERE variant_id IN (SELECT id FROM public.product_variants WHERE product_id = p_product_id);
 
-    -- Borramos el producto
-    DELETE FROM products WHERE id = p_product_id;
+    DELETE FROM public.product_active_ingredients 
+    WHERE product_id = p_product_id;
+
+    DELETE FROM public.product_images 
+    WHERE product_id = p_product_id;
+
+    -- 9. ELIMINACIÓN ATÓMICA DE VARIANTES Y PRODUCTO
+    DELETE FROM public.product_variants 
+    WHERE product_id = p_product_id;
+
+    DELETE FROM public.products 
+    WHERE id = p_product_id;
 
     RETURN COALESCE(v_image_urls, ARRAY[]::TEXT[]);
 
 EXCEPTION
-    WHEN foreign_key_violation THEN
-        RAISE EXCEPTION 'No se puede eliminar el producto porque tiene ventas, movimientos de inventario o relaciones activas.';
-    WHEN others THEN
-        RAISE EXCEPTION 'Error al eliminar el producto: %', SQLERRM;
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '%', SQLERRM;
 END;
 $$;
 
 
 ALTER FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."delete_user_safely"("p_user_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_auth_user_id UUID;
+    v_has_orders BOOLEAN := FALSE;
+    v_has_sales_created BOOLEAN := FALSE;
+    v_has_shifts BOOLEAN := FALSE;
+    v_has_movements BOOLEAN := FALSE;
+    v_has_credits BOOLEAN := FALSE;
+BEGIN
+    -- 1. Obtener auth_user_id vinculado al perfil
+    SELECT auth_user_id INTO v_auth_user_id
+    FROM public.profiles
+    WHERE id = p_user_id;
+
+    -- Respaldo: chequear si el p_user_id fue recibido como auth_user_id
+    IF v_auth_user_id IS NULL AND NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = p_user_id) THEN
+        SELECT id, auth_user_id INTO p_user_id, v_auth_user_id
+        FROM public.profiles
+        WHERE auth_user_id = p_user_id;
+        
+        IF p_user_id IS NULL THEN
+            RETURN jsonb_build_object('success', false, 'message', 'El usuario no fue encontrado en el sistema.');
+        END IF;
+    END IF;
+
+    -- 2. Validar si el usuario tiene pedidos o compras como cliente
+    SELECT EXISTS (
+        SELECT 1 FROM public.orders 
+        WHERE customer_id = p_user_id
+    ) INTO v_has_orders;
+
+    IF v_has_orders THEN
+        RETURN jsonb_build_object(
+            'success', false, 
+            'message', 'No se puede eliminar el usuario porque tiene pedidos o ventas registradas en el historial contable. En su lugar, desactiva su cuenta.'
+        );
+    END IF;
+
+    -- 3. Validar si el usuario creó ventas como cajero/vendedor
+    SELECT EXISTS (
+        SELECT 1 FROM public.orders 
+        WHERE created_by = p_user_id OR (v_auth_user_id IS NOT NULL AND created_by = v_auth_user_id)
+    ) INTO v_has_sales_created;
+
+    IF v_has_sales_created THEN
+        RETURN jsonb_build_object(
+            'success', false, 
+            'message', 'No se puede eliminar el usuario porque tiene ventas registradas como operador de caja. Te sugerimos desactivar su cuenta.'
+        );
+    END IF;
+
+    -- 4. Validar si abrió o cerró turnos de caja
+    SELECT EXISTS (
+        SELECT 1 FROM public.cash_shifts 
+        WHERE opened_by = p_user_id OR closed_by = p_user_id
+           OR (v_auth_user_id IS NOT NULL AND (opened_by = v_auth_user_id OR closed_by = v_auth_user_id))
+    ) INTO v_has_shifts;
+
+    IF v_has_shifts THEN
+        RETURN jsonb_build_object(
+            'success', false, 
+            'message', 'No se puede eliminar el usuario porque tiene aperturas o cierres de caja registrados.'
+        );
+    END IF;
+
+    -- 5. Validar movimientos de cuentas financieras
+    SELECT EXISTS (
+        SELECT 1 FROM public.account_movements 
+        WHERE created_by = p_user_id OR (v_auth_user_id IS NOT NULL AND created_by = v_auth_user_id)
+    ) INTO v_has_movements;
+
+    IF v_has_movements THEN
+        RETURN jsonb_build_object(
+            'success', false, 
+            'message', 'No se puede eliminar el usuario porque tiene movimientos en cuentas financieras.'
+        );
+    END IF;
+
+    -- 6. Validar cuentas de crédito de clientes
+    SELECT EXISTS (
+        SELECT 1 FROM public.customer_credits 
+        WHERE customer_id = p_user_id
+    ) INTO v_has_credits;
+
+    IF v_has_credits THEN
+        RETURN jsonb_build_object(
+            'success', false, 
+            'message', 'No se puede eliminar el usuario porque cuenta con una línea de crédito comercial activa.'
+        );
+    END IF;
+
+    -- 7. Limpieza de tablas satélites no auditables
+    DELETE FROM public.wallet_movements WHERE profile_id = p_user_id;
+    DELETE FROM public.daily_checkins WHERE profile_id = p_user_id;
+    DELETE FROM public.cart_items WHERE profile_id = p_user_id;
+
+    -- 8. Eliminar perfil en public.profiles
+    DELETE FROM public.profiles WHERE id = p_user_id;
+
+    -- 9. Eliminar cuenta en auth.users si existe
+    IF v_auth_user_id IS NOT NULL THEN
+        DELETE FROM auth.users WHERE id = v_auth_user_id;
+    END IF;
+
+    RETURN jsonb_build_object('success', true, 'message', 'Usuario eliminado correctamente.');
+
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'message', 'Error en el servidor: ' || SQLERRM);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."delete_user_safely"("p_user_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text" DEFAULT NULL::"text", "p_date_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_date_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_profile_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
@@ -684,6 +928,95 @@ $$;
 
 
 ALTER FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text" DEFAULT ''::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_total_debt numeric := 0;
+  v_active_count int := 0;
+  v_suspended_count int := 0;
+  v_maxed_out_count int := 0;
+  v_debt_count int := 0;
+  v_result jsonb;
+BEGIN
+  SELECT 
+    COALESCE(SUM(cc.current_debt), 0),
+    COUNT(*) FILTER (WHERE cc.is_active = true),
+    COUNT(*) FILTER (WHERE cc.is_active = false),
+    COUNT(*) FILTER (WHERE cc.is_active = true AND cc.credit_limit > 0 AND cc.current_debt >= cc.credit_limit),
+    COUNT(*) FILTER (WHERE cc.is_active = true AND cc.current_debt > 0)
+  INTO 
+    v_total_debt, 
+    v_active_count, 
+    v_suspended_count, 
+    v_maxed_out_count, 
+    v_debt_count
+  FROM customer_credits cc
+  JOIN profiles p ON p.id = cc.profile_id
+  WHERE p_search_query = '' 
+     OR p.full_name ILIKE '%' || p_search_query || '%'
+     OR p.document_number ILIKE '%' || p_search_query || '%'
+     OR p.phone ILIKE '%' || p_search_query || '%';
+
+  v_result := jsonb_build_object(
+    'totalDebt', v_total_debt,
+    'activeAccounts', v_active_count,
+    'suspendedAccounts', v_suspended_count,
+    'maxedOutAccounts', v_maxed_out_count,
+    'debtCount', v_debt_count
+  );
+
+  RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_customers_global_stats_rpc"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    AS $$
+DECLARE
+    v_total_customers INT;
+    v_active_customers INT;
+    v_inactive_customers INT;
+    v_total_revenue NUMERIC;
+    v_total_debt NUMERIC;
+    v_debt_customers_count INT;
+BEGIN
+    SELECT COUNT(*),
+           COUNT(*) FILTER (WHERE is_active = true),
+           COUNT(*) FILTER (WHERE is_active = false)
+      INTO v_total_customers, v_active_customers, v_inactive_customers
+      FROM public.profiles
+     WHERE role = 'customer';
+
+    SELECT COALESCE(SUM(total_amount), 0)
+      INTO v_total_revenue
+      FROM public.orders
+     WHERE status = 'COMPLETED';
+
+    SELECT COALESCE(SUM(current_debt), 0),
+           COUNT(*) FILTER (WHERE current_debt > 0)
+      INTO v_total_debt, v_debt_customers_count
+      FROM public.customer_credits;
+
+    RETURN jsonb_build_object(
+        'totalCustomersCount', v_total_customers,
+        'activeCustomersCount', v_active_customers,
+        'inactiveCustomersCount', v_inactive_customers,
+        'totalRevenue', v_total_revenue,
+        'totalDebt', v_total_debt,
+        'debtCustomersCount', v_debt_customers_count
+    );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_customers_global_stats_rpc"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_loyalty_dashboard"("p_auth_user_id" "uuid") RETURNS json
@@ -898,52 +1231,6 @@ $$;
 ALTER FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text" DEFAULT ''::"text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-  v_total_debt numeric := 0;
-  v_active_count int := 0;
-  v_suspended_count int := 0;
-  v_maxed_out_count int := 0;
-  v_debt_count int := 0;
-  v_result jsonb;
-BEGIN
-  SELECT 
-    COALESCE(SUM(cc.current_debt), 0),
-    COUNT(*) FILTER (WHERE cc.is_active = true),
-    COUNT(*) FILTER (WHERE cc.is_active = false),
-    COUNT(*) FILTER (WHERE cc.is_active = true AND cc.credit_limit > 0 AND cc.current_debt >= cc.credit_limit),
-    COUNT(*) FILTER (WHERE cc.is_active = true AND cc.current_debt > 0)
-  INTO 
-    v_total_debt, 
-    v_active_count, 
-    v_suspended_count, 
-    v_maxed_out_count, 
-    v_debt_count
-  FROM customer_credits cc
-  JOIN profiles p ON p.id = cc.profile_id
-  WHERE p_search_query = '' 
-     OR p.full_name ILIKE '%' || p_search_query || '%'
-     OR p.document_number ILIKE '%' || p_search_query || '%'
-     OR p.phone ILIKE '%' || p_search_query || '%';
-
-  v_result := jsonb_build_object(
-    'totalDebt', v_total_debt,
-    'activeAccounts', v_active_count,
-    'suspendedAccounts', v_suspended_count,
-    'maxedOutAccounts', v_maxed_out_count,
-    'debtCount', v_debt_count
-  );
-
-  RETURN v_result;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."get_top_customers"("p_limit" integer DEFAULT 10) RETURNS TABLE("id" "uuid", "full_name" "text", "avatar_url" "text", "is_active" boolean, "wallet_balance" integer, "created_at" timestamp with time zone, "total_revenue" numeric)
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -968,6 +1255,33 @@ $$;
 
 
 ALTER FUNCTION "public"."get_top_customers"("p_limit" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_top_customers_rpc"("p_limit" integer DEFAULT 5) RETURNS TABLE("id" "uuid", "full_name" "text", "phone" "text", "document_number" "text", "document_type" "text", "avatar_url" "text", "wallet_balance" numeric, "is_active" boolean, "created_at" timestamp with time zone, "total_revenue" numeric, "order_count" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    AS $$
+    SELECT 
+        p.id,
+        p.full_name,
+        p.phone,
+        p.document_number,
+        p.document_type,
+        p.avatar_url,
+        p.wallet_balance,
+        p.is_active,
+        p.created_at,
+        COALESCE(SUM(o.total_amount), 0) AS total_revenue,
+        COUNT(o.id) AS order_count
+    FROM public.profiles p
+    JOIN public.orders o ON o.customer_id = p.id
+    WHERE p.role = 'customer' AND o.status = 'COMPLETED'
+    GROUP BY p.id
+    ORDER BY total_revenue DESC
+    LIMIT p_limit;
+$$;
+
+
+ALTER FUNCTION "public"."get_top_customers_rpc"("p_limit" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."handle_update_timestamp"() RETURNS "trigger"
@@ -3579,6 +3893,23 @@ CREATE TABLE IF NOT EXISTS "public"."attributes" (
 ALTER TABLE "public"."attributes" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."brands" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" "text" NOT NULL,
+    "description" "text",
+    "logo_url" "text",
+    "website" "text",
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "created_by" "uuid",
+    "updated_by" "uuid"
+);
+
+
+ALTER TABLE "public"."brands" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."business_info" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "business_name" "text" NOT NULL,
@@ -4067,6 +4398,7 @@ CREATE TABLE IF NOT EXISTS "public"."products" (
     "stock_control" boolean DEFAULT true NOT NULL,
     "uses_batches" boolean DEFAULT false NOT NULL,
     "product_type" "text" DEFAULT 'good'::"text" NOT NULL,
+    "brand_id" "uuid",
     CONSTRAINT "products_product_type_check" CHECK (("product_type" = ANY (ARRAY['good'::"text", 'service'::"text", 'digital'::"text"])))
 );
 
@@ -4296,6 +4628,16 @@ ALTER TABLE ONLY "public"."attribute_values"
 
 
 
+ALTER TABLE ONLY "public"."brands"
+    ADD CONSTRAINT "brands_name_key" UNIQUE ("name");
+
+
+
+ALTER TABLE ONLY "public"."brands"
+    ADD CONSTRAINT "brands_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."business_info"
     ADD CONSTRAINT "business_info_pkey" PRIMARY KEY ("id");
 
@@ -4520,6 +4862,22 @@ CREATE INDEX "account_movements_created_by_idx" ON "public"."account_movements" 
 
 
 CREATE INDEX "account_movements_shift_id_idx" ON "public"."account_movements" USING "btree" ("shift_id");
+
+
+
+CREATE INDEX "brands_created_by_idx" ON "public"."brands" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "brands_is_active_idx" ON "public"."brands" USING "btree" ("is_active");
+
+
+
+CREATE INDEX "brands_name_idx" ON "public"."brands" USING "btree" ("name");
+
+
+
+CREATE INDEX "brands_updated_by_idx" ON "public"."brands" USING "btree" ("updated_by");
 
 
 
@@ -4787,6 +5145,10 @@ CREATE INDEX "product_variants_updated_by_idx" ON "public"."product_variants" US
 
 
 
+CREATE INDEX "products_brand_id_idx" ON "public"."products" USING "btree" ("brand_id");
+
+
+
 CREATE INDEX "products_created_by_idx" ON "public"."products" USING "btree" ("created_by");
 
 
@@ -4880,6 +5242,16 @@ ALTER TABLE ONLY "public"."account_movements"
 
 ALTER TABLE ONLY "public"."attribute_values"
     ADD CONSTRAINT "av_attribute_id_fkey" FOREIGN KEY ("attribute_id") REFERENCES "public"."attributes"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."brands"
+    ADD CONSTRAINT "brands_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."brands"
+    ADD CONSTRAINT "brands_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 
@@ -5174,6 +5546,11 @@ ALTER TABLE ONLY "public"."product_variants"
 
 
 ALTER TABLE ONLY "public"."products"
+    ADD CONSTRAINT "products_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "public"."brands"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id");
 
 
@@ -5414,6 +5791,10 @@ CREATE POLICY "Borrado admin/empleado" ON "public"."attributes" FOR DELETE USING
 
 
 
+CREATE POLICY "Borrado admin/empleado" ON "public"."brands" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+
+
+
 CREATE POLICY "Borrado admin/empleado" ON "public"."categories" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
@@ -5459,6 +5840,10 @@ CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"
 
 
 CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."attributes" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+
+
+
+CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."brands" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
@@ -5604,6 +5989,10 @@ CREATE POLICY "Lectura publica" ON "public"."attributes" FOR SELECT USING (true)
 
 
 
+CREATE POLICY "Lectura publica" ON "public"."brands" FOR SELECT USING (true);
+
+
+
 CREATE POLICY "Lectura publica" ON "public"."categories" FOR SELECT USING (true);
 
 
@@ -5682,6 +6071,10 @@ CREATE POLICY "Modificacion admin/empleado" ON "public"."attributes" FOR UPDATE 
 
 
 
+CREATE POLICY "Modificacion admin/empleado" ON "public"."brands" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+
+
+
 CREATE POLICY "Modificacion admin/empleado" ON "public"."categories" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
@@ -5727,6 +6120,9 @@ ALTER TABLE "public"."attribute_values" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."attributes" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."brands" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."business_info" ENABLE ROW LEVEL SECURITY;
@@ -6069,15 +6465,39 @@ GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid
 
 
 
+GRANT ALL ON FUNCTION "public"."delete_active_ingredient_safely"("p_ingredient_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."delete_active_ingredient_safely"("p_ingredient_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_active_ingredient_safely"("p_ingredient_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."delete_user_safely"("p_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."delete_user_safely"("p_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_user_safely"("p_user_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_customers_global_stats_rpc"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_customers_global_stats_rpc"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_customers_global_stats_rpc"() TO "service_role";
 
 
 
@@ -6103,15 +6523,17 @@ GRANT ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query"
 GRANT ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_supplier_credits_stats_rpc"("p_search_query" "text") TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text") TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_top_customers_rpc"("p_limit" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_top_customers_rpc"("p_limit" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_top_customers_rpc"("p_limit" integer) TO "service_role";
 
 
 
@@ -6307,6 +6729,12 @@ GRANT ALL ON TABLE "public"."attribute_values" TO "service_role";
 GRANT ALL ON TABLE "public"."attributes" TO "anon";
 GRANT ALL ON TABLE "public"."attributes" TO "authenticated";
 GRANT ALL ON TABLE "public"."attributes" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."brands" TO "anon";
+GRANT ALL ON TABLE "public"."brands" TO "authenticated";
+GRANT ALL ON TABLE "public"."brands" TO "service_role";
 
 
 
@@ -6574,88 +7002,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
--- RPC: Estadísticas globales de clientes con cero consumo innecesario de Data Egress
-CREATE OR REPLACE FUNCTION "public"."get_customers_global_stats_rpc"()
-RETURNS "jsonb"
-LANGUAGE plpgsql STABLE SECURITY DEFINER
-AS $$
-DECLARE
-    v_total_customers INT;
-    v_active_customers INT;
-    v_inactive_customers INT;
-    v_total_revenue NUMERIC;
-    v_total_debt NUMERIC;
-    v_debt_customers_count INT;
-BEGIN
-    SELECT COUNT(*),
-           COUNT(*) FILTER (WHERE is_active = true),
-           COUNT(*) FILTER (WHERE is_active = false)
-      INTO v_total_customers, v_active_customers, v_inactive_customers
-      FROM public.profiles
-     WHERE role = 'customer';
-
-    SELECT COALESCE(SUM(total_amount), 0)
-      INTO v_total_revenue
-      FROM public.orders
-     WHERE status = 'COMPLETED';
-
-    SELECT COALESCE(SUM(current_debt), 0),
-           COUNT(*) FILTER (WHERE current_debt > 0)
-      INTO v_total_debt, v_debt_customers_count
-      FROM public.customer_credits;
-
-    RETURN jsonb_build_object(
-        'totalCustomersCount', v_total_customers,
-        'activeCustomersCount', v_active_customers,
-        'inactiveCustomersCount', v_inactive_customers,
-        'totalRevenue', v_total_revenue,
-        'totalDebt', v_total_debt,
-        'debtCustomersCount', v_debt_customers_count
-    );
-END;
-$$;
-
-GRANT ALL ON FUNCTION "public"."get_customers_global_stats_rpc"() TO "anon", "authenticated", "service_role";
-
--- RPC: Top compradores agregados en servidor (cero transferencia masiva de órdenes a Flutter)
-CREATE OR REPLACE FUNCTION "public"."get_top_customers_rpc"("p_limit" int DEFAULT 5)
-RETURNS TABLE (
-    id uuid,
-    full_name text,
-    phone text,
-    document_number text,
-    document_type text,
-    avatar_url text,
-    wallet_balance numeric,
-    is_active boolean,
-    created_at timestamptz,
-    total_revenue numeric,
-    order_count bigint
-)
-LANGUAGE sql STABLE SECURITY DEFINER
-AS $$
-    SELECT 
-        p.id,
-        p.full_name,
-        p.phone,
-        p.document_number,
-        p.document_type,
-        p.avatar_url,
-        p.wallet_balance,
-        p.is_active,
-        p.created_at,
-        COALESCE(SUM(o.total_amount), 0) AS total_revenue,
-        COUNT(o.id) AS order_count
-    FROM public.profiles p
-    JOIN public.orders o ON o.customer_id = p.id
-    WHERE p.role = 'customer' AND o.status = 'COMPLETED'
-    GROUP BY p.id
-    ORDER BY total_revenue DESC
-    LIMIT p_limit;
-$$;
-
-GRANT ALL ON FUNCTION "public"."get_top_customers_rpc"(int) TO "anon", "authenticated", "service_role";
 
 
 

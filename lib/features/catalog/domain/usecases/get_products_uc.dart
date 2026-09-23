@@ -15,6 +15,7 @@ class GetProductsUC {
   call({
     String? searchQuery,
     String? categoryId,
+    String? brandId,
     bool? isActive,
     bool searchByIngredient = false,
     bool forCustomer = false,
@@ -27,6 +28,7 @@ class GetProductsUC {
     return await repository.getProducts(
       searchQuery: searchQuery,
       categoryId: categoryId,
+      brandId: brandId,
       isActive: isActive,
       searchByIngredient: searchByIngredient,
       forCustomer: forCustomer,

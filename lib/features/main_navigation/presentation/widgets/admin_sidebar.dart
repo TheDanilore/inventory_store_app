@@ -268,6 +268,14 @@ class _AdminSidebarState extends State<AdminSidebar> {
                 _buildSidebarTile(
                   context,
                   const AdminSidebarItem(
+                    icon: Icons.branding_watermark_outlined,
+                    title: 'Marcas',
+                    routePath: '/brands',
+                  ),
+                ),
+                _buildSidebarTile(
+                  context,
+                  const AdminSidebarItem(
                     icon: Icons.warehouse_outlined,
                     title: 'Almacenes',
                     routePath: '/warehouses',

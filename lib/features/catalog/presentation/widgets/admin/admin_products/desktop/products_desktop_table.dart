@@ -265,6 +265,31 @@ class ProductsDesktopTable extends StatelessWidget {
                                                 ),
                                               ),
                                             ],
+                                            if (product.brandName != null &&
+                                                product.brandName!.isNotEmpty) ...[
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 5,
+                                                  vertical: 1.5,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFEFF6FF),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  border: Border.all(
+                                                    color: const Color(0xFFBFDBFE),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  product.brandName!,
+                                                  style: const TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Color(0xFF1D4ED8),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ],
                                         ),
                                         if (activeIngredient != null &&

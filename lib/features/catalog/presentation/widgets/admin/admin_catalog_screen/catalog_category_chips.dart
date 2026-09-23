@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/brand_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -7,6 +8,9 @@ class CategoryChips extends StatelessWidget {
   final List<CategoryEntity> categories;
   final String? selectedCategoryId;
   final ValueChanged<String?> onSelected;
+  final List<BrandEntity> brands;
+  final String? selectedBrandId;
+  final ValueChanged<String?>? onBrandSelected;
   final bool? filterIsActive;
   final ValueChanged<bool?>? onStatusSelected;
   final CatalogSortOption sortOption;
@@ -19,6 +23,9 @@ class CategoryChips extends StatelessWidget {
     required this.categories,
     this.selectedCategoryId,
     required this.onSelected,
+    this.brands = const [],
+    this.selectedBrandId,
+    this.onBrandSelected,
     this.filterIsActive,
     this.onStatusSelected,
     this.sortOption = CatalogSortOption.recent,
@@ -29,7 +36,7 @@ class CategoryChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (categories.isEmpty) return const SizedBox.shrink();
+    if (categories.isEmpty && brands.isEmpty) return const SizedBox.shrink();
 
     return Container(
       color: AppColors.background,
@@ -48,6 +55,14 @@ class CategoryChips extends StatelessWidget {
               stockFilterState: stockFilter,
               onChanged: onStockFilterSelected,
             ),
+            if (brands.isNotEmpty && onBrandSelected != null) ...[
+              const SizedBox(width: 8),
+              _BrandFilterChip(
+                brands: brands,
+                selectedBrandId: selectedBrandId,
+                onSelected: onBrandSelected!,
+              ),
+            ],
             const SizedBox(width: 8),
             Container(width: 1, height: 24, color: AppColors.border),
             const SizedBox(width: 8),
@@ -313,3 +328,100 @@ class _StockFilterChip extends StatelessWidget {
     );
   }
 }
+
+class _BrandFilterChip extends StatelessWidget {
+  final List<BrandEntity> brands;
+  final String? selectedBrandId;
+  final ValueChanged<String?> onSelected;
+
+  const _BrandFilterChip({
+    required this.brands,
+    required this.selectedBrandId,
+    required this.onSelected,
+  });
+
+  Widget _buildBrandItem(String label, bool isSelected) {
+    return Row(
+      children: [
+        Icon(
+          isSelected ? Icons.check_circle_rounded : Icons.label_outline_rounded,
+          size: 16,
+          color: isSelected ? AppColors.primary : AppColors.textMuted,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedBrand =
+        brands.where((b) => b.id == selectedBrandId).firstOrNull;
+    final hasFilter = selectedBrand != null;
+
+    return PopupMenuButton<String?>(
+      tooltip: 'Filtrar por Marca',
+      onSelected: onSelected,
+      itemBuilder:
+          (ctx) => [
+            PopupMenuItem<String?>(
+              value: null,
+              child: _buildBrandItem('Todas las marcas', selectedBrandId == null),
+            ),
+            ...brands.map(
+              (brand) => PopupMenuItem<String?>(
+                value: brand.id,
+                child: _buildBrandItem(brand.name, selectedBrandId == brand.id),
+              ),
+            ),
+          ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: hasFilter ? const Color(0xFFEFF6FF) : AppColors.background,
+          border: Border.all(
+            color: hasFilter ? const Color(0xFF3B82F6) : AppColors.border,
+          ),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              hasFilter ? Icons.verified_rounded : Icons.verified_outlined,
+              size: 14,
+              color: hasFilter ? const Color(0xFF2563EB) : AppColors.textMuted,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              hasFilter ? 'Marca: ${selectedBrand.name}' : 'Marca: Todas',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color:
+                    hasFilter ? const Color(0xFF1D4ED8) : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 14,
+              color: hasFilter ? const Color(0xFF2563EB) : AppColors.textMuted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
