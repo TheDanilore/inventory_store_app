@@ -591,175 +591,237 @@ class PosHeader extends StatelessWidget {
 
   Widget _buildSearchBar(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 800;
-    return Container(
-      height: 52, // Regla 48dp min, 52 es mejor para touch
-      decoration: BoxDecoration(
-        color:
-            searchByIngredient ? const Color(0xFFECFDF5) : AppColors.background,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color:
-              searchByIngredient ? const Color(0xFF10B981) : AppColors.border,
-          width: searchByIngredient ? 1.5 : 0.5,
+    const activeBlue = Color(0xFF2563EB);
+    const activeBorderBlue = Color(0xFF3B82F6);
+
+    return Row(
+      children: [
+        // ── Selector Segmentado de Modo de Búsqueda (Estilo Captura) ───────────
+        Container(
+          height: 48,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border, width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 1. Modo Producto (Cubo 3D)
+              Tooltip(
+                message: 'Buscar por Producto (Alt+T)',
+                child: InkWell(
+                  onTap: () {
+                    if (searchByIngredient) onToggleIngredientSearch(false);
+                  },
+                  mouseCursor: SystemMouseCursors.click,
+                  borderRadius: BorderRadius.circular(8),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: !searchByIngredient ? Colors.white : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: !searchByIngredient
+                          ? Border.all(color: AppColors.border.withValues(alpha: 0.6), width: 1)
+                          : null,
+                      boxShadow: !searchByIngredient
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Icon(
+                      Icons.inventory_2_outlined,
+                      size: 20,
+                      color: !searchByIngredient ? activeBlue : AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+
+              // 2. Modo Ingrediente Activo (Matraz químico / Tubo)
+              Tooltip(
+                message: 'Buscar por Ingrediente Activo (Alt+T)',
+                child: InkWell(
+                  onTap: () {
+                    if (!searchByIngredient) onToggleIngredientSearch(true);
+                  },
+                  mouseCursor: SystemMouseCursors.click,
+                  borderRadius: BorderRadius.circular(8),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: searchByIngredient ? Colors.white : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: searchByIngredient
+                          ? Border.all(color: AppColors.border.withValues(alpha: 0.6), width: 1)
+                          : null,
+                      boxShadow: searchByIngredient
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Icon(
+                      Icons.science_outlined,
+                      size: 20,
+                      color: searchByIngredient ? activeBlue : AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: searchController,
-              focusNode: searchFocusNode,
-              onChanged: onSearchChanged,
-              style: const TextStyle(
-                fontSize: 15,
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w500,
+        const SizedBox(width: 10),
+
+        // ── Campo de Entrada con Borde Activo y Prefijo Dinámico ───────────────
+        Expanded(
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: activeBorderBlue,
+                width: 1.5,
               ),
-              decoration: InputDecoration(
-                hintText:
-                    searchByIngredient
-                        ? 'Buscar ingrediente activo...'
-                        : 'Buscar producto...',
-                hintStyle: TextStyle(
-                  color:
-                      searchByIngredient
-                          ? const Color(0xFF047857)
-                          : AppColors.textMuted,
-                  fontSize: 15,
+              boxShadow: [
+                BoxShadow(
+                  color: activeBorderBlue.withValues(alpha: 0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-                prefixIcon: Icon(
-                  searchByIngredient
-                      ? Icons.science_rounded
-                      : Icons.search_rounded,
-                  color:
-                      searchByIngredient
-                          ? const Color(0xFF10B981)
-                          : AppColors.textMuted,
-                  size: 22,
-                ),
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: searchController,
-                      builder: (context, value, child) {
-                        if (value.text.isEmpty) return const SizedBox.shrink();
-                        return IconButton(
-                          icon: const Icon(
-                            Icons.cancel_rounded,
-                            size: 20,
-                            color: AppColors.textMuted,
-                          ),
-                          onPressed: () {
-                            searchController.clear();
-                            onSearchChanged('');
-                          },
-                          tooltip: 'Borrar búsqueda',
-                        );
-                      },
-                    ),
-                    if (isDesktop)
-                      Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: AppColors.border,
-                            width: 1,
-                          ),
-                        ),
-                        child: const Text(
-                          'Ctrl K',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textSecondary,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-              ),
+              ],
             ),
-          ),
-          Container(width: 1, height: 24, color: AppColors.border),
-          Tooltip(
-            message: 'Buscar por ingrediente activo',
-            child: InkWell(
-              mouseCursor: SystemMouseCursors.click,
-              onTap: () => onToggleIngredientSearch(!searchByIngredient),
-              borderRadius: const BorderRadius.horizontal(
-                right: Radius.circular(16),
-              ),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Ingrediente',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color:
-                            searchByIngredient
-                                ? const Color(0xFF059669)
-                                : AppColors.textMuted,
-                      ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: searchController,
+                    focusNode: searchFocusNode,
+                    onChanged: onSearchChanged,
+                    onSubmitted: (val) {
+                      onSearchChanged(val);
+                    },
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w500,
                     ),
-                    const SizedBox(width: 8),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      width: 36,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color:
-                            searchByIngredient
-                                ? const Color(0xFF10B981)
-                                : AppColors.border,
+                    decoration: InputDecoration(
+                      hintText: searchByIngredient
+                          ? 'Buscar por ingrediente activo...'
+                          : 'Buscar producto por nombre o SKU...',
+                      hintStyle: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 14,
                       ),
-                      child: Stack(
+                      // Icono dinámico según el modo seleccionado (Captura 3)
+                      prefixIcon: Icon(
+                        searchByIngredient
+                            ? Icons.science_outlined
+                            : Icons.inventory_2_outlined,
+                        color: activeBlue,
+                        size: 20,
+                      ),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          AnimatedPositioned(
-                            duration: const Duration(milliseconds: 200),
-                            curve: Curves.easeInOut,
-                            left: searchByIngredient ? 18 : 2,
-                            top: 2,
-                            child: Container(
-                              width: 16,
-                              height: 16,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
+                          ValueListenableBuilder<TextEditingValue>(
+                            valueListenable: searchController,
+                            builder: (context, value, child) {
+                              if (value.text.isEmpty) return const SizedBox.shrink();
+                              return IconButton(
+                                icon: const Icon(
+                                  Icons.cancel_rounded,
+                                  size: 18,
+                                  color: AppColors.textMuted,
+                                ),
+                                onPressed: () {
+                                  searchController.clear();
+                                  onSearchChanged('');
+                                },
+                                tooltip: 'Borrar búsqueda',
+                              );
+                            },
+                          ),
+                          if (isDesktop)
+                            Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppColors.border,
+                                  width: 1,
+                                ),
+                              ),
+                              child: const Text(
+                                'Ctrl K',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textSecondary,
+                                  letterSpacing: 0.5,
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+
+                // ── Botón de Buscar Explícito ──────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      onSearchChanged(searchController.text);
+                      searchFocusNode?.unfocus();
+                    },
+                    icon: const Icon(Icons.search_rounded, size: 16),
+                    label: Text(isDesktop ? 'Buscar' : ''),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: activeBlue,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isDesktop ? 14 : 10,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

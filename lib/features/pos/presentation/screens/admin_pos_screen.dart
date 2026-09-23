@@ -25,6 +25,8 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_operat
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_sidebar_rail.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_quick_stock_dialog.dart';
 
 extension ProductToCartExtension on ProductEntity {
   CartItemEntity toCartItem() {
@@ -52,10 +54,12 @@ class AdminPosScreen extends StatefulWidget {
 }
 
 class _AdminPosScreenState extends State<AdminPosScreen> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _desktopPanelKey = GlobalKey<DesktopPosPanelState>();
   late final AdminCatalogCubit _catalogCubit;
+  int _selectedSidebarIndex = 0;
 
   @override
   void initState() {
@@ -81,6 +85,70 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     _catalogCubit.setSearchTerm(val);
   }
 
+  void _focusSearch() {
+    _searchFocusNode.requestFocus();
+    _searchCtrl.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _searchCtrl.text.length,
+    );
+  }
+
+  void _onSidebarTabSelected(int index) {
+    if (index == 0) {
+      setState(() => _selectedSidebarIndex = 0);
+    } else if (index == 1) {
+      // ── LOTES / STOCK: Modal interactivo sin interrumpir la venta ──
+      PosQuickStockDialog.show(
+        context,
+        products: _catalogCubit.state.products,
+        onAddToCart: _irAVenta,
+      );
+    } else if (index == 2) {
+      // ── VENTAS / OPERACIONES: Abre drawer de historial y turnos ──
+      _scaffoldKey.currentState?.openDrawer();
+    }
+  }
+
+  Future<void> _onExitPos() async {
+    final cart = context.read<CartCubit>();
+    if (cart.state.items.isNotEmpty) {
+      final shouldExit = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+              SizedBox(width: 8),
+              Text('¿Salir de Caja POS?'),
+            ],
+          ),
+          content: const Text(
+            'Tienes productos agregados en la caja. Si sales al panel administrativo, la venta actual continuará en tu carrito para cuando regreses.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text('Quedarme en Caja'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF142B1A),
+              ),
+              onPressed: () => Navigator.pop(dialogCtx, true),
+              child: const Text('Salir al ERP'),
+            ),
+          ],
+        ),
+      );
+      if (shouldExit == true && mounted) {
+        context.go('/');
+      }
+    } else {
+      context.go('/');
+    }
+  }
+
   @override
   void dispose() {
     _catalogCubit.setFilterIsActive(null); // Restaurar catálogo para mostrar todos los estados
@@ -103,19 +171,43 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   Widget build(BuildContext context) {
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () {
-          _searchFocusNode.requestFocus();
-          _searchCtrl.selection = TextSelection(
-            baseOffset: 0,
-            extentOffset: _searchCtrl.text.length,
-          );
+        // Foco de Búsqueda (Ctrl+K, Meta+K, Alt+B)
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _focusSearch,
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _focusSearch,
+        const SingleActivator(LogicalKeyboardKey.keyB, alt: true): _focusSearch,
+
+        // Navegación Sidebar: Venta (Alt+1 / Alt+V)
+        const SingleActivator(LogicalKeyboardKey.digit1, alt: true): () => _onSidebarTabSelected(0),
+        const SingleActivator(LogicalKeyboardKey.keyV, alt: true): () => _onSidebarTabSelected(0),
+
+        // Navegación Sidebar: Lotes / Stock (Alt+2 / Alt+S)
+        const SingleActivator(LogicalKeyboardKey.digit2, alt: true): () => _onSidebarTabSelected(1),
+        const SingleActivator(LogicalKeyboardKey.keyS, alt: true): () => _onSidebarTabSelected(1),
+
+        // Navegación Sidebar: Ventas / Historial (Alt+3 / Alt+H)
+        const SingleActivator(LogicalKeyboardKey.digit3, alt: true): () => _onSidebarTabSelected(2),
+        const SingleActivator(LogicalKeyboardKey.keyH, alt: true): () => _onSidebarTabSelected(2),
+
+        // Alternar modo de búsqueda Producto vs Ingrediente Activo (Alt+T)
+        const SingleActivator(LogicalKeyboardKey.keyT, alt: true): () {
+          _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
         },
-        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () {
-          _searchFocusNode.requestFocus();
-          _searchCtrl.selection = TextSelection(
-            baseOffset: 0,
-            extentOffset: _searchCtrl.text.length,
-          );
+
+        // Cobrar Inmediato en Desktop (F2 o Alt+C)
+        const SingleActivator(LogicalKeyboardKey.f2): () {
+          _desktopPanelKey.currentState?.triggerCheckout();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyC, alt: true): () {
+          _desktopPanelKey.currentState?.triggerCheckout();
+        },
+
+        // Salir al ERP (Escape con confirmación si no hay focus en búsqueda)
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (_searchFocusNode.hasFocus) {
+            _searchFocusNode.unfocus();
+          } else {
+            _onExitPos();
+          }
         },
       },
       child: BlocListener<CartCubit, CartState>(
@@ -137,6 +229,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
           }
         },
         child: Scaffold(
+          key: _scaffoldKey,
           drawer: const PosOperationsDrawer(),
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: Builder(
@@ -247,6 +340,12 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      if (isDesktop)
+                        PosSidebarRail(
+                          selectedIndex: _selectedSidebarIndex,
+                          onDestinationSelected: _onSidebarTabSelected,
+                          onExitPos: _onExitPos,
+                        ),
                       Expanded(flex: 6, child: catalogContent),
                       if (isDesktop)
                         Container(
