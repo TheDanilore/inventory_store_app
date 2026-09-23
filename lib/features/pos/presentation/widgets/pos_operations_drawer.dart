@@ -1,4 +1,4 @@
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -69,8 +69,9 @@ class _PosOperationsDrawerState extends State<PosOperationsDrawer>
         },
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error inesperado al generar ticket',
+        tag: 'PosOperationsDrawer',
         error: e,
         stackTrace: st,
       );

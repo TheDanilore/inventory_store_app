@@ -55,15 +55,16 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _desktopPanelKey = GlobalKey<DesktopPosPanelState>();
+  late final AdminCatalogCubit _catalogCubit;
 
   @override
   void initState() {
     super.initState();
+    _catalogCubit = context.read<AdminCatalogCubit>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final cubit = context.read<AdminCatalogCubit>();
-      cubit.setFilterIsActive(true); // Asegurar que no se vendan productos inactivos
-      if (_searchCtrl.text != cubit.state.searchTerm) {
-        _searchCtrl.text = cubit.state.searchTerm;
+      _catalogCubit.setFilterIsActive(true); // Asegurar que no se vendan productos inactivos
+      if (_searchCtrl.text != _catalogCubit.state.searchTerm) {
+        _searchCtrl.text = _catalogCubit.state.searchTerm;
       }
 
       // [QA CRITICAL FIX] Inicializar POS (almacenes, cuentas y turno activo) en el ciclo de vida raíz.
@@ -77,11 +78,12 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
   void _onSearchChanged(String val) {
     // AdminCatalogCubit.setSearchTerm gestiona su propio debounce de 500ms de manera óptima.
-    context.read<AdminCatalogCubit>().setSearchTerm(val);
+    _catalogCubit.setSearchTerm(val);
   }
 
   @override
   void dispose() {
+    _catalogCubit.setFilterIsActive(null); // Restaurar catálogo para mostrar todos los estados
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     super.dispose();

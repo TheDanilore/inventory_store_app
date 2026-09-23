@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
@@ -92,67 +93,72 @@ class PosCartItemRow extends StatelessWidget {
   Future<void> _showQuantityDialog(BuildContext context) async {
     final qtyCtrl = TextEditingController(text: item.quantity.toString());
 
-    await showDialog<void>(
-      context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text(
-              'Modificar cantidad',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            content: TextField(
-              controller: qtyCtrl,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 20),
-                helperText: 'Stock disponible: ${item.availableStock}',
-                helperStyle: const TextStyle(
-                  color: AppColors.tealDark,
-                  fontWeight: FontWeight.bold,
+    try {
+      await showDialog<void>(
+        context: context,
+        builder:
+            (dialogContext) => AlertDialog(
+              title: const Text(
+                'Modificar cantidad',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              content: TextField(
+                controller: qtyCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                autofocus: true,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 20),
+                  helperText: 'Stock disponible: ${item.availableStock}',
+                  helperStyle: const TextStyle(
+                    color: AppColors.tealDark,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: AppColors.textSecondary),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
                 ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.tealDark,
-                ),
-                onPressed: () {
-                  var newQty = int.tryParse(qtyCtrl.text.trim());
-                  if (newQty != null && newQty > 0) {
-                    if (item.availableStock > 0 &&
-                        newQty > item.availableStock) {
-                      newQty = item.availableStock;
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.tealDark,
+                  ),
+                  onPressed: () {
+                    var newQty = int.tryParse(qtyCtrl.text.trim());
+                    if (newQty != null && newQty > 0) {
+                      if (item.availableStock > 0 &&
+                          newQty > item.availableStock) {
+                        newQty = item.availableStock;
+                      }
+                      context.read<CartCubit>().updateQuantity(
+                        item.cartKey,
+                        newQty,
+                      );
+                      Navigator.pop(dialogContext);
                     }
-                    context.read<CartCubit>().updateQuantity(
-                      item.cartKey,
-                      newQty,
-                    );
-                    Navigator.pop(dialogContext);
-                  }
-                },
-                child: const Text(
-                  'Guardar',
-                  style: TextStyle(color: Colors.white),
+                  },
+                  child: const Text(
+                    'Guardar',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
-              ),
-            ],
-          ),
-    );
+              ],
+            ),
+      );
+    } finally {
+      qtyCtrl.dispose();
+    }
   }
 
   @override

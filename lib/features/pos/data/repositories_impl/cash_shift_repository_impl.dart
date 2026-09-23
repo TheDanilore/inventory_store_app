@@ -1,9 +1,9 @@
-import 'dart:developer' as developer;
 import 'package:inventory_store_app/core/utils/isolate_utils.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
 import 'package:inventory_store_app/features/pos/domain/repositories/cash_shift_repository.dart';
 import 'package:inventory_store_app/features/pos/data/models/cash_shift_model.dart';
@@ -91,14 +91,15 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
 
       return right((shifts: shifts, totalCount: response.count));
     } on PostgrestException catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'PostgrestException en getShifts',
+        tag: 'CashShiftRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
-      developer.log('Error general en getShifts', error: e, stackTrace: stack);
+      LoggerService.e('Error general en getShifts', tag: 'CashShiftRepositoryImpl', error: e, stackTrace: stack);
       return left(Failure.from(e));
     }
   }
@@ -130,15 +131,17 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
 
       return right((openCount: openRes.count, closedCount: closedRes.count));
     } on PostgrestException catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'PostgrestException en getShiftsStatusCount',
+        tag: 'CashShiftRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Error general en getShiftsStatusCount',
+        tag: 'CashShiftRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
@@ -191,8 +194,9 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
           ).toEntity();
       return right(shift);
     } on PostgrestException catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'PostgrestException en openShift',
+        tag: 'CashShiftRepositoryImpl',
         error: e,
         stackTrace: st,
       );
@@ -201,7 +205,7 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
       final msg = _mapShiftError(e);
       return left(ServerFailure(message: msg));
     } catch (e, st) {
-      developer.log('Error inesperado en openShift', error: e, stackTrace: st);
+      LoggerService.e('Error inesperado en openShift', tag: 'CashShiftRepositoryImpl', error: e, stackTrace: st);
       return left(
         const ServerFailure(message: 'Error inesperado al abrir el turno.'),
       );
@@ -236,15 +240,16 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
 
       return right(unit);
     } on PostgrestException catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'PostgrestException en closeShift',
+        tag: 'CashShiftRepositoryImpl',
         error: e,
         stackTrace: st,
       );
       final msg = _mapShiftError(e);
       return left(ServerFailure(message: msg));
     } catch (e, st) {
-      developer.log('Error inesperado en closeShift', error: e, stackTrace: st);
+      LoggerService.e('Error inesperado en closeShift', tag: 'CashShiftRepositoryImpl', error: e, stackTrace: st);
       return left(
         const ServerFailure(message: 'Error inesperado al cerrar el turno.'),
       );
@@ -269,15 +274,17 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
       final expected = openingAmount + netMovements;
       return right(expected);
     } on PostgrestException catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'PostgrestException en calcExpected',
+        tag: 'CashShiftRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Error general en calcExpected',
+        tag: 'CashShiftRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
@@ -314,15 +321,17 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
       return right(shift);
     } on PostgrestException catch (e, stack) {
       // Capturamos el error específico de Supabase para trazabilidad
-      developer.log(
+      LoggerService.e(
         'PostgrestException en checkActiveShift',
+        tag: 'CashShiftRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Error general en checkActiveShift',
+        tag: 'CashShiftRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
@@ -341,15 +350,17 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
 
       return right(List<Map<String, dynamic>>.from(res));
     } on PostgrestException catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'PostgrestException en getStaffProfiles',
+        tag: 'CashShiftRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Error general en getStaffProfiles',
+        tag: 'CashShiftRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
@@ -376,15 +387,17 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
 
       return right(availableAccounts);
     } on PostgrestException catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'PostgrestException en getAvailableAccounts',
+        tag: 'CashShiftRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Error general en getAvailableAccounts',
+        tag: 'CashShiftRepositoryImpl',
         error: e,
         stackTrace: stack,
       );

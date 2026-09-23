@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
 
-import 'package:inventory_store_app/features/pos/domain/repositories/pos_repository.dart';
-import 'package:get_it/get_it.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
@@ -277,7 +276,13 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
           }
         },
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      LoggerService.e(
+        'Error cargando lotes en DesktopPosPanel',
+        tag: 'DesktopPosPanel',
+        error: e,
+        stackTrace: stackTrace,
+      );
       if (mounted) {
         AppSnackbar.show(
           context,
@@ -292,7 +297,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
   Widget build(BuildContext context) {
     final posCubit = context.read<PosCubit>();
     final cartCubit = context.read<CartCubit>();
-    final config = context.watch<AppConfigCubit>();
+    final config = context.read<AppConfigCubit>();
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
     final earningRate = config.getDouble('points_earning_rate', 0.03);
     final isLoyaltyEnabled = config.loyaltyGlobalEnabled;
@@ -339,8 +344,8 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                   isDraft: _lastSaleWasDraft,
                   onPrint: () async {
                     try {
-                      final fetchResult = await GetIt.I<PosRepository>()
-                          .fetchOrderForReceipt(orderId);
+                      final fetchResult = await posCubit
+                          .fetchOrderDetailsForTicket(orderId);
                       fetchResult.fold(
                         (failure) {
                           if (dialogContext.mounted) {
@@ -363,7 +368,13 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                           );
                         },
                       );
-                    } catch (e) {
+                    } catch (e, stackTrace) {
+                      LoggerService.e(
+                        'Error imprimiendo comprobante',
+                        tag: 'DesktopPosPanel',
+                        error: e,
+                        stackTrace: stackTrace,
+                      );
                       if (dialogContext.mounted) {
                         AppSnackbar.show(
                           dialogContext,
@@ -455,6 +466,10 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                                                   onPressed: () {
                                                     posCubit.removeClient();
                                                     posCubit.setPuntosAUsar(0);
+                                                    posCubit.setDiscountText('');
+                                                    _clienteCtrl.clear();
+                                                    _puntosCtrl.text = '0';
+                                                    _descuentoCtrl.clear();
                                                     cartCubit.clearCart();
                                                     posCubit
                                                         .clearAllBatchOverrides();
@@ -524,59 +539,72 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _SectionTitle('Cliente'),
-        Builder(
-          builder: (context) {
-            final posCubit = context.watch<PosCubit>();
-            final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
+        BlocBuilder<PosCubit, PosState>(
+          buildWhen: (prev, curr) =>
+              prev.paymentMethod != curr.paymentMethod ||
+              prev.isLoading != curr.isLoading ||
+              prev.clientMatches != curr.clientMatches ||
+              prev.selectedClientId != curr.selectedClientId ||
+              prev.saldoActualCliente != curr.saldoActualCliente ||
+              prev.creditInfo != curr.creditInfo,
+          builder: (context, posState) {
+            final isCredito = posState.paymentMethod == 'CRÉDITO';
             return AdminSaleClientSection(
               controller: _clienteCtrl,
               onSearchChanged: _onClientSearchChanged,
-              searching:
-                  posCubit
-                      .state
-                      .isLoading, // Wait, searching state? Using local or cubit?
-              matches: posCubit.state.clientMatches,
-              selectedClientId: posCubit.state.selectedClientId,
+              searching: posState.isLoading,
+              matches: posState.clientMatches,
+              selectedClientId: posState.selectedClientId,
               onClientTap: _selectClient,
-              saldoActualCliente: posCubit.state.saldoActualCliente,
-              creditInfo: posCubit.state.creditInfo,
+              saldoActualCliente: posState.saldoActualCliente,
+              creditInfo: posState.creditInfo,
               isCredito: isCredito,
               isLoyaltyEnabled: isLoyaltyEnabled,
             );
           },
         ),
-        Builder(
-          builder: (context) {
-            final posCubit = context.watch<PosCubit>();
-            final cartCubit = context.watch<CartCubit>();
-            final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
-            return AdminSalePointsSection(
-              show:
-                  isLoyaltyEnabled &&
-                  posCubit.state.selectedClientId != null &&
-                  posCubit.state.saldoActualCliente > 0 &&
-                  !isCredito,
-              saldoActualCliente: posCubit.state.saldoActualCliente,
-              maxPuntosAplicables: PosCalculatorUtils.maxPuntosAplicables(
-                posCubit.state,
-                cartCubit.state,
-                ratio,
-              ),
-              pointsToSolesRatio: ratio,
-              pointsController: _puntosCtrl,
-              onPointsChanged: (p) {
-                final next = PosCalculatorUtils.clampPointsValue(
-                  p,
-                  posCubit.state,
-                  cartCubit.state,
-                  ratio,
-                );
-                posCubit.setPuntosAUsar(next);
-                _puntosCtrl.value = TextEditingValue(
-                  text: next.toString(),
-                  selection: TextSelection.collapsed(
-                    offset: next.toString().length,
+        BlocBuilder<PosCubit, PosState>(
+          buildWhen: (prev, curr) =>
+              prev.paymentMethod != curr.paymentMethod ||
+              prev.selectedClientId != curr.selectedClientId ||
+              prev.saldoActualCliente != curr.saldoActualCliente ||
+              prev.puntosAUsar != curr.puntosAUsar,
+          builder: (context, posState) {
+            final isCredito = posState.paymentMethod == 'CRÉDITO';
+            return BlocSelector<CartCubit, CartState, double>(
+              selector: (state) => state.totalAmount,
+              builder: (context, totalAmount) {
+                final posCubit = context.read<PosCubit>();
+                final cartState = context.read<CartCubit>().state;
+                return AdminSalePointsSection(
+                  show:
+                      isLoyaltyEnabled &&
+                      posState.selectedClientId != null &&
+                      posState.saldoActualCliente > 0 &&
+                      !isCredito,
+                  saldoActualCliente: posState.saldoActualCliente,
+                  maxPuntosAplicables: PosCalculatorUtils.maxPuntosAplicables(
+                    posState,
+                    cartState,
+                    ratio,
                   ),
+                  pointsToSolesRatio: ratio,
+                  pointsController: _puntosCtrl,
+                  onPointsChanged: (p) {
+                    final next = PosCalculatorUtils.clampPointsValue(
+                      p,
+                      posState,
+                      cartState,
+                      ratio,
+                    );
+                    posCubit.setPuntosAUsar(next);
+                    _puntosCtrl.value = TextEditingValue(
+                      text: next.toString(),
+                      selection: TextSelection.collapsed(
+                        offset: next.toString().length,
+                      ),
+                    );
+                  },
                 );
               },
             );
@@ -584,17 +612,24 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
         ),
         const SizedBox(height: 32),
         const _SectionTitle('Configuración de venta'),
-        Builder(
-          builder: (context) {
-            final posCubit = context.watch<PosCubit>();
-            final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
+        BlocBuilder<PosCubit, PosState>(
+          buildWhen: (prev, curr) =>
+              prev.paymentMethod != curr.paymentMethod ||
+              prev.warehouses != curr.warehouses ||
+              prev.selectedWarehouseId != curr.selectedWarehouseId ||
+              prev.accounts != curr.accounts ||
+              prev.selectedAccountId != curr.selectedAccountId ||
+              prev.activeShift != curr.activeShift,
+          builder: (context, posState) {
+            final posCubit = context.read<PosCubit>();
+            final isCredito = posState.paymentMethod == 'CRÉDITO';
             return PaymentWarehouseAccountCard(
-              paymentMethod: posCubit.state.paymentMethod,
-              warehouseList: posCubit.state.warehouses,
-              selectedWarehouseId: posCubit.state.selectedWarehouseId,
-              accountsList: posCubit.state.accounts,
-              selectedAccountId: posCubit.state.selectedAccountId,
-              activeShift: posCubit.state.activeShift,
+              paymentMethod: posState.paymentMethod,
+              warehouseList: posState.warehouses,
+              selectedWarehouseId: posState.selectedWarehouseId,
+              accountsList: posState.accounts,
+              selectedAccountId: posState.selectedAccountId,
+              activeShift: posState.activeShift,
               isCredito: isCredito,
               onCreditoToggle: (isCredito) {
                 if (isCredito) {
@@ -602,9 +637,9 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                   posCubit.setPuntosAUsar(0);
                   _puntosCtrl.text = '0';
                 } else {
-                  if (posCubit.state.selectedAccountId != null) {
-                    final acc = posCubit.state.accounts.firstWhere(
-                      (a) => a['id'] == posCubit.state.selectedAccountId,
+                  if (posState.selectedAccountId != null) {
+                    final acc = posState.accounts.firstWhere(
+                      (a) => a['id'] == posState.selectedAccountId,
                       orElse: () => <String, dynamic>{},
                     );
                     final accName = acc['name'] as String? ?? 'EFECTIVO';
@@ -630,80 +665,93 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     double earningRate,
     bool isLoyaltyEnabled,
   ) {
-    return Builder(
-      builder: (context) {
-        final posCubit = context.watch<PosCubit>();
-        final cartCubit = context.watch<CartCubit>();
-        final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
-        final puntosSeguros = PosCalculatorUtils.clampPointsValue(
-          posCubit.state.puntosAUsar,
-          posCubit.state,
-          cartCubit.state,
-          ratio,
-        );
+    return BlocBuilder<PosCubit, PosState>(
+      buildWhen: (prev, curr) =>
+          prev.paymentMethod != curr.paymentMethod ||
+          prev.puntosAUsar != curr.puntosAUsar ||
+          prev.selectedClientId != curr.selectedClientId ||
+          prev.saldoActualCliente != curr.saldoActualCliente ||
+          prev.creditInfo != curr.creditInfo ||
+          prev.discountText != curr.discountText ||
+          prev.isDiscountPercentage != curr.isDiscountPercentage,
+      builder: (context, posState) {
+        return BlocBuilder<CartCubit, CartState>(
+          buildWhen: (prev, curr) => prev.totalAmount != curr.totalAmount,
+          builder: (context, cartState) {
+            final isCredito = posState.paymentMethod == 'CRÉDITO';
+            final puntosSeguros = PosCalculatorUtils.clampPointsValue(
+              posState.puntosAUsar,
+              posState,
+              cartState,
+              ratio,
+            );
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isCredito) ...[
-              _CreditWarningCard(
-                clienteSeleccionado: posCubit.state.selectedClientId != null,
-                creditActivo: PosCalculatorUtils.isCreditActivo(
-                  posCubit.state.creditInfo,
-                ),
-                creditDisponible: PosCalculatorUtils.getCreditDisponible(
-                  posCubit.state.creditInfo,
-                ),
-                totalFinal: PosCalculatorUtils.calcularTotalFinal(
-                  discountText: posCubit.state.discountText,
-                  isDiscountPercentage: posCubit.state.isDiscountPercentage,
-                  pos: posCubit.state,
-                  cart: cartCubit.state,
-                  ratio: ratio,
-                ),
-                creditInfo: posCubit.state.creditInfo,
-              ),
-              const SizedBox(height: 24),
-            ],
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isCredito) ...[
+                  _CreditWarningCard(
+                    clienteSeleccionado: posState.selectedClientId != null,
+                    creditActivo: PosCalculatorUtils.isCreditActivo(
+                      posState.creditInfo,
+                    ),
+                    creditDisponible: PosCalculatorUtils.getCreditDisponible(
+                      posState.creditInfo,
+                    ),
+                    totalFinal: PosCalculatorUtils.calcularTotalFinal(
+                      discountText: posState.discountText,
+                      isDiscountPercentage: posState.isDiscountPercentage,
+                      pos: posState,
+                      cart: cartState,
+                      ratio: ratio,
+                    ),
+                    creditInfo: posState.creditInfo,
+                  ),
+                  const SizedBox(height: 24),
+                ],
 
-            if (!isCredito) ...[
-              _buildCustomDiscountCard(
-                posCubit.state,
-                cartCubit.state,
-                ratio,
-                puntosSeguros,
-              ),
-              const SizedBox(height: 24),
-            ],
+                if (!isCredito) ...[
+                  _buildCustomDiscountCard(
+                    posState,
+                    cartState,
+                    ratio,
+                    puntosSeguros,
+                  ),
+                  const SizedBox(height: 24),
+                ],
 
-            PosTotalSummarySection(
-              subtotalAntesDePuntos: cartCubit.state.totalAmount,
-              puntosAplicables: isCredito ? 0 : puntosSeguros,
-              descuentoPuntos: isCredito ? 0 : puntosSeguros * ratio,
-              isLoyaltyEnabled: isLoyaltyEnabled,
-              descuentoExtra:
-                  isCredito
-                      ? 0
-                      : PosCalculatorUtils.getCustomDiscountAmount(
-                        discountText: posCubit.state.discountText,
-                        isDiscountPercentage:
-                            posCubit.state.isDiscountPercentage,
-                        pos: posCubit.state,
-                        cart: cartCubit.state,
-                        ratio: ratio,
-                      ),
-              totalFinal: PosCalculatorUtils.calcularTotalFinal(
-                discountText: posCubit.state.discountText,
-                isDiscountPercentage: posCubit.state.isDiscountPercentage,
-                pos: posCubit.state,
-                cart: cartCubit.state,
-                ratio: ratio,
-              ),
-              earningRate: earningRate,
-              pointsToSolesRatio: ratio,
-              isCredito: isCredito,
-            ),
-          ],
+                PosTotalSummarySection(
+                  subtotalAntesDePuntos: cartState.totalAmount,
+                  puntosAplicables:
+                      isCredito || !isLoyaltyEnabled ? 0 : puntosSeguros,
+                  descuentoPuntos:
+                      isCredito || !isLoyaltyEnabled ? 0 : puntosSeguros * ratio,
+                  isLoyaltyEnabled: isLoyaltyEnabled,
+                  descuentoExtra:
+                      isCredito
+                          ? 0
+                          : PosCalculatorUtils.getCustomDiscountAmount(
+                            discountText: posState.discountText,
+                            isDiscountPercentage:
+                                posState.isDiscountPercentage,
+                            pos: posState,
+                            cart: cartState,
+                            ratio: ratio,
+                          ),
+                  totalFinal: PosCalculatorUtils.calcularTotalFinal(
+                    discountText: posState.discountText,
+                    isDiscountPercentage: posState.isDiscountPercentage,
+                    pos: posState,
+                    cart: cartState,
+                    ratio: ratio,
+                  ),
+                  earningRate: earningRate,
+                  pointsToSolesRatio: ratio,
+                  isCredito: isCredito,
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -849,87 +897,106 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
       ),
       child: SafeArea(
         top: false,
-        child: Builder(
-          builder: (context) {
-            final posCubit = context.watch<PosCubit>();
-            final cartCubit = context.watch<CartCubit>();
-            final total = PosCalculatorUtils.calcularTotalFinal(
-              discountText: posCubit.state.discountText,
-              isDiscountPercentage: posCubit.state.isDiscountPercentage,
-              pos: posCubit.state,
-              cart: cartCubit.state,
-              ratio: ratio,
-            );
-            final isBusy =
-                _isProcessing || posCubit.state.status == PosStatus.loading;
-            final canProceed = cartCubit.state.items.isNotEmpty && !isBusy;
+        child: BlocBuilder<PosCubit, PosState>(
+          buildWhen: (prev, curr) =>
+              prev.paymentMethod != curr.paymentMethod ||
+              prev.discountText != curr.discountText ||
+              prev.isDiscountPercentage != curr.isDiscountPercentage ||
+              prev.puntosAUsar != curr.puntosAUsar ||
+              prev.selectedClientId != curr.selectedClientId ||
+              prev.selectedAccountId != curr.selectedAccountId ||
+              prev.activeShift != curr.activeShift ||
+              prev.creditInfo != curr.creditInfo ||
+              prev.status != curr.status,
+          builder: (context, posState) {
+            return BlocBuilder<CartCubit, CartState>(
+              buildWhen: (prev, curr) =>
+                  prev.totalAmount != curr.totalAmount ||
+                  prev.items.isEmpty != curr.items.isEmpty,
+              builder: (context, cartState) {
+                final posCubit = context.read<PosCubit>();
+                final cartCubit = context.read<CartCubit>();
+                final total = PosCalculatorUtils.calcularTotalFinal(
+                  discountText: posState.discountText,
+                  isDiscountPercentage: posState.isDiscountPercentage,
+                  pos: posState,
+                  cart: cartState,
+                  ratio: ratio,
+                );
+                final isBusy =
+                    _isProcessing || posState.status == PosStatus.loading;
+                final canProceed = cartState.items.isNotEmpty && !isBusy;
 
-            return Row(
-              children: [
-                Expanded(
-                  flex: 1,
-                  child: OutlinedButton.icon(
-                    onPressed:
-                        !canProceed
-                            ? null
-                            : () => _processSale(
-                              posCubit,
-                              cartCubit,
-                              isDraft: true,
-                            ),
-                    icon: const Icon(Icons.save_outlined),
-                    label: const Text('Borrador'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton(
-                    onPressed:
-                        !canProceed
-                            ? null
-                            : () => _processSale(
-                              posCubit,
-                              cartCubit,
-                              isDraft: false,
-                            ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          !canProceed ? Colors.grey.shade400 : AppColors.teal,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.shopping_cart_checkout_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Cobrar S/ ${total.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                return Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: OutlinedButton.icon(
+                        onPressed:
+                            !canProceed
+                                ? null
+                                : () => _processSale(
+                                  posCubit,
+                                  cartCubit,
+                                  isDraft: true,
+                                ),
+                        icon: const Icon(Icons.save_outlined),
+                        label: const Text('Borrador'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed:
+                            !canProceed
+                                ? null
+                                : () => _processSale(
+                                  posCubit,
+                                  cartCubit,
+                                  isDraft: false,
+                                ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              !canProceed
+                                  ? Colors.grey.shade400
+                                  : AppColors.teal,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.shopping_cart_checkout_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Cobrar S/ ${total.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             );
           },
         ),

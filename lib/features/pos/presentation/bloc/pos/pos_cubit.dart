@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/pos/domain/usecases/load_initial_pos_data_uc.dart';
 import 'package:inventory_store_app/features/orders/domain/usecases/get_order_details_uc.dart';
@@ -33,6 +33,27 @@ class PosCubit extends Cubit<PosState> {
        super(const PosState());
   int _searchRequestId = 0;
 
+  /// Refresca únicamente las cuentas y el turno activo sin descargar almacenes (Data Egress óptimo).
+  Future<void> refreshAccountsAndShift() async {
+    final res = await _posRepository.fetchFinancialAccounts();
+    res.fold(
+      (failure) {
+        LoggerService.e(
+          'Error al refrescar cuentas',
+          tag: 'PosCubit',
+          error: failure.message,
+        );
+      },
+      (accounts) {
+        emit(state.copyWith(accounts: accounts));
+        final activeAccId = state.selectedAccountId;
+        if (activeAccId != null) {
+          checkActiveShift(activeAccId);
+        }
+      },
+    );
+  }
+
   Future<void> initPosData({bool forceRefresh = false}) async {
     if (!forceRefresh &&
         state.warehouses.isNotEmpty &&
@@ -46,7 +67,7 @@ class PosCubit extends Cubit<PosState> {
     );
     res.fold(
       (failure) {
-        developer.log('Error loading initial POS data', error: failure.message);
+        LoggerService.e('Error loading initial POS data', tag: 'PosCubit', error: failure.message);
         emit(
           state.copyWith(
             isLoading: false,
@@ -216,15 +237,16 @@ class PosCubit extends Cubit<PosState> {
 
       response.fold(
         (failure) {
-          developer.log('Error searching clients', error: failure.message);
+          LoggerService.e('Error searching clients', tag: 'PosCubit', error: failure.message);
         },
         (matches) {
           emit(state.copyWith(clientMatches: matches));
         },
       );
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Unexpected error searching clients',
+        tag: 'PosCubit',
         error: e,
         stackTrace: stack,
       );
@@ -249,7 +271,7 @@ class PosCubit extends Cubit<PosState> {
       final shiftRes = await _checkActiveShiftUc.call(accountId);
       shiftRes.fold(
         (failure) {
-          developer.log('Error checking active shift', error: failure.message);
+          LoggerService.e('Error checking active shift', tag: 'PosCubit', error: failure.message);
           emit(
             state.copyWith(
               status: PosStatus.error,
@@ -267,8 +289,9 @@ class PosCubit extends Cubit<PosState> {
         },
       );
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Unexpected error checking active shift',
+        tag: 'PosCubit',
         error: e,
         stackTrace: stack,
       );
@@ -280,15 +303,16 @@ class PosCubit extends Cubit<PosState> {
       final response = await _posRepository.fetchClientCredit(clientId);
       response.fold(
         (failure) {
-          developer.log('Error fetching client credit', error: failure.message);
+          LoggerService.e('Error fetching client credit', tag: 'PosCubit', error: failure.message);
         },
         (creditInfo) {
           emit(state.copyWith(creditInfo: creditInfo));
         },
       );
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Unexpected error fetching client credit',
+        tag: 'PosCubit',
         error: e,
         stackTrace: stack,
       );
@@ -305,8 +329,9 @@ class PosCubit extends Cubit<PosState> {
         warehouseId,
       );
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Unexpected error fetching batches',
+        tag: 'PosCubit',
         error: e,
         stackTrace: stack,
       );
@@ -404,7 +429,7 @@ class PosCubit extends Cubit<PosState> {
       final result = await _posRepository.processSale(sale);
       result.fold(
         (failure) {
-          developer.log('Error processing sale', error: failure.message);
+          LoggerService.e('Error processing sale', tag: 'PosCubit', error: failure.message);
           emit(
             state.copyWith(
               status: PosStatus.error,
@@ -419,8 +444,9 @@ class PosCubit extends Cubit<PosState> {
         },
       );
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Unexpected error processing sale',
+        tag: 'PosCubit',
         error: e,
         stackTrace: stack,
       );

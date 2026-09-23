@@ -352,13 +352,10 @@ class PosHeader extends StatelessWidget {
           );
           if (closed == true && context.mounted) {
             context.read<PosCubit>().clearActiveShift();
-            final selectedAccId = posState.selectedAccountId;
-            if (selectedAccId != null) {
-              context.read<PosCubit>().checkActiveShift(selectedAccId);
-            } else {
-              context.read<PosCubit>().initPosData(forceRefresh: true);
+            await context.read<PosCubit>().refreshAccountsAndShift();
+            if (context.mounted) {
+              context.read<CashShiftsCubit>().fetchShifts();
             }
-            context.read<CashShiftsCubit>().fetchShifts();
           }
         } else {
           final cashAccounts =
@@ -371,13 +368,10 @@ class PosHeader extends StatelessWidget {
                 cashAccounts, // Pasar estricto las cajas para que el Empty State lo maneje si no hay
           );
           if (opened == true && context.mounted) {
-            final selectedAccId = posState.selectedAccountId;
-            if (selectedAccId != null) {
-              context.read<PosCubit>().checkActiveShift(selectedAccId);
-            } else {
-              context.read<PosCubit>().initPosData(forceRefresh: true);
+            await context.read<PosCubit>().refreshAccountsAndShift();
+            if (context.mounted) {
+              context.read<CashShiftsCubit>().fetchShifts();
             }
-            context.read<CashShiftsCubit>().fetchShifts();
           }
         }
       },

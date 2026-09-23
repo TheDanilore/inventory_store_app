@@ -21,6 +21,9 @@ abstract class PosRepository {
     bool forceRefresh = false,
   });
 
+  /// Refresca únicamente las cuentas financieras para minimizar Data Egress.
+  Future<Either<Failure, List<Map<String, dynamic>>>> fetchFinancialAccounts();
+
   /// Busca clientes por nombre, documento o teléfono.
   Future<Either<Failure, List<Map<String, dynamic>>>> searchClients(
     String text,

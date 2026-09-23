@@ -1,4 +1,4 @@
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
@@ -28,9 +28,9 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
 
       final Map<String, List<ProductVariantEntity>> variantMap = variantMapRes
           .fold((l) {
-            developer.log(
+            LoggerService.e(
               'Error al descargar variantes para el POS desde Repositorio',
-              name: 'PosAddToCartCubit',
+              tag: 'PosAddToCartCubit',
               error: l.message,
             );
             throw Exception(l.message);
@@ -40,10 +40,9 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
           List<ProductVariantEntity>.from(variantMap[product.id] ?? []);
 
       final Map<String, int> stockByVariant = stockRes.fold((l) {
-        developer.log(
-          'Advertencia: No se pudo cargar el stock del POS por variante',
-          name: 'PosAddToCartCubit',
-          error: l.message,
+        LoggerService.w(
+          'Advertencia: No se pudo cargar el stock del POS por variante: ${l.message}',
+          tag: 'PosAddToCartCubit',
         );
         return <String, int>{};
       }, (r) => r);
@@ -65,9 +64,9 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
         ),
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Fallo crítico cargando datos del producto en POS',
-        name: 'PosAddToCartCubit',
+        tag: 'PosAddToCartCubit',
         error: e,
         stackTrace: st,
       );

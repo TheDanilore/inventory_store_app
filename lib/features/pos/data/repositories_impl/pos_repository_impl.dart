@@ -3,7 +3,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
@@ -19,6 +19,7 @@ class PosRepositoryImpl implements PosRepository {
 
   String? _cachedProfileId;
   String? _cachedRole;
+  List<WarehouseModel>? _cachedWarehouses;
 
   Future<void> _ensureProfileLoaded() async {
     if (_cachedProfileId != null && _cachedRole != null) return;
@@ -43,13 +44,19 @@ class PosRepositoryImpl implements PosRepository {
     bool forceRefresh = false,
   }) async {
     try {
-      final whRes = await _supabase
-          .from('warehouses')
-          .select('id, name')
-          .eq('is_active', true)
-          .order('name');
-
-      final warehouses = (whRes as List);
+      List<WarehouseModel> warehouses;
+      if (!forceRefresh && _cachedWarehouses != null && _cachedWarehouses!.isNotEmpty) {
+        warehouses = _cachedWarehouses!;
+      } else {
+        final whRes = await _supabase
+            .from('warehouses')
+            .select('id, name')
+            .eq('is_active', true)
+            .order('name');
+        final rawWh = (whRes as List);
+        warehouses = rawWh.map((e) => WarehouseModel.fromJson(e)).toList();
+        _cachedWarehouses = warehouses;
+      }
 
       final accRes = await _supabase
           .from('financial_accounts')
@@ -62,21 +69,52 @@ class PosRepositoryImpl implements PosRepository {
 
       return right(
         PosInitData(
-          warehouses:
-              warehouses.map((e) => WarehouseModel.fromJson(e)).toList(),
+          warehouses: warehouses,
           accounts: accData,
         ),
       );
     } on PostgrestException catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'PostgrestException en loadInitialData',
+        tag: 'PosRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Error general en loadInitialData',
+        tag: 'PosRepositoryImpl',
+        error: e,
+        stackTrace: stack,
+      );
+      return left(Failure.from(e));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> fetchFinancialAccounts() async {
+    try {
+      final accRes = await _supabase
+          .from('financial_accounts')
+          .select('id, name, type, balance')
+          .eq('is_active', true)
+          .order('type')
+          .order('name');
+
+      return right(List<Map<String, dynamic>>.from(accRes));
+    } on PostgrestException catch (e, stack) {
+      LoggerService.e(
+        'PostgrestException en fetchFinancialAccounts',
+        tag: 'PosRepositoryImpl',
+        error: e,
+        stackTrace: stack,
+      );
+      return left(ServerFailure(message: e.message));
+    } catch (e, stack) {
+      LoggerService.e(
+        'Error general en fetchFinancialAccounts',
+        tag: 'PosRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
@@ -92,7 +130,7 @@ class PosRepositoryImpl implements PosRepository {
       final response = await _supabase
           .from('profiles')
           .select(
-            'id, full_name, phone, document_number, wallet_balance, role, is_active',
+            'id, full_name, phone, document_number, wallet_balance',
           )
           .eq('is_active', true)
           .or(
@@ -101,7 +139,12 @@ class PosRepositoryImpl implements PosRepository {
           .limit(10);
       return right(List<Map<String, dynamic>>.from(response));
     } catch (e, stack) {
-      developer.log('Error en searchClients', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error en searchClients',
+        tag: 'PosRepositoryImpl',
+        error: e,
+        stackTrace: stack,
+      );
       return left(Failure.from(e));
     }
   }
@@ -119,7 +162,7 @@ class PosRepositoryImpl implements PosRepository {
               .maybeSingle();
       return right(response);
     } catch (e, stack) {
-      developer.log('Error en fetchClientCredit', error: e, stackTrace: stack);
+      LoggerService.e('Error en fetchClientCredit', tag: 'PosRepositoryImpl', error: e, stackTrace: stack);
       return left(Failure.from(e));
     }
   }
@@ -154,8 +197,9 @@ class PosRepositoryImpl implements PosRepository {
 
       return right(batches);
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Error en fetchBatchesForVariant',
+        tag: 'PosRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
@@ -218,15 +262,17 @@ class PosRepositoryImpl implements PosRepository {
       final orderId = response as String;
       return right(orderId);
     } on PostgrestException catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'PostgrestException en processSale RPC',
+        tag: 'PosRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
       return left(ServerFailure(message: _mapSaleError(e)));
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Error general en processSale RPC',
+        tag: 'PosRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
@@ -244,6 +290,12 @@ class PosRepositoryImpl implements PosRepository {
         return e.message.isNotEmpty
             ? e.message
             : 'Crédito insuficiente para completar la venta.';
+    }
+    if (e.message.contains('turno de caja') || e.message.contains('cash_shifts')) {
+      return 'No hay un turno de caja abierto para registrar esta venta en efectivo. Por favor, abre un turno.';
+    }
+    if (e.message.contains('stock') || e.message.contains('insuficiente')) {
+      return 'Stock insuficiente en el almacén seleccionado para completar la venta.';
     }
     if (e.message.isNotEmpty) {
       return e.message;
@@ -265,12 +317,12 @@ class PosRepositoryImpl implements PosRepository {
               .single();
 
       final itemsResp = await _supabase
-          .from('order_items')
-          .select(
-            // Se omite product_images intencionalmente: no se muestran en el PDF del ticket.
-            'id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name), product_variants(sku, variant_attribute_values(attribute_values(value, attributes(name))))',
-          )
-          .eq('order_id', orderId);
+              .from('order_items')
+              .select(
+                // Se omite product_images intencionalmente: no se muestran en el PDF del ticket.
+                'id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name), product_variants(sku, variant_attribute_values(attribute_values(value, attributes(name))))',
+              )
+              .eq('order_id', orderId);
 
       // Delegar la deserialización a un Isolate de forma segura
       final result = await IsolateUtils.run(() {
@@ -284,8 +336,9 @@ class PosRepositoryImpl implements PosRepository {
 
       return right(result);
     } catch (e, stack) {
-      developer.log(
+      LoggerService.e(
         'Error en fetchOrderForReceipt',
+        tag: 'PosRepositoryImpl',
         error: e,
         stackTrace: stack,
       );
@@ -318,8 +371,9 @@ class PosRepositoryImpl implements PosRepository {
 
       return Right(orders);
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error fetching recent POS orders',
+        tag: 'PosRepositoryImpl',
         error: e,
         stackTrace: st,
       );
