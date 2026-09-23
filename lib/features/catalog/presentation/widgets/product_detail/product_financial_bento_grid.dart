@@ -71,7 +71,11 @@ class ProductFinancialBentoGrid extends StatelessWidget {
                       const SizedBox(width: 5),
                       Expanded(
                         child: Text(
-                          'Mayoreo (x$baseWholesaleMinQty+): S/ ${baseWholesalePrice!.toStringAsFixed(2)}',
+                          isCompact
+                              ? 'May. (x$baseWholesaleMinQty+): S/ ${baseWholesalePrice!.toStringAsFixed(2)}'
+                              : 'Mayoreo (x$baseWholesaleMinQty+): S/ ${baseWholesalePrice!.toStringAsFixed(2)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -111,12 +115,18 @@ class ProductFinancialBentoGrid extends StatelessWidget {
                 color: AppColors.successDark,
               ),
               const SizedBox(width: 4),
-              Text(
-                'Utilidad: +S/ ${retailProfit.toStringAsFixed(2)}/und',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.successDark,
+              Flexible(
+                child: Text(
+                  isCompact
+                      ? '+S/ ${retailProfit.toStringAsFixed(2)}/u'
+                      : 'Utilidad: +S/ ${retailProfit.toStringAsFixed(2)}/und',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.successDark,
+                  ),
                 ),
               ),
             ],
@@ -168,9 +178,13 @@ class ProductFinancialBentoGrid extends StatelessWidget {
       _buildBentoCard(
         title: 'CAPITAL EN STOCK',
         icon: Icons.inventory_2_outlined,
-        iconColor: AppColors.teal,
+        iconColor: isLowStock ? AppColors.amberDark : AppColors.teal,
         value: 'S/ ${totalInventoryValue.toStringAsFixed(2)}',
         subValueLabel: '$effectiveStock unidades en almacén',
+        borderColor: isLowStock ? AppColors.amber : null,
+        borderWidth: isLowStock ? 1.5 : 1.0,
+        bgColor:
+            isLowStock ? AppColors.amberLight.withValues(alpha: 0.15) : null,
         secondaryWidget:
             isLowStock
                 ? Container(
@@ -182,6 +196,9 @@ class ProductFinancialBentoGrid extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.amberLight,
                     borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: AppColors.amber.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -192,12 +209,18 @@ class ProductFinancialBentoGrid extends StatelessWidget {
                         color: AppColors.amberDark,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        'Punto de Reorden: $reorderPoint',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.amberDark,
+                      Flexible(
+                        child: Text(
+                          isCompact
+                              ? 'Reorden: $reorderPoint'
+                              : 'Punto de Reorden: $reorderPoint',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.amberDark,
+                          ),
                         ),
                       ),
                     ],
@@ -209,6 +232,8 @@ class ProductFinancialBentoGrid extends StatelessWidget {
                     reorderPoint > 0
                         ? 'Pto. reorden: $reorderPoint unds'
                         : 'Stock sin alerta',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 11,
                       color: AppColors.textMuted,
@@ -219,15 +244,18 @@ class ProductFinancialBentoGrid extends StatelessWidget {
     ];
 
     if (isCompact) {
-      // 2x2 grid for Tablet / Mobile
-      return GridView.count(
-        crossAxisCount: 2,
+      // 2x2 grid for Tablet / Mobile with sufficient vertical extent to prevent layout overflow
+      return GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.45,
-        children: cards,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          mainAxisExtent: 154,
+        ),
+        itemCount: cards.length,
+        itemBuilder: (context, index) => cards[index],
       );
     }
 
@@ -250,13 +278,22 @@ class ProductFinancialBentoGrid extends StatelessWidget {
     required String value,
     String? subValueLabel,
     Widget? secondaryWidget,
+    Color? borderColor,
+    double borderWidth = 1.0,
+    Color? bgColor,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 12 : 16,
+        vertical: isCompact ? 11 : 16,
+      ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bgColor ?? Colors.white,
         borderRadius: BorderRadius.circular(AppColors.radius),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: borderColor ?? AppColors.border,
+          width: borderWidth,
+        ),
         boxShadow: AppColors.cardShadow(opacity: 0.02),
       ),
       child: Column(

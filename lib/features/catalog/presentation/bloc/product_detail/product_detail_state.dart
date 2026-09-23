@@ -195,6 +195,17 @@ class ProductDetailState extends Equatable {
     return s;
   }
 
+  int variantStock(String variantId) {
+    if (product?.stockControl != true) return 999;
+    int total = 0;
+    for (final row in warehouseStocks) {
+      if (row['variant_id'] == variantId) {
+        total += (row['available_quantity'] as num?)?.toInt() ?? 0;
+      }
+    }
+    return total;
+  }
+
   bool get canBuy => isActive && effectiveStock > 0;
 
   String? variantImageUrl(ProductVariantEntity v) {

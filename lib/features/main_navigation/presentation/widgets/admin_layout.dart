@@ -214,24 +214,31 @@ class _AdminLayoutState extends State<AdminLayout> {
                               ? const SizedBox.shrink()
                               : Align(
                                 alignment: Alignment.centerLeft,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const SizedBox(width: 12),
-                                    if (widget.showBackButton)
-                                      AdminAppBarIconButton(
-                                        icon: Icons.arrow_back_ios_new_rounded,
-                                        tooltip: 'Volver',
-                                        onTap: () => _handleBackButton(context),
-                                      ),
-                                    if (widget.showBackButton &&
-                                        widget.showProfileButton)
-                                      const SizedBox(width: 8),
-                                    if (widget.showProfileButton)
-                                      AdminProfileAvatar(
-                                        onTap: () => _openProfile(context),
-                                      ),
-                                  ],
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const SizedBox(width: 12),
+                                      if (widget.showBackButton)
+                                        AdminAppBarIconButton(
+                                          icon:
+                                              Icons.arrow_back_ios_new_rounded,
+                                          tooltip: 'Volver',
+                                          onTap:
+                                              () =>
+                                                  _handleBackButton(context),
+                                        ),
+                                      if (widget.showBackButton &&
+                                          widget.showProfileButton)
+                                        const SizedBox(width: 8),
+                                      if (widget.showProfileButton)
+                                        AdminProfileAvatar(
+                                          onTap: () => _openProfile(context),
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               ),
                       actions: [

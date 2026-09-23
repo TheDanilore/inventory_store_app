@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 
-class ProductVariantMatrix extends StatelessWidget {
+class ProductVariantMatrix extends StatefulWidget {
   final List<ProductVariantEntity> variants;
   final String? selectedVariantId;
   final String? fallbackImageUrl;
@@ -11,6 +11,7 @@ class ProductVariantMatrix extends StatelessWidget {
   final ValueChanged<ProductVariantEntity> onVariantSelected;
   final VoidCallback? onOpenSelectorModal;
   final bool isDesktop;
+  final int Function(String variantId)? variantStock;
 
   const ProductVariantMatrix({
     super.key,
@@ -21,19 +22,48 @@ class ProductVariantMatrix extends StatelessWidget {
     required this.onVariantSelected,
     this.onOpenSelectorModal,
     this.isDesktop = true,
+    this.variantStock,
   });
 
   @override
-  Widget build(BuildContext context) {
-    if (variants.isEmpty) return const SizedBox.shrink();
+  State<ProductVariantMatrix> createState() => _ProductVariantMatrixState();
+}
 
-    if (isDesktop) {
+class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  List<ProductVariantEntity> get _filteredVariants {
+    if (_searchQuery.trim().isEmpty) return widget.variants;
+    final q = _searchQuery.trim().toLowerCase();
+    return widget.variants.where((v) {
+      final labelMatches = v.label.toLowerCase().contains(q);
+      final skuMatches = v.sku?.toLowerCase().contains(q) ?? false;
+      return labelMatches || skuMatches;
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.variants.isEmpty) return const SizedBox.shrink();
+
+    if (widget.isDesktop) {
       return _buildDesktopMatrix(context);
     }
     return _buildMobileChips(context);
   }
 
   Widget _buildDesktopMatrix(BuildContext context) {
+    final filtered = _filteredVariants;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -44,8 +74,9 @@ class ProductVariantMatrix extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Row
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -85,7 +116,9 @@ class ProductVariantMatrix extends StatelessWidget {
                         border: Border.all(color: AppColors.border),
                       ),
                       child: Text(
-                        '${variants.length} disponibles',
+                        _searchQuery.isEmpty
+                            ? '${widget.variants.length} disponibles'
+                            : '${filtered.length} de ${widget.variants.length}',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -95,9 +128,10 @@ class ProductVariantMatrix extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (variants.length > 5 && onOpenSelectorModal != null)
+                if (widget.variants.length > 5 &&
+                    widget.onOpenSelectorModal != null)
                   TextButton.icon(
-                    onPressed: onOpenSelectorModal,
+                    onPressed: widget.onOpenSelectorModal,
                     icon: const Icon(Icons.fullscreen_rounded, size: 16),
                     label: const Text(
                       'Expandir Matriz',
@@ -110,7 +144,68 @@ class ProductVariantMatrix extends StatelessWidget {
               ],
             ),
           ),
+
+          // Inline Quick Search Field if >= 4 variants
+          if (widget.variants.length >= 4) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: SizedBox(
+                height: 34,
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) => setState(() => _searchQuery = val),
+                  style: const TextStyle(fontSize: 12),
+                  decoration: InputDecoration(
+                    hintText: 'Filtrar por modelo, presentación o SKU...',
+                    hintStyle: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      size: 16,
+                      color: AppColors.textMuted,
+                    ),
+                    suffixIcon:
+                        _searchQuery.isNotEmpty
+                            ? IconButton(
+                              icon: const Icon(
+                                Icons.close_rounded,
+                                size: 14,
+                                color: AppColors.textMuted,
+                              ),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                            : null,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+
           const Divider(height: 1, color: AppColors.divider),
+
           // Matrix Table Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -133,6 +228,18 @@ class ProductVariantMatrix extends StatelessWidget {
                   flex: 3,
                   child: Text(
                     'SKU',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textMuted,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'STOCK',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
@@ -167,179 +274,281 @@ class ProductVariantMatrix extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(width: 48),
+                SizedBox(width: 44),
               ],
             ),
           ),
           const Divider(height: 1, color: AppColors.divider),
-          // Variants List Rows
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: variants.length,
-            separatorBuilder:
-                (context, index) =>
-                    const Divider(height: 1, color: AppColors.divider),
-            itemBuilder: (context, index) {
-              final v = variants[index];
-              final isSelected = v.id == selectedVariantId;
-              final imgUrl = variantImageUrl(v) ?? fallbackImageUrl;
 
-              return MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: InkWell(
-                  onTap: () => onVariantSelected(v),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
+          // Variants List Rows with Height Constraints to prevent asymmetric layout
+          if (filtered.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 36),
+              child: Center(
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.search_off_rounded,
+                      size: 28,
+                      color: AppColors.textMuted,
                     ),
-                    color:
-                        isSelected
-                            ? AppColors.primary.withValues(alpha: 0.04)
-                            : Colors.white,
-                    child: Row(
-                      children: [
-                        // Presentation / Label with avatar
-                        Expanded(
-                          flex: 5,
+                    const SizedBox(height: 8),
+                    Text(
+                      'No hay variantes que coincidan con "$_searchQuery"',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 460),
+              child: Scrollbar(
+                controller: _scrollController,
+                thumbVisibility: filtered.length > 5,
+                child: ListView.separated(
+                  controller: _scrollController,
+                  shrinkWrap: true,
+                  physics: const ClampingScrollPhysics(),
+                  itemCount: filtered.length,
+                  separatorBuilder:
+                      (context, index) =>
+                          const Divider(height: 1, color: AppColors.divider),
+                  itemBuilder: (context, index) {
+                    final v = filtered[index];
+                    final isSelected = v.id == widget.selectedVariantId;
+                    final imgUrl =
+                        widget.variantImageUrl(v) ?? widget.fallbackImageUrl;
+
+                    return MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: InkWell(
+                        onTap: () => widget.onVariantSelected(v),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          color:
+                              isSelected
+                                  ? AppColors.primary.withValues(alpha: 0.05)
+                                  : Colors.white,
                           child: Row(
                             children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
-                                child:
-                                    imgUrl != null && imgUrl.isNotEmpty
-                                        ? CachedNetworkImage(
-                                          imageUrl: imgUrl,
-                                          width: 34,
-                                          height: 34,
-                                          fit: BoxFit.cover,
-                                          errorWidget:
-                                              (context, url, error) => Container(
+                              // Presentation / Label with avatar
+                              Expanded(
+                                flex: 5,
+                                child: Row(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child:
+                                          imgUrl != null && imgUrl.isNotEmpty
+                                              ? CachedNetworkImage(
+                                                imageUrl: imgUrl,
+                                                width: 34,
+                                                height: 34,
+                                                fit: BoxFit.cover,
+                                                errorWidget:
+                                                    (context, url, error) =>
+                                                        Container(
+                                                          width: 34,
+                                                          height: 34,
+                                                          color:
+                                                              AppColors
+                                                                  .background,
+                                                          child: const Icon(
+                                                            Icons
+                                                                .image_not_supported,
+                                                            size: 14,
+                                                            color:
+                                                                AppColors
+                                                                    .textMuted,
+                                                          ),
+                                                        ),
+                                              )
+                                              : Container(
                                                 width: 34,
                                                 height: 34,
                                                 color: AppColors.background,
                                                 child: const Icon(
-                                                  Icons.image_not_supported,
+                                                  Icons.inventory_2_outlined,
                                                   size: 14,
                                                   color: AppColors.textMuted,
                                                 ),
                                               ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        v.label,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight:
+                                              isSelected
+                                                  ? FontWeight.w800
+                                                  : FontWeight.w600,
+                                          color:
+                                              isSelected
+                                                  ? AppColors.primary
+                                                  : AppColors.textPrimary,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // SKU
+                              Expanded(
+                                flex: 3,
+                                child: Text(
+                                  v.sku ?? '—',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ),
+
+                              // Stock Badge
+                              Expanded(
+                                flex: 2,
+                                child:
+                                    widget.variantStock != null
+                                        ? Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: _buildStockPill(
+                                            widget.variantStock!(v.id),
+                                          ),
                                         )
-                                        : Container(
-                                          width: 34,
-                                          height: 34,
-                                          color: AppColors.background,
-                                          child: const Icon(
-                                            Icons.inventory_2_outlined,
-                                            size: 14,
+                                        : const Text(
+                                          '—',
+                                          style: TextStyle(
+                                            fontSize: 12,
                                             color: AppColors.textMuted,
                                           ),
                                         ),
                               ),
-                              const SizedBox(width: 10),
+
+                              // Sale Price
                               Expanded(
+                                flex: 3,
                                 child: Text(
-                                  v.label,
+                                  'S/ ${(v.salePrice ?? 0.0).toStringAsFixed(2)}',
+                                  textAlign: TextAlign.right,
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight:
                                         isSelected
-                                            ? FontWeight.w800
-                                            : FontWeight.w600,
-                                    color:
-                                        isSelected
-                                            ? AppColors.primary
-                                            : AppColors.textPrimary,
+                                            ? FontWeight.w900
+                                            : FontWeight.w700,
+                                    color: AppColors.textPrimary,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+
+                              // Wholesale Price
+                              Expanded(
+                                flex: 3,
+                                child: Text(
+                                  v.wholesalePrice != null
+                                      ? 'S/ ${v.wholesalePrice!.toStringAsFixed(2)}'
+                                      : '—',
+                                  textAlign: TextAlign.right,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+
+                              // Select indicator
+                              SizedBox(
+                                width: 44,
+                                child: Center(
+                                  child:
+                                      isSelected
+                                          ? Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: const BoxDecoration(
+                                              color: AppColors.primary,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.check,
+                                              size: 12,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                          : Container(
+                                            width: 16,
+                                            height: 16,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: AppColors.border,
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                          ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        // SKU
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            v.sku ?? '—',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                              fontFamily: 'monospace',
-                            ),
-                          ),
-                        ),
-                        // Sale Price
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            'S/ ${(v.salePrice ?? 0.0).toStringAsFixed(2)}',
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight:
-                                  isSelected
-                                      ? FontWeight.w900
-                                      : FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        // Wholesale Price
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            v.wholesalePrice != null
-                                ? 'S/ ${v.wholesalePrice!.toStringAsFixed(2)}'
-                                : '—',
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                        // Select indicator
-                        SizedBox(
-                          width: 48,
-                          child: Center(
-                            child:
-                                isSelected
-                                    ? Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.primary,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.check,
-                                        size: 12,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                    : Container(
-                                      width: 16,
-                                      height: 16,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: AppColors.border,
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                    ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStockPill(int stock) {
+    if (stock > 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppColors.successLight,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+        ),
+        child: Text(
+          '$stock unds',
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: AppColors.successDark,
+          ),
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.slateLight,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Text(
+        'Agotado',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textMuted,
+        ),
       ),
     );
   }
@@ -359,9 +568,9 @@ class ProductVariantMatrix extends StatelessWidget {
                 color: AppColors.textPrimary,
               ),
             ),
-            if (onOpenSelectorModal != null)
+            if (widget.onOpenSelectorModal != null)
               GestureDetector(
-                onTap: onOpenSelectorModal,
+                onTap: widget.onOpenSelectorModal,
                 child: const Text(
                   'Ver todas >',
                   style: TextStyle(
@@ -379,12 +588,14 @@ class ProductVariantMatrix extends StatelessWidget {
           physics: const BouncingScrollPhysics(),
           child: Row(
             children:
-                variants.map((v) {
-                  final isSelected = v.id == selectedVariantId;
-                  final imgUrl = variantImageUrl(v) ?? fallbackImageUrl;
+                widget.variants.map((v) {
+                  final isSelected = v.id == widget.selectedVariantId;
+                  final imgUrl =
+                      widget.variantImageUrl(v) ?? widget.fallbackImageUrl;
+                  final stock = widget.variantStock?.call(v.id);
 
                   return GestureDetector(
-                    onTap: () => onVariantSelected(v),
+                    onTap: () => widget.onVariantSelected(v),
                     child: Container(
                       margin: const EdgeInsets.only(right: 10),
                       padding: const EdgeInsets.symmetric(
@@ -435,16 +646,34 @@ class ProductVariantMatrix extends StatelessWidget {
                                   color: AppColors.textPrimary,
                                 ),
                               ),
-                              Text(
-                                'S/ ${(v.salePrice ?? 0.0).toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color:
-                                      isSelected
-                                          ? AppColors.primary
-                                          : AppColors.textSecondary,
-                                ),
+                              Row(
+                                children: [
+                                  Text(
+                                    'S/ ${(v.salePrice ?? 0.0).toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color:
+                                          isSelected
+                                              ? AppColors.primary
+                                              : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  if (stock != null) ...[
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      stock > 0 ? '· $stock unds' : '· Agotado',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color:
+                                            stock > 0
+                                                ? AppColors.successDark
+                                                : AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),

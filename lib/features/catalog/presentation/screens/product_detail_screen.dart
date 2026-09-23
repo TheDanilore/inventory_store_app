@@ -11,6 +11,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ima
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_state.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_admin_info_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_availability_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_batches_card.dart';
@@ -109,6 +110,7 @@ class _ProductDetailScreenContent extends StatefulWidget {
 class _ProductDetailScreenContentState
     extends State<_ProductDetailScreenContent> {
   final PageController _pageController = PageController();
+  int _desktopSelectedTab = 0;
 
   ProductDetailCubit get cubit => context.read<ProductDetailCubit>();
   ProductDetailState get state => context.read<ProductDetailCubit>().state;
@@ -600,7 +602,229 @@ class _ProductDetailScreenContentState
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ProductDetailCubit, ProductDetailState>(
-      builder: (context, _) => _buildShortcutsWrapper(context),
+      builder: (context, _) {
+        final content = _buildShortcutsWrapper(context);
+        if (widget.isEmbedded) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: content,
+          );
+        }
+
+        final isDesktop = MediaQuery.of(context).size.width >= 1024;
+
+        return AdminLayout(
+          title: product.name,
+          breadcrumb: 'Catálogo > Productos > ${product.name}',
+          showBackButton: true,
+          showProfileButton: false,
+          onBack: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/products');
+            }
+          },
+          actions:
+              isDesktop ? _buildHeaderActions(context, isDesktop: true) : null,
+          bottomNavigationBar:
+              !isDesktop ? _buildMobileStickyActionBar(context) : null,
+          body: content,
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildHeaderActions(
+    BuildContext context, {
+    required bool isDesktop,
+  }) {
+    if (isDesktop) {
+      return [
+        OutlinedButton.icon(
+          onPressed: _exportPdf,
+          icon: const Icon(
+            Icons.picture_as_pdf_outlined,
+            size: 16,
+            color: AppColors.primary,
+          ),
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Exportar PDF',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              _buildKbdBadge('Alt + P'),
+            ],
+          ),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppColors.border),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            backgroundColor: Colors.white,
+          ),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton.icon(
+          onPressed: () {
+            context.push('/products/product-form/${product.id}');
+          },
+          icon: const Icon(Icons.edit_outlined, size: 16),
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Editar Producto',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 8),
+              _buildKbdBadge('Alt + E', isDark: true),
+            ],
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+      ];
+    }
+    return [
+      IconButton(
+        tooltip: 'Exportar PDF',
+        icon: const Icon(
+          Icons.picture_as_pdf_outlined,
+          color: AppColors.primary,
+          size: 20,
+        ),
+        onPressed: _exportPdf,
+      ),
+      IconButton(
+        tooltip: 'Editar',
+        icon: const Icon(
+          Icons.edit_outlined,
+          color: AppColors.primary,
+          size: 20,
+        ),
+        onPressed: () {
+          context.push('/products/product-form/${product.id}');
+        },
+      ),
+    ];
+  }
+
+  Widget _buildKbdBadge(String text, {bool isDark = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.18)
+                : AppColors.background,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.25)
+                  : AppColors.border,
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+          color: isDark ? Colors.white : AppColors.textSecondary,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileStickyActionBar(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        10,
+        16,
+        MediaQuery.of(context).padding.bottom > 0
+            ? MediaQuery.of(context).padding.bottom + 6
+            : 14,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.95),
+        border: const Border(
+          top: BorderSide(color: AppColors.border, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _exportPdf,
+              icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+              label: const Text(
+                'Ficha PDF',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+                side: const BorderSide(color: AppColors.border),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                backgroundColor: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.push('/products/product-form/${product.id}');
+              },
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              label: const Text(
+                'Editar Producto',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -637,9 +861,9 @@ class _ProductDetailScreenContentState
           autofocus: true,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              if (constraints.maxWidth >= 1100) {
+              if (constraints.maxWidth >= 900) {
                 return _buildDesktopLayout(context);
-              } else if (constraints.maxWidth >= 650) {
+              } else if (constraints.maxWidth >= 580) {
                 return _buildTabletLayout(context);
               }
               return _buildMobileLayout(context);
@@ -669,10 +893,11 @@ class _ProductDetailScreenContentState
         product.defaultVariant?.reorderPoint ??
         0;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Column(
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // HERO HEADER DE PRODUCTO (Sin redundancias de TopBar)
           ProductDetailHeader(
             product: product,
             isActive: _isActive,
@@ -680,162 +905,127 @@ class _ProductDetailScreenContentState
             sku: _selectedVariant?.sku ?? product.defaultVariant?.sku,
             onExportPdf: _exportPdf,
             isMobile: false,
+            showActions: false,
+            variantCount: _variants.length,
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1360),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 20,
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1360),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // BENTO GRID FINANCIERO (ABOVE-THE-FOLD)
+                    ProductFinancialBentoGrid(
+                      effectivePrice: _effectivePrice,
+                      baseSalePrice: _baseSalePrice,
+                      baseWholesalePrice: _baseWholesalePrice,
+                      baseWholesaleMinQty: _baseWholesaleMinQty,
+                      cost: _cost,
+                      effectiveStock: _effectiveStock,
+                      reorderPoint: reorderPoint,
+                      isCompact: false,
                     ),
-                    child: Column(
+                    const SizedBox(height: 20),
+
+                    // DOS COLUMNAS PRINCIPALES (40% / 60%)
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // BENTO GRID FINANCIERO (ABOVE-THE-FOLD)
-                        ProductFinancialBentoGrid(
-                          effectivePrice: _effectivePrice,
-                          baseSalePrice: _baseSalePrice,
-                          baseWholesalePrice: _baseWholesalePrice,
-                          baseWholesaleMinQty: _baseWholesaleMinQty,
-                          cost: _cost,
-                          effectiveStock: _effectiveStock,
-                          reorderPoint: reorderPoint,
-                          isCompact: false,
-                        ),
-                        const SizedBox(height: 20),
-
-                        // DOS COLUMNAS PRINCIPALES (40% / 60%)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // ── Columna Izquierda: Galería y Almacenes (40%) ──
-                            Expanded(
-                              flex: 40,
-                              child: Column(
-                                children: [
-                                  Card(
-                                    elevation: 0,
-                                    color: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppColors.radius,
-                                      ),
-                                      side: const BorderSide(
-                                        color: AppColors.border,
-                                      ),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: SizedBox(
-                                        height: 480,
-                                        child: ProductGallerySection(
-                                          images: gallery.toList(),
-                                          pageController: _pageController,
-                                          selectedIndex: _selectedImageIndex,
-                                          onPageChanged: _onGalleryChanged,
-                                          variantImageOverrideUrl:
-                                              (_showVariantImage &&
-                                                      _selectedVariant != null)
-                                                  ? _selectedVariantImageUrl
-                                                  : null,
-                                          variantLabelOverride:
-                                              (_showVariantImage &&
-                                                      _selectedVariant != null)
-                                                  ? _selectedVariant!
-                                                      .attributeMap
-                                                      .values
-                                                      .join(' - ')
-                                                  : null,
-                                          fallbackImageUrl:
-                                              product.primaryImageUrl,
-                                        ),
-                                      ),
+                        // ── Columna Izquierda: Galería y Almacenes (40%) ──
+                        Expanded(
+                          flex: 40,
+                          child: Column(
+                            children: [
+                              Card(
+                                elevation: 0,
+                                color: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppColors.radius,
+                                  ),
+                                  side: const BorderSide(
+                                    color: AppColors.border,
+                                  ),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: SizedBox(
+                                    height: 480,
+                                    child: ProductGallerySection(
+                                      images: gallery.toList(),
+                                      pageController: _pageController,
+                                      selectedIndex: _selectedImageIndex,
+                                      onPageChanged: _onGalleryChanged,
+                                      variantImageOverrideUrl:
+                                          (_showVariantImage &&
+                                                  _selectedVariant != null)
+                                              ? _selectedVariantImageUrl
+                                              : null,
+                                      variantLabelOverride:
+                                          (_showVariantImage &&
+                                                  _selectedVariant != null)
+                                              ? _selectedVariant!
+                                                  .attributeMap
+                                                  .values
+                                                  .join(' - ')
+                                              : null,
+                                      fallbackImageUrl:
+                                          product.primaryImageUrl,
                                     ),
                                   ),
-                                  const SizedBox(height: 16),
-
-                                  // Almacenes
-                                  const ProductAvailabilityCard(),
-                                  const SizedBox(height: 16),
-
-                                  // Lotes
-                                  if (product.usesBatches) ...[
-                                    const ProductBatchesCard(
-                                      initiallyExpanded: true,
-                                    ),
-                                    const SizedBox(height: 16),
-                                  ],
-
-                                  // Detalles de ficha técnica
-                                  ProductDetailsCard(details: mergedDetails),
-                                  if (_activeIngredients.isNotEmpty) ...[
-                                    const SizedBox(height: 16),
-                                    ProductIngredientsCard(
-                                      ingredients: _activeIngredients,
-                                    ),
-                                  ],
-                                ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 20),
+                              const SizedBox(height: 16),
 
-                            // ── Columna Derecha: Variantes y Rendimiento (60%) ─
-                            Expanded(
-                              flex: 60,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Matriz de Variantes B2B
-                                  ProductVariantMatrix(
-                                    variants: _variants,
-                                    selectedVariantId: _selectedVariantId,
-                                    fallbackImageUrl: product.primaryImageUrl,
-                                    variantImageUrl: _variantImageUrl,
-                                    onVariantSelected: (v) {
-                                      cubit.setVariant(v.id);
-                                      cubit.selectVariantImage(v.id);
-                                    },
-                                    onOpenSelectorModal:
-                                        _showVariantPickerModal,
-                                    isDesktop: true,
-                                  ),
-                                  const SizedBox(height: 16),
+                              // Almacenes
+                              const ProductAvailabilityCard(),
+                              const SizedBox(height: 16),
 
-                                  // Métricas Avanzadas de Rentabilidad
-                                  const ProductAdminInfoCard(
-                                    initiallyExpanded: true,
-                                  ),
-                                  const SizedBox(height: 16),
+                              // Lotes
+                              if (product.usesBatches) ...[
+                                const ProductBatchesCard(
+                                  initiallyExpanded: true,
+                                ),
+                                const SizedBox(height: 16),
+                              ],
 
-                                  // Toma de Decisiones Rápidas
-                                  const ProductQuickDecisionsCard(),
-                                  const SizedBox(height: 16),
-
-                                  // Descripción del Producto
-                                  ProductDescriptionCard(
-                                    description: product.description ?? '',
-                                  ),
-                                  const SizedBox(height: 16),
-
-                                  // Opiniones / Reseñas registradas
-                                  ProductReviewsCard(
-                                    averageRating: _averageRating,
-                                    totalReviews: _reviewsList.length,
-                                    reviews: _reviewsList,
-                                    onAddReview: _showAddReviewDialog,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                              // Detalles de ficha técnica
+                              ProductDetailsCard(details: mergedDetails),
+                              if (_activeIngredients.isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                ProductIngredientsCard(
+                                  ingredients: _activeIngredients,
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 40),
+                        const SizedBox(width: 20),
+
+                        // ── Columna Derecha: Tabs y Secciones (60%) ─
+                        Expanded(
+                          flex: 60,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Pestañas segmentadas para evitar scroll desmedido
+                              _buildDesktopTabs(),
+                              const SizedBox(height: 16),
+
+                              // Contenido según pestaña activa
+                              _buildDesktopTabContent(mergedDetails),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 40),
+                  ],
                 ),
               ),
             ),
@@ -843,6 +1033,182 @@ class _ProductDetailScreenContentState
         ],
       ),
     );
+  }
+
+  Widget _buildDesktopTabs() {
+    final tabs = [
+      (0, 'Variantes (${_variants.length})', Icons.style_outlined),
+      (1, 'Rentabilidad ERP', Icons.analytics_outlined),
+      (2, 'Decisiones Rápidas', Icons.bolt_outlined),
+      (3, 'Reseñas (${_reviewsList.length})', Icons.star_outline_rounded),
+      (4, 'Vista Completa', Icons.view_agenda_outlined),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children:
+            tabs.map((t) {
+              final isSelected = _desktopSelectedTab == t.$1;
+              return Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _desktopSelectedTab = t.$1),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          isSelected ? AppColors.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          t.$3,
+                          size: 15,
+                          color:
+                              isSelected
+                                  ? Colors.white
+                                  : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            t.$2,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight:
+                                  isSelected ? FontWeight.w700 : FontWeight.w600,
+                              color:
+                                  isSelected
+                                      ? Colors.white
+                                      : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildDesktopTabContent(Map<String, dynamic> mergedDetails) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOutQuad,
+      switchOutCurve: Curves.easeInQuad,
+      transitionBuilder:
+          (child, animation) => FadeTransition(opacity: animation, child: child),
+      child: KeyedSubtree(
+        key: ValueKey<int>(_desktopSelectedTab),
+        child: _buildDesktopSelectedTabBody(mergedDetails),
+      ),
+    );
+  }
+
+  Widget _buildDesktopSelectedTabBody(Map<String, dynamic> mergedDetails) {
+    switch (_desktopSelectedTab) {
+      case 0:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ProductVariantMatrix(
+              variants: _variants,
+              selectedVariantId: _selectedVariantId,
+              fallbackImageUrl: product.primaryImageUrl,
+              variantImageUrl: _variantImageUrl,
+              onVariantSelected: (v) {
+                cubit.setVariant(v.id);
+                cubit.selectVariantImage(v.id);
+              },
+              onOpenSelectorModal: _showVariantPickerModal,
+              isDesktop: true,
+              variantStock: (id) => state.variantStock(id),
+            ),
+            const SizedBox(height: 16),
+            const ProductQuickDecisionsCard(),
+          ],
+        );
+      case 1:
+        return const ProductAdminInfoCard(initiallyExpanded: true);
+      case 2:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const ProductQuickDecisionsCard(),
+            if (product.usesBatches) ...[
+              const SizedBox(height: 16),
+              const ProductBatchesCard(initiallyExpanded: true),
+            ],
+          ],
+        );
+      case 3:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ProductDescriptionCard(
+              description: product.description ?? '',
+            ),
+            const SizedBox(height: 16),
+            ProductReviewsCard(
+              averageRating: _averageRating,
+              totalReviews: _reviewsList.length,
+              reviews: _reviewsList,
+              onAddReview: _showAddReviewDialog,
+            ),
+          ],
+        );
+      case 4:
+      default:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ProductVariantMatrix(
+              variants: _variants,
+              selectedVariantId: _selectedVariantId,
+              fallbackImageUrl: product.primaryImageUrl,
+              variantImageUrl: _variantImageUrl,
+              onVariantSelected: (v) {
+                cubit.setVariant(v.id);
+                cubit.selectVariantImage(v.id);
+              },
+              onOpenSelectorModal: _showVariantPickerModal,
+              isDesktop: true,
+              variantStock: (id) => state.variantStock(id),
+            ),
+            const SizedBox(height: 16),
+            const ProductAdminInfoCard(initiallyExpanded: true),
+            const SizedBox(height: 16),
+            const ProductQuickDecisionsCard(),
+            const SizedBox(height: 16),
+            ProductDescriptionCard(
+              description: product.description ?? '',
+            ),
+            const SizedBox(height: 16),
+            ProductReviewsCard(
+              averageRating: _averageRating,
+              totalReviews: _reviewsList.length,
+              reviews: _reviewsList,
+              onAddReview: _showAddReviewDialog,
+            ),
+          ],
+        );
+    }
   }
 
   // ═════════════════════════════════════════════════════════════════════════════
@@ -864,9 +1230,9 @@ class _ProductDetailScreenContentState
         product.defaultVariant?.reorderPoint ??
         0;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Column(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
         children: [
           ProductDetailHeader(
             product: product,
@@ -875,110 +1241,105 @@ class _ProductDetailScreenContentState
             sku: _selectedVariant?.sku ?? product.defaultVariant?.sku,
             onExportPdf: _exportPdf,
             isMobile: false,
+            showActions: false,
+            variantCount: _variants.length,
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Bento Grid en formato 2x2
-                  ProductFinancialBentoGrid(
-                    effectivePrice: _effectivePrice,
-                    baseSalePrice: _baseSalePrice,
-                    baseWholesalePrice: _baseWholesalePrice,
-                    baseWholesaleMinQty: _baseWholesaleMinQty,
-                    cost: _cost,
-                    effectiveStock: _effectiveStock,
-                    reorderPoint: reorderPoint,
-                    isCompact: true,
-                  ),
-                  const SizedBox(height: 16),
+          const SizedBox(height: 16),
+          // Bento Grid en formato 2x2
+          ProductFinancialBentoGrid(
+            effectivePrice: _effectivePrice,
+            baseSalePrice: _baseSalePrice,
+            baseWholesalePrice: _baseWholesalePrice,
+            baseWholesaleMinQty: _baseWholesaleMinQty,
+            cost: _cost,
+            effectiveStock: _effectiveStock,
+            reorderPoint: reorderPoint,
+            isCompact: true,
+          ),
+          const SizedBox(height: 16),
 
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Panel Izquierdo
-                      Expanded(
-                        flex: 45,
-                        child: Column(
-                          children: [
-                            Card(
-                              elevation: 0,
-                              color: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppColors.radius,
-                                ),
-                                side: const BorderSide(color: AppColors.border),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: SizedBox(
-                                  height: 380,
-                                  child: ProductGallerySection(
-                                    images: gallery.toList(),
-                                    pageController: _pageController,
-                                    selectedIndex: _selectedImageIndex,
-                                    onPageChanged: _onGalleryChanged,
-                                    variantImageOverrideUrl:
-                                        (_showVariantImage &&
-                                                _selectedVariant != null)
-                                            ? _selectedVariantImageUrl
-                                            : null,
-                                    fallbackImageUrl: product.primaryImageUrl,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            ProductVariantMatrix(
-                              variants: _variants,
-                              selectedVariantId: _selectedVariantId,
-                              fallbackImageUrl: product.primaryImageUrl,
-                              variantImageUrl: _variantImageUrl,
-                              onVariantSelected: (v) {
-                                cubit.setVariant(v.id);
-                                cubit.selectVariantImage(v.id);
-                              },
-                              onOpenSelectorModal: _showVariantPickerModal,
-                              isDesktop: false,
-                            ),
-                            const SizedBox(height: 14),
-                            const ProductAvailabilityCard(),
-                          ],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Panel Izquierdo
+              Expanded(
+                flex: 45,
+                child: Column(
+                  children: [
+                    Card(
+                      elevation: 0,
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppColors.radius,
+                        ),
+                        side: const BorderSide(color: AppColors.border),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: SizedBox(
+                          height: 380,
+                          child: ProductGallerySection(
+                            images: gallery.toList(),
+                            pageController: _pageController,
+                            selectedIndex: _selectedImageIndex,
+                            onPageChanged: _onGalleryChanged,
+                            variantImageOverrideUrl:
+                                (_showVariantImage &&
+                                        _selectedVariant != null)
+                                    ? _selectedVariantImageUrl
+                                    : null,
+                            fallbackImageUrl: product.primaryImageUrl,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 16),
-
-                      // Panel Derecho
-                      Expanded(
-                        flex: 55,
-                        child: Column(
-                          children: [
-                            if (product.usesBatches) ...[
-                              const ProductBatchesCard(initiallyExpanded: true),
-                              const SizedBox(height: 14),
-                            ],
-                            const ProductAdminInfoCard(initiallyExpanded: true),
-                            const SizedBox(height: 14),
-                            const ProductQuickDecisionsCard(),
-                            const SizedBox(height: 14),
-                            ProductDetailsCard(details: mergedDetails),
-                            const SizedBox(height: 14),
-                            ProductReviewsCard(
-                              averageRating: _averageRating,
-                              totalReviews: _reviewsList.length,
-                              reviews: _reviewsList,
-                              onAddReview: _showAddReviewDialog,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(height: 14),
+                    ProductVariantMatrix(
+                      variants: _variants,
+                      selectedVariantId: _selectedVariantId,
+                      fallbackImageUrl: product.primaryImageUrl,
+                      variantImageUrl: _variantImageUrl,
+                      onVariantSelected: (v) {
+                        cubit.setVariant(v.id);
+                        cubit.selectVariantImage(v.id);
+                      },
+                      onOpenSelectorModal: _showVariantPickerModal,
+                      isDesktop: false,
+                      variantStock: (id) => state.variantStock(id),
+                    ),
+                    const SizedBox(height: 14),
+                    const ProductAvailabilityCard(),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(width: 16),
+
+              // Panel Derecho
+              Expanded(
+                flex: 55,
+                child: Column(
+                  children: [
+                    if (product.usesBatches) ...[
+                      const ProductBatchesCard(initiallyExpanded: true),
+                      const SizedBox(height: 14),
+                    ],
+                    const ProductAdminInfoCard(initiallyExpanded: true),
+                    const SizedBox(height: 14),
+                    const ProductQuickDecisionsCard(),
+                    const SizedBox(height: 14),
+                    ProductDetailsCard(details: mergedDetails),
+                    const SizedBox(height: 14),
+                    ProductReviewsCard(
+                      averageRating: _averageRating,
+                      totalReviews: _reviewsList.length,
+                      reviews: _reviewsList,
+                      onAddReview: _showAddReviewDialog,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1004,130 +1365,115 @@ class _ProductDetailScreenContentState
         product.defaultVariant?.reorderPoint ??
         0;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(56),
-        child: SafeArea(
-          child: ProductDetailHeader(
-            product: product,
-            isActive: _isActive,
-            effectiveStock: _effectiveStock,
-            sku: _selectedVariant?.sku ?? product.defaultVariant?.sku,
-            onExportPdf: _exportPdf,
-            isMobile: true,
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Galería Móvil
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppColors.radius),
-              child: Container(
-                height: 320,
-                color: Colors.white,
-                child: ProductGallerySection(
-                  images: gallery.toList(),
-                  pageController: _pageController,
-                  selectedIndex: _selectedImageIndex,
-                  onPageChanged: _onGalleryChanged,
-                  variantImageOverrideUrl:
-                      (_showVariantImage && _selectedVariant != null)
-                          ? _selectedVariantImageUrl
-                          : null,
-                  variantLabelOverride:
-                      (_showVariantImage && _selectedVariant != null)
-                          ? _selectedVariant!.attributeMap.values.join(' - ')
-                          : null,
-                  fallbackImageUrl: product.primaryImageUrl,
-                ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Galería Móvil
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppColors.radius),
+            child: Container(
+              height: 320,
+              color: Colors.white,
+              child: ProductGallerySection(
+                images: gallery.toList(),
+                pageController: _pageController,
+                selectedIndex: _selectedImageIndex,
+                onPageChanged: _onGalleryChanged,
+                variantImageOverrideUrl:
+                    (_showVariantImage && _selectedVariant != null)
+                        ? _selectedVariantImageUrl
+                        : null,
+                variantLabelOverride:
+                    (_showVariantImage && _selectedVariant != null)
+                        ? _selectedVariant!.attributeMap.values.join(' - ')
+                        : null,
+                fallbackImageUrl: product.primaryImageUrl,
               ),
             ),
+          ),
+          const SizedBox(height: 16),
+
+          // Top Section
+          ProductTopSection(
+            name: product.name,
+            sku: _selectedVariant?.sku,
+            brandName: product.brandName,
+            isActive: _isActive,
+            effectiveStock: _effectiveStock,
+            averageRating: _averageRating,
+            totalReviews: _reviewsList.length,
+          ),
+          const SizedBox(height: 16),
+
+          // Bento Grid 2x2
+          ProductFinancialBentoGrid(
+            effectivePrice: _effectivePrice,
+            baseSalePrice: _baseSalePrice,
+            baseWholesalePrice: _baseWholesalePrice,
+            baseWholesaleMinQty: _baseWholesaleMinQty,
+            cost: _cost,
+            effectiveStock: _effectiveStock,
+            reorderPoint: reorderPoint,
+            isCompact: true,
+          ),
+          const SizedBox(height: 16),
+
+          // Variantes Chips
+          ProductVariantMatrix(
+            variants: _variants,
+            selectedVariantId: _selectedVariantId,
+            fallbackImageUrl: product.primaryImageUrl,
+            variantImageUrl: _variantImageUrl,
+            onVariantSelected: (v) {
+              cubit.setVariant(v.id);
+              cubit.selectVariantImage(v.id);
+            },
+            onOpenSelectorModal: _showVariantPickerModal,
+            isDesktop: false,
+            variantStock: (id) => state.variantStock(id),
+          ),
+          const SizedBox(height: 16),
+
+          // Almacén
+          const ProductAvailabilityCard(),
+          const SizedBox(height: 16),
+
+          // Lotes
+          if (product.usesBatches) ...[
+            const ProductBatchesCard(initiallyExpanded: false),
             const SizedBox(height: 16),
-
-            // Top Section
-            ProductTopSection(
-              name: product.name,
-              sku: _selectedVariant?.sku,
-              brandName: product.brandName,
-              isActive: _isActive,
-              effectiveStock: _effectiveStock,
-              averageRating: _averageRating,
-              totalReviews: _reviewsList.length,
-            ),
-            const SizedBox(height: 16),
-
-            // Bento Grid 2x2
-            ProductFinancialBentoGrid(
-              effectivePrice: _effectivePrice,
-              baseSalePrice: _baseSalePrice,
-              baseWholesalePrice: _baseWholesalePrice,
-              baseWholesaleMinQty: _baseWholesaleMinQty,
-              cost: _cost,
-              effectiveStock: _effectiveStock,
-              reorderPoint: reorderPoint,
-              isCompact: true,
-            ),
-            const SizedBox(height: 16),
-
-            // Variantes Chips
-            ProductVariantMatrix(
-              variants: _variants,
-              selectedVariantId: _selectedVariantId,
-              fallbackImageUrl: product.primaryImageUrl,
-              variantImageUrl: _variantImageUrl,
-              onVariantSelected: (v) {
-                cubit.setVariant(v.id);
-                cubit.selectVariantImage(v.id);
-              },
-              onOpenSelectorModal: _showVariantPickerModal,
-              isDesktop: false,
-            ),
-            const SizedBox(height: 16),
-
-            // Almacén
-            const ProductAvailabilityCard(),
-            const SizedBox(height: 16),
-
-            // Lotes
-            if (product.usesBatches) ...[
-              const ProductBatchesCard(initiallyExpanded: false),
-              const SizedBox(height: 16),
-            ],
-
-            // Rentabilidad
-            const ProductAdminInfoCard(initiallyExpanded: false),
-            const SizedBox(height: 16),
-
-            // Decisiones
-            const ProductQuickDecisionsCard(),
-            const SizedBox(height: 16),
-
-            // Detalles
-            ProductDetailsCard(details: mergedDetails),
-            if (mergedDetails.isNotEmpty) const SizedBox(height: 16),
-
-            if (_activeIngredients.isNotEmpty) ...[
-              ProductIngredientsCard(ingredients: _activeIngredients),
-              const SizedBox(height: 16),
-            ],
-
-            ProductDescriptionCard(description: product.description ?? ''),
-            if ((product.description ?? '').trim().isNotEmpty)
-              const SizedBox(height: 16),
-
-            ProductReviewsCard(
-              averageRating: _averageRating,
-              totalReviews: _reviewsList.length,
-              reviews: _reviewsList,
-              onAddReview: _showAddReviewDialog,
-            ),
           ],
-        ),
+
+          // Rentabilidad
+          const ProductAdminInfoCard(initiallyExpanded: false),
+          const SizedBox(height: 16),
+
+          // Decisiones
+          const ProductQuickDecisionsCard(),
+          const SizedBox(height: 16),
+
+          // Detalles
+          ProductDetailsCard(details: mergedDetails),
+          if (mergedDetails.isNotEmpty) const SizedBox(height: 16),
+
+          if (_activeIngredients.isNotEmpty) ...[
+            ProductIngredientsCard(ingredients: _activeIngredients),
+            const SizedBox(height: 16),
+          ],
+
+          ProductDescriptionCard(description: product.description ?? ''),
+          if ((product.description ?? '').trim().isNotEmpty)
+            const SizedBox(height: 16),
+
+          ProductReviewsCard(
+            averageRating: _averageRating,
+            totalReviews: _reviewsList.length,
+            reviews: _reviewsList,
+            onAddReview: _showAddReviewDialog,
+          ),
+        ],
       ),
     );
   }
