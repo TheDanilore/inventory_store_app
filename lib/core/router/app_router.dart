@@ -25,6 +25,7 @@ import 'package:inventory_store_app/features/purchases/presentation/routes/purch
 import 'package:inventory_store_app/features/users/presentation/routes/users_routes.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/admin_catalog_screen.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_shell_layout.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
@@ -159,7 +160,7 @@ class AppRouter {
                   BlocProvider(create: (_) => sl<PosCubit>()),
                   BlocProvider(create: (_) => sl<CashShiftsCubit>()),
                 ],
-                child: child,
+                child: AdminShellLayout(child: child),
               ),
           routes: [
             GoRoute(

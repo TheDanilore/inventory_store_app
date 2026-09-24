@@ -13,6 +13,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as developer;
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_offline_banner.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_desktop_top_bar.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_shell_layout.dart';
+export 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_shell_layout.dart';
 
 class AdminLayout extends StatefulWidget {
   final String title;
@@ -59,35 +61,73 @@ class AdminLayout extends StatefulWidget {
 class _AdminLayoutState extends State<AdminLayout> {
   static const _sidebarCollapsedKey = 'admin_sidebar_collapsed';
 
-  bool _isSidebarCollapsed = false;
-  bool _isInitialized = false;
+  bool _isSidebarCollapsed = AdminShellLayout.cachedSidebarCollapsed;
 
   @override
   void initState() {
     super.initState();
-    _loadSidebarState();
+    if (!AdminShellLayout.hasLoadedFromPrefs) {
+      _loadSidebarState();
+    }
+    _scheduleHeaderUpdate();
+  }
+
+  @override
+  void didUpdateWidget(AdminLayout oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.title != widget.title ||
+        oldWidget.actions != widget.actions ||
+        oldWidget.showBackButton != widget.showBackButton ||
+        oldWidget.breadcrumb != widget.breadcrumb ||
+        oldWidget.floatingActionButton != widget.floatingActionButton ||
+        oldWidget.bottomNavigationBar != widget.bottomNavigationBar ||
+        oldWidget.showSettingsButton != widget.showSettingsButton) {
+      _scheduleHeaderUpdate();
+    }
+  }
+
+  void _scheduleHeaderUpdate() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final shell = AdminShellScope.maybeOf(context);
+      if (shell != null && shell.isDesktop) {
+        shell.updateHeader(
+          AdminHeaderConfig(
+            title: widget.title,
+            breadcrumb: widget.breadcrumb,
+            actions: widget.actions,
+            showBackButton: widget.showBackButton,
+            onBack: widget.onBack,
+            showSettingsButton: widget.showSettingsButton,
+            settingsActions: widget.settingsActions,
+            onSettingsSelected: widget.onSettingsSelected,
+            floatingActionButton: widget.floatingActionButton,
+            bottomNavigationBar: widget.bottomNavigationBar,
+          ),
+        );
+      }
+    });
   }
 
   Future<void> _loadSidebarState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final collapsed = prefs.getBool(_sidebarCollapsedKey) ?? false;
-      if (mounted) {
+      AdminShellLayout.cachedSidebarCollapsed = collapsed;
+      AdminShellLayout.hasLoadedFromPrefs = true;
+      if (mounted && _isSidebarCollapsed != collapsed) {
         setState(() {
           _isSidebarCollapsed = collapsed;
-          _isInitialized = true;
         });
       }
     } catch (e, st) {
       developer.log(
-        'Error loading sidebar state',
+        'Error loading sidebar state in AdminLayout',
         error: e,
         stackTrace: st,
         name: 'AdminLayout',
       );
-      if (mounted) {
-        setState(() => _isInitialized = true);
-      }
+      AdminShellLayout.hasLoadedFromPrefs = true;
     }
   }
 
@@ -104,13 +144,14 @@ class _AdminLayoutState extends State<AdminLayout> {
 
   Future<void> _toggleSidebar() async {
     final newValue = !_isSidebarCollapsed;
+    AdminShellLayout.cachedSidebarCollapsed = newValue;
     setState(() => _isSidebarCollapsed = newValue);
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_sidebarCollapsedKey, newValue);
     } catch (e, st) {
       developer.log(
-        'Error saving sidebar state',
+        'Error saving sidebar state in AdminLayout',
         error: e,
         stackTrace: st,
         name: 'AdminLayout',
@@ -120,11 +161,7 @@ class _AdminLayoutState extends State<AdminLayout> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isInitialized) {
-      // Retornar un contenedor vacío para evitar jank o bloqueos visuales completos
-      // en el primer frame, que es instantáneo.
-      return const SizedBox.shrink();
-    }
+    final shell = AdminShellScope.maybeOf(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -136,22 +173,31 @@ class _AdminLayoutState extends State<AdminLayout> {
         builder: (context, constraints) {
           final isDesktop = constraints.maxWidth >= 1024;
 
+          // ── 1. Adaptación Camaleónica: Dentro del Persistent Shell en Desktop ──
+          if (shell != null && isDesktop) {
+            // Entrega directamente el body dentro de un Scaffold transparente para
+            // retener soporte a FABs y Snackbars sin duplicar Sidebar, TopBar ni OfflineBanner.
+            return Scaffold(
+              backgroundColor: Colors.transparent,
+              body: widget.body,
+              floatingActionButton: widget.floatingActionButton,
+              bottomNavigationBar: widget.bottomNavigationBar,
+            );
+          }
+
+          // ── 2. Modo Autónomo (Standalone Desktop si no hay Persistent Shell) ──
           if (isDesktop) {
             return Scaffold(
               backgroundColor: AppColors.background,
               body: Row(
                 children: [
-                  // ── Left Sidebar (Desktop) ─────────────────────────────────
                   AdminSidebar(
                     isCollapsed: _isSidebarCollapsed,
                     onToggleCollapse: _toggleSidebar,
                   ),
-
-                  // ── Right Main Area (TopBar + Body) ─────────────────────────
                   Expanded(
                     child: Column(
                       children: [
-                        // ── TopBar ERP ───────────────────────────────────────
                         AdminDesktopTopBar(
                           isSidebarCollapsed: _isSidebarCollapsed,
                           onToggleSidebar: _toggleSidebar,
@@ -164,11 +210,7 @@ class _AdminLayoutState extends State<AdminLayout> {
                           settingsActions: widget.settingsActions,
                           onSettingsSelected: widget.onSettingsSelected,
                         ),
-
-                        // ── Offline Banner ───────────────────────────────────
                         const AdminOfflineBanner(),
-
-                        // ── Content View ─────────────────────────────────────
                         Expanded(child: widget.body),
                       ],
                     ),
@@ -318,57 +360,13 @@ class _AdminLayoutState extends State<AdminLayout> {
     context.go('/');
   }
 
-  static const _breadcrumbMap = <String, String>{
-    '/purchase-orders/form':
-        'Inicio  ›  Órdenes de Compra  ›  Nueva Orden',
-    '/purchase-orders': 'Inicio  ›  Órdenes de Compra',
-    '/inventory-entries/form':
-        'Inicio  ›  Entradas de Inventario  ›  Nueva Entrada',
-    '/inventory-entries': 'Inicio  ›  Entradas de Inventario',
-    '/inventory-exits/form':
-        'Inicio  ›  Salidas de Inventario  ›  Nueva Salida',
-    '/inventory-exits': 'Inicio  ›  Salidas de Inventario',
-    '/products/product-form': 'Inicio  ›  Productos  ›  Formulario',
-    '/products': 'Inicio  ›  Productos',
-    '/': 'Inicio  ›  Catálogo',
-    '/users/form': 'Inicio  ›  Usuarios  ›  Formulario Usuario',
-    '/users': 'Inicio  ›  Usuarios',
-    '/customer-credit-movements':
-        'Inicio  ›  Créditos Clientes  ›  Movimientos',
-    '/customer-credits': 'Inicio  ›  Créditos Clientes',
-    '/customers/customer-detail': 'Inicio  ›  Clientes  ›  Detalle',
-    '/customers': 'Inicio  ›  Clientes',
-    '/supplier-credits': 'Inicio  ›  Créditos Proveedores',
-    '/suppliers': 'Inicio  ›  Proveedores',
-    '/orders': 'Inicio  ›  Pedidos',
-    '/kardex': 'Inicio  ›  Kardex',
-    '/financial-accounts': 'Inicio  ›  Cuentas Financieras',
-    '/categories': 'Inicio  ›  Categorías',
-    '/brands': 'Inicio  ›  Marcas',
-    '/warehouses': 'Inicio  ›  Almacenes',
-    '/attributes': 'Inicio  ›  Atributos',
-    '/active-ingredients': 'Inicio  ›  Ingredientes Activos',
-    '/business-info': 'Inicio  ›  Información de la Empresa',
-    '/points-settings': 'Inicio  ›  Ajustes de Puntos',
-    '/inventory': 'Inicio  ›  Inventario',
-    '/dashboard': 'Inicio  ›  Dashboard',
-  };
-
   String _buildBreadcrumbText(BuildContext context) {
     if (widget.breadcrumb != null && widget.breadcrumb!.isNotEmpty) {
       return widget.breadcrumb!;
     }
     try {
       final path = GoRouterState.of(context).uri.path;
-      if (path.isEmpty || path == '/') {
-        return 'Panel de Administración ERP';
-      }
-
-      for (final entry in _breadcrumbMap.entries) {
-        if (entry.key == '/') continue;
-        if (path == entry.key || path.startsWith('${entry.key}/')) return entry.value;
-      }
-      return 'Panel de Administración ERP';
+      return AdminShellHelper.resolveBreadcrumb(path);
     } catch (e, st) {
       developer.log(
         'Error al construir breadcrumb',
