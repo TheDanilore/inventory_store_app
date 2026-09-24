@@ -348,21 +348,28 @@ class PosRepositoryImpl implements PosRepository {
 
   @override
   Future<Either<Failure, List<OrderModel>>> fetchRecentOrders({
-    int limit = 10,
+    int limit = 20,
+    int offset = 0,
+    String? searchQuery,
   }) async {
     try {
       await _ensureProfileLoaded();
-      var query = _supabase
-          .from('orders')
-          .select('id, total_amount, created_at, customer_name, status');
+      var query = _supabase.from('orders').select(
+        'id, total_amount, created_at, customer_name, status, payment_method, payment_status',
+      );
 
       if (_cachedRole != 'admin' && _cachedProfileId != null) {
         query = query.eq('created_by', _cachedProfileId!);
       }
 
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final clean = searchQuery.trim();
+        query = query.or('customer_name.ilike.%$clean%,id.ilike.%$clean%');
+      }
+
       final res = await query
           .order('created_at', ascending: false)
-          .limit(limit);
+          .range(offset, offset + limit - 1);
 
       final List<OrderModel> orders =
           (res as List)
@@ -370,9 +377,19 @@ class PosRepositoryImpl implements PosRepository {
               .toList();
 
       return Right(orders);
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en fetchRecentOrders',
+        tag: 'PosRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(
+        ServerFailure(message: 'Error al cargar ventas: ${e.message}'),
+      );
     } catch (e, st) {
       LoggerService.e(
-        'Error fetching recent POS orders',
+        'Error inesperado en fetchRecentOrders',
         tag: 'PosRepositoryImpl',
         error: e,
         stackTrace: st,
@@ -380,6 +397,57 @@ class PosRepositoryImpl implements PosRepository {
       return Left(
         ServerFailure(message: 'Error al cargar ventas recientes: $e'),
       );
+    }
+  }
+
+  @override
+  Future<Either<Failure, ({double totalAmount, int totalCount})>>
+  fetchDailySalesSummary() async {
+    try {
+      await _ensureProfileLoaded();
+      final now = DateTime.now();
+      final startOfDay =
+          DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
+
+      var query = _supabase
+          .from('orders')
+          .select('total_amount, status')
+          .gte('created_at', startOfDay)
+          .neq('status', 'CANCELLED');
+
+      if (_cachedRole != 'admin' && _cachedProfileId != null) {
+        query = query.eq('created_by', _cachedProfileId!);
+      }
+
+      final res = await query;
+      final list = res as List;
+      double total = 0.0;
+      for (final item in list) {
+        final amount = (item['total_amount'] as num?)?.toDouble() ?? 0.0;
+        total += amount;
+      }
+
+      return Right((totalAmount: total, totalCount: list.length));
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en fetchDailySalesSummary',
+        tag: 'PosRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(
+        ServerFailure(
+          message: 'Error al obtener resumen de ventas del día: ${e.message}',
+        ),
+      );
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en fetchDailySalesSummary',
+        tag: 'PosRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(ServerFailure(message: 'Error inesperado: $e'));
     }
   }
 }

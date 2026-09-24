@@ -31,7 +31,13 @@ class PosState extends Equatable {
 
   final List<OrderModel> recentOrders;
   final bool isLoadingRecentOrders;
+  final bool isLoadingMoreOrders;
+  final bool hasMoreOrders;
   final String recentOrdersError;
+  final double dailyTotalAmount;
+  final int dailyTotalCount;
+  final bool isLoadingDailySummary;
+  final String salesSearchQuery;
 
   final String discountText;
   final bool isDiscountPercentage;
@@ -56,7 +62,13 @@ class PosState extends Equatable {
     this.selectedAccountId,
     this.recentOrders = const [],
     this.isLoadingRecentOrders = false,
+    this.isLoadingMoreOrders = false,
+    this.hasMoreOrders = true,
     this.recentOrdersError = '',
+    this.dailyTotalAmount = 0.0,
+    this.dailyTotalCount = 0,
+    this.isLoadingDailySummary = false,
+    this.salesSearchQuery = '',
     this.discountText = '',
     this.isDiscountPercentage = false,
   });
@@ -81,7 +93,13 @@ class PosState extends Equatable {
     String? selectedAccountId,
     List<OrderModel>? recentOrders,
     bool? isLoadingRecentOrders,
+    bool? isLoadingMoreOrders,
+    bool? hasMoreOrders,
     String? recentOrdersError,
+    double? dailyTotalAmount,
+    int? dailyTotalCount,
+    bool? isLoadingDailySummary,
+    String? salesSearchQuery,
     String? discountText,
     bool? isDiscountPercentage,
     bool clearClient = false,
@@ -112,7 +130,14 @@ class PosState extends Equatable {
       recentOrders: recentOrders ?? this.recentOrders,
       isLoadingRecentOrders:
           isLoadingRecentOrders ?? this.isLoadingRecentOrders,
+      isLoadingMoreOrders: isLoadingMoreOrders ?? this.isLoadingMoreOrders,
+      hasMoreOrders: hasMoreOrders ?? this.hasMoreOrders,
       recentOrdersError: recentOrdersError ?? this.recentOrdersError,
+      dailyTotalAmount: dailyTotalAmount ?? this.dailyTotalAmount,
+      dailyTotalCount: dailyTotalCount ?? this.dailyTotalCount,
+      isLoadingDailySummary:
+          isLoadingDailySummary ?? this.isLoadingDailySummary,
+      salesSearchQuery: salesSearchQuery ?? this.salesSearchQuery,
       discountText: discountText ?? this.discountText,
       isDiscountPercentage: isDiscountPercentage ?? this.isDiscountPercentage,
     );
@@ -139,7 +164,13 @@ class PosState extends Equatable {
     selectedAccountId,
     recentOrders,
     isLoadingRecentOrders,
+    isLoadingMoreOrders,
+    hasMoreOrders,
     recentOrdersError,
+    dailyTotalAmount,
+    dailyTotalCount,
+    isLoadingDailySummary,
+    salesSearchQuery,
     discountText,
     isDiscountPercentage,
   ];

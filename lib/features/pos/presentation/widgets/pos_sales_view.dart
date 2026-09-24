@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -15,10 +16,12 @@ import 'package:intl/intl.dart';
 
 /// Vista de Ventas POS embebida en el layout principal de Caja.
 ///
-/// Implementa una arquitectura "camaleónica" multi-dispositivo de nivel internacional:
-/// - **Desktop (≥ 1024px):** Lista/Tabla espaciosa a pantalla completa con Slide-Over Side Sheet retráctil.
-/// - **Tablet (700px - 1023px):** Lista completa con Diálogo Modal Centrado.
-/// - **Móvil (< 700px):** Tarjetas jerárquicas anti-colisión y Apple HIG Draggable Modal BottomSheet.
+/// Optimizaciones de Alto Rendimiento (Stripe / Linear Architecture):
+/// - **Paginación Infinita con Scroll Controller:** Carga incremental de 20 en 20 sin saturar la RAM.
+/// - **Búsqueda Remota en Servidor con Debounce (350ms):** Búsqueda real en PostgreSQL/Supabase con `.ilike`.
+/// - **Métricas Reales Agregadas:** Resumen consolidado del día vía Supabase sin depender de filtros locales.
+/// - **Aislamiento de Renderizado (RepaintBoundary + buildWhen):** Cero rebuilds superfluos desde PosCubit.
+/// - **Badges Reactivos de Estado:** Reflejan verazmente si la orden fue completada, anulada o devuelta.
 class PosSalesView extends StatefulWidget {
   const PosSalesView({super.key});
 
@@ -27,26 +30,59 @@ class PosSalesView extends StatefulWidget {
 }
 
 class _PosSalesViewState extends State<PosSalesView> {
+  static final _dateFormat = DateFormat('dd/MM/yyyy HH:mm', 'es');
+
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
-  String _filter = '';
+  final _scrollController = ScrollController();
+  Timer? _debounceTimer;
+
   String? _reprintingOrderId;
   OrderEntity? _selectedOrder;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     final posCubit = context.read<PosCubit>();
     if (posCubit.state.recentOrders.isEmpty) {
       posCubit.fetchRecentOrders();
+    } else {
+      posCubit.fetchDailySalesSummary();
+    }
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    if (currentScroll >= maxScroll * 0.85) {
+      context.read<PosCubit>().loadMoreRecentOrders();
     }
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String val) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      context.read<PosCubit>().fetchRecentOrders(query: val.trim(), forceRefresh: true);
+    });
+  }
+
+  void _clearSearch() {
+    _searchCtrl.clear();
+    _debounceTimer?.cancel();
+    context.read<PosCubit>().fetchRecentOrders(query: '', forceRefresh: true);
   }
 
   void _navigateOrder(int step, List<OrderEntity> orders) {
@@ -153,7 +189,7 @@ class _PosSalesViewState extends State<PosSalesView> {
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.90,
+        height: MediaQuery.of(ctx).size.height * 0.90,
         decoration: const BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -187,23 +223,18 @@ class _PosSalesViewState extends State<PosSalesView> {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd/MM/yyyy HH:mm', 'es');
-
     return BlocBuilder<PosCubit, PosState>(
+      buildWhen: (prev, current) =>
+          prev.recentOrders != current.recentOrders ||
+          prev.isLoadingRecentOrders != current.isLoadingRecentOrders ||
+          prev.isLoadingMoreOrders != current.isLoadingMoreOrders ||
+          prev.hasMoreOrders != current.hasMoreOrders ||
+          prev.recentOrdersError != current.recentOrdersError ||
+          prev.dailyTotalAmount != current.dailyTotalAmount ||
+          prev.dailyTotalCount != current.dailyTotalCount ||
+          prev.salesSearchQuery != current.salesSearchQuery,
       builder: (context, state) {
-        final allOrders = state.recentOrders;
-        final filteredOrders = allOrders.where((order) {
-          if (_filter.isEmpty) return true;
-          final query = _filter.toLowerCase();
-          final clientMatches = order.customerName.toLowerCase().contains(query);
-          final idMatches = order.id.toLowerCase().contains(query);
-          return clientMatches || idMatches;
-        }).toList();
-
-        final totalVentasHoy = filteredOrders.fold<double>(
-          0.0,
-          (sum, order) => sum + order.totalAmount,
-        );
+        final orders = state.recentOrders;
 
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -217,8 +248,8 @@ class _PosSalesViewState extends State<PosSalesView> {
                 _buildHeader(context, isMobile),
                 _buildMetricsAndSearch(
                   context,
-                  totalVentasHoy,
-                  filteredOrders.length,
+                  state.dailyTotalAmount,
+                  state.dailyTotalCount,
                   isMobile,
                 ),
                 Expanded(
@@ -250,7 +281,7 @@ class _PosSalesViewState extends State<PosSalesView> {
                                 ],
                               ),
                             )
-                          : filteredOrders.isEmpty
+                          : orders.isEmpty
                               ? Center(
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
@@ -261,9 +292,11 @@ class _PosSalesViewState extends State<PosSalesView> {
                                         color: AppColors.textMuted.withValues(alpha: 0.5),
                                       ),
                                       const SizedBox(height: 12),
-                                      const Text(
-                                        'No se encontraron ventas registradas.',
-                                        style: TextStyle(
+                                      Text(
+                                        state.salesSearchQuery.isNotEmpty
+                                            ? 'No se encontraron ventas para "${state.salesSearchQuery}".'
+                                            : 'No se encontraron ventas registradas.',
+                                        style: const TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
                                           color: AppColors.textSecondary,
@@ -273,20 +306,36 @@ class _PosSalesViewState extends State<PosSalesView> {
                                   ),
                                 )
                               : ListView.separated(
+                                  controller: _scrollController,
+                                  physics: const AlwaysScrollableScrollPhysics(),
                                   padding: EdgeInsets.fromLTRB(
                                     isMobile ? 16 : 20,
                                     6,
                                     isMobile ? 16 : 20,
                                     24,
                                   ),
-                                  itemCount: filteredOrders.length,
+                                  itemCount: orders.length + (state.isLoadingMoreOrders ? 1 : 0),
                                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                                   itemBuilder: (context, index) {
-                                    final order = filteredOrders[index];
+                                    if (index >= orders.length) {
+                                      return const Center(
+                                        child: Padding(
+                                          padding: EdgeInsets.symmetric(vertical: 16),
+                                          child: SizedBox(
+                                            width: 24,
+                                            height: 24,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2.5,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    final order = orders[index];
                                     return _buildOrderCard(
                                       context,
                                       order,
-                                      dateFormat,
                                       isDesktop,
                                       isTablet,
                                       isMobile,
@@ -301,10 +350,10 @@ class _PosSalesViewState extends State<PosSalesView> {
               bindings: <ShortcutActivator, VoidCallback>{
                 if (isDesktop && !_searchFocusNode.hasFocus) ...{
                   const SingleActivator(LogicalKeyboardKey.arrowDown): () {
-                    _navigateOrder(1, filteredOrders);
+                    _navigateOrder(1, orders);
                   },
                   const SingleActivator(LogicalKeyboardKey.arrowUp): () {
-                    _navigateOrder(-1, filteredOrders);
+                    _navigateOrder(-1, orders);
                   },
                 },
                 const SingleActivator(LogicalKeyboardKey.keyP, alt: true): () {
@@ -322,10 +371,12 @@ class _PosSalesViewState extends State<PosSalesView> {
                 color: AppColors.background,
                 child: Stack(
                   children: [
-                    // 1. Lista a pantalla completa (100% ancho de visualización)
-                    fullWidthListView,
+                    // 1. Lista a pantalla completa aislada de repintados
+                    RepaintBoundary(
+                      child: fullWidthListView,
+                    ),
 
-                    // 2. Slide-Over Side Sheet Inspector en Desktop
+                    // 2. Slide-Over Side Sheet Inspector en Desktop con RepaintBoundary
                     if (isDesktop && _selectedOrder != null) ...[
                       // Backdrop con dismiss
                       Positioned.fill(
@@ -340,102 +391,104 @@ class _PosSalesViewState extends State<PosSalesView> {
                       // Panel lateral deslizante tipo Stripe / Linear
                       Align(
                         alignment: Alignment.centerRight,
-                        child: Container(
-                          width: constraints.maxWidth >= 1400 ? 640 : 560,
-                          height: double.infinity,
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.18),
-                                blurRadius: 28,
-                                spreadRadius: 4,
-                                offset: const Offset(-8, 0),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              // Cabecera del Slide-Over
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      color: AppColors.border.withValues(alpha: 0.8),
+                        child: RepaintBoundary(
+                          child: Container(
+                            width: constraints.maxWidth >= 1400 ? 640 : 560,
+                            height: double.infinity,
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.18),
+                                  blurRadius: 28,
+                                  spreadRadius: 4,
+                                  offset: const Offset(-8, 0),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                // Cabecera del Slide-Over
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: AppColors.border.withValues(alpha: 0.8),
+                                      ),
                                     ),
                                   ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(7),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(alpha: 0.08),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(
-                                        Icons.receipt_long_rounded,
-                                        color: AppColors.primary,
-                                        size: 18,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    const Text(
-                                      'Detalle del Comprobante',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.textPrimary,
-                                        letterSpacing: -0.3,
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.background,
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: AppColors.border),
-                                      ),
-                                      child: const Text(
-                                        'ESC',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textSecondary,
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(7),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(alpha: 0.08),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(
+                                          Icons.receipt_long_rounded,
+                                          color: AppColors.primary,
+                                          size: 18,
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    IconButton(
-                                      icon: const Icon(Icons.close_rounded, size: 20),
-                                      tooltip: 'Cerrar detalle (Esc)',
-                                      onPressed: () => setState(() => _selectedOrder = null),
-                                      style: IconButton.styleFrom(
-                                        visualDensity: VisualDensity.compact,
+                                      const SizedBox(width: 10),
+                                      const Text(
+                                        'Detalle del Comprobante',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.textPrimary,
+                                          letterSpacing: -0.3,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                      const Spacer(),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.background,
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: AppColors.border),
+                                        ),
+                                        child: const Text(
+                                          'ESC',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        icon: const Icon(Icons.close_rounded, size: 20),
+                                        tooltip: 'Cerrar detalle (Esc)',
+                                        onPressed: () => setState(() => _selectedOrder = null),
+                                        style: IconButton.styleFrom(
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              // Detalle embebido completo
-                              Expanded(
-                                child: OrderDetailSheet(
-                                  key: ValueKey(_selectedOrder!.id),
-                                  order: _selectedOrder!,
-                                  isEmbedded: true,
-                                  onPop: (_) {
-                                    setState(() => _selectedOrder = null);
-                                  },
-                                  onOrderUpdated: (updated) {
-                                    setState(() => _selectedOrder = updated);
-                                    context.read<PosCubit>().fetchRecentOrders(forceRefresh: true);
-                                  },
+                                // Detalle embebido completo
+                                Expanded(
+                                  child: OrderDetailSheet(
+                                    key: ValueKey(_selectedOrder!.id),
+                                    order: _selectedOrder!,
+                                    isEmbedded: true,
+                                    onPop: (_) {
+                                      setState(() => _selectedOrder = null);
+                                    },
+                                    onOrderUpdated: (updated) {
+                                      setState(() => _selectedOrder = updated);
+                                      context.read<PosCubit>().fetchRecentOrders(forceRefresh: true);
+                                    },
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -503,7 +556,12 @@ class _PosSalesViewState extends State<PosSalesView> {
             IconButton(
               tooltip: 'Turnos de Caja',
               icon: const Icon(Icons.point_of_sale_rounded, color: AppColors.primary, size: 20),
-              onPressed: () => context.push('/all-cash-shifts'),
+              onPressed: () async {
+                await context.push('/all-cash-shifts');
+                if (context.mounted) {
+                  context.read<PosCubit>().refreshAccountsAndShift();
+                }
+              },
               style: IconButton.styleFrom(
                 backgroundColor: AppColors.background,
                 shape: RoundedRectangleBorder(
@@ -514,7 +572,12 @@ class _PosSalesViewState extends State<PosSalesView> {
             )
           else
             OutlinedButton.icon(
-              onPressed: () => context.push('/all-cash-shifts'),
+              onPressed: () async {
+                await context.push('/all-cash-shifts');
+                if (context.mounted) {
+                  context.read<PosCubit>().refreshAccountsAndShift();
+                }
+              },
               icon: const Icon(Icons.point_of_sale_rounded, size: 16),
               label: const Text('Turnos de Caja'),
               style: OutlinedButton.styleFrom(
@@ -531,7 +594,7 @@ class _PosSalesViewState extends State<PosSalesView> {
           // Botón Refrescar
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppColors.textSecondary),
-            tooltip: 'Actualizar ventas',
+            tooltip: 'Actualizar ventas y totales',
             onPressed: () => context.read<PosCubit>().fetchRecentOrders(forceRefresh: true),
             style: IconButton.styleFrom(
               backgroundColor: AppColors.background,
@@ -573,7 +636,7 @@ class _PosSalesViewState extends State<PosSalesView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'TOTAL VENTAS',
+                'TOTAL VENTAS (HOY)',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -649,20 +712,25 @@ class _PosSalesViewState extends State<PosSalesView> {
       child: TextField(
         controller: _searchCtrl,
         focusNode: _searchFocusNode,
-        onChanged: (val) => setState(() => _filter = val),
+        onChanged: _onSearchChanged,
+        onSubmitted: (val) {
+          _debounceTimer?.cancel();
+          context.read<PosCubit>().fetchRecentOrders(query: val.trim(), forceRefresh: true);
+        },
         decoration: InputDecoration(
-          hintText: 'Filtrar por cliente o código de comprobante...',
+          hintText: 'Buscar por cliente o código de comprobante...',
           hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
           prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted, size: 20),
-          suffixIcon: _filter.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear_rounded, size: 18),
-                  onPressed: () {
-                    _searchCtrl.clear();
-                    setState(() => _filter = '');
-                  },
-                )
-              : null,
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _searchCtrl,
+            builder: (context, value, _) {
+              if (value.text.isEmpty) return const SizedBox.shrink();
+              return IconButton(
+                icon: const Icon(Icons.clear_rounded, size: 18),
+                onPressed: _clearSearch,
+              );
+            },
+          ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
         ),
@@ -702,10 +770,57 @@ class _PosSalesViewState extends State<PosSalesView> {
     );
   }
 
+  Widget _buildStatusBadge(String status) {
+    final s = status.toUpperCase();
+    Color bgColor;
+    Color textColor;
+    String label;
+
+    switch (s) {
+      case 'COMPLETED':
+      case 'DELIVERED':
+        bgColor = AppColors.successLight;
+        textColor = AppColors.successDark;
+        label = 'Completado';
+        break;
+      case 'CANCELLED':
+        bgColor = const Color(0xFFFFEBEE);
+        textColor = const Color(0xFFC62828);
+        label = 'Anulado';
+        break;
+      case 'REFUNDED':
+        bgColor = const Color(0xFFFFF3E0);
+        textColor = const Color(0xFFE65100);
+        label = 'Devuelto';
+        break;
+      case 'PENDING':
+      default:
+        bgColor = const Color(0xFFE3F2FD);
+        textColor = const Color(0xFF1565C0);
+        label = 'Pendiente';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
   Widget _buildOrderCard(
     BuildContext context,
     OrderEntity order,
-    DateFormat dateFormat,
     bool isDesktop,
     bool isTablet,
     bool isMobile,
@@ -713,7 +828,7 @@ class _PosSalesViewState extends State<PosSalesView> {
     final isSelected = isDesktop && _selectedOrder?.id == order.id;
     final isReprinting = _reprintingOrderId == order.id;
     final clientName = order.customerName.isNotEmpty ? order.customerName : 'Cliente General';
-    final dateStr = order.createdAt != null ? dateFormat.format(order.createdAt!) : 'Reciente';
+    final dateStr = order.createdAt != null ? _dateFormat.format(order.createdAt!) : 'Reciente';
     final idShort = order.id.length > 12 ? order.id.substring(0, 12) : order.id;
 
     return Material(
@@ -761,7 +876,7 @@ class _PosSalesViewState extends State<PosSalesView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Fila 1: Icono + Nombre del Cliente + Estado
+          // Fila 1: Icono + Nombre del Cliente + Estado Real
           Row(
             children: [
               Container(
@@ -791,21 +906,7 @@ class _PosSalesViewState extends State<PosSalesView> {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                decoration: BoxDecoration(
-                  color: AppColors.successLight,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'Completado',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.successDark,
-                  ),
-                ),
-              ),
+              _buildStatusBadge(order.status),
             ],
           ),
           const SizedBox(height: 8),
@@ -952,21 +1053,7 @@ class _PosSalesViewState extends State<PosSalesView> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                      decoration: BoxDecoration(
-                        color: AppColors.successLight,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        'Completado',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.successDark,
-                        ),
-                      ),
-                    ),
+                    _buildStatusBadge(order.status),
                   ],
                 ),
                 const SizedBox(height: 3),
@@ -1058,7 +1145,6 @@ class _PosSalesViewState extends State<PosSalesView> {
               minimumSize: const Size(0, 36),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
-                side: const BorderSide(color: AppColors.border),
               ),
             ),
           ),

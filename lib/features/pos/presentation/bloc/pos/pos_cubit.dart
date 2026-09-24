@@ -188,13 +188,37 @@ class PosCubit extends Cubit<PosState> {
     emit(state.copyWith(batchOverrides: {}));
   }
 
-  Future<void> fetchRecentOrders({bool forceRefresh = false}) async {
-    if (!forceRefresh && state.recentOrders.isNotEmpty) {
+  Future<void> fetchRecentOrders({
+    bool forceRefresh = false,
+    String? query,
+  }) async {
+    final effectiveQuery = query ?? state.salesSearchQuery;
+    if (!forceRefresh &&
+        query == null &&
+        state.recentOrders.isNotEmpty &&
+        state.salesSearchQuery.isEmpty) {
       return;
     }
-    emit(state.copyWith(isLoadingRecentOrders: true, recentOrdersError: ''));
 
-    final result = await _posRepository.fetchRecentOrders(limit: 10);
+    emit(
+      state.copyWith(
+        isLoadingRecentOrders: true,
+        recentOrdersError: '',
+        salesSearchQuery: effectiveQuery,
+      ),
+    );
+
+    // En paralelo, traer las órdenes paginadas y el resumen agregado del día
+    final ordersFuture = _posRepository.fetchRecentOrders(
+      limit: 20,
+      offset: 0,
+      searchQuery: effectiveQuery,
+    );
+    final summaryFuture = fetchDailySalesSummary();
+
+    final result = await ordersFuture;
+    await summaryFuture;
+
     result.fold(
       (failure) {
         emit(
@@ -206,7 +230,69 @@ class PosCubit extends Cubit<PosState> {
       },
       (orders) {
         emit(
-          state.copyWith(isLoadingRecentOrders: false, recentOrders: orders),
+          state.copyWith(
+            isLoadingRecentOrders: false,
+            recentOrders: orders,
+            hasMoreOrders: orders.length == 20,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> loadMoreRecentOrders() async {
+    if (state.isLoadingRecentOrders ||
+        state.isLoadingMoreOrders ||
+        !state.hasMoreOrders) {
+      return;
+    }
+
+    emit(state.copyWith(isLoadingMoreOrders: true));
+
+    final currentOffset = state.recentOrders.length;
+    final result = await _posRepository.fetchRecentOrders(
+      limit: 20,
+      offset: currentOffset,
+      searchQuery: state.salesSearchQuery,
+    );
+
+    result.fold(
+      (failure) {
+        LoggerService.w(
+          'Error cargando más órdenes',
+          tag: 'PosCubit',
+          error: failure.message,
+        );
+        emit(state.copyWith(isLoadingMoreOrders: false));
+      },
+      (newOrders) {
+        emit(
+          state.copyWith(
+            isLoadingMoreOrders: false,
+            recentOrders: [...state.recentOrders, ...newOrders],
+            hasMoreOrders: newOrders.length == 20,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> fetchDailySalesSummary() async {
+    final summaryRes = await _posRepository.fetchDailySalesSummary();
+    summaryRes.fold(
+      (failure) {
+        LoggerService.w(
+          'Error al obtener resumen de ventas del día',
+          tag: 'PosCubit',
+          error: failure.message,
+        );
+      },
+      (summary) {
+        emit(
+          state.copyWith(
+            dailyTotalAmount: summary.totalAmount,
+            dailyTotalCount: summary.totalCount,
+          ),
         );
       },
     );
