@@ -1498,9 +1498,10 @@ class _VariantRowItem extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.04)
-              : AppColors.surface,
+          color:
+              isSelected
+                  ? AppColors.primary.withValues(alpha: 0.04)
+                  : AppColors.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
@@ -1514,9 +1515,10 @@ class _VariantRowItem extends StatelessWidget {
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary
-                    : (isActive ? AppColors.success : AppColors.textMuted),
+                color:
+                    isSelected
+                        ? AppColors.primary
+                        : (isActive ? AppColors.success : AppColors.textMuted),
                 shape: BoxShape.circle,
               ),
             ),

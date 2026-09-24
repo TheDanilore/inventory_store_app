@@ -239,7 +239,8 @@ class _InventoryScreenState extends State<InventoryScreen>
           autofocus: true,
           onKeyEvent: (node, event) {
             if (event is KeyDownEvent) {
-              final isCtrlOrCmd = HardwareKeyboard.instance.isControlPressed ||
+              final isCtrlOrCmd =
+                  HardwareKeyboard.instance.isControlPressed ||
                   HardwareKeyboard.instance.isMetaPressed;
               if (isCtrlOrCmd && event.logicalKey == LogicalKeyboardKey.keyE) {
                 _openExportModal(loadedState);
@@ -248,16 +249,14 @@ class _InventoryScreenState extends State<InventoryScreen>
             }
             return KeyEventResult.ignored;
           },
-          child: widget.isEmbedded
-              ? Material(
-                  color: AppColors.background,
-                  child: inventoryBody,
-                )
-              : AdminLayout(
-                  title: 'Inventario',
-                  showBackButton: true,
-                  body: inventoryBody,
-                ),
+          child:
+              widget.isEmbedded
+                  ? Material(color: AppColors.background, child: inventoryBody)
+                  : AdminLayout(
+                    title: 'Inventario',
+                    showBackButton: true,
+                    body: inventoryBody,
+                  ),
         );
 
         return focusableContent;
@@ -281,14 +280,16 @@ class _WarehouseSelector extends StatelessWidget {
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: isSelected
-            ? AppColors.primary.withValues(alpha: 0.04)
-            : AppColors.background,
+        color:
+            isSelected
+                ? AppColors.primary.withValues(alpha: 0.04)
+                : AppColors.background,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.4)
-              : AppColors.border,
+          color:
+              isSelected
+                  ? AppColors.primary.withValues(alpha: 0.4)
+                  : AppColors.border,
         ),
       ),
       child: Row(
@@ -373,10 +374,7 @@ class _ExportHeaderButton extends StatefulWidget {
   final VoidCallback onPressed;
   final bool isCompact;
 
-  const _ExportHeaderButton({
-    required this.onPressed,
-    this.isCompact = false,
-  });
+  const _ExportHeaderButton({required this.onPressed, this.isCompact = false});
 
   @override
   State<_ExportHeaderButton> createState() => _ExportHeaderButtonState();
@@ -403,9 +401,10 @@ class _ExportHeaderButtonState extends State<_ExportHeaderButton> {
               horizontal: widget.isCompact ? 10 : 14,
             ),
             decoration: BoxDecoration(
-              color: _isHovered
-                  ? AppColors.teal.withValues(alpha: 0.08)
-                  : AppColors.background,
+              color:
+                  _isHovered
+                      ? AppColors.teal.withValues(alpha: 0.08)
+                      : AppColors.background,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: _isHovered ? AppColors.teal : AppColors.border,

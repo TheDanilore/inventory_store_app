@@ -110,7 +110,7 @@ class PosSidebarRail extends StatelessWidget {
 
             // ── Botón de Salir / Volver al ERP ────────────────────────────────
             Tooltip(
-              message: 'Volver al ERP (Esc)',
+              message: 'Volver al ERP',
               preferBelow: false,
               child: Material(
                 color: Colors.transparent,

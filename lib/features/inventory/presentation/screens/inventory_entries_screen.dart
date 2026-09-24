@@ -113,8 +113,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     if (_isFetchingTargetEntry) return;
     _isFetchingTargetEntry = true;
     try {
-      final entry =
-          await sl<InventoryEntriesRepository>().getEntryById(targetId);
+      final entry = await sl<InventoryEntriesRepository>().getEntryById(
+        targetId,
+      );
       if (!mounted) return;
       if (entry != null) {
         _selectEntry(entry, updateUrl: isTablet);
@@ -489,7 +490,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         // se fija arriba para que siempre aparezca visible y seleccionada en el panel izquierdo
         final displayEntries =
             (_selectedEntry != null &&
-                    !currentState.entries.any((e) => e.id == _selectedEntry!.id))
+                    !currentState.entries.any(
+                      (e) => e.id == _selectedEntry!.id,
+                    ))
                 ? [_selectedEntry!, ...currentState.entries]
                 : currentState.entries;
 

@@ -38,24 +38,26 @@ class InventoryExportSheet extends StatefulWidget {
       await showDialog(
         context: context,
         barrierDismissible: true,
-        builder: (ctx) => InventoryExportSheet(
-          selectedWarehouseId: selectedWarehouseId,
-          selectedWarehouseName: selectedWarehouseName,
-          warehouses: warehouses,
-          isDialog: true,
-        ),
+        builder:
+            (ctx) => InventoryExportSheet(
+              selectedWarehouseId: selectedWarehouseId,
+              selectedWarehouseName: selectedWarehouseName,
+              warehouses: warehouses,
+              isDialog: true,
+            ),
       );
     } else {
       await showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (ctx) => InventoryExportSheet(
-          selectedWarehouseId: selectedWarehouseId,
-          selectedWarehouseName: selectedWarehouseName,
-          warehouses: warehouses,
-          isDialog: false,
-        ),
+        builder:
+            (ctx) => InventoryExportSheet(
+              selectedWarehouseId: selectedWarehouseId,
+              selectedWarehouseName: selectedWarehouseName,
+              warehouses: warehouses,
+              isDialog: false,
+            ),
       );
     }
   }
@@ -91,9 +93,10 @@ class _InventoryExportSheetState extends State<InventoryExportSheet> {
     try {
       final exportUseCase = sl<ExportInventoryExcelUseCase>();
       final fileName = await exportUseCase(
-        warehouseId: _selectedMode == InventoryExportMode.consolidated
-            ? null
-            : _targetWarehouseId,
+        warehouseId:
+            _selectedMode == InventoryExportMode.consolidated
+                ? null
+                : _targetWarehouseId,
         warehouseName: _targetWarehouseName,
         mode: _selectedMode,
         filter: _filterOption,
@@ -108,11 +111,16 @@ class _InventoryExportSheetState extends State<InventoryExportSheet> {
         );
       }
     } catch (e, stackTrace) {
-      LoggerService.e('Error al exportar inventario a Excel', error: e, stackTrace: stackTrace);
+      LoggerService.e(
+        'Error al exportar inventario a Excel',
+        error: e,
+        stackTrace: stackTrace,
+      );
       if (mounted) {
         setState(() => _isExporting = false);
         String userFriendlyMsg = 'Ocurrió un error al exportar el inventario.';
-        if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+        if (e.toString().contains('SocketException') ||
+            e.toString().contains('Failed host lookup')) {
           userFriendlyMsg = 'Error de conexión. Verifica tu acceso a internet.';
         }
         AppSnackbar.show(
@@ -135,11 +143,13 @@ class _InventoryExportSheetState extends State<InventoryExportSheet> {
           autofocus: true,
           onKeyEvent: (node, event) {
             if (event is KeyDownEvent) {
-              if (event.logicalKey == LogicalKeyboardKey.escape && !_isExporting) {
+              if (event.logicalKey == LogicalKeyboardKey.escape &&
+                  !_isExporting) {
                 Navigator.of(context).pop();
                 return KeyEventResult.handled;
               }
-              if (event.logicalKey == LogicalKeyboardKey.enter && !_isExporting) {
+              if (event.logicalKey == LogicalKeyboardKey.enter &&
+                  !_isExporting) {
                 _handleExport();
                 return KeyEventResult.handled;
               }
@@ -165,21 +175,13 @@ class _InventoryExportSheetState extends State<InventoryExportSheet> {
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: SafeArea(
-        top: false,
-        child: _buildContent(context),
-      ),
+      child: SafeArea(top: false, child: _buildContent(context)),
     );
   }
 
   Widget _buildContent(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        widget.isDialog ? 24 : 12,
-        24,
-        24,
-      ),
+      padding: EdgeInsets.fromLTRB(24, widget.isDialog ? 24 : 12, 24, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -246,7 +248,8 @@ class _InventoryExportSheetState extends State<InventoryExportSheet> {
                 IconButton(
                   icon: const Icon(Icons.close_rounded, size: 20),
                   color: AppColors.textSecondary,
-                  onPressed: _isExporting ? null : () => Navigator.of(context).pop(),
+                  onPressed:
+                      _isExporting ? null : () => Navigator.of(context).pop(),
                   splashRadius: 18,
                 ),
             ],
@@ -352,9 +355,10 @@ class _InventoryExportSheetState extends State<InventoryExportSheet> {
                           setState(() {
                             _targetWarehouseId = val;
                             if (val != null) {
-                              _targetWarehouseName = widget.warehouses
-                                  .firstWhere((w) => w.id == val)
-                                  .name;
+                              _targetWarehouseName =
+                                  widget.warehouses
+                                      .firstWhere((w) => w.id == val)
+                                      .name;
                             } else {
                               _targetWarehouseName = 'Todos los almacenes';
                             }
@@ -389,25 +393,32 @@ class _InventoryExportSheetState extends State<InventoryExportSheet> {
               _FilterChip(
                 label: 'Todos los productos',
                 isSelected: _filterOption == InventoryStockFilterOption.all,
-                onTap: () => setState(
-                  () => _filterOption = InventoryStockFilterOption.all,
-                ),
+                onTap:
+                    () => setState(
+                      () => _filterOption = InventoryStockFilterOption.all,
+                    ),
               ),
               _FilterChip(
                 label: 'Solo con stock (> 0)',
                 isSelected:
                     _filterOption == InventoryStockFilterOption.inStockOnly,
-                onTap: () => setState(
-                  () => _filterOption = InventoryStockFilterOption.inStockOnly,
-                ),
+                onTap:
+                    () => setState(
+                      () =>
+                          _filterOption =
+                              InventoryStockFilterOption.inStockOnly,
+                    ),
               ),
               _FilterChip(
                 label: 'Bajo stock o agotados',
                 isSelected:
                     _filterOption == InventoryStockFilterOption.lowStockOnly,
-                onTap: () => setState(
-                  () => _filterOption = InventoryStockFilterOption.lowStockOnly,
-                ),
+                onTap:
+                    () => setState(
+                      () =>
+                          _filterOption =
+                              InventoryStockFilterOption.lowStockOnly,
+                    ),
               ),
             ],
           ),
@@ -419,7 +430,8 @@ class _InventoryExportSheetState extends State<InventoryExportSheet> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
-                onPressed: _isExporting ? null : () => Navigator.of(context).pop(),
+                onPressed:
+                    _isExporting ? null : () => Navigator.of(context).pop(),
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -432,25 +444,23 @@ class _InventoryExportSheetState extends State<InventoryExportSheet> {
                 ),
                 child: const Text(
                   'Cancelar',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
               ),
               const SizedBox(width: 10),
               ElevatedButton.icon(
                 onPressed: _isExporting ? null : _handleExport,
-                icon: _isExporting
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.download_rounded, size: 18),
+                icon:
+                    _isExporting
+                        ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Icon(Icons.download_rounded, size: 18),
                 label: Text(
                   _isExporting ? 'Generando archivo...' : 'Descargar Excel',
                   style: const TextStyle(
@@ -503,9 +513,10 @@ class _ModeOptionCard extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.04)
-              : AppColors.surface,
+          color:
+              isSelected
+                  ? AppColors.primary.withValues(alpha: 0.04)
+                  : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
@@ -518,9 +529,10 @@ class _ModeOptionCard extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary.withValues(alpha: 0.1)
-                    : AppColors.background,
+                color:
+                    isSelected
+                        ? AppColors.primary.withValues(alpha: 0.1)
+                        : AppColors.background,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -540,9 +552,10 @@ class _ModeOptionCard extends StatelessWidget {
                       fontSize: 13,
                       fontWeight:
                           isSelected ? FontWeight.w700 : FontWeight.w600,
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.textPrimary,
+                      color:
+                          isSelected
+                              ? AppColors.primary
+                              : AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -591,9 +604,10 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.08)
-              : AppColors.background,
+          color:
+              isSelected
+                  ? AppColors.primary.withValues(alpha: 0.08)
+                  : AppColors.background,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,

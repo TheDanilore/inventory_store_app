@@ -156,23 +156,33 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
         return true;
       }
 
-      // Alt + K / Alt + B: Foco en Buscador
+      // Alt + K / Alt + B: Foco en Buscador del Catálogo POS (solo en Tab 0)
       if (event.logicalKey == LogicalKeyboardKey.keyK ||
           event.logicalKey == LogicalKeyboardKey.keyB) {
-        _focusSearch();
-        return true;
+        if (_selectedSidebarIndex == 0) {
+          _focusSearch();
+          return true;
+        }
+        // Permitir que fluya al Tab activo (Lotes/Stock o Ventas)
+        return false;
       }
 
-      // Alt + I: Alternar modo de búsqueda Producto vs Ingrediente Activo
+      // Alt + I: Alternar modo de búsqueda Producto vs Ingrediente Activo (solo en Tab 0)
       if (event.logicalKey == LogicalKeyboardKey.keyI) {
-        _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
-        return true;
+        if (_selectedSidebarIndex == 0) {
+          _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
+          return true;
+        }
+        return false;
       }
 
-      // Alt + C: Cobrar en Desktop
+      // Alt + C: Cobrar en Desktop (solo en Tab 0)
       if (event.logicalKey == LogicalKeyboardKey.keyC) {
-        _desktopPanelKey.currentState?.triggerCheckout();
-        return true;
+        if (_selectedSidebarIndex == 0) {
+          _desktopPanelKey.currentState?.triggerCheckout();
+          return true;
+        }
+        return false;
       }
     } catch (_) {
       return false;
@@ -334,12 +344,10 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
           _desktopPanelKey.currentState?.triggerCheckout();
         },
 
-        // Salir al ERP (Escape con confirmación si no hay focus en búsqueda)
+        // Escape solo desenfoca el buscador en Tab 0 (sin salir del ERP)
         const SingleActivator(LogicalKeyboardKey.escape): () {
           if (_searchFocusNode.hasFocus) {
             _searchFocusNode.unfocus();
-          } else {
-            _onExitPos();
           }
         },
       },

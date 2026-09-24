@@ -38,34 +38,37 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeInOut,
           decoration: BoxDecoration(
-            color: widget.isSelected
-                ? AppColors.primary.withValues(alpha: 0.02)
-                : AppColors.surface,
+            color:
+                widget.isSelected
+                    ? AppColors.primary.withValues(alpha: 0.02)
+                    : AppColors.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: widget.isSelected
-                  ? AppColors.primary
-                  : _isHovered
+              color:
+                  widget.isSelected
+                      ? AppColors.primary
+                      : _isHovered
                       ? AppColors.primary.withValues(alpha: 0.4)
                       : AppColors.border,
               width: widget.isSelected ? 1.8 : 1,
             ),
-            boxShadow: widget.isSelected
-                ? [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : _isHovered
+            boxShadow:
+                widget.isSelected
                     ? [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ]
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                    : _isHovered
+                    ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
                     : AppColors.cardShadow(opacity: 0.02),
           ),
           child: ClipRRect(
@@ -73,7 +76,8 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: widget.onTap ??
+                onTap:
+                    widget.onTap ??
                     () {
                       context.push(
                         '/product/${widget.batch.productId}?variantId=${widget.batch.variantId}',
@@ -99,25 +103,28 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(9),
-                              child: widget.batch.imageUrl != null &&
-                                      widget.batch.imageUrl!.isNotEmpty
-                                  ? CachedNetworkImage(
-                                      imageUrl: widget.batch.imageUrl!,
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) =>
-                                          Container(color: AppColors.background),
-                                      errorWidget: (context, url, error) =>
-                                          const Icon(
-                                        Icons.broken_image_outlined,
-                                        size: 18,
+                              child:
+                                  widget.batch.imageUrl != null &&
+                                          widget.batch.imageUrl!.isNotEmpty
+                                      ? CachedNetworkImage(
+                                        imageUrl: widget.batch.imageUrl!,
+                                        fit: BoxFit.cover,
+                                        placeholder:
+                                            (context, url) => Container(
+                                              color: AppColors.background,
+                                            ),
+                                        errorWidget:
+                                            (context, url, error) => const Icon(
+                                              Icons.broken_image_outlined,
+                                              size: 18,
+                                              color: AppColors.textMuted,
+                                            ),
+                                      )
+                                      : const Icon(
+                                        Icons.inventory_2_outlined,
+                                        size: 20,
                                         color: AppColors.textMuted,
                                       ),
-                                    )
-                                  : const Icon(
-                                      Icons.inventory_2_outlined,
-                                      size: 20,
-                                      color: AppColors.textMuted,
-                                    ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -130,9 +137,10 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                                   widget.batch.productName ??
                                       'Producto ${widget.batch.productId.substring(0, 8)}',
                                   style: TextStyle(
-                                    fontWeight: widget.isSelected
-                                        ? FontWeight.w800
-                                        : FontWeight.w700,
+                                    fontWeight:
+                                        widget.isSelected
+                                            ? FontWeight.w800
+                                            : FontWeight.w700,
                                     fontSize: 14.5,
                                     color: AppColors.textPrimary,
                                     height: 1.2,
@@ -175,7 +183,9 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                               color: statusConfig.color.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: statusConfig.color.withValues(alpha: 0.25),
+                                color: statusConfig.color.withValues(
+                                  alpha: 0.25,
+                                ),
                               ),
                             ),
                             child: Row(
@@ -285,10 +295,14 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                                 vertical: 3.5,
                               ),
                               decoration: BoxDecoration(
-                                color: statusConfig.color.withValues(alpha: 0.08),
+                                color: statusConfig.color.withValues(
+                                  alpha: 0.08,
+                                ),
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(
-                                  color: statusConfig.color.withValues(alpha: 0.2),
+                                  color: statusConfig.color.withValues(
+                                    alpha: 0.2,
+                                  ),
                                 ),
                               ),
                               child: Row(
@@ -362,7 +376,11 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
           value: 'kardex',
           child: Row(
             children: const [
-              Icon(Icons.receipt_long_rounded, size: 16, color: AppColors.primary),
+              Icon(
+                Icons.receipt_long_rounded,
+                size: 16,
+                color: AppColors.primary,
+              ),
               SizedBox(width: 8),
               Text('Ver en Kárdex', style: TextStyle(fontSize: 13)),
             ],
@@ -372,7 +390,11 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
           value: 'product',
           child: Row(
             children: const [
-              Icon(Icons.open_in_new_rounded, size: 16, color: AppColors.primary),
+              Icon(
+                Icons.open_in_new_rounded,
+                size: 16,
+                color: AppColors.primary,
+              ),
               SizedBox(width: 8),
               Text('Ver Ficha de Producto', style: TextStyle(fontSize: 13)),
             ],
@@ -383,7 +405,11 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
           value: 'copy',
           child: Row(
             children: const [
-              Icon(Icons.copy_rounded, size: 16, color: AppColors.textSecondary),
+              Icon(
+                Icons.copy_rounded,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
               SizedBox(width: 8),
               Text('Copiar código de lote', style: TextStyle(fontSize: 13)),
             ],
@@ -432,7 +458,12 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
         return _StatusConfig(
           color: AppColors.warning,
           icon: Icons.warning_amber_rounded,
-          label: d == 0 ? 'HOY' : d == 1 ? 'MAÑANA' : 'EN $d DÍAS',
+          label:
+              d == 0
+                  ? 'HOY'
+                  : d == 1
+                  ? 'MAÑANA'
+                  : 'EN $d DÍAS',
         );
       case 'proximo':
         return _StatusConfig(
@@ -461,9 +492,5 @@ class _StatusConfig {
   final IconData icon;
   final String label;
 
-  _StatusConfig({
-    required this.color,
-    required this.icon,
-    required this.label,
-  });
+  _StatusConfig({required this.color, required this.icon, required this.label});
 }

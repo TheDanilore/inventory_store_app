@@ -304,9 +304,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                   actions: [
                     TextButton(
                       onPressed:
-                          isDialogProcessing
-                              ? null
-                              : () => Navigator.pop(ctx),
+                          isDialogProcessing ? null : () => Navigator.pop(ctx),
                       child: const Text(
                         'Cancelar',
                         style: TextStyle(color: AppColors.textSecondary),

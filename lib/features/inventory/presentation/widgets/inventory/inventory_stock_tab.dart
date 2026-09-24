@@ -63,9 +63,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
   }
 
   void _openProductDetail(InventoryStockItem item) {
-    context.push(
-      '/product/${item.productId}?variantId=${item.variantId}',
-    );
+    context.push('/product/${item.productId}?variantId=${item.variantId}');
   }
 
   void _showQuickView(InventoryStockItem item, InventoryLoaded state) {
@@ -83,9 +81,10 @@ class _InventoryStockTabState extends State<InventoryStockTab>
     return BlocBuilder<InventoryCubit, InventoryState>(
       builder: (context, state) {
         final cubitState = context.read<InventoryCubit>().state;
-        final loadedState = state is InventoryLoaded
-            ? state
-            : (cubitState is InventoryLoaded ? cubitState : null);
+        final loadedState =
+            state is InventoryLoaded
+                ? state
+                : (cubitState is InventoryLoaded ? cubitState : null);
 
         if (loadedState == null) {
           if (state is InventoryError) {
@@ -114,10 +113,13 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           onKeyEvent: (node, event) {
             if (event is KeyDownEvent) {
               final isAlt = HardwareKeyboard.instance.isAltPressed;
-              // Alt+K enfoca el buscador
-              if (isAlt && event.logicalKey == LogicalKeyboardKey.keyK &&
-                  !_searchFocusNode.hasFocus) {
+              // Alt+K enfoca el buscador y selecciona el texto
+              if (isAlt && event.logicalKey == LogicalKeyboardKey.keyK) {
                 _searchFocusNode.requestFocus();
+                _searchCtrl.selection = TextSelection(
+                  baseOffset: 0,
+                  extentOffset: _searchCtrl.text.length,
+                );
                 return KeyEventResult.handled;
               }
               if (event.logicalKey == LogicalKeyboardKey.escape) {
@@ -280,123 +282,178 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                         ),
                       ),
                     Expanded(
-                      child: (isLoading || state.isSearchingStock) && state.stockItems.isEmpty
-                          ? const Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.primary,
-                            ),
-                          )
-                          : state.stockItems.isEmpty
-                          ? const AppEmptyState(
-                            icon: Icons.inventory_2_outlined,
-                            title: 'Sin Resultados',
-                            message: 'No hay productos con stock disponible',
-                          )
-                          : LayoutBuilder(
-                          builder: (context, constraints) {
-                            return SingleChildScrollView(
-                              scrollDirection: Axis.vertical,
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    minWidth: constraints.maxWidth,
-                                  ),
-                                  child: DataTable(
-                                    headingRowColor: WidgetStateProperty.all(
-                                      AppColors.background.withValues(
-                                        alpha: 0.7,
-                                      ),
-                                    ),
-                                    dataRowMinHeight: 52,
-                                    dataRowMaxHeight: 52,
-                                    columnSpacing: 20,
-                                    showBottomBorder: true,
-                                    columns: const [
-                                      DataColumn(
-                                        label: Text(
-                                          'Producto',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12.5,
-                                            color: AppColors.textSecondary,
-                                          ),
+                      child:
+                          (isLoading || state.isSearchingStock) &&
+                                  state.stockItems.isEmpty
+                              ? const Center(
+                                child: CircularProgressIndicator(
+                                  color: AppColors.primary,
+                                ),
+                              )
+                              : state.stockItems.isEmpty
+                              ? const AppEmptyState(
+                                icon: Icons.inventory_2_outlined,
+                                title: 'Sin Resultados',
+                                message:
+                                    'No hay productos con stock disponible',
+                              )
+                              : LayoutBuilder(
+                                builder: (context, constraints) {
+                                  return SingleChildScrollView(
+                                    scrollDirection: Axis.vertical,
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          minWidth: constraints.maxWidth,
                                         ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'SKU / Categoría',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12.5,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Costo / Venta',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12.5,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Disponibilidad',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12.5,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Acciones',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12.5,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                    rows:
-                                        state.stockItems.map((item) {
-                                          return DataRow(
-                                            color:
-                                                WidgetStateProperty.resolveWith<
-                                                  Color?
-                                                >((Set<WidgetState> states) {
-                                                  if (states.contains(
-                                                    WidgetState.hovered,
-                                                  )) {
-                                                    return AppColors.primary
-                                                        .withValues(
-                                                          alpha: 0.03,
-                                                        );
-                                                  }
-                                                  return null;
-                                                }),
-                                            cells: [
-                                              DataCell(
-                                                InkWell(
-                                                  onTap:
-                                                      () =>
-                                                          _showQuickView(
-                                                            item,
-                                                            state,
-                                                          ),
-                                                  child: Row(
-                                                    children: [
-                                                      _buildAvatar(
-                                                        item.imageUrl,
-                                                        size: 36,
+                                        child: DataTable(
+                                          headingRowColor:
+                                              WidgetStateProperty.all(
+                                                AppColors.background.withValues(
+                                                  alpha: 0.7,
+                                                ),
+                                              ),
+                                          dataRowMinHeight: 52,
+                                          dataRowMaxHeight: 52,
+                                          columnSpacing: 20,
+                                          showBottomBorder: true,
+                                          columns: const [
+                                            DataColumn(
+                                              label: Text(
+                                                'Producto',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12.5,
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
+                                              ),
+                                            ),
+                                            DataColumn(
+                                              label: Text(
+                                                'SKU / Categoría',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12.5,
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
+                                              ),
+                                            ),
+                                            DataColumn(
+                                              label: Text(
+                                                'Costo / Venta',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12.5,
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
+                                              ),
+                                            ),
+                                            DataColumn(
+                                              label: Text(
+                                                'Disponibilidad',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12.5,
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
+                                              ),
+                                            ),
+                                            DataColumn(
+                                              label: Text(
+                                                'Acciones',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12.5,
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          rows:
+                                              state.stockItems.map((item) {
+                                                return DataRow(
+                                                  color:
+                                                      WidgetStateProperty.resolveWith<
+                                                        Color?
+                                                      >((
+                                                        Set<WidgetState> states,
+                                                      ) {
+                                                        if (states.contains(
+                                                          WidgetState.hovered,
+                                                        )) {
+                                                          return AppColors
+                                                              .primary
+                                                              .withValues(
+                                                                alpha: 0.03,
+                                                              );
+                                                        }
+                                                        return null;
+                                                      }),
+                                                  cells: [
+                                                    DataCell(
+                                                      InkWell(
+                                                        onTap:
+                                                            () =>
+                                                                _showQuickView(
+                                                                  item,
+                                                                  state,
+                                                                ),
+                                                        child: Row(
+                                                          children: [
+                                                            _buildAvatar(
+                                                              item.imageUrl,
+                                                              size: 36,
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 12,
+                                                            ),
+                                                            Column(
+                                                              crossAxisAlignment:
+                                                                  CrossAxisAlignment
+                                                                      .start,
+                                                              mainAxisAlignment:
+                                                                  MainAxisAlignment
+                                                                      .center,
+                                                              children: [
+                                                                Text(
+                                                                  item.productName,
+                                                                  style: const TextStyle(
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w700,
+                                                                    fontSize:
+                                                                        13,
+                                                                    color:
+                                                                        AppColors
+                                                                            .textPrimary,
+                                                                  ),
+                                                                ),
+                                                                if (item
+                                                                    .attrsText
+                                                                    .isNotEmpty)
+                                                                  Text(
+                                                                    item.attrsText,
+                                                                    style: const TextStyle(
+                                                                      fontSize:
+                                                                          11,
+                                                                      color:
+                                                                          AppColors
+                                                                              .textSecondary,
+                                                                    ),
+                                                                  ),
+                                                              ],
+                                                            ),
+                                                          ],
+                                                        ),
                                                       ),
-                                                      const SizedBox(width: 12),
+                                                    ),
+                                                    DataCell(
                                                       Column(
                                                         crossAxisAlignment:
                                                             CrossAxisAlignment
@@ -406,239 +463,275 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                                 .center,
                                                         children: [
                                                           Text(
-                                                            item.productName,
+                                                            item.sku?.isNotEmpty ==
+                                                                    true
+                                                                ? item.sku!
+                                                                : 'Sin SKU',
                                                             style: const TextStyle(
                                                               fontWeight:
                                                                   FontWeight
-                                                                      .w700,
-                                                              fontSize: 13,
+                                                                      .w600,
+                                                              fontSize: 12,
+                                                              fontFamily:
+                                                                  'monospace',
                                                               color:
                                                                   AppColors
                                                                       .textPrimary,
                                                             ),
                                                           ),
-                                                          if (item
-                                                              .attrsText
-                                                              .isNotEmpty)
-                                                            Text(
-                                                              item.attrsText,
-                                                              style: const TextStyle(
-                                                                fontSize: 11,
-                                                                color:
-                                                                    AppColors
-                                                                        .textSecondary,
-                                                              ),
-                                                            ),
-                                                        ],
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: [
-                                                    Text(
-                                                      item.sku?.isNotEmpty ==
-                                                              true
-                                                          ? item.sku!
-                                                          : 'Sin SKU',
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        fontSize: 12,
-                                                        fontFamily: 'monospace',
-                                                        color:
-                                                            AppColors
-                                                                .textPrimary,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      item.category,
-                                                      style: const TextStyle(
-                                                        fontSize: 11,
-                                                        color:
-                                                            AppColors
-                                                                .textSecondary,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: [
-                                                    Text(
-                                                      'Costo: S/ ${item.unitCost.toStringAsFixed(2)}',
-                                                      style: const TextStyle(
-                                                        color:
-                                                            AppColors
-                                                                .textSecondary,
-                                                        fontSize: 11,
-                                                        fontFeatures: [
-                                                          FontFeature.tabularFigures(),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      'Venta: S/ ${item.salePrice.toStringAsFixed(2)}',
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        fontSize: 12.5,
-                                                        color:
-                                                            AppColors
-                                                                .textPrimary,
-                                                        fontFeatures: [
-                                                          FontFeature.tabularFigures(),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Builder(
-                                                  builder: (context) {
-                                                    final isOut = item.stock <= 0;
-                                                    final isLow = item.isLowStock;
-                                                    final Color badgeBg = isOut
-                                                        ? AppColors.danger.withValues(alpha: 0.08)
-                                                        : (isLow
-                                                            ? AppColors.warning.withValues(alpha: 0.1)
-                                                            : AppColors.teal.withValues(alpha: 0.1));
-                                                    final Color badgeBorder = isOut
-                                                        ? AppColors.danger.withValues(alpha: 0.25)
-                                                        : (isLow
-                                                            ? AppColors.warning.withValues(alpha: 0.25)
-                                                            : AppColors.teal.withValues(alpha: 0.25));
-                                                    final Color badgeColor = isOut
-                                                        ? AppColors.danger
-                                                        : (isLow ? AppColors.warningDark : AppColors.tealDark);
-                                                    final IconData badgeIcon = isOut
-                                                        ? Icons.highlight_off_rounded
-                                                        : (isLow
-                                                            ? Icons.warning_amber_rounded
-                                                            : Icons.check_circle_outline_rounded);
-
-                                                    return Container(
-                                                      padding: const EdgeInsets.symmetric(
-                                                        horizontal: 9,
-                                                        vertical: 3.5,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color: badgeBg,
-                                                        borderRadius: BorderRadius.circular(8),
-                                                        border: Border.all(color: badgeBorder),
-                                                      ),
-                                                      child: Row(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        children: [
-                                                          Icon(
-                                                            badgeIcon,
-                                                            size: 13,
-                                                            color: badgeColor,
-                                                          ),
-                                                          const SizedBox(width: 4),
                                                           Text(
-                                                            '${item.stock} uds.',
-                                                            style: TextStyle(
-                                                              fontWeight: FontWeight.w800,
-                                                              fontSize: 11.5,
-                                                              fontFeatures: const [
+                                                            item.category,
+                                                            style: const TextStyle(
+                                                              fontSize: 11,
+                                                              color:
+                                                                  AppColors
+                                                                      .textSecondary,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    DataCell(
+                                                      Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .center,
+                                                        children: [
+                                                          Text(
+                                                            'Costo: S/ ${item.unitCost.toStringAsFixed(2)}',
+                                                            style: const TextStyle(
+                                                              color:
+                                                                  AppColors
+                                                                      .textSecondary,
+                                                              fontSize: 11,
+                                                              fontFeatures: [
                                                                 FontFeature.tabularFigures(),
                                                               ],
-                                                              color: badgeColor,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            'Venta: S/ ${item.salePrice.toStringAsFixed(2)}',
+                                                            style: const TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              fontSize: 12.5,
+                                                              color:
+                                                                  AppColors
+                                                                      .textPrimary,
+                                                              fontFeatures: [
+                                                                FontFeature.tabularFigures(),
+                                                              ],
                                                             ),
                                                           ),
                                                         ],
                                                       ),
-                                                    );
-                                                  },
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Tooltip(
-                                                      message:
-                                                          'Ficha Rápida y Variantes',
-                                                      child: IconButton(
-                                                        icon: const Icon(
-                                                          Icons
-                                                              .visibility_outlined,
-                                                          size: 18,
-                                                        ),
-                                                        color:
-                                                            AppColors.primary,
-                                                        onPressed:
-                                                            () =>
-                                                                _showQuickView(
-                                                                  item,
-                                                                  state,
-                                                                ),
-                                                        splashRadius: 16,
-                                                      ),
                                                     ),
-                                                    Tooltip(
-                                                      message: 'Ver en Kárdex',
-                                                      child: IconButton(
-                                                        icon: const Icon(
-                                                          Icons
-                                                              .receipt_long_rounded,
-                                                          size: 17,
-                                                        ),
-                                                        color:
-                                                            AppColors
-                                                                .textSecondary,
-                                                        onPressed:
-                                                            () => context.push(
-                                                              '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
+                                                    DataCell(
+                                                      Builder(
+                                                        builder: (context) {
+                                                          final isOut =
+                                                              item.stock <= 0;
+                                                          final isLow =
+                                                              item.isLowStock;
+                                                          final Color badgeBg =
+                                                              isOut
+                                                                  ? AppColors
+                                                                      .danger
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.08,
+                                                                      )
+                                                                  : (isLow
+                                                                      ? AppColors
+                                                                          .warning
+                                                                          .withValues(
+                                                                            alpha:
+                                                                                0.1,
+                                                                          )
+                                                                      : AppColors
+                                                                          .teal
+                                                                          .withValues(
+                                                                            alpha:
+                                                                                0.1,
+                                                                          ));
+                                                          final Color
+                                                          badgeBorder =
+                                                              isOut
+                                                                  ? AppColors
+                                                                      .danger
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.25,
+                                                                      )
+                                                                  : (isLow
+                                                                      ? AppColors
+                                                                          .warning
+                                                                          .withValues(
+                                                                            alpha:
+                                                                                0.25,
+                                                                          )
+                                                                      : AppColors
+                                                                          .teal
+                                                                          .withValues(
+                                                                            alpha:
+                                                                                0.25,
+                                                                          ));
+                                                          final Color
+                                                          badgeColor =
+                                                              isOut
+                                                                  ? AppColors
+                                                                      .danger
+                                                                  : (isLow
+                                                                      ? AppColors
+                                                                          .warningDark
+                                                                      : AppColors
+                                                                          .tealDark);
+                                                          final IconData
+                                                          badgeIcon =
+                                                              isOut
+                                                                  ? Icons
+                                                                      .highlight_off_rounded
+                                                                  : (isLow
+                                                                      ? Icons
+                                                                          .warning_amber_rounded
+                                                                      : Icons
+                                                                          .check_circle_outline_rounded);
+
+                                                          return Container(
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  horizontal: 9,
+                                                                  vertical: 3.5,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color: badgeBg,
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    8,
+                                                                  ),
+                                                              border: Border.all(
+                                                                color:
+                                                                    badgeBorder,
+                                                              ),
                                                             ),
-                                                        splashRadius: 16,
+                                                            child: Row(
+                                                              mainAxisSize:
+                                                                  MainAxisSize
+                                                                      .min,
+                                                              children: [
+                                                                Icon(
+                                                                  badgeIcon,
+                                                                  size: 13,
+                                                                  color:
+                                                                      badgeColor,
+                                                                ),
+                                                                const SizedBox(
+                                                                  width: 4,
+                                                                ),
+                                                                Text(
+                                                                  '${item.stock} uds.',
+                                                                  style: TextStyle(
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w800,
+                                                                    fontSize:
+                                                                        11.5,
+                                                                    fontFeatures:
+                                                                        const [
+                                                                          FontFeature.tabularFigures(),
+                                                                        ],
+                                                                    color:
+                                                                        badgeColor,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          );
+                                                        },
                                                       ),
                                                     ),
-                                                    Tooltip(
-                                                      message:
-                                                          'Ficha Completa de Producto',
-                                                      child: IconButton(
-                                                        icon: const Icon(
-                                                          Icons
-                                                              .open_in_new_rounded,
-                                                          size: 17,
-                                                        ),
-                                                        color:
-                                                            AppColors.textSecondary,
-                                                        onPressed:
-                                                            () =>
-                                                                _openProductDetail(
-                                                                  item,
-                                                                ),
-                                                        splashRadius: 16,
+                                                    DataCell(
+                                                      Row(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          Tooltip(
+                                                            message:
+                                                                'Ficha Rápida y Variantes',
+                                                            child: IconButton(
+                                                              icon: const Icon(
+                                                                Icons
+                                                                    .visibility_outlined,
+                                                                size: 18,
+                                                              ),
+                                                              color:
+                                                                  AppColors
+                                                                      .primary,
+                                                              onPressed:
+                                                                  () =>
+                                                                      _showQuickView(
+                                                                        item,
+                                                                        state,
+                                                                      ),
+                                                              splashRadius: 16,
+                                                            ),
+                                                          ),
+                                                          Tooltip(
+                                                            message:
+                                                                'Ver en Kárdex',
+                                                            child: IconButton(
+                                                              icon: const Icon(
+                                                                Icons
+                                                                    .receipt_long_rounded,
+                                                                size: 17,
+                                                              ),
+                                                              color:
+                                                                  AppColors
+                                                                      .textSecondary,
+                                                              onPressed:
+                                                                  () => context
+                                                                      .push(
+                                                                        '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
+                                                                      ),
+                                                              splashRadius: 16,
+                                                            ),
+                                                          ),
+                                                          Tooltip(
+                                                            message:
+                                                                'Ficha Completa de Producto',
+                                                            child: IconButton(
+                                                              icon: const Icon(
+                                                                Icons
+                                                                    .open_in_new_rounded,
+                                                                size: 17,
+                                                              ),
+                                                              color:
+                                                                  AppColors
+                                                                      .textSecondary,
+                                                              onPressed:
+                                                                  () =>
+                                                                      _openProductDetail(
+                                                                        item,
+                                                                      ),
+                                                              splashRadius: 16,
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
                                                   ],
-                                                ),
-                                              ),
-                                            ],
-                                          );
-                                        }).toList(),
-                                  ),
-                                ),
+                                                );
+                                              }).toList(),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
                     ),
                   ],
                 ),
@@ -654,15 +747,17 @@ class _InventoryStockTabState extends State<InventoryStockTab>
             child: AdminPageBlocks(
               currentPage: state.currentStockPage,
               totalPages: state.totalStockPages,
-              totalItems: (state.stockSearchText.isEmpty && state.stockCategoryFilter.isEmpty)
-                  ? state.globalTotalVariants
-                  : null,
+              totalItems:
+                  (state.stockSearchText.isEmpty &&
+                          state.stockCategoryFilter.isEmpty)
+                      ? state.globalTotalVariants
+                      : null,
               itemsPerPage: 24,
               itemName: 'variantes',
               onPageChanged: (page) => cubit.setStockPage(page),
             ),
           )
-        else if (!isLoading && state.totalStockPages == 1) 
+        else if (!isLoading && state.totalStockPages == 1)
           //Agregar espacio vacio para paginacion
           const SizedBox(height: 50),
       ],
@@ -903,9 +998,11 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               child: AdminPageBlocks(
                 currentPage: state.currentStockPage,
                 totalPages: state.totalStockPages,
-                totalItems: (state.stockSearchText.isEmpty && state.stockCategoryFilter.isEmpty)
-                    ? state.globalTotalVariants
-                    : null,
+                totalItems:
+                    (state.stockSearchText.isEmpty &&
+                            state.stockCategoryFilter.isEmpty)
+                        ? state.globalTotalVariants
+                        : null,
                 itemsPerPage: 24,
                 itemName: 'variantes',
                 onPageChanged: (page) => cubit.setStockPage(page),
@@ -924,10 +1021,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
 class _StickyStockFiltersDelegate extends SliverPersistentHeaderDelegate {
   final double height;
   final Widget child;
-  _StickyStockFiltersDelegate({
-    required this.height,
-    required this.child,
-  });
+  _StickyStockFiltersDelegate({required this.height, required this.child});
 
   @override
   double get minExtent => height;

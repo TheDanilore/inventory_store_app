@@ -355,30 +355,55 @@ class _PosSalesViewState extends State<PosSalesView> {
               ],
             );
 
-            return CallbackShortcuts(
-              bindings: <ShortcutActivator, VoidCallback>{
-                if (isDesktop && !_searchFocusNode.hasFocus) ...{
-                  const SingleActivator(LogicalKeyboardKey.arrowDown): () {
-                    _navigateOrder(1, orders);
-                  },
-                  const SingleActivator(LogicalKeyboardKey.arrowUp): () {
-                    _navigateOrder(-1, orders);
-                  },
-                },
-                const SingleActivator(LogicalKeyboardKey.keyP, alt: true): () {
-                  if (_selectedOrder != null) {
+            return Focus(
+              autofocus: true,
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent) {
+                  final isAlt = HardwareKeyboard.instance.isAltPressed;
+
+                  // Alt+K: Enfoca y selecciona el texto del buscador de ventas
+                  if (isAlt && event.logicalKey == LogicalKeyboardKey.keyK) {
+                    _searchFocusNode.requestFocus();
+                    _searchCtrl.selection = TextSelection(
+                      baseOffset: 0,
+                      extentOffset: _searchCtrl.text.length,
+                    );
+                    return KeyEventResult.handled;
+                  }
+
+                  // Escape: Cierra el detalle de venta o desenfoca el buscador (nunca sale del ERP)
+                  if (event.logicalKey == LogicalKeyboardKey.escape) {
+                    if (_selectedOrder != null) {
+                      setState(() => _selectedOrder = null);
+                      return KeyEventResult.handled;
+                    }
+                    if (_searchFocusNode.hasFocus) {
+                      _searchFocusNode.unfocus();
+                      return KeyEventResult.handled;
+                    }
+                  }
+
+                  // Flechas de navegación en Desktop (cuando el buscador no tiene foco)
+                  if (isDesktop && !_searchFocusNode.hasFocus) {
+                    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                      _navigateOrder(1, orders);
+                      return KeyEventResult.handled;
+                    }
+                    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                      _navigateOrder(-1, orders);
+                      return KeyEventResult.handled;
+                    }
+                  }
+
+                  // Alt+P: Reimprimir ticket de la venta seleccionada
+                  if (isAlt &&
+                      event.logicalKey == LogicalKeyboardKey.keyP &&
+                      _selectedOrder != null) {
                     _reimprimirTicket(_selectedOrder!.id);
+                    return KeyEventResult.handled;
                   }
-                },
-                // Alt+K enfoca el buscador de ventas
-                const SingleActivator(LogicalKeyboardKey.keyK, alt: true): () {
-                  _searchFocusNode.requestFocus();
-                },
-                const SingleActivator(LogicalKeyboardKey.escape): () {
-                  if (_selectedOrder != null) {
-                    setState(() => _selectedOrder = null);
-                  }
-                },
+                }
+                return KeyEventResult.ignored;
               },
               child: Container(
                 color: AppColors.background,

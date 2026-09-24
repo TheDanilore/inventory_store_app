@@ -64,9 +64,10 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
     return BlocBuilder<InventoryCubit, InventoryState>(
       builder: (context, state) {
         final cubitState = context.read<InventoryCubit>().state;
-        final loadedState = state is InventoryLoaded
-            ? state
-            : (cubitState is InventoryLoaded ? cubitState : null);
+        final loadedState =
+            state is InventoryLoaded
+                ? state
+                : (cubitState is InventoryLoaded ? cubitState : null);
 
         if (loadedState == null) {
           if (state is InventoryError) {
@@ -76,7 +77,8 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                 title: 'Error al cargar lotes',
                 message: state.message,
                 action: ElevatedButton.icon(
-                  onPressed: () => context.read<InventoryCubit>().initBatchesTab(),
+                  onPressed:
+                      () => context.read<InventoryCubit>().initBatchesTab(),
                   icon: const Icon(Icons.refresh_rounded, size: 18),
                   label: const Text('Reintentar conexión'),
                 ),
@@ -95,12 +97,15 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
             final isTablet = constraints.maxWidth >= 840;
 
             // Determinación reactiva y limpia del lote activo sin agendar setState en build
-            final activeBatch = (_selectedBatch != null &&
-                    currentState.batchItems.any((b) => b.id == _selectedBatch!.id))
-                ? _selectedBatch
-                : (currentState.batchItems.isNotEmpty
-                    ? currentState.batchItems.first
-                    : null);
+            final activeBatch =
+                (_selectedBatch != null &&
+                        currentState.batchItems.any(
+                          (b) => b.id == _selectedBatch!.id,
+                        ))
+                    ? _selectedBatch
+                    : (currentState.batchItems.isNotEmpty
+                        ? currentState.batchItems.first
+                        : null);
 
             if (isTablet) {
               return Row(
@@ -351,7 +356,8 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
             ),
 
           // ── Lista de Lotes ──
-          if ((isLoading || state.isSearchingBatches) && state.batchItems.isEmpty)
+          if ((isLoading || state.isSearchingBatches) &&
+              state.batchItems.isEmpty)
             const SliverPadding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverToBoxAdapter(child: _InventoryBatchesSkeleton()),
@@ -467,15 +473,10 @@ class _InteractiveMetricCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isSelected
-                    ? color.withValues(alpha: 0.12)
-                    : AppColors.surface,
+                isSelected ? color.withValues(alpha: 0.12) : AppColors.surface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color:
-                  isSelected
-                      ? color
-                      : AppColors.border,
+              color: isSelected ? color : AppColors.border,
               width: isSelected ? 1.8 : 1,
             ),
             boxShadow:
@@ -495,10 +496,7 @@ class _InteractiveMetricCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color:
-                      isSelected
-                          ? color
-                          : color.withValues(alpha: 0.1),
+                  color: isSelected ? color : color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -517,10 +515,7 @@ class _InteractiveMetricCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color:
-                          isSelected
-                              ? color
-                              : AppColors.textSecondary,
+                      color: isSelected ? color : AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -529,10 +524,7 @@ class _InteractiveMetricCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color:
-                          isSelected
-                              ? color
-                              : AppColors.textPrimary,
+                      color: isSelected ? color : AppColors.textPrimary,
                       height: 1.1,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),

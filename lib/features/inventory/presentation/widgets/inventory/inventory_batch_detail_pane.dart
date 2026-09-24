@@ -516,7 +516,11 @@ class InventoryBatchDetailPane extends StatelessWidget {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+            const Icon(
+              Icons.check_circle_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
             const SizedBox(width: 8),
             Text('Código de lote "${batch.batchNumber}" copiado'),
           ],

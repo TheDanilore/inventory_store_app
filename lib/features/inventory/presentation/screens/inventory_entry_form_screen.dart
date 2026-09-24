@@ -170,9 +170,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         if (Navigator.of(context).canPop()) {
           Navigator.of(context).pop(true);
         } else {
-          context.go(
-            '/purchase-orders?selectedId=${widget.purchaseOrderId}',
-          );
+          context.go('/purchase-orders?selectedId=${widget.purchaseOrderId}');
         }
       } else {
         context.go('/inventory-entries');
@@ -231,9 +229,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop(false);
       } else {
-        context.go(
-          '/purchase-orders?selectedId=${widget.purchaseOrderId}',
-        );
+        context.go('/purchase-orders?selectedId=${widget.purchaseOrderId}');
       }
       return;
     }
@@ -432,128 +428,130 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                       ),
                     )
                     : Form(
-                        key: _formKey,
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final isWide = constraints.maxWidth >= 900;
+                      key: _formKey,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isWide = constraints.maxWidth >= 900;
 
-                        if (isWide) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Izquierda: Datos, Finanzas, Documento
-                              Expanded(
-                                flex: 5,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border(
-                                      right: BorderSide(
-                                        color: Colors.grey.shade200,
+                          if (isWide) {
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Izquierda: Datos, Finanzas, Documento
+                                Expanded(
+                                  flex: 5,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        right: BorderSide(
+                                          color: Colors.grey.shade200,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  child: SingleChildScrollView(
-                                    padding: const EdgeInsets.all(24.0),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _buildMainDataSection(
-                                          context,
-                                          state,
-                                          cubit,
-                                        ),
-                                        const SizedBox(height: 16),
-                                        if (widget.purchaseOrderId == null) ...[
-                                          _buildFinanceSection(
+                                    child: SingleChildScrollView(
+                                      padding: const EdgeInsets.all(24.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          _buildMainDataSection(
                                             context,
                                             state,
                                             cubit,
                                           ),
                                           const SizedBox(height: 16),
+                                          if (widget.purchaseOrderId ==
+                                              null) ...[
+                                            _buildFinanceSection(
+                                              context,
+                                              state,
+                                              cubit,
+                                            ),
+                                            const SizedBox(height: 16),
+                                          ],
+                                          _buildDocumentSection(
+                                            context,
+                                            state,
+                                            cubit,
+                                          ),
                                         ],
-                                        _buildDocumentSection(
-                                          context,
-                                          state,
-                                          cubit,
-                                        ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              // Derecha: Productos y Botón Guardar
-                              Expanded(
-                                flex: 4,
-                                child: Column(
-                                  children: [
-                                    Expanded(
-                                      child: SingleChildScrollView(
-                                        padding: const EdgeInsets.all(24.0),
-                                        child: _buildProductsSection(
-                                          context,
-                                          state,
-                                          cubit,
+                                // Derecha: Productos y Botón Guardar
+                                Expanded(
+                                  flex: 4,
+                                  child: Column(
+                                    children: [
+                                      Expanded(
+                                        child: SingleChildScrollView(
+                                          padding: const EdgeInsets.all(24.0),
+                                          child: _buildProductsSection(
+                                            context,
+                                            state,
+                                            cubit,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    _buildStickySaveButton(
-                                      context,
-                                      state,
-                                      cubit,
-                                    ),
-                                  ],
+                                      _buildStickySaveButton(
+                                        context,
+                                        state,
+                                        cubit,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          );
-                        }
+                              ],
+                            );
+                          }
 
-                        // Móvil
-                        return Column(
-                          children: [
-                            Expanded(
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildMainDataSection(
-                                      context,
-                                      state,
-                                      cubit,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    if (widget.purchaseOrderId == null) ...[
-                                      _buildFinanceSection(
+                          // Móvil
+                          return Column(
+                            children: [
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _buildMainDataSection(
                                         context,
                                         state,
                                         cubit,
                                       ),
                                       const SizedBox(height: 16),
+                                      if (widget.purchaseOrderId == null) ...[
+                                        _buildFinanceSection(
+                                          context,
+                                          state,
+                                          cubit,
+                                        ),
+                                        const SizedBox(height: 16),
+                                      ],
+                                      _buildDocumentSection(
+                                        context,
+                                        state,
+                                        cubit,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      _buildProductsSection(
+                                        context,
+                                        state,
+                                        cubit,
+                                      ),
+                                      const SizedBox(height: 24),
                                     ],
-                                    _buildDocumentSection(
-                                      context,
-                                      state,
-                                      cubit,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _buildProductsSection(
-                                      context,
-                                      state,
-                                      cubit,
-                                    ),
-                                    const SizedBox(height: 24),
-                                  ],
+                                  ),
                                 ),
                               ),
-                            ),
-                            _buildStickySaveButton(context, state, cubit),
-                          ],
-                        );
-                      },
+                              _buildStickySaveButton(context, state, cubit),
+                            ],
+                          );
+                        },
+                      ),
                     ),
-                  ),
           );
         },
       ),

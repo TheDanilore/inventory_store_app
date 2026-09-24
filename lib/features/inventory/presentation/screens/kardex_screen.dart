@@ -597,8 +597,7 @@ class _KardexScreenState extends State<KardexScreen> {
                       onPressed:
                           isExporting
                               ? null
-                              : () =>
-                                  context.read<KardexCubit>().exportToPdf(),
+                              : () => context.read<KardexCubit>().exportToPdf(),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: AppColors.border),
                         padding: const EdgeInsets.symmetric(
@@ -768,45 +767,45 @@ class _KardexScreenState extends State<KardexScreen> {
                         shortcut: '1',
                         isSelected: typeFilter == 'ALL',
                         onTap:
-                            () => context
-                                .read<KardexCubit>()
-                                .setTypeFilter('ALL'),
+                            () => context.read<KardexCubit>().setTypeFilter(
+                              'ALL',
+                            ),
                       ),
                       _FilterPill(
                         label: 'Ingresos',
                         shortcut: '2',
                         isSelected: typeFilter == 'ENTRY',
                         onTap:
-                            () => context
-                                .read<KardexCubit>()
-                                .setTypeFilter('ENTRY'),
+                            () => context.read<KardexCubit>().setTypeFilter(
+                              'ENTRY',
+                            ),
                       ),
                       _FilterPill(
                         label: 'Salidas',
                         shortcut: '3',
                         isSelected: typeFilter == 'EXIT',
                         onTap:
-                            () => context
-                                .read<KardexCubit>()
-                                .setTypeFilter('EXIT'),
+                            () => context.read<KardexCubit>().setTypeFilter(
+                              'EXIT',
+                            ),
                       ),
                       _FilterPill(
                         label: 'Ventas',
                         shortcut: '4',
                         isSelected: typeFilter == 'SALE',
                         onTap:
-                            () => context
-                                .read<KardexCubit>()
-                                .setTypeFilter('SALE'),
+                            () => context.read<KardexCubit>().setTypeFilter(
+                              'SALE',
+                            ),
                       ),
                       _FilterPill(
                         label: 'Devoluciones',
                         shortcut: '5',
                         isSelected: typeFilter == 'RETURN',
                         onTap:
-                            () => context
-                                .read<KardexCubit>()
-                                .setTypeFilter('RETURN'),
+                            () => context.read<KardexCubit>().setTypeFilter(
+                              'RETURN',
+                            ),
                       ),
                     ],
                   );
@@ -896,9 +895,9 @@ class _KardexScreenState extends State<KardexScreen> {
                       label: 'Ingresos',
                       isSelected: typeFilter == 'ENTRY',
                       onTap:
-                          () => context
-                              .read<KardexCubit>()
-                              .setTypeFilter('ENTRY'),
+                          () => context.read<KardexCubit>().setTypeFilter(
+                            'ENTRY',
+                          ),
                     ),
                     const SizedBox(width: 6),
                     _FilterPill(
@@ -921,9 +920,9 @@ class _KardexScreenState extends State<KardexScreen> {
                       label: 'Devoluciones',
                       isSelected: typeFilter == 'RETURN',
                       onTap:
-                          () => context
-                              .read<KardexCubit>()
-                              .setTypeFilter('RETURN'),
+                          () => context.read<KardexCubit>().setTypeFilter(
+                            'RETURN',
+                          ),
                     ),
                   ],
                 );
@@ -976,15 +975,9 @@ class _KardexScreenState extends State<KardexScreen> {
         ),
         itemBuilder:
             (context) => [
-              const PopupMenuItem(
-                value: 'ALL',
-                child: Text('Cualquier fecha'),
-              ),
+              const PopupMenuItem(value: 'ALL', child: Text('Cualquier fecha')),
               const PopupMenuItem(value: 'TODAY', child: Text('Hoy')),
-              const PopupMenuItem(
-                value: 'WEEK',
-                child: Text('Últimos 7 días'),
-              ),
+              const PopupMenuItem(value: 'WEEK', child: Text('Últimos 7 días')),
               const PopupMenuItem(
                 value: 'MONTH',
                 child: Text('Este mes actual'),
@@ -1162,10 +1155,7 @@ class _KardexScreenState extends State<KardexScreen> {
               },
               borderRadius: BorderRadius.circular(6),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
@@ -1192,7 +1182,6 @@ class _KardexScreenState extends State<KardexScreen> {
       ),
     );
   }
-
 
   Widget _buildItemsListOrTable(
     BuildContext context, {
@@ -1484,9 +1473,15 @@ class _FilterPill extends StatelessWidget {
             if (shortcut != null) ...[
               const SizedBox(width: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 0.5,
+                ),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary.withValues(alpha: 0.2) : Colors.grey.shade200,
+                  color:
+                      isSelected
+                          ? AppColors.primary.withValues(alpha: 0.2)
+                          : Colors.grey.shade200,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -1494,7 +1489,8 @@ class _FilterPill extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
-                    color: isSelected ? AppColors.primary : Colors.grey.shade600,
+                    color:
+                        isSelected ? AppColors.primary : Colors.grey.shade600,
                   ),
                 ),
               ),
@@ -1532,8 +1528,7 @@ class _ViewToggleButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSelected ? AppColors.surface : Colors.transparent,
             borderRadius: BorderRadius.circular(7),
-            boxShadow:
-                isSelected ? AppColors.cardShadow(opacity: 0.04) : null,
+            boxShadow: isSelected ? AppColors.cardShadow(opacity: 0.04) : null,
           ),
           child: Icon(
             icon,
