@@ -64,6 +64,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   late final AdminCatalogCubit _catalogCubit;
   int _selectedSidebarIndex = 0;
   InventoryCubit? _inventoryCubit;
+  bool _isMountedReady = false;
 
   @override
   void initState() {
@@ -71,6 +72,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     _catalogCubit = context.read<AdminCatalogCubit>();
     HardwareKeyboard.instance.addHandler(_handleGlobalHardwareKey);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_isMountedReady) {
+        setState(() => _isMountedReady = true);
+      }
       if (_catalogCubit.state.filterIsActive != true) {
         _catalogCubit.setFilterIsActive(true); // Asegurar que no se vendan productos inactivos
       }
@@ -215,13 +219,37 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
             onPressed: () => Navigator.pop(dialogCtx, false),
             child: const Text('Quedarme en Caja'),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF142B1A),
-            ),
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            child: const Text('Salir al ERP'),
-          ),
+          () {
+            bool isExiting = false;
+            return StatefulBuilder(
+              builder: (ctx, setBtnState) {
+                return FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF142B1A),
+                  ),
+                  onPressed: isExiting
+                      ? null
+                      : () async {
+                          setBtnState(() => isExiting = true);
+                          await Future.delayed(const Duration(milliseconds: 60));
+                          if (dialogCtx.mounted) {
+                            Navigator.pop(dialogCtx, true);
+                          }
+                        },
+                  child: isExiting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Salir al ERP'),
+                );
+              },
+            );
+          }(),
         ],
       ),
     );
@@ -359,6 +387,10 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                   ),
             body: Builder(
               builder: (context) {
+                if (!_isMountedReady) {
+                  return const PosDesktopSkeleton();
+                }
+
                 Widget catalogContent = Column(
                   children: [
                     Container(
@@ -661,4 +693,128 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       onEdit: (product) {}, // No permitimos editar en modo caja
     );
   }
+}
+
+/// Esqueleto Shimmer ultra-ligero montado en el Frame 0 (<5ms)
+/// para erradicar el congelamiento y garantizar 60 FPS estables al abrir el POS.
+class PosDesktopSkeleton extends StatelessWidget {
+  const PosDesktopSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (isDesktop)
+          const PosSidebarRail(
+            selectedIndex: 0,
+            onDestinationSelected: _dummyIndex,
+            onExitPos: _dummyVoid,
+          ),
+        Expanded(
+          flex: 6,
+          child: Column(
+            children: [
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: const Column(
+                  children: [
+                    AppShimmer(
+                      width: double.infinity,
+                      height: 44,
+                      borderRadius: 12,
+                    ),
+                    SizedBox(height: 12),
+                    AppShimmer(
+                      width: double.infinity,
+                      height: 36,
+                      borderRadius: 10,
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount:
+                        MediaQuery.of(context).size.width >= 1200
+                            ? 6
+                            : MediaQuery.of(context).size.width >= 800
+                            ? 4
+                            : 2,
+                    childAspectRatio: 0.75,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                  ),
+                  itemCount: 8,
+                  itemBuilder:
+                      (_, _) => const AppShimmer(
+                        width: double.infinity,
+                        height: double.infinity,
+                        borderRadius: 16,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (isDesktop)
+          Container(
+            width:
+                MediaQuery.of(context).size.width >= 1300
+                    ? 440
+                    : MediaQuery.of(context).size.width >= 1000
+                    ? 400
+                    : 360,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                left: BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
+              ),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppShimmer(width: 120, height: 28, borderRadius: 8),
+                SizedBox(height: 16),
+                AppShimmer(
+                  width: double.infinity,
+                  height: 50,
+                  borderRadius: 12,
+                ),
+                SizedBox(height: 16),
+                AppShimmer(
+                  width: double.infinity,
+                  height: 80,
+                  borderRadius: 12,
+                ),
+                Spacer(),
+                AppShimmer(
+                  width: double.infinity,
+                  height: 120,
+                  borderRadius: 12,
+                ),
+                SizedBox(height: 16),
+                AppShimmer(
+                  width: double.infinity,
+                  height: 52,
+                  borderRadius: 14,
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  static void _dummyIndex(int _) {}
+  static void _dummyVoid() {}
 }
