@@ -214,8 +214,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 final headerSliver = SliverPersistentHeader(
                   pinned: true,
                   delegate: _CatalogHeaderDelegate(
-                    minHeight: 64.0,
-                    maxHeight: state.searchByIngredient ? 115.0 : 64.0,
+                    minHeight: 68.0,
+                    maxHeight: state.searchByIngredient ? 120.0 : 68.0,
                     isExporting: state.actionState == ViewState.loading,
                     searchByIngredient: state.searchByIngredient,
                     child: Container(

@@ -71,7 +71,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     _catalogCubit = context.read<AdminCatalogCubit>();
     HardwareKeyboard.instance.addHandler(_handleGlobalHardwareKey);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _catalogCubit.setFilterIsActive(true); // Asegurar que no se vendan productos inactivos
+      if (_catalogCubit.state.filterIsActive != true) {
+        _catalogCubit.setFilterIsActive(true); // Asegurar que no se vendan productos inactivos
+      }
       if (_searchCtrl.text != _catalogCubit.state.searchTerm) {
         _searchCtrl.text = _catalogCubit.state.searchTerm;
       }
@@ -187,40 +189,44 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
   Future<void> _onExitPos() async {
     final cart = context.read<CartCubit>();
-    if (cart.state.items.isNotEmpty) {
-      final shouldExit = await showDialog<bool>(
-        context: context,
-        builder: (dialogCtx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: AppColors.warning),
-              SizedBox(width: 8),
-              Text('¿Salir de Caja POS?'),
-            ],
-          ),
-          content: const Text(
-            'Tienes productos agregados en la caja. Si sales al panel administrativo, la venta actual continuará en tu carrito para cuando regreses.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, false),
-              child: const Text('Quedarme en Caja'),
+    final hasItems = cart.state.items.isNotEmpty;
+
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              hasItems ? Icons.warning_amber_rounded : Icons.logout_rounded,
+              color: hasItems ? AppColors.warning : AppColors.primary,
             ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF142B1A),
-              ),
-              onPressed: () => Navigator.pop(dialogCtx, true),
-              child: const Text('Salir al ERP'),
-            ),
+            const SizedBox(width: 8),
+            const Text('¿Salir de Caja POS?'),
           ],
         ),
-      );
-      if (shouldExit == true && mounted) {
-        context.go('/');
-      }
-    } else {
+        content: Text(
+          hasItems
+              ? 'Tienes productos agregados en la caja. Si sales al panel administrativo, la venta actual continuará en tu carrito para cuando regreses.\n\n¿Deseas volver al panel de administración ERP?'
+              : '¿Estás seguro de que deseas salir del Punto de Venta y regresar al panel de administración ERP?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Quedarme en Caja'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF142B1A),
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Salir al ERP'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldExit == true && mounted) {
       context.go('/');
     }
   }
@@ -228,7 +234,6 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKey);
-    _catalogCubit.setFilterIsActive(null); // Restaurar catálogo para mostrar todos los estados
     _inventoryCubit?.close();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
