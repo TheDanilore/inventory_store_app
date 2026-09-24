@@ -114,9 +114,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           onKeyEvent: (node, event) {
             if (event is KeyDownEvent) {
               final isAlt = HardwareKeyboard.instance.isAltPressed;
-              // '/' o Alt+K enfocan el buscador
-              if ((event.logicalKey == LogicalKeyboardKey.slash ||
-                      (isAlt && event.logicalKey == LogicalKeyboardKey.keyK)) &&
+              // Alt+K enfoca el buscador
+              if (isAlt && event.logicalKey == LogicalKeyboardKey.keyK &&
                   !_searchFocusNode.hasFocus) {
                 _searchFocusNode.requestFocus();
                 return KeyEventResult.handled;
@@ -203,7 +202,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                     child: _SearchField(
                       controller: _searchCtrl,
                       focusNode: _searchFocusNode,
-                      hint: 'Buscar producto o SKU... (/ o Alt+K)',
+                      hint: 'Buscar producto o SKU... (Alt+K)',
                       onChanged: _onSearchChanged,
                       onSubmitted: _onSearchSubmitted,
                       isLoading: state.isSearchingStock,

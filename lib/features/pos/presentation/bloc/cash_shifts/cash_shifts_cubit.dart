@@ -146,14 +146,12 @@ class CashShiftsCubit extends Cubit<CashShiftsState> {
         );
       },
       (data) {
-        final openAccountIds =
-            data.shifts
-                .where(
-                  (s) =>
-                      s.status == CashShiftStatus.open && s.accountId != null,
-                )
-                .map((s) => s.accountId!)
-                .toSet();
+        final openAccountIds = data.shifts
+            .where(
+              (s) => s.status == CashShiftStatus.open && s.accountId != null,
+            )
+            .map<String>((s) => s.accountId!) // explicit <String> evita LinkedSet<dynamic> en DDC
+            .toSet();
 
         emit(
           state.copyWith(

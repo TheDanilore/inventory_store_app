@@ -338,12 +338,16 @@ class _PosSalesViewState extends State<PosSalesView> {
                                       );
                                     }
                                     final order = orders[index];
-                                    return _buildOrderCard(
-                                      context,
-                                      order,
-                                      isDesktop,
-                                      isTablet,
-                                      isMobile,
+                                    // RepaintBoundary aísla cada card: al seleccionar
+                                    // o reimprimir una orden, solo esa card se repinta.
+                                    return RepaintBoundary(
+                                      child: _buildOrderCard(
+                                        context,
+                                        order,
+                                        isDesktop,
+                                        isTablet,
+                                        isMobile,
+                                      ),
                                     );
                                   },
                                 ),

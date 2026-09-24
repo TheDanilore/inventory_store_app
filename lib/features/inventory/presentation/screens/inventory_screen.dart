@@ -189,73 +189,10 @@ class _InventoryScreenState extends State<InventoryScreen>
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // En mobile, el TabBar ocupa el ancho completo sin constraint
-                        TabBar(
-                          controller: _tabController,
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          indicator: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: AppColors.cardShadow(opacity: 0.04),
-                          ),
-                          dividerColor: Colors.transparent,
-                          labelColor: AppColors.textPrimary,
-                          unselectedLabelColor: AppColors.textSecondary,
-                          labelStyle: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            letterSpacing: 0.1,
-                          ),
-                          unselectedLabelStyle: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                          tabs: [
-                            const Tab(
-                              height: 36,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.inventory_2_rounded, size: 16),
-                                  SizedBox(width: 8),
-                                  Text('Stock General'),
-                                ],
-                              ),
-                            ),
-                            Tab(
-                              height: 36,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.event_busy_rounded, size: 16),
-                                  const SizedBox(width: 8),
-                                  const Text('Estado de Lotes'),
-                                  if (urgentCount > 0) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 1.5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.danger,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        '$urgentCount',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                        // Un solo TabBar (tabBarWidget) en ancho completo.
+                        // No instanciar un segundo TabBar — el mismo controller
+                        // no debe tener dos listeners simultáneos.
+                        SizedBox(width: double.infinity, child: tabBarWidget),
                         const SizedBox(height: 8),
                         Row(
                           children: [

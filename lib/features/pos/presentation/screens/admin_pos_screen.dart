@@ -116,23 +116,10 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   bool _handleGlobalHardwareKey(KeyEvent event) {
     if (!mounted || event is! KeyDownEvent) return false;
 
+    // NOTA: Escape y F2 están en CallbackShortcuts (árbol de widgets).
+    // Este handler solo cubre Alt-keys para teclas que deben funcionar
+    // incluso cuando un TextField tiene el focus (fuera del árbol de focus).
     try {
-      // F2 (Cobrar sin modificador)
-      if (event.logicalKey == LogicalKeyboardKey.f2) {
-        _desktopPanelKey.currentState?.triggerCheckout();
-        return true;
-      }
-
-      // Escape (Salir al ERP o desenfocar buscador)
-      if (event.logicalKey == LogicalKeyboardKey.escape) {
-        if (_searchFocusNode.hasFocus) {
-          _searchFocusNode.unfocus();
-        } else {
-          _onExitPos();
-        }
-        return true;
-      }
-
       final isAlt = HardwareKeyboard.instance.isAltPressed;
       if (!isAlt) return false;
 
