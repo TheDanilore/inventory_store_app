@@ -63,7 +63,8 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         query = query.gte('opened_at', dateFrom.toIso8601String());
       }
       if (dateTo != null) {
-        query = query.lte('opened_at', dateTo.toIso8601String());
+        final endOfDay = DateTime(dateTo.year, dateTo.month, dateTo.day, 23, 59, 59, 999);
+        query = query.lte('opened_at', endOfDay.toIso8601String());
       }
       if (profileId != null) {
         query = query.eq('opened_by', profileId);
@@ -131,8 +132,9 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         closedQuery = closedQuery.gte('opened_at', dateFrom.toIso8601String());
       }
       if (dateTo != null) {
-        openQuery = openQuery.lte('opened_at', dateTo.toIso8601String());
-        closedQuery = closedQuery.lte('opened_at', dateTo.toIso8601String());
+        final endOfDay = DateTime(dateTo.year, dateTo.month, dateTo.day, 23, 59, 59, 999);
+        openQuery = openQuery.lte('opened_at', endOfDay.toIso8601String());
+        closedQuery = closedQuery.lte('opened_at', endOfDay.toIso8601String());
       }
 
       final openRes = await openQuery.count(CountOption.exact);
@@ -272,6 +274,10 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
     required double openingAmount,
   }) async {
     try {
+      if (accountId.trim().isEmpty) {
+        return right(openingAmount);
+      }
+
       // [OPTIMIZACIÓN DATA EGRESS] La suma se delega al RPC en BD con SUM()
       // en lugar de descargar N filas al cliente para sumarlas en Flutter.
       final result = await _supabase.rpc(

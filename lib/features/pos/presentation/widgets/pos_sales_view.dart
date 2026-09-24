@@ -25,10 +25,7 @@ import 'package:intl/intl.dart';
 class PosSalesView extends StatefulWidget {
   final VoidCallback? onOpenCashShifts;
 
-  const PosSalesView({
-    super.key,
-    this.onOpenCashShifts,
-  });
+  const PosSalesView({super.key, this.onOpenCashShifts});
 
   @override
   State<PosSalesView> createState() => _PosSalesViewState();
@@ -80,7 +77,10 @@ class _PosSalesViewState extends State<PosSalesView> {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 350), () {
       if (!mounted) return;
-      context.read<PosCubit>().fetchRecentOrders(query: val.trim(), forceRefresh: true);
+      context.read<PosCubit>().fetchRecentOrders(
+        query: val.trim(),
+        forceRefresh: true,
+      );
     });
   }
 
@@ -164,25 +164,34 @@ class _PosSalesViewState extends State<PosSalesView> {
     if (isTablet) {
       showDialog(
         context: context,
-        builder: (ctx) => Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 720, maxHeight: 820),
-              color: AppColors.background,
-              child: OrderDetailSheet(
-                order: order,
-                isEmbedded: true,
-                onPop: (_) => Navigator.of(ctx).pop(),
-                onOrderUpdated: (updated) {
-                  context.read<PosCubit>().fetchRecentOrders(forceRefresh: true);
-                },
+        builder:
+            (ctx) => Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 40,
+                vertical: 30,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  constraints: const BoxConstraints(
+                    maxWidth: 720,
+                    maxHeight: 820,
+                  ),
+                  color: AppColors.background,
+                  child: OrderDetailSheet(
+                    order: order,
+                    isEmbedded: true,
+                    onPop: (_) => Navigator.of(ctx).pop(),
+                    onOrderUpdated: (updated) {
+                      context.read<PosCubit>().fetchRecentOrders(
+                        forceRefresh: true,
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
       );
       return;
     }
@@ -193,165 +202,193 @@ class _PosSalesViewState extends State<PosSalesView> {
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.90,
-        decoration: const BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 40,
-              height: 4.5,
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(3),
-              ),
+      builder:
+          (ctx) => Container(
+            height: MediaQuery.of(ctx).size.height * 0.90,
+            decoration: const BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            const SizedBox(height: 6),
-            Expanded(
-              child: OrderDetailSheet(
-                order: order,
-                onPop: (_) => Navigator.of(ctx).pop(),
-                onOrderUpdated: (updated) {
-                  context.read<PosCubit>().fetchRecentOrders(forceRefresh: true);
-                },
-              ),
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 40,
+                  height: 4.5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Expanded(
+                  child: OrderDetailSheet(
+                    order: order,
+                    onPop: (_) => Navigator.of(ctx).pop(),
+                    onOrderUpdated: (updated) {
+                      context.read<PosCubit>().fetchRecentOrders(
+                        forceRefresh: true,
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<PosCubit, PosState>(
-      buildWhen: (prev, current) =>
-          prev.recentOrders != current.recentOrders ||
-          prev.isLoadingRecentOrders != current.isLoadingRecentOrders ||
-          prev.isLoadingMoreOrders != current.isLoadingMoreOrders ||
-          prev.hasMoreOrders != current.hasMoreOrders ||
-          prev.recentOrdersError != current.recentOrdersError ||
-          prev.dailyTotalAmount != current.dailyTotalAmount ||
-          prev.dailyTotalCount != current.dailyTotalCount ||
-          prev.salesSearchQuery != current.salesSearchQuery,
+      buildWhen:
+          (prev, current) =>
+              prev.recentOrders != current.recentOrders ||
+              prev.isLoadingRecentOrders != current.isLoadingRecentOrders ||
+              prev.isLoadingMoreOrders != current.isLoadingMoreOrders ||
+              prev.hasMoreOrders != current.hasMoreOrders ||
+              prev.recentOrdersError != current.recentOrdersError ||
+              prev.dailyTotalAmount != current.dailyTotalAmount ||
+              prev.dailyTotalCount != current.dailyTotalCount ||
+              prev.salesSearchQuery != current.salesSearchQuery,
       builder: (context, state) {
         final orders = state.recentOrders;
 
         return LayoutBuilder(
           builder: (context, constraints) {
             final isDesktop = constraints.maxWidth >= 1024;
-            final isTablet = constraints.maxWidth >= 700 && constraints.maxWidth < 1024;
+            final isTablet =
+                constraints.maxWidth >= 700 && constraints.maxWidth < 1024;
             final isMobile = constraints.maxWidth < 700;
 
-            final fullWidthListView = Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeader(context, isMobile),
-                _buildMetricsAndSearch(
-                  context,
-                  state.dailyTotalAmount,
-                  state.dailyTotalCount,
-                  isMobile,
+            final fullWidthListView = CustomScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(child: _buildHeader(context, isMobile)),
+                SliverToBoxAdapter(
+                  child: _buildMetricsAndSearch(
+                    context,
+                    state.dailyTotalAmount,
+                    state.dailyTotalCount,
+                    isMobile,
+                  ),
                 ),
-                Expanded(
-                  child: state.isLoadingRecentOrders
-                      ? const Center(
-                          child: CircularProgressIndicator(color: AppColors.primary),
-                        )
-                      : state.recentOrdersError.isNotEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'Error al cargar las ventas:\n${state.recentOrdersError}',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(color: AppColors.textPrimary),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  FilledButton.icon(
-                                    onPressed: () => context.read<PosCubit>().fetchRecentOrders(forceRefresh: true),
-                                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                                    label: const Text('Reintentar'),
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: const Color(0xFF142B1A),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : orders.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.receipt_long_outlined,
-                                        size: 52,
-                                        color: AppColors.textMuted.withValues(alpha: 0.5),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        state.salesSearchQuery.isNotEmpty
-                                            ? 'No se encontraron ventas para "${state.salesSearchQuery}".'
-                                            : 'No se encontraron ventas registradas.',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : ListView.separated(
-                                  controller: _scrollController,
-                                  physics: const AlwaysScrollableScrollPhysics(),
-                                  padding: EdgeInsets.fromLTRB(
-                                    isMobile ? 16 : 20,
-                                    6,
-                                    isMobile ? 16 : 20,
-                                    24,
-                                  ),
-                                  itemCount: orders.length + (state.isLoadingMoreOrders ? 1 : 0),
-                                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                                  itemBuilder: (context, index) {
-                                    if (index >= orders.length) {
-                                      return const Center(
-                                        child: Padding(
-                                          padding: EdgeInsets.symmetric(vertical: 16),
-                                          child: SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.5,
-                                              color: AppColors.primary,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                    final order = orders[index];
-                                    // RepaintBoundary aísla cada card: al seleccionar
-                                    // o reimprimir una orden, solo esa card se repinta.
-                                    return RepaintBoundary(
-                                      child: _buildOrderCard(
-                                        context,
-                                        order,
-                                        isDesktop,
-                                        isTablet,
-                                        isMobile,
-                                      ),
-                                    );
-                                  },
+                if (state.isLoadingRecentOrders)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  )
+                else if (state.recentOrdersError.isNotEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            color: AppColors.error,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Error al cargar las ventas:\n${state.recentOrdersError}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed:
+                                () => context
+                                    .read<PosCubit>()
+                                    .fetchRecentOrders(forceRefresh: true),
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: const Text('Reintentar'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF142B1A),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (orders.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.receipt_long_outlined,
+                            size: 52,
+                            color: AppColors.textMuted.withValues(alpha: 0.5),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            state.salesSearchQuery.isNotEmpty
+                                ? 'No se encontraron ventas para "${state.salesSearchQuery}".'
+                                : 'No se encontraron ventas registradas.',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      isMobile ? 16 : 20,
+                      6,
+                      isMobile ? 16 : 20,
+                      24,
+                    ),
+                    sliver: SliverList.separated(
+                      itemCount:
+                          orders.length + (state.isLoadingMoreOrders ? 1 : 0),
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        if (index >= orders.length) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: AppColors.primary,
                                 ),
-                ),
+                              ),
+                            ),
+                          );
+                        }
+                        final order = orders[index];
+                        // RepaintBoundary aísla cada card: al seleccionar
+                        // o reimprimir una orden, solo esa card se repinta.
+                        return RepaintBoundary(
+                          child: _buildOrderCard(
+                            context,
+                            order,
+                            isDesktop,
+                            isTablet,
+                            isMobile,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
               ],
             );
 
@@ -410,9 +447,7 @@ class _PosSalesViewState extends State<PosSalesView> {
                 child: Stack(
                   children: [
                     // 1. Lista a pantalla completa aislada de repintados
-                    RepaintBoundary(
-                      child: fullWidthListView,
-                    ),
+                    RepaintBoundary(child: fullWidthListView),
 
                     // 2. Slide-Over Side Sheet Inspector en Desktop con RepaintBoundary
                     if (isDesktop && _selectedOrder != null) ...[
@@ -448,12 +483,17 @@ class _PosSalesViewState extends State<PosSalesView> {
                               children: [
                                 // Cabecera del Slide-Over
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 12,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     border: Border(
                                       bottom: BorderSide(
-                                        color: AppColors.border.withValues(alpha: 0.8),
+                                        color: AppColors.border.withValues(
+                                          alpha: 0.8,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -462,8 +502,12 @@ class _PosSalesViewState extends State<PosSalesView> {
                                       Container(
                                         padding: const EdgeInsets.all(7),
                                         decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(alpha: 0.08),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: AppColors.primary.withValues(
+                                            alpha: 0.08,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: const Icon(
                                           Icons.receipt_long_rounded,
@@ -483,11 +527,18 @@ class _PosSalesViewState extends State<PosSalesView> {
                                       ),
                                       const Spacer(),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 7,
+                                          vertical: 3,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: AppColors.background,
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(color: AppColors.border),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                          border: Border.all(
+                                            color: AppColors.border,
+                                          ),
                                         ),
                                         child: const Text(
                                           'ESC',
@@ -500,9 +551,15 @@ class _PosSalesViewState extends State<PosSalesView> {
                                       ),
                                       const SizedBox(width: 8),
                                       IconButton(
-                                        icon: const Icon(Icons.close_rounded, size: 20),
+                                        icon: const Icon(
+                                          Icons.close_rounded,
+                                          size: 20,
+                                        ),
                                         tooltip: 'Cerrar detalle (Esc)',
-                                        onPressed: () => setState(() => _selectedOrder = null),
+                                        onPressed:
+                                            () => setState(
+                                              () => _selectedOrder = null,
+                                            ),
                                         style: IconButton.styleFrom(
                                           visualDensity: VisualDensity.compact,
                                         ),
@@ -521,7 +578,11 @@ class _PosSalesViewState extends State<PosSalesView> {
                                     },
                                     onOrderUpdated: (updated) {
                                       setState(() => _selectedOrder = updated);
-                                      context.read<PosCubit>().fetchRecentOrders(forceRefresh: true);
+                                      context
+                                          .read<PosCubit>()
+                                          .fetchRecentOrders(
+                                            forceRefresh: true,
+                                          );
                                     },
                                   ),
                                 ),
@@ -593,7 +654,11 @@ class _PosSalesViewState extends State<PosSalesView> {
           if (isMobile)
             IconButton(
               tooltip: 'Turnos de Caja',
-              icon: const Icon(Icons.point_of_sale_rounded, color: AppColors.primary, size: 20),
+              icon: const Icon(
+                Icons.point_of_sale_rounded,
+                color: AppColors.primary,
+                size: 20,
+              ),
               onPressed: () async {
                 if (widget.onOpenCashShifts != null) {
                   widget.onOpenCashShifts!();
@@ -629,7 +694,10 @@ class _PosSalesViewState extends State<PosSalesView> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 side: const BorderSide(color: AppColors.border),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -639,9 +707,15 @@ class _PosSalesViewState extends State<PosSalesView> {
 
           // Botón Refrescar
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.textSecondary),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: AppColors.textSecondary,
+            ),
             tooltip: 'Actualizar ventas y totales',
-            onPressed: () => context.read<PosCubit>().fetchRecentOrders(forceRefresh: true),
+            onPressed:
+                () => context.read<PosCubit>().fetchRecentOrders(
+                  forceRefresh: true,
+                ),
             style: IconButton.styleFrom(
               backgroundColor: AppColors.background,
               shape: RoundedRectangleBorder(
@@ -667,10 +741,7 @@ class _PosSalesViewState extends State<PosSalesView> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6),
         ],
       ),
       child: Row(
@@ -711,16 +782,17 @@ class _PosSalesViewState extends State<PosSalesView> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6),
         ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 20),
+          const Icon(
+            Icons.receipt_long_rounded,
+            color: AppColors.primary,
+            size: 20,
+          ),
           const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -761,12 +833,19 @@ class _PosSalesViewState extends State<PosSalesView> {
         onChanged: _onSearchChanged,
         onSubmitted: (val) {
           _debounceTimer?.cancel();
-          context.read<PosCubit>().fetchRecentOrders(query: val.trim(), forceRefresh: true);
+          context.read<PosCubit>().fetchRecentOrders(
+            query: val.trim(),
+            forceRefresh: true,
+          );
         },
         decoration: InputDecoration(
           hintText: 'Buscar por cliente o código de comprobante... (Alt+K)',
           hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted, size: 20),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.textMuted,
+            size: 20,
+          ),
           suffixIcon: ValueListenableBuilder<TextEditingValue>(
             valueListenable: _searchCtrl,
             builder: (context, value, _) {
@@ -873,8 +952,12 @@ class _PosSalesViewState extends State<PosSalesView> {
   ) {
     final isSelected = isDesktop && _selectedOrder?.id == order.id;
     final isReprinting = _reprintingOrderId == order.id;
-    final clientName = order.customerName.isNotEmpty ? order.customerName : 'Cliente General';
-    final dateStr = order.createdAt != null ? _dateFormat.format(order.createdAt!) : 'Reciente';
+    final clientName =
+        order.customerName.isNotEmpty ? order.customerName : 'Cliente General';
+    final dateStr =
+        order.createdAt != null
+            ? _dateFormat.format(order.createdAt!)
+            : 'Reciente';
     final idShort = order.id.length > 12 ? order.id.substring(0, 12) : order.id;
 
     return Material(
@@ -886,7 +969,10 @@ class _PosSalesViewState extends State<PosSalesView> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF142B1A).withValues(alpha: 0.04) : Colors.white,
+            color:
+                isSelected
+                    ? const Color(0xFF142B1A).withValues(alpha: 0.04)
+                    : Colors.white,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isSelected ? const Color(0xFF142B1A) : AppColors.border,
@@ -894,17 +980,34 @@ class _PosSalesViewState extends State<PosSalesView> {
             ),
             boxShadow: [
               BoxShadow(
-                color: isSelected
-                    ? const Color(0xFF142B1A).withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.02),
+                color:
+                    isSelected
+                        ? const Color(0xFF142B1A).withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.02),
                 blurRadius: isSelected ? 10 : 4,
                 offset: const Offset(0, 1),
               ),
             ],
           ),
-          child: isMobile
-              ? _buildMobileCardContent(order, clientName, idShort, dateStr, isReprinting)
-              : _buildDesktopCardContent(order, clientName, idShort, dateStr, isReprinting, isSelected, isDesktop, isTablet),
+          child:
+              isMobile
+                  ? _buildMobileCardContent(
+                    order,
+                    clientName,
+                    idShort,
+                    dateStr,
+                    isReprinting,
+                  )
+                  : _buildDesktopCardContent(
+                    order,
+                    clientName,
+                    idShort,
+                    dateStr,
+                    isReprinting,
+                    isSelected,
+                    isDesktop,
+                    isTablet,
+                  ),
         ),
       ),
     );
@@ -969,7 +1072,11 @@ class _PosSalesViewState extends State<PosSalesView> {
                 ),
               ),
               const Text(' • ', style: TextStyle(color: AppColors.textMuted)),
-              const Icon(Icons.schedule_rounded, size: 12, color: AppColors.textMuted),
+              const Icon(
+                Icons.schedule_rounded,
+                size: 12,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(width: 4),
               Text(
                 dateStr,
@@ -1015,19 +1122,27 @@ class _PosSalesViewState extends State<PosSalesView> {
               Row(
                 children: [
                   FilledButton.tonalIcon(
-                    onPressed: isReprinting ? null : () => _reimprimirTicket(order.id),
-                    icon: isReprinting
-                        ? const SizedBox(
-                            width: 12,
-                            height: 12,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.print_rounded, size: 14),
-                    label: const Text('Reimprimir', style: TextStyle(fontSize: 12)),
+                    onPressed:
+                        isReprinting ? null : () => _reimprimirTicket(order.id),
+                    icon:
+                        isReprinting
+                            ? const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                            : const Icon(Icons.print_rounded, size: 14),
+                    label: const Text(
+                      'Reimprimir',
+                      style: TextStyle(fontSize: 12),
+                    ),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.background,
                       foregroundColor: AppColors.textPrimary,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       minimumSize: const Size(0, 34),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -1036,7 +1151,11 @@ class _PosSalesViewState extends State<PosSalesView> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textMuted,
+                    size: 20,
+                  ),
                 ],
               ),
             ],
@@ -1065,9 +1184,10 @@ class _PosSalesViewState extends State<PosSalesView> {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: isSelected
-                  ? const Color(0xFF142B1A).withValues(alpha: 0.12)
-                  : AppColors.primary.withValues(alpha: 0.08),
+              color:
+                  isSelected
+                      ? const Color(0xFF142B1A).withValues(alpha: 0.12)
+                      : AppColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -1092,7 +1212,10 @@ class _PosSalesViewState extends State<PosSalesView> {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
-                          color: isSelected ? const Color(0xFF142B1A) : AppColors.textPrimary,
+                          color:
+                              isSelected
+                                  ? const Color(0xFF142B1A)
+                                  : AppColors.textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1113,8 +1236,15 @@ class _PosSalesViewState extends State<PosSalesView> {
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    const Text(' • ', style: TextStyle(color: AppColors.textMuted)),
-                    const Icon(Icons.schedule_rounded, size: 13, color: AppColors.textMuted),
+                    const Text(
+                      ' • ',
+                      style: TextStyle(color: AppColors.textMuted),
+                    ),
+                    const Icon(
+                      Icons.schedule_rounded,
+                      size: 13,
+                      color: AppColors.textMuted,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       dateStr,
@@ -1146,10 +1276,7 @@ class _PosSalesViewState extends State<PosSalesView> {
                 ),
                 const Text(
                   'Total cobrado',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
               ],
             ),
@@ -1176,13 +1303,14 @@ class _PosSalesViewState extends State<PosSalesView> {
           // Botón Reimprimir
           FilledButton.tonalIcon(
             onPressed: isReprinting ? null : () => _reimprimirTicket(order.id),
-            icon: isReprinting
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.print_rounded, size: 15),
+            icon:
+                isReprinting
+                    ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                    : const Icon(Icons.print_rounded, size: 15),
             label: const Text('Reimprimir'),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.background,

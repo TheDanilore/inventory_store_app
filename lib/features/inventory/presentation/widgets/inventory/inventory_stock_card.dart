@@ -76,8 +76,10 @@ class InventoryStockCard extends StatelessWidget {
                         child:
                             item.imageUrl != null && item.imageUrl!.isNotEmpty
                                 ? CachedNetworkImage(
-                                  imageUrl: item.imageUrl!,
-                                  fit: BoxFit.cover,
+                                    imageUrl: item.imageUrl!,
+                                    memCacheWidth: 140,
+                                    memCacheHeight: 140,
+                                    fit: BoxFit.cover,
                                   placeholder:
                                       (context, url) => Container(
                                         color: AppColors.background,

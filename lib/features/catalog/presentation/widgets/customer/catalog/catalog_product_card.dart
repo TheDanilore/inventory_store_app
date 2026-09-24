@@ -127,8 +127,10 @@ class _CatalogProductCardState extends State<CatalogProductCard> {
                               child:
                                   imageUrl != null
                                       ? CachedNetworkImage(
-                                        imageUrl: imageUrl,
-                                        fit: BoxFit.contain,
+                                          imageUrl: imageUrl,
+                                          memCacheWidth: 350,
+                                          memCacheHeight: 350,
+                                          fit: BoxFit.contain,
                                         placeholder:
                                             (context, url) => Container(
                                               color: Colors.grey.shade100,

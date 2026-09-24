@@ -233,6 +233,10 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                               )
                                               .imageUrl,
                                       fit: BoxFit.cover,
+                                      memCacheWidth: 350,
+                                      memCacheHeight: 350,
+                                      maxWidthDiskCache: 600,
+                                      maxHeightDiskCache: 600,
                                       placeholder:
                                           (_, _) => ColoredBox(
                                             color: const Color(0xFFF1F5F9),

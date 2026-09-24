@@ -197,6 +197,7 @@ class _ProductImage extends StatelessWidget {
                   height: 52,
                   fit: BoxFit.cover,
                   memCacheWidth: 104,
+                  memCacheHeight: 104,
                   placeholder:
                       (_, _) => const AppShimmer(
                         width: 52,

@@ -186,8 +186,10 @@ class InventoryBatchDetailPane extends StatelessWidget {
             child:
                 batch.imageUrl != null && batch.imageUrl!.isNotEmpty
                     ? CachedNetworkImage(
-                      imageUrl: batch.imageUrl!,
-                      fit: BoxFit.cover,
+                        imageUrl: batch.imageUrl!,
+                        memCacheWidth: 150,
+                        memCacheHeight: 150,
+                        fit: BoxFit.cover,
                       placeholder:
                           (context, url) => Container(
                             color: AppColors.background,

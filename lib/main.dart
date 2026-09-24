@@ -21,6 +21,10 @@ Future<void> main() async {
   // Asegura que los canales nativos estén listos
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Optimización estricta de memoria de imágenes (evita picos de memoria en Web CanvasKit)
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 50 * 1024 * 1024; // 50 MB
+  PaintingBinding.instance.imageCache.maximumSize = 100;
+
   // Optimización web/desktop de URLs
   usePathUrlStrategy();
 

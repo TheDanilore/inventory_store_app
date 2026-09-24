@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -12,19 +11,31 @@ import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_enti
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_state.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/close_shift_sheet.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 
 class AllCashShiftsScreen extends StatelessWidget {
   final bool isEmbedded;
   final VoidCallback? onBack;
+  final CashShiftsCubit? cubit;
 
   const AllCashShiftsScreen({
     super.key,
     this.isEmbedded = false,
     this.onBack,
+    this.cubit,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (cubit != null) {
+      return BlocProvider.value(
+        value: cubit!,
+        child: _AllCashShiftsBody(
+          isEmbedded: isEmbedded,
+          onBack: onBack,
+        ),
+      );
+    }
     return BlocProvider<CashShiftsCubit>(
       create: (_) => sl<CashShiftsCubit>(),
       child: _AllCashShiftsBody(
@@ -53,8 +64,13 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CashShiftsCubit>().loadProfiles();
-      context.read<CashShiftsCubit>().fetchShifts();
+      final cubit = context.read<CashShiftsCubit>();
+      if (cubit.state.profiles.isEmpty) {
+        cubit.loadProfiles();
+      }
+      if (cubit.state.shifts.isEmpty) {
+        cubit.fetchShifts();
+      }
     });
   }
 
@@ -74,6 +90,11 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
     );
     if (success == true && mounted) {
       cubit.fetchShifts();
+      if (shift.accountId != null) {
+        try {
+          context.read<PosCubit>().checkActiveShift(shift.accountId!);
+        } catch (_) {}
+      }
     }
   }
 
@@ -150,7 +171,9 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                   (p) => _buildUserOption(
                     cubit,
                     state,
-                    title: p['full_name'] as String,
+                    title: (p['full_name'] as String?)?.trim().isNotEmpty == true
+                        ? p['full_name'] as String
+                        : 'Usuario sin nombre',
                     value: p['id'] as String,
                     icon: Icons.person_rounded,
                   ),
@@ -221,7 +244,9 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                           (p) => _buildUserOption(
                             cubit,
                             state,
-                            title: p['full_name'] as String,
+                            title: (p['full_name'] as String?)?.trim().isNotEmpty == true
+                                ? p['full_name'] as String
+                                : 'Usuario sin nombre',
                             value: p['id'] as String,
                             icon: Icons.person_rounded,
                           ),
@@ -360,60 +385,70 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
             constraints: const BoxConstraints(maxWidth: 1400),
             child: Column(
               children: [
-                const SizedBox(height: 8),
-                // ── 1. KPI Cards Bar ─────────────────────────────────
-                _buildKpiBar(context, state),
-                const SizedBox(height: 12),
-
-                // ── 2. Unified Control Bar (Filters & Controls) ──────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _buildControlToolbar(context, cubit, state, isDesktop),
-                ),
-                const SizedBox(height: 12),
-
-                // ── 3. Main Shift Content (Table / Cards) ─────────────
                 Expanded(
-                  child: state.isLoading && state.shifts.isEmpty
-                      ? const _ShiftsSkeleton()
-                      : state.shifts.isEmpty
-                          ? _buildEmptyState(context)
-                          : Column(
-                              children: [
-                                Expanded(
-                                  child: RefreshIndicator(
-                                    onRefresh: () async => cubit.fetchShifts(),
-                                    child: isDesktop
-                                        ? _buildDesktopDataTable(context, state)
-                                        : _buildMobileCardList(context, state),
-                                  ),
-                                ),
-                                // Paginación corporativa
-                                if (state.totalPages > 1)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).cardColor,
-                                      border: Border(
-                                        top: BorderSide(
-                                          color: Theme.of(context)
-                                              .dividerColor
-                                              .withValues(alpha: 0.3),
-                                        ),
-                                      ),
-                                    ),
-                                    child: AdminPageBlocks(
-                                      currentPage: state.currentPage,
-                                      totalPages: state.totalPages,
-                                      onPageChanged: (page) => cubit.setPage(page),
-                                    ),
-                                  ),
-                              ],
-                            ),
+                  child: RefreshIndicator(
+                    onRefresh: () async => cubit.fetchShifts(),
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                        // ── 1. KPI Cards Bar ─────────────────────────────────
+                        SliverToBoxAdapter(child: _buildKpiBar(context, state)),
+                        const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+                        // ── 2. Unified Control Bar (Filters & Controls) ──────
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: _buildControlToolbar(context, cubit, state, isDesktop),
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+                        // ── 3. Main Shift Content (Table / Cards) ─────────────
+                        if (state.isLoading && state.shifts.isEmpty)
+                          const SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: _ShiftsSkeleton(),
+                          )
+                        else if (state.shifts.isEmpty)
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: _buildEmptyState(context),
+                          )
+                        else
+                          SliverToBoxAdapter(
+                            child: isDesktop
+                                ? _buildDesktopDataTable(context, state)
+                                : _buildMobileCardList(context, state),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
+                // Paginación corporativa
+                if (state.totalPages > 1)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      border: Border(
+                        top: BorderSide(
+                          color: Theme.of(context)
+                              .dividerColor
+                              .withValues(alpha: 0.3),
+                        ),
+                      ),
+                    ),
+                    child: AdminPageBlocks(
+                      currentPage: state.currentPage,
+                      totalPages: state.totalPages,
+                      onPageChanged: (page) => cubit.setPage(page),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -549,7 +584,11 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
       final p = state.profiles
           .where((p) => p['id'] == state.profileFilter)
           .firstOrNull;
-      if (p != null) selectedUserName = p['full_name'] as String;
+      if (p != null) {
+        selectedUserName = (p['full_name'] as String?)?.trim().isNotEmpty == true
+            ? p['full_name'] as String
+            : 'Usuario sin nombre';
+      }
     }
 
     final hasDateFilter = state.dateFrom != null || state.dateTo != null;
@@ -559,15 +598,24 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
 
     Future<void> pickDateRange() async {
       final now = DateTime.now();
+      final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+      final maxDate = DateTime(now.year + 1, 12, 31);
       final picked = await showDateRangePicker(
         context: context,
         firstDate: DateTime(2020),
-        lastDate: now,
+        lastDate: maxDate,
         initialDateRange: (state.dateFrom != null && state.dateTo != null)
-            ? DateTimeRange(start: state.dateFrom!, end: state.dateTo!)
+            ? DateTimeRange(
+                start: state.dateFrom!.isBefore(DateTime(2020))
+                    ? DateTime(2020)
+                    : state.dateFrom!,
+                end: state.dateTo!.isAfter(maxDate)
+                    ? maxDate
+                    : state.dateTo!,
+              )
             : DateTimeRange(
                 start: now.subtract(const Duration(days: 30)),
-                end: now,
+                end: todayEnd,
               ),
         locale: const Locale('es'),
         builder: (ctx, child) => Theme(
@@ -946,26 +994,23 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
               ),
               const Divider(height: 1, thickness: 0.5),
 
-              // Data Rows with full Viewport Virtualization
-              Expanded(
-                child: ListView.separated(
-                  itemCount: state.shifts.length,
-                  separatorBuilder: (_, _) => Divider(
+              // Data Rows
+              for (int i = 0; i < state.shifts.length; i++) ...[
+                if (i > 0)
+                  Divider(
                     height: 1,
                     thickness: 0.5,
                     color: theme.dividerColor.withValues(alpha: 0.2),
                   ),
-                  itemBuilder: (context, index) {
-                    final shift = state.shifts[index];
-                    return _DesktopTableRow(
-                      key: ValueKey(shift.id),
-                      shift: shift,
-                      onTap: () => _showShiftDetailAdaptive(context, shift),
-                      onClose: shift.isOpen ? () => _handleCloseShift(shift) : null,
-                    );
-                  },
+                RepaintBoundary(
+                  child: _DesktopTableRow(
+                    key: ValueKey(state.shifts[i].id),
+                    shift: state.shifts[i],
+                    onTap: () => _showShiftDetailAdaptive(context, state.shifts[i]),
+                    onClose: state.shifts[i].isOpen ? () => _handleCloseShift(state.shifts[i]) : null,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -975,29 +1020,21 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
 
   // ── 4. Mobile Apple HIG Card List ───────────────────────────────────────────
   Widget _buildMobileCardList(BuildContext context, CashShiftsState state) {
-    return AnimationLimiter(
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        itemCount: state.shifts.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final shift = state.shifts[index];
-          return AnimationConfiguration.staggeredList(
-            position: index,
-            duration: const Duration(milliseconds: 250),
-            child: SlideAnimation(
-              verticalOffset: 16.0,
-              child: FadeInAnimation(
-                child: _MobileShiftCard(
-                  shift: shift,
-                  onTap: () => _showShiftDetailAdaptive(context, shift),
-                  onClose: shift.isOpen ? () => _handleCloseShift(shift) : null,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      itemCount: state.shifts.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final shift = state.shifts[index];
+        return _MobileShiftCard(
+          key: ValueKey(shift.id),
+          shift: shift,
+          onTap: () => _showShiftDetailAdaptive(context, shift),
+          onClose: shift.isOpen ? () => _handleCloseShift(shift) : null,
+        );
+      },
     );
   }
 
@@ -1345,6 +1382,7 @@ class _MobileShiftCard extends StatefulWidget {
   final VoidCallback? onClose;
 
   const _MobileShiftCard({
+    super.key,
     required this.shift,
     required this.onTap,
     this.onClose,

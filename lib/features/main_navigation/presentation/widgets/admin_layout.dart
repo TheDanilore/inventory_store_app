@@ -494,6 +494,8 @@ class AdminProfileAvatar extends StatelessWidget {
           if (data.avatarUrl != null && data.avatarUrl!.isNotEmpty) {
             return CachedNetworkImage(
               imageUrl: data.avatarUrl!,
+              memCacheWidth: 96,
+              memCacheHeight: 96,
               fit: BoxFit.cover,
               width: 38,
               height: 38,

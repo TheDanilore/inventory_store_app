@@ -30,6 +30,7 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/invento
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_screen.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_sales_view.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/all_cash_shifts_screen.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 
 extension ProductToCartExtension on ProductEntity {
   CartItemEntity toCartItem() {
@@ -63,7 +64,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   final _desktopPanelKey = GlobalKey<DesktopPosPanelState>();
   late final AdminCatalogCubit _catalogCubit;
   int _selectedSidebarIndex = 0;
+  int _previousSidebarIndex = 0;
   InventoryCubit? _inventoryCubit;
+  CashShiftsCubit? _cashShiftsCubit;
   bool _isMountedReady = false;
   // Controla si el POS es el branch activo (evita que los shortcuts de hardware
   // intercepten teclas del ERP cuando el POS está en IndexedStack pero invisible).
@@ -207,7 +210,13 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     if (index == 1 && _inventoryCubit == null) {
       _inventoryCubit = sl<InventoryCubit>()..initStockTab();
     }
-    setState(() => _selectedSidebarIndex = index);
+    if (index == 3 && _cashShiftsCubit == null) {
+      _cashShiftsCubit = sl<CashShiftsCubit>();
+    }
+    setState(() {
+      _previousSidebarIndex = _selectedSidebarIndex;
+      _selectedSidebarIndex = index;
+    });
   }
 
   Future<void> _onExitPos() async {
@@ -285,6 +294,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKey);
     }
     _inventoryCubit?.close();
+    _cashShiftsCubit?.close();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -413,69 +423,22 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
                 Widget catalogContent = Column(
                   children: [
-                    Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                    Expanded(
+                      child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+                        buildWhen: (prev, current) =>
+                            prev.products != current.products ||
+                            prev.catalogState != current.catalogState ||
+                            prev.errorMessage != current.errorMessage,
+                        builder: (context, state) =>
+                            _buildMainContent(
+                              context,
+                              context.read<AdminCatalogCubit>(),
+                              state,
+                              headerSliver: _buildCatalogHeaderSliver(context),
+                              chipsSliver: _buildCategoryChipsSliver(context),
+                            ),
                       ),
-                      child: Column(
-                        children: [
-                          BlocSelector<AdminCatalogCubit, AdminCatalogState, bool>(
-                            selector: (state) => state.searchByIngredient,
-                            builder: (context, searchByIngredient) {
-                              return PosHeader(
-                                searchController: _searchCtrl,
-                                searchFocusNode: _searchFocusNode,
-                                onSearchChanged: _onSearchChanged,
-                                searchByIngredient: searchByIngredient,
-                                onToggleIngredientSearch:
-                                    context.read<AdminCatalogCubit>().toggleSearchByIngredient,
-                                onBack: _onExitPos,
-                              );
-                            },
-                          ),
-                        const SizedBox(height: 12),
-                        BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
-                          buildWhen: (prev, current) =>
-                              prev.categories != current.categories ||
-                              prev.selectedCategoryId != current.selectedCategoryId ||
-                              prev.brands != current.brands ||
-                              prev.selectedBrandId != current.selectedBrandId ||
-                              prev.filterIsActive != current.filterIsActive ||
-                              prev.sortOption != current.sortOption ||
-                              prev.stockFilter != current.stockFilter,
-                          builder: (context, state) {
-                            if (state.categories.isEmpty && state.brands.isEmpty) return const SizedBox.shrink();
-                            return CategoryChips(
-                              categories: state.categories,
-                              selectedCategoryId: state.selectedCategoryId,
-                              onSelected: context.read<AdminCatalogCubit>().setCategory,
-                              brands: state.brands,
-                              selectedBrandId: state.selectedBrandId,
-                              onBrandSelected: context.read<AdminCatalogCubit>().setBrand,
-                              filterIsActive: state.filterIsActive,
-                              onStatusSelected: context.read<AdminCatalogCubit>().setFilterIsActive,
-                              sortOption: state.sortOption,
-                              onSortSelected: context.read<AdminCatalogCubit>().setSortOption,
-                              stockFilter: state.stockFilter,
-                              onStockFilterSelected: context.read<AdminCatalogCubit>().setStockFilter,
-                            );
-                          },
-                        ),
-                      ],
                     ),
-                  ),
-                  Expanded(
-                    child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
-                      buildWhen: (prev, current) =>
-                          prev.products != current.products ||
-                          prev.catalogState != current.catalogState ||
-                          prev.errorMessage != current.errorMessage,
-                      builder: (context, state) =>
-                          _buildMainContent(context, context.read<AdminCatalogCubit>(), state),
-                    ),
-                  ),
                   BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
                     buildWhen: (prev, current) =>
                         prev.currentPage != current.currentPage ||
@@ -523,14 +486,16 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
               } else if (_selectedSidebarIndex == 2) {
                 activeView = Expanded(
                   child: PosSalesView(
-                    onOpenCashShifts: () => setState(() => _selectedSidebarIndex = 3),
+                    onOpenCashShifts: () => _onSidebarTabSelected(3),
                   ),
                 );
               } else if (_selectedSidebarIndex == 3) {
+                _cashShiftsCubit ??= sl<CashShiftsCubit>();
                 activeView = Expanded(
                   child: AllCashShiftsScreen(
                     isEmbedded: true,
-                    onBack: () => setState(() => _selectedSidebarIndex = 2),
+                    cubit: _cashShiftsCubit,
+                    onBack: () => setState(() => _selectedSidebarIndex = _previousSidebarIndex),
                   ),
                 );
               } else {
@@ -652,48 +617,145 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     );
   }
 
+  Widget _buildCatalogHeaderSliver(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Container(
+        color: Colors.white,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        child: BlocSelector<AdminCatalogCubit, AdminCatalogState, bool>(
+          selector: (state) => state.searchByIngredient,
+          builder: (context, searchByIngredient) {
+            return PosHeader(
+              searchController: _searchCtrl,
+              searchFocusNode: _searchFocusNode,
+              onSearchChanged: _onSearchChanged,
+              searchByIngredient: searchByIngredient,
+              onToggleIngredientSearch:
+                  context.read<AdminCatalogCubit>().toggleSearchByIngredient,
+              onBack: _onExitPos,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryChipsSliver(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+        buildWhen: (prev, current) =>
+            prev.categories != current.categories ||
+            prev.selectedCategoryId != current.selectedCategoryId ||
+            prev.brands != current.brands ||
+            prev.selectedBrandId != current.selectedBrandId ||
+            prev.filterIsActive != current.filterIsActive ||
+            prev.sortOption != current.sortOption ||
+            prev.stockFilter != current.stockFilter,
+        builder: (context, state) {
+          if (state.categories.isEmpty && state.brands.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          return Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: CategoryChips(
+              categories: state.categories,
+              selectedCategoryId: state.selectedCategoryId,
+              onSelected: context.read<AdminCatalogCubit>().setCategory,
+              brands: state.brands,
+              selectedBrandId: state.selectedBrandId,
+              onBrandSelected: context.read<AdminCatalogCubit>().setBrand,
+              filterIsActive: state.filterIsActive,
+              onStatusSelected: context.read<AdminCatalogCubit>().setFilterIsActive,
+              sortOption: state.sortOption,
+              onSortSelected: context.read<AdminCatalogCubit>().setSortOption,
+              stockFilter: state.stockFilter,
+              onStockFilterSelected: context.read<AdminCatalogCubit>().setStockFilter,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildMainContent(
     BuildContext context,
     AdminCatalogCubit cubit,
-    AdminCatalogState state,
-  ) {
+    AdminCatalogState state, {
+    required Widget headerSliver,
+    required Widget chipsSliver,
+  }) {
     if ((state.catalogState == ViewState.loading) && state.products.isEmpty) {
-      return GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount:
-              MediaQuery.of(context).size.width >= 1200
-                  ? 6
-                  : MediaQuery.of(context).size.width >= 800
-                      ? 4
-                      : MediaQuery.of(context).size.width >= 600
-                          ? 3
-                          : 2,
-          childAspectRatio: 0.75,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-        ),
-        itemCount: 12,
-        itemBuilder: (context, index) {
-          return const AppShimmer(
-            width: double.infinity,
-            height: double.infinity,
-            borderRadius: 16,
-          );
-        },
+      return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          headerSliver,
+          chipsSliver,
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount:
+                    MediaQuery.of(context).size.width >= 1200
+                        ? 6
+                        : MediaQuery.of(context).size.width >= 800
+                            ? 4
+                            : MediaQuery.of(context).size.width >= 600
+                                ? 3
+                                : 2,
+                childAspectRatio: 0.75,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  return const AppShimmer(
+                    width: double.infinity,
+                    height: double.infinity,
+                    borderRadius: 16,
+                  );
+                },
+                childCount: 12,
+              ),
+            ),
+          ),
+        ],
       );
     }
 
     if (state.errorMessage != null && state.products.isEmpty) {
-      return Center(child: CatalogErrorState(message: state.errorMessage!));
+      return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          headerSliver,
+          chipsSliver,
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: CatalogErrorState(message: state.errorMessage!)),
+          ),
+        ],
+      );
     }
 
     if (state.products.isEmpty && !(state.catalogState == ViewState.loading)) {
-      return Center(
-        child: CatalogEmptyState(
-          searchByIngredient: state.searchByIngredient,
-          searchTerm: state.searchTerm,
-        ),
+      return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          headerSliver,
+          chipsSliver,
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: CatalogEmptyState(
+                searchByIngredient: state.searchByIngredient,
+                searchTerm: state.searchTerm,
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -711,6 +773,8 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       bottomPadding: MediaQuery.of(context).size.width >= 800 ? 24 : 100,
       isPosMode: true,
       onEdit: (product) {}, // No permitimos editar en modo caja
+      headerSliver: headerSliver,
+      chipsSliver: chipsSliver,
     );
   }
 }

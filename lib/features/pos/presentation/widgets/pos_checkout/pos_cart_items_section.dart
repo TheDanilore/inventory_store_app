@@ -196,8 +196,10 @@ class PosCartItemRow extends StatelessWidget {
                 child:
                     item.imageUrl != null
                         ? CachedNetworkImage(
-                          imageUrl: item.imageUrl!,
-                          fit: BoxFit.cover,
+                            imageUrl: item.imageUrl!,
+                            memCacheWidth: 120,
+                            memCacheHeight: 120,
+                            fit: BoxFit.cover,
                           placeholder:
                               (context, url) => const Center(
                                 child: SizedBox(

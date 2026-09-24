@@ -107,8 +107,10 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                                   widget.batch.imageUrl != null &&
                                           widget.batch.imageUrl!.isNotEmpty
                                       ? CachedNetworkImage(
-                                        imageUrl: widget.batch.imageUrl!,
-                                        fit: BoxFit.cover,
+                                          imageUrl: widget.batch.imageUrl!,
+                                          memCacheWidth: 120,
+                                          memCacheHeight: 120,
+                                          fit: BoxFit.cover,
                                         placeholder:
                                             (context, url) => Container(
                                               color: AppColors.background,
