@@ -15,10 +15,10 @@ import 'package:intl/intl.dart';
 
 /// Vista de Ventas POS embebida en el layout principal de Caja.
 ///
-/// Implementa una arquitectura "camaleónica" multi-dispositivo:
-/// - **Desktop (≥ 1024px):** Split View Master-Detail con inspector lateral y navegación por teclado.
-/// - **Tablet (700px - 1023px):** Diálogo modal centrado con backdrop difuso.
-/// - **Móvil (< 700px):** Tarjetas jerárquicas optimizadas y Apple HIG Draggable Modal BottomSheet.
+/// Implementa una arquitectura "camaleónica" multi-dispositivo de nivel internacional:
+/// - **Desktop (≥ 1024px):** Lista/Tabla espaciosa a pantalla completa con Slide-Over Side Sheet retráctil.
+/// - **Tablet (700px - 1023px):** Lista completa con Diálogo Modal Centrado.
+/// - **Móvil (< 700px):** Tarjetas jerárquicas anti-colisión y Apple HIG Draggable Modal BottomSheet.
 class PosSalesView extends StatefulWidget {
   const PosSalesView({super.key});
 
@@ -211,7 +211,7 @@ class _PosSalesViewState extends State<PosSalesView> {
             final isTablet = constraints.maxWidth >= 700 && constraints.maxWidth < 1024;
             final isMobile = constraints.maxWidth < 700;
 
-            final listPane = Column(
+            final fullWidthListView = Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildHeader(context, isMobile),
@@ -234,7 +234,7 @@ class _PosSalesViewState extends State<PosSalesView> {
                                   const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
                                   const SizedBox(height: 12),
                                   Text(
-                                    'Error al cargar las ventas:\\n',
+                                    'Error al cargar las ventas:\n${state.recentOrdersError}',
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(color: AppColors.textPrimary),
                                   ),
@@ -275,7 +275,7 @@ class _PosSalesViewState extends State<PosSalesView> {
                               : ListView.separated(
                                   padding: EdgeInsets.fromLTRB(
                                     isMobile ? 16 : 20,
-                                    4,
+                                    6,
                                     isMobile ? 16 : 20,
                                     24,
                                   ),
@@ -296,44 +296,6 @@ class _PosSalesViewState extends State<PosSalesView> {
                 ),
               ],
             );
-
-            Widget mainContent;
-
-            if (isDesktop) {
-              final masterWidth = constraints.maxWidth >= 1400 ? 450.0 : 410.0;
-
-              mainContent = Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(width: masterWidth, child: listPane),
-                  Container(
-                    width: 1,
-                    color: AppColors.border.withValues(alpha: 0.8),
-                  ),
-                  Expanded(
-                    child: _selectedOrder == null
-                        ? _buildEmptyDetailPlaceholder()
-                        : AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 250),
-                            child: OrderDetailSheet(
-                              key: ValueKey(_selectedOrder!.id),
-                              order: _selectedOrder!,
-                              isEmbedded: true,
-                              onPop: (_) {
-                                setState(() => _selectedOrder = null);
-                              },
-                              onOrderUpdated: (updated) {
-                                setState(() => _selectedOrder = updated);
-                                context.read<PosCubit>().fetchRecentOrders(forceRefresh: true);
-                              },
-                            ),
-                          ),
-                  ),
-                ],
-              );
-            } else {
-              mainContent = listPane;
-            }
 
             return CallbackShortcuts(
               bindings: <ShortcutActivator, VoidCallback>{
@@ -358,7 +320,128 @@ class _PosSalesViewState extends State<PosSalesView> {
               },
               child: Container(
                 color: AppColors.background,
-                child: mainContent,
+                child: Stack(
+                  children: [
+                    // 1. Lista a pantalla completa (100% ancho de visualización)
+                    fullWidthListView,
+
+                    // 2. Slide-Over Side Sheet Inspector en Desktop
+                    if (isDesktop && _selectedOrder != null) ...[
+                      // Backdrop con dismiss
+                      Positioned.fill(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedOrder = null),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            color: Colors.black.withValues(alpha: 0.28),
+                          ),
+                        ),
+                      ),
+                      // Panel lateral deslizante tipo Stripe / Linear
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          width: constraints.maxWidth >= 1400 ? 640 : 560,
+                          height: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.18),
+                                blurRadius: 28,
+                                spreadRadius: 4,
+                                offset: const Offset(-8, 0),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              // Cabecera del Slide-Over
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: AppColors.border.withValues(alpha: 0.8),
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(7),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.receipt_long_rounded,
+                                        color: AppColors.primary,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Text(
+                                      'Detalle del Comprobante',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.textPrimary,
+                                        letterSpacing: -0.3,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.background,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: AppColors.border),
+                                      ),
+                                      child: const Text(
+                                        'ESC',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: const Icon(Icons.close_rounded, size: 20),
+                                      tooltip: 'Cerrar detalle (Esc)',
+                                      onPressed: () => setState(() => _selectedOrder = null),
+                                      style: IconButton.styleFrom(
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Detalle embebido completo
+                              Expanded(
+                                child: OrderDetailSheet(
+                                  key: ValueKey(_selectedOrder!.id),
+                                  order: _selectedOrder!,
+                                  isEmbedded: true,
+                                  onPop: (_) {
+                                    setState(() => _selectedOrder = null);
+                                  },
+                                  onOrderUpdated: (updated) {
+                                    setState(() => _selectedOrder = updated);
+                                    context.read<PosCubit>().fetchRecentOrders(forceRefresh: true);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             );
           },
@@ -469,7 +552,7 @@ class _PosSalesViewState extends State<PosSalesView> {
     bool isMobile,
   ) {
     final metricTotal = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -482,41 +565,38 @@ class _PosSalesViewState extends State<PosSalesView> {
         ],
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.payments_rounded, color: AppColors.teal, size: 20),
           const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'TOTAL VENTAS',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary,
-                    letterSpacing: 0.5,
-                  ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'TOTAL VENTAS',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 0.5,
                 ),
-                Text(
-                  'S/ ',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                'S/ ${totalVentasHoy.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
     );
 
     final metricTickets = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -529,34 +609,31 @@ class _PosSalesViewState extends State<PosSalesView> {
         ],
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 20),
           const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'TICKETS EMITIDOS',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary,
-                    letterSpacing: 0.5,
-                  ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'TICKETS EMITIDOS',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 0.5,
                 ),
-                Text(
-                  '$totalTickets ventas',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                '$totalTickets ventas',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
@@ -574,7 +651,7 @@ class _PosSalesViewState extends State<PosSalesView> {
         focusNode: _searchFocusNode,
         onChanged: (val) => setState(() => _filter = val),
         decoration: InputDecoration(
-          hintText: 'Filtrar por cliente o comprobante...',
+          hintText: 'Filtrar por cliente o código de comprobante...',
           hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
           prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted, size: 20),
           suffixIcon: _filter.isNotEmpty
@@ -615,9 +692,9 @@ class _PosSalesViewState extends State<PosSalesView> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
       child: Row(
         children: [
-          SizedBox(width: 180, child: metricTotal),
+          metricTotal,
           const SizedBox(width: 12),
-          SizedBox(width: 180, child: metricTickets),
+          metricTickets,
           const SizedBox(width: 16),
           Expanded(child: searchField),
         ],
@@ -666,7 +743,7 @@ class _PosSalesViewState extends State<PosSalesView> {
           ),
           child: isMobile
               ? _buildMobileCardContent(order, clientName, idShort, dateStr, isReprinting)
-              : _buildDesktopCardContent(order, clientName, idShort, dateStr, isReprinting, isSelected, isDesktop),
+              : _buildDesktopCardContent(order, clientName, idShort, dateStr, isReprinting, isSelected, isDesktop, isTablet),
         ),
       ),
     );
@@ -778,7 +855,7 @@ class _PosSalesViewState extends State<PosSalesView> {
                     ),
                   ),
                   Text(
-                    'S/ ',
+                    'S/ ${order.totalAmount.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
@@ -830,41 +907,43 @@ class _PosSalesViewState extends State<PosSalesView> {
     bool isReprinting,
     bool isSelected,
     bool isDesktop,
+    bool isTablet,
   ) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       child: Row(
         children: [
           // Icono
           Container(
-            width: 38,
-            height: 38,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               color: isSelected
                   ? const Color(0xFF142B1A).withValues(alpha: 0.12)
                   : AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               Icons.receipt_rounded,
               color: isSelected ? const Color(0xFF142B1A) : AppColors.primary,
-              size: 19,
+              size: 20,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
 
           // Datos Cliente + Estado + Fecha
           Expanded(
+            flex: 4,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Expanded(
+                    Flexible(
                       child: Text(
                         clientName,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: isSelected ? const Color(0xFF142B1A) : AppColors.textPrimary,
                         ),
@@ -872,9 +951,9 @@ class _PosSalesViewState extends State<PosSalesView> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                       decoration: BoxDecoration(
                         color: AppColors.successLight,
                         borderRadius: BorderRadius.circular(6),
@@ -891,145 +970,99 @@ class _PosSalesViewState extends State<PosSalesView> {
                   ],
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  'ID: $idShort • $dateStr',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Text(
+                      'ID: $idShort',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const Text(' • ', style: TextStyle(color: AppColors.textMuted)),
+                    const Icon(Icons.schedule_rounded, size: 13, color: AppColors.textMuted),
+                    const SizedBox(width: 4),
+                    Text(
+                      dateStr,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
 
           // Monto
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                'S/ ',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.4,
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  'S/ ${order.totalAmount.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.5,
+                  ),
                 ),
-              ),
-              const Text(
-                'Total cobrado',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textMuted,
+                const Text(
+                  'Total cobrado',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 20),
+
+          // Botón Ver Detalle
+          OutlinedButton.icon(
+            onPressed: () => _openOrderDetail(order, isDesktop, isTablet),
+            icon: const Icon(Icons.visibility_outlined, size: 15),
+            label: const Text('Ver Detalle'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.border),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: const Size(0, 36),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
 
           // Botón Reimprimir
-          IconButton(
-            tooltip: 'Reimprimir ticket térmico',
+          FilledButton.tonalIcon(
+            onPressed: isReprinting ? null : () => _reimprimirTicket(order.id),
             icon: isReprinting
                 ? const SizedBox(
                     width: 14,
                     height: 14,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.print_rounded, size: 16),
-            onPressed: isReprinting ? null : () => _reimprimirTicket(order.id),
-            style: IconButton.styleFrom(
+                : const Icon(Icons.print_rounded, size: 15),
+            label: const Text('Reimprimir'),
+            style: FilledButton.styleFrom(
               backgroundColor: AppColors.background,
               foregroundColor: AppColors.textPrimary,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: const Size(0, 36),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
                 side: const BorderSide(color: AppColors.border),
               ),
             ),
           ),
-          if (isDesktop) ...[
-            const SizedBox(width: 4),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 18,
-              color: isSelected ? const Color(0xFF142B1A) : AppColors.textMuted.withValues(alpha: 0.6),
-            ),
-          ],
         ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyDetailPlaceholder() {
-    return Container(
-      color: const Color(0xFFF8FAFC),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF142B1A).withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.receipt_long_outlined,
-                  size: 40,
-                  color: Color(0xFF142B1A),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Detalle de la Venta',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 380),
-                child: const Text(
-                  'Selecciona un comprobante de la lista para auditar los productos vendidos, lotes, medios de pago y emitir comprobantes térmicos.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                    height: 1.5,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.keyboard_outlined, size: 16, color: AppColors.textMuted),
-                    SizedBox(width: 8),
-                    Text(
-                      'Usa ↑ / ↓ para navegar y Enter para seleccionar',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
