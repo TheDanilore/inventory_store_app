@@ -86,77 +86,81 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   }
 
   bool _handleGlobalHardwareKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return false;
+    if (!mounted || event is! KeyDownEvent) return false;
 
-    // F2 (Cobrar sin modificador)
-    if (event.logicalKey == LogicalKeyboardKey.f2) {
-      _desktopPanelKey.currentState?.triggerCheckout();
-      return true;
-    }
-
-    // Escape (Salir al ERP o desenfocar buscador)
-    if (event.logicalKey == LogicalKeyboardKey.escape) {
-      if (_searchFocusNode.hasFocus) {
-        _searchFocusNode.unfocus();
-      } else {
-        _onExitPos();
+    try {
+      // F2 (Cobrar sin modificador)
+      if (event.logicalKey == LogicalKeyboardKey.f2) {
+        _desktopPanelKey.currentState?.triggerCheckout();
+        return true;
       }
-      return true;
-    }
 
-    final isAlt = HardwareKeyboard.instance.isAltPressed;
-    if (!isAlt) return false;
+      // Escape (Salir al ERP o desenfocar buscador)
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        if (_searchFocusNode.hasFocus) {
+          _searchFocusNode.unfocus();
+        } else {
+          _onExitPos();
+        }
+        return true;
+      }
 
-    // Alt + 1 / Numpad 1 / Alt + V: Tab 0 (Venta)
-    if (event.logicalKey == LogicalKeyboardKey.digit1 ||
-        event.logicalKey == LogicalKeyboardKey.numpad1 ||
-        event.logicalKey == LogicalKeyboardKey.keyV) {
-      _onSidebarTabSelected(0);
-      return true;
-    }
+      final isAlt = HardwareKeyboard.instance.isAltPressed;
+      if (!isAlt) return false;
 
-    // Alt + 2 / Numpad 2 / Alt + L / Alt + S: Tab 1 (Lotes/Stock)
-    if (event.logicalKey == LogicalKeyboardKey.digit2 ||
-        event.logicalKey == LogicalKeyboardKey.numpad2 ||
-        event.logicalKey == LogicalKeyboardKey.keyL ||
-        event.logicalKey == LogicalKeyboardKey.keyS) {
-      _onSidebarTabSelected(1);
-      return true;
-    }
+      // Alt + 1 / Numpad 1 / Alt + V: Tab 0 (Venta)
+      if (event.logicalKey == LogicalKeyboardKey.digit1 ||
+          event.logicalKey == LogicalKeyboardKey.numpad1 ||
+          event.logicalKey == LogicalKeyboardKey.keyV) {
+        _onSidebarTabSelected(0);
+        return true;
+      }
 
-    // Alt + 3 / Numpad 3 / Alt + H: Tab 2 (Ventas)
-    if (event.logicalKey == LogicalKeyboardKey.digit3 ||
-        event.logicalKey == LogicalKeyboardKey.numpad3 ||
-        event.logicalKey == LogicalKeyboardKey.keyH) {
-      _onSidebarTabSelected(2);
-      return true;
-    }
+      // Alt + 2 / Numpad 2 / Alt + L / Alt + S: Tab 1 (Lotes/Stock)
+      if (event.logicalKey == LogicalKeyboardKey.digit2 ||
+          event.logicalKey == LogicalKeyboardKey.numpad2 ||
+          event.logicalKey == LogicalKeyboardKey.keyL ||
+          event.logicalKey == LogicalKeyboardKey.keyS) {
+        _onSidebarTabSelected(1);
+        return true;
+      }
 
-    // Alt + 4 / Numpad 4 / Alt + T: Tab 3 (Turnos)
-    if (event.logicalKey == LogicalKeyboardKey.digit4 ||
-        event.logicalKey == LogicalKeyboardKey.numpad4 ||
-        event.logicalKey == LogicalKeyboardKey.keyT) {
-      _onSidebarTabSelected(3);
-      return true;
-    }
+      // Alt + 3 / Numpad 3 / Alt + H: Tab 2 (Ventas)
+      if (event.logicalKey == LogicalKeyboardKey.digit3 ||
+          event.logicalKey == LogicalKeyboardKey.numpad3 ||
+          event.logicalKey == LogicalKeyboardKey.keyH) {
+        _onSidebarTabSelected(2);
+        return true;
+      }
 
-    // Alt + K / Alt + B: Foco en Buscador
-    if (event.logicalKey == LogicalKeyboardKey.keyK ||
-        event.logicalKey == LogicalKeyboardKey.keyB) {
-      _focusSearch();
-      return true;
-    }
+      // Alt + 4 / Numpad 4 / Alt + T: Tab 3 (Turnos)
+      if (event.logicalKey == LogicalKeyboardKey.digit4 ||
+          event.logicalKey == LogicalKeyboardKey.numpad4 ||
+          event.logicalKey == LogicalKeyboardKey.keyT) {
+        _onSidebarTabSelected(3);
+        return true;
+      }
 
-    // Alt + I: Alternar modo de búsqueda Producto vs Ingrediente Activo
-    if (event.logicalKey == LogicalKeyboardKey.keyI) {
-      _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
-      return true;
-    }
+      // Alt + K / Alt + B: Foco en Buscador
+      if (event.logicalKey == LogicalKeyboardKey.keyK ||
+          event.logicalKey == LogicalKeyboardKey.keyB) {
+        _focusSearch();
+        return true;
+      }
 
-    // Alt + C: Cobrar en Desktop
-    if (event.logicalKey == LogicalKeyboardKey.keyC) {
-      _desktopPanelKey.currentState?.triggerCheckout();
-      return true;
+      // Alt + I: Alternar modo de búsqueda Producto vs Ingrediente Activo
+      if (event.logicalKey == LogicalKeyboardKey.keyI) {
+        _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
+        return true;
+      }
+
+      // Alt + C: Cobrar en Desktop
+      if (event.logicalKey == LogicalKeyboardKey.keyC) {
+        _desktopPanelKey.currentState?.triggerCheckout();
+        return true;
+      }
+    } catch (_) {
+      return false;
     }
 
     return false;

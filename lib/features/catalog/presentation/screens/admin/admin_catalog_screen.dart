@@ -1,5 +1,4 @@
 import 'package:go_router/go_router.dart';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
@@ -166,10 +165,26 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         final cubit = context.read<AdminCatalogCubit>();
 
         final bodyContent = BlocListener<AdminCatalogCubit, AdminCatalogState>(
-          listenWhen: (prev, current) => prev.searchTerm != current.searchTerm,
+          listenWhen:
+              (prev, current) =>
+                  prev.searchTerm != current.searchTerm ||
+                  (current.actionState == ViewState.error &&
+                      prev.actionState != current.actionState) ||
+                  (current.errorMessage != null &&
+                      prev.errorMessage != current.errorMessage &&
+                      current.products.isNotEmpty),
           listener: (context, state) {
             if (_searchCtrl.text != state.searchTerm) {
               _searchCtrl.text = state.searchTerm;
+            }
+            if (state.errorMessage != null &&
+                state.errorMessage!.isNotEmpty &&
+                state.products.isNotEmpty) {
+              AppSnackbar.show(
+                context,
+                message: state.errorMessage!,
+                type: SnackbarType.error,
+              );
             }
           },
           child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
@@ -203,47 +218,35 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     maxHeight: state.searchByIngredient ? 115.0 : 64.0,
                     isExporting: state.actionState == ViewState.loading,
                     searchByIngredient: state.searchByIngredient,
-                    child: ClipRect(
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
-                        child: Container(
-                          color: const Color(
-                            0xFFF9FAFB,
-                          ).withValues(alpha: 0.85),
-                          child: OverflowBox(
-                            alignment: Alignment.topCenter,
-                            maxHeight: double.infinity,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CatalogHeader(
-                                  searchController: _searchCtrl,
-                                  isExporting:
-                                      state.actionState == ViewState.loading,
-                                  onExport:
-                                      () => _exportCatalogPdf(
-                                        context,
-                                        cubit,
-                                        state,
-                                      ),
-                                  onSearchSubmitted: cubit.submitSearch,
-                                  searchByIngredient: state.searchByIngredient,
-                                  onToggleIngredientSearch:
-                                      cubit.toggleSearchByIngredient,
-                                  onAddProduct:
-                                      () => context.go(
-                                        '/products/product-form',
-                                      ),
+                    child: Container(
+                      color: const Color(0xFFF9FAFB),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CatalogHeader(
+                            searchController: _searchCtrl,
+                            isExporting: state.actionState == ViewState.loading,
+                            onExport:
+                                () => _exportCatalogPdf(
+                                  context,
+                                  cubit,
+                                  state,
                                 ),
-                                if (state.actionState == ViewState.loading)
-                                  const LinearProgressIndicator(
-                                    color: AppColors.teal,
-                                    minHeight: 2,
-                                  ),
-                              ],
-                            ),
+                            onSearchSubmitted: cubit.submitSearch,
+                            searchByIngredient: state.searchByIngredient,
+                            onToggleIngredientSearch:
+                                cubit.toggleSearchByIngredient,
+                            onAddProduct:
+                                () => context.go(
+                                  '/products/product-form',
+                                ),
                           ),
-                        ),
+                          if (state.actionState == ViewState.loading)
+                            const LinearProgressIndicator(
+                              color: AppColors.teal,
+                              minHeight: 2,
+                            ),
+                        ],
                       ),
                     ),
                   ),

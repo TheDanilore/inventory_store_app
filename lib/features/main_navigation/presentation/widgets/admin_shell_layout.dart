@@ -340,7 +340,17 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
 
     // Rutas de pantalla completa exclusiva de POS: no renderizan la barra lateral de administración
     if (_isPosTerminalRoute(currentPath)) {
-      return widget.child;
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final isDesktop = constraints.maxWidth >= 1024;
+          return AdminShellScope(
+            headerNotifier: _headerNotifier,
+            isDesktop: isDesktop,
+            updateHeader: _updateHeader,
+            child: widget.child,
+          );
+        },
+      );
     }
 
     return LayoutBuilder(

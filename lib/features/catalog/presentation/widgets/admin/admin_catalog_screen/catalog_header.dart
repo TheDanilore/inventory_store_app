@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -242,16 +241,19 @@ class _CatalogHeaderState extends State<CatalogHeader> {
       builder: (context, constraints) {
         final isDesktop = constraints.maxWidth >= 900;
 
-        return ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              color: Colors.white.withValues(alpha: 0.85),
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              bottom: BorderSide(
+                color: Colors.grey.withValues(alpha: 0.15),
+                width: 1,
+              ),
             ),
           ),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
         );
       },
     );

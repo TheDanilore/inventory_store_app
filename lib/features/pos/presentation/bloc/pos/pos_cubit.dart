@@ -55,6 +55,7 @@ class PosCubit extends Cubit<PosState> {
   }
 
   Future<void> initPosData({bool forceRefresh = false}) async {
+    if (state.isLoading) return; // Evitar llamadas concurrentes duplicadas
     if (!forceRefresh &&
         state.warehouses.isNotEmpty &&
         state.accounts.isNotEmpty) {

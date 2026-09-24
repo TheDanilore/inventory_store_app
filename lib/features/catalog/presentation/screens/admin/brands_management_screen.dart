@@ -172,6 +172,7 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
         },
         child: AdminLayout(
           title: 'Marcas y Fabricantes',
+          showBackButton: true,
           breadcrumb: 'Inicio  ›  Marcas',
           floatingActionButton: isMobile ? _buildMobileFab() : null,
           body: BlocConsumer<BrandsCubit, BrandsState>(
