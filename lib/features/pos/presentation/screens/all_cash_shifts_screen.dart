@@ -14,19 +14,35 @@ import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/c
 import 'package:inventory_store_app/features/pos/presentation/widgets/close_shift_sheet.dart';
 
 class AllCashShiftsScreen extends StatelessWidget {
-  const AllCashShiftsScreen({super.key});
+  final bool isEmbedded;
+  final VoidCallback? onBack;
+
+  const AllCashShiftsScreen({
+    super.key,
+    this.isEmbedded = false,
+    this.onBack,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider<CashShiftsCubit>(
       create: (_) => sl<CashShiftsCubit>(),
-      child: const _AllCashShiftsBody(),
+      child: _AllCashShiftsBody(
+        isEmbedded: isEmbedded,
+        onBack: onBack,
+      ),
     );
   }
 }
 
 class _AllCashShiftsBody extends StatefulWidget {
-  const _AllCashShiftsBody();
+  final bool isEmbedded;
+  final VoidCallback? onBack;
+
+  const _AllCashShiftsBody({
+    this.isEmbedded = false,
+    this.onBack,
+  });
 
   @override
   State<_AllCashShiftsBody> createState() => _AllCashShiftsBodyState();
@@ -264,9 +280,160 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
     );
   }
 
+  Widget _buildPosEmbeddedHeader(BuildContext context, CashShiftsCubit cubit) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (widget.onBack != null) ...[
+            IconButton(
+              icon: const Icon(Icons.arrow_back_rounded),
+              tooltip: 'Regresar al POS',
+              onPressed: widget.onBack,
+            ),
+            const SizedBox(width: 8),
+          ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B4D3E).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.point_of_sale_rounded,
+              color: Color(0xFF1B4D3E),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Historial de Turnos de Caja',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                Text(
+                  'Supervisa aperturas, cierres, arqueos y montos esperados',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => cubit.fetchShifts(),
+            tooltip: 'Actualizar listado',
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<CashShiftsCubit>();
+
+    final shiftContent = BlocBuilder<CashShiftsCubit, CashShiftsState>(
+      builder: (context, state) {
+        final isDesktop = MediaQuery.of(context).size.width >= 900;
+
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1400),
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+                // ── 1. KPI Cards Bar ─────────────────────────────────
+                _buildKpiBar(context, state),
+                const SizedBox(height: 12),
+
+                // ── 2. Unified Control Bar (Filters & Controls) ──────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildControlToolbar(context, cubit, state, isDesktop),
+                ),
+                const SizedBox(height: 12),
+
+                // ── 3. Main Shift Content (Table / Cards) ─────────────
+                Expanded(
+                  child: state.isLoading && state.shifts.isEmpty
+                      ? const _ShiftsSkeleton()
+                      : state.shifts.isEmpty
+                          ? _buildEmptyState(context)
+                          : Column(
+                              children: [
+                                Expanded(
+                                  child: RefreshIndicator(
+                                    onRefresh: () async => cubit.fetchShifts(),
+                                    child: isDesktop
+                                        ? _buildDesktopDataTable(context, state)
+                                        : _buildMobileCardList(context, state),
+                                  ),
+                                ),
+                                // Paginación corporativa
+                                if (state.totalPages > 1)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).cardColor,
+                                      border: Border(
+                                        top: BorderSide(
+                                          color: Theme.of(context)
+                                              .dividerColor
+                                              .withValues(alpha: 0.3),
+                                        ),
+                                      ),
+                                    ),
+                                    child: AdminPageBlocks(
+                                      currentPage: state.currentPage,
+                                      totalPages: state.totalPages,
+                                      onPageChanged: (page) => cubit.setPage(page),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (widget.isEmbedded) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildPosEmbeddedHeader(context, cubit),
+              Expanded(child: shiftContent),
+            ],
+          ),
+        ),
+      );
+    }
 
     return AdminLayout(
       title: 'Historial de Turnos',
@@ -278,74 +445,7 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
           icon: const Icon(Icons.refresh_rounded, size: 20),
         ),
       ],
-      body: BlocBuilder<CashShiftsCubit, CashShiftsState>(
-        builder: (context, state) {
-          final isDesktop = MediaQuery.of(context).size.width >= 900;
-
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: Column(
-                children: [
-                  // ── 1. KPI Cards Bar ─────────────────────────────────
-                  _buildKpiBar(context, state),
-                  const SizedBox(height: 12),
-
-                  // ── 2. Unified Control Bar (Filters & Controls) ──────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _buildControlToolbar(context, cubit, state, isDesktop),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // ── 3. Main Shift Content (Table / Cards) ─────────────
-                  Expanded(
-                    child: state.isLoading && state.shifts.isEmpty
-                        ? const _ShiftsSkeleton()
-                        : state.shifts.isEmpty
-                            ? _buildEmptyState(context)
-                            : Column(
-                                children: [
-                                  Expanded(
-                                    child: RefreshIndicator(
-                                      onRefresh: () async => cubit.fetchShifts(),
-                                      child: isDesktop
-                                          ? _buildDesktopDataTable(context, state)
-                                          : _buildMobileCardList(context, state),
-                                    ),
-                                  ),
-                                  // Paginación corporativa
-                                  if (state.totalPages > 1)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 10,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).cardColor,
-                                        border: Border(
-                                          top: BorderSide(
-                                            color: Theme.of(context)
-                                                .dividerColor
-                                                .withValues(alpha: 0.3),
-                                          ),
-                                        ),
-                                      ),
-                                      child: AdminPageBlocks(
-                                        currentPage: state.currentPage,
-                                        totalPages: state.totalPages,
-                                        onPageChanged: (page) => cubit.setPage(page),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+      body: shiftContent,
     );
   }
 
@@ -664,7 +764,7 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
   Widget _buildDesktopDataTable(BuildContext context, CashShiftsState state) {
     final theme = Theme.of(context);
 
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Container(
         decoration: BoxDecoration(
@@ -688,8 +788,8 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
               Container(
                 color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                child: Row(
-                  children: const [
+                child: const Row(
+                  children: [
                     SizedBox(width: 110, child: Text('ESTADO', style: _tableHeaderStyle)),
                     Expanded(flex: 3, child: Text('CAJA / CUENTA', style: _tableHeaderStyle)),
                     Expanded(flex: 2, child: Text('RESPONSABLE', style: _tableHeaderStyle)),
@@ -702,11 +802,9 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
               ),
               const Divider(height: 1, thickness: 0.5),
 
-              // Animated Data Rows
-              AnimationLimiter(
+              // Data Rows with full Viewport Virtualization
+              Expanded(
                 child: ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
                   itemCount: state.shifts.length,
                   separatorBuilder: (_, _) => Divider(
                     height: 1,
@@ -715,19 +813,11 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                   ),
                   itemBuilder: (context, index) {
                     final shift = state.shifts[index];
-                    return AnimationConfiguration.staggeredList(
-                      position: index,
-                      duration: const Duration(milliseconds: 250),
-                      child: SlideAnimation(
-                        verticalOffset: 12.0,
-                        child: FadeInAnimation(
-                          child: _DesktopTableRow(
-                            shift: shift,
-                            onTap: () => _showShiftDetailAdaptive(context, shift),
-                            onClose: shift.isOpen ? () => _handleCloseShift(shift) : null,
-                          ),
-                        ),
-                      ),
+                    return _DesktopTableRow(
+                      key: ValueKey(shift.id),
+                      shift: shift,
+                      onTap: () => _showShiftDetailAdaptive(context, shift),
+                      onClose: shift.isOpen ? () => _handleCloseShift(shift) : null,
                     );
                   },
                 ),
@@ -824,6 +914,7 @@ class _DesktopTableRow extends StatefulWidget {
   final VoidCallback? onClose;
 
   const _DesktopTableRow({
+    super.key,
     required this.shift,
     required this.onTap,
     this.onClose,

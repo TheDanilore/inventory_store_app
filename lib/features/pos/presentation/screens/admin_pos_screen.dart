@@ -29,6 +29,7 @@ import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_screen.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_sales_view.dart';
+import 'package:inventory_store_app/features/pos/presentation/screens/all_cash_shifts_screen.dart';
 
 extension ProductToCartExtension on ProductEntity {
   CartItemEntity toCartItem() {
@@ -184,6 +185,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
         const SingleActivator(LogicalKeyboardKey.digit3, alt: true): () => _onSidebarTabSelected(2),
         const SingleActivator(LogicalKeyboardKey.keyH, alt: true): () => _onSidebarTabSelected(2),
 
+        // Navegación Sidebar: Turnos de Caja (Alt+4 / Alt+T)
+        const SingleActivator(LogicalKeyboardKey.digit4, alt: true): () => _onSidebarTabSelected(3),
+
         // Alternar modo de búsqueda Producto vs Ingrediente Activo (Alt+T)
         const SingleActivator(LogicalKeyboardKey.keyT, alt: true): () {
           _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
@@ -250,6 +254,11 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                       icon: Icon(Icons.receipt_long_outlined),
                       selectedIcon: Icon(Icons.receipt_long, color: Color(0xFF1B4D3E)),
                       label: 'Ventas',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.account_balance_wallet_outlined),
+                      selectedIcon: Icon(Icons.account_balance_wallet, color: Color(0xFF1B4D3E)),
+                      label: 'Turnos',
                     ),
                   ],
                 ),
@@ -364,7 +373,18 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                   ),
                 );
               } else if (_selectedSidebarIndex == 2) {
-                activeView = const Expanded(child: PosSalesView());
+                activeView = Expanded(
+                  child: PosSalesView(
+                    onOpenCashShifts: () => setState(() => _selectedSidebarIndex = 3),
+                  ),
+                );
+              } else if (_selectedSidebarIndex == 3) {
+                activeView = Expanded(
+                  child: AllCashShiftsScreen(
+                    isEmbedded: true,
+                    onBack: () => setState(() => _selectedSidebarIndex = 2),
+                  ),
+                );
               } else {
                 activeView = Expanded(
                   child: Row(

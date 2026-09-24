@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
 import 'package:inventory_store_app/features/pos/domain/usecases/get_cash_shifts_uc.dart';
 import 'package:inventory_store_app/features/pos/domain/usecases/get_cash_shifts_status_count_uc.dart';
@@ -37,7 +38,14 @@ class CashShiftsCubit extends Cubit<CashShiftsState> {
     emit(state.copyWith(isLoadingProfiles: true));
     final res = await _repository.getStaffProfiles();
     res.fold(
-      (failure) => emit(state.copyWith(isLoadingProfiles: false)),
+      (failure) {
+        LoggerService.w(
+          'Error cargando perfiles de personal',
+          tag: 'CashShiftsCubit',
+          error: failure.message,
+        );
+        emit(state.copyWith(isLoadingProfiles: false));
+      },
       (profiles) =>
           emit(state.copyWith(isLoadingProfiles: false, profiles: profiles)),
     );
@@ -91,7 +99,7 @@ class CashShiftsCubit extends Cubit<CashShiftsState> {
             ? null
             : (state.filterStatus == 'OPEN' ? 'OPEN' : 'CLOSED');
 
-    final countRes = await _getCounts(
+    final countFuture = _getCounts(
       GetCashShiftsStatusCountParams(
         dateFrom: state.dateFrom,
         dateTo: state.dateTo,
@@ -99,21 +107,7 @@ class CashShiftsCubit extends Cubit<CashShiftsState> {
       ),
     );
 
-    int totalOpen = 0;
-    int totalClosed = 0;
-    countRes.fold(
-      (failure) {
-        // Propaga el error visible al usuario pero permite continuar
-        // para al menos mostrar la lista de turnos.
-        emit(state.copyWith(errorMessage: 'Aviso: ${failure.message}'));
-      },
-      (r) {
-        totalOpen = r.openCount;
-        totalClosed = r.closedCount;
-      },
-    );
-
-    final shiftsRes = await _getCashShifts(
+    final shiftsFuture = _getCashShifts(
       GetCashShiftsParams(
         limit: state.pageSize,
         offset: offset,
@@ -122,6 +116,22 @@ class CashShiftsCubit extends Cubit<CashShiftsState> {
         dateTo: state.dateTo,
         profileId: state.profileFilter,
       ),
+    );
+
+    final results = await Future.wait([countFuture, shiftsFuture]);
+    final countRes = results[0] as dynamic;
+    final shiftsRes = results[1] as dynamic;
+
+    int totalOpen = 0;
+    int totalClosed = 0;
+    countRes.fold(
+      (failure) {
+        emit(state.copyWith(errorMessage: 'Aviso: ${failure.message}'));
+      },
+      (r) {
+        totalOpen = r.openCount;
+        totalClosed = r.closedCount;
+      },
     );
 
     shiftsRes.fold(

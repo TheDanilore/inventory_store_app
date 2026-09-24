@@ -23,7 +23,12 @@ import 'package:intl/intl.dart';
 /// - **Aislamiento de Renderizado (RepaintBoundary + buildWhen):** Cero rebuilds superfluos desde PosCubit.
 /// - **Badges Reactivos de Estado:** Reflejan verazmente si la orden fue completada, anulada o devuelta.
 class PosSalesView extends StatefulWidget {
-  const PosSalesView({super.key});
+  final VoidCallback? onOpenCashShifts;
+
+  const PosSalesView({
+    super.key,
+    this.onOpenCashShifts,
+  });
 
   @override
   State<PosSalesView> createState() => _PosSalesViewState();
@@ -557,6 +562,10 @@ class _PosSalesViewState extends State<PosSalesView> {
               tooltip: 'Turnos de Caja',
               icon: const Icon(Icons.point_of_sale_rounded, color: AppColors.primary, size: 20),
               onPressed: () async {
+                if (widget.onOpenCashShifts != null) {
+                  widget.onOpenCashShifts!();
+                  return;
+                }
                 await context.push('/all-cash-shifts');
                 if (context.mounted) {
                   context.read<PosCubit>().refreshAccountsAndShift();
@@ -573,6 +582,10 @@ class _PosSalesViewState extends State<PosSalesView> {
           else
             OutlinedButton.icon(
               onPressed: () async {
+                if (widget.onOpenCashShifts != null) {
+                  widget.onOpenCashShifts!();
+                  return;
+                }
                 await context.push('/all-cash-shifts');
                 if (context.mounted) {
                   context.read<PosCubit>().refreshAccountsAndShift();

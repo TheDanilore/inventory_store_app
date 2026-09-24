@@ -97,6 +97,14 @@ class PosSidebarRail extends StatelessWidget {
               label: 'VENTAS',
               shortcut: 'Alt+3',
             ),
+            const SizedBox(height: 12),
+
+            _buildNavItem(
+              index: 3,
+              icon: Icons.point_of_sale_rounded,
+              label: 'TURNOS',
+              shortcut: 'Alt+4',
+            ),
 
             const Spacer(),
 
