@@ -46,6 +46,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   String? _pendingTargetOrderId;
   bool _isFetchingTargetOrder = false;
   final Map<String, List<PurchaseOrderItemEntity>> _itemsCache = {};
+  static const int _maxCachedOrderItems = 20;
 
   static const _statusLabels = {
     'Todos': 'Todos',
@@ -79,7 +80,10 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     _pendingTargetOrderId = widget.targetOrderId;
     _checkDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      cubit.loadOrders(refresh: true);
+      final state = cubit.state;
+      if (state is! PurchaseOrdersLoaded || state.orders.isEmpty) {
+        cubit.loadOrders(refresh: true);
+      }
     });
   }
 
@@ -129,6 +133,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     final res = await sl<FetchPurchaseOrderItemsUseCase>().call(orderId);
     final items = res.fold((l) => <PurchaseOrderItemEntity>[], (r) => r);
     if (items.isNotEmpty) {
+      if (_itemsCache.length >= _maxCachedOrderItems) {
+        _itemsCache.remove(_itemsCache.keys.first);
+      }
       _itemsCache[orderId] = items;
     }
     return items;
@@ -894,56 +901,61 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(flex: 4, child: listContent),
+                      Expanded(
+                        flex: 4,
+                        child: RepaintBoundary(child: listContent),
+                      ),
                       Container(width: 1, color: AppColors.border),
                       Expanded(
                         flex: 6,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 250),
-                          child:
-                              _selectedOrder == null
-                                  ? const AppEmptyState(
-                                    key: ValueKey('empty_detail'),
-                                    icon: Icons.receipt_long_rounded,
-                                    title: 'Ninguna Orden Seleccionada',
-                                    message:
-                                        'Selecciona una orden del panel izquierdo o navega con las flechas ↑/↓.',
-                                  )
-                                  : Padding(
-                                    key: ValueKey(_selectedOrder!.id),
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: PODetailSheet(
-                                      po: _selectedOrder!,
-                                      isDialog: true,
-                                      onPaymentSuccess: () {
-                                        _itemsCache.remove(_selectedOrder?.id);
-                                        if (context.mounted) {
-                                          context
-                                              .read<PurchaseOrdersCubit>()
-                                              .loadOrders(refresh: true);
-                                        }
-                                      },
-                                      loadItems: () =>
-                                          _loadOrderItems(_selectedOrder!.id),
-                                      onReceive:
-                                          () => _handleReceiveOrder(
-                                            context,
-                                            _selectedOrder!,
-                                          ),
-                                      onUpdateStatus: (status) async {
-                                        await viewModel.updateOrderStatus(
-                                          _selectedOrder!.id,
-                                          status,
-                                        );
-                                        if (mounted && _selectedOrder != null) {
-                                          setState(() {
-                                            _selectedOrder = _selectedOrder!
-                                                .copyWith(status: status);
-                                          });
-                                        }
-                                      },
+                        child: RepaintBoundary(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 250),
+                            child:
+                                _selectedOrder == null
+                                    ? const AppEmptyState(
+                                      key: ValueKey('empty_detail'),
+                                      icon: Icons.receipt_long_rounded,
+                                      title: 'Ninguna Orden Seleccionada',
+                                      message:
+                                          'Selecciona una orden del panel izquierdo o navega con las flechas ↑/↓.',
+                                    )
+                                    : Padding(
+                                      key: ValueKey(_selectedOrder!.id),
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: PODetailSheet(
+                                        po: _selectedOrder!,
+                                        isDialog: true,
+                                        onPaymentSuccess: () {
+                                          _itemsCache.remove(_selectedOrder?.id);
+                                          if (context.mounted) {
+                                            context
+                                                .read<PurchaseOrdersCubit>()
+                                                .loadOrders(refresh: true);
+                                          }
+                                        },
+                                        loadItems: () =>
+                                            _loadOrderItems(_selectedOrder!.id),
+                                        onReceive:
+                                            () => _handleReceiveOrder(
+                                              context,
+                                              _selectedOrder!,
+                                            ),
+                                        onUpdateStatus: (status) async {
+                                          await viewModel.updateOrderStatus(
+                                            _selectedOrder!.id,
+                                            status,
+                                          );
+                                          if (mounted && _selectedOrder != null) {
+                                            setState(() {
+                                              _selectedOrder = _selectedOrder!
+                                                  .copyWith(status: status);
+                                            });
+                                          }
+                                        },
+                                      ),
                                     ),
-                                  ),
+                          ),
                         ),
                       ),
                     ],

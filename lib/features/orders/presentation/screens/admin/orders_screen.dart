@@ -565,44 +565,48 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   children: [
                     Expanded(
                       flex: 42,
-                      child: Container(
-                        color: AppColors.background,
-                        child: content,
+                      child: RepaintBoundary(
+                        child: Container(
+                          color: AppColors.background,
+                          child: content,
+                        ),
                       ),
                     ),
                     Container(width: 1, color: AppColors.border),
                     Expanded(
                       flex: 58,
-                      child: Container(
-                        color: const Color(0xFFF8FAFC),
-                        child:
-                            currentSelectedOrder == null
-                                ? const AppEmptyState(
-                                  icon: Icons.receipt_long_rounded,
-                                  title: 'Ningún pedido seleccionado',
-                                  message:
-                                      'Selecciona un pedido de la lista para ver o editar sus detalles.',
-                                )
-                                : AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 300),
-                                  child: OrderDetailSheet(
-                                    key: ValueKey(currentSelectedOrder.id),
-                                    order: currentSelectedOrder,
-                                    isEmbedded: true,
-                                    onPop: _onOrderEmbeddedPop,
-                                    onOrderUpdated: (updated) {
-                                      if (mounted) {
-                                        context
-                                            .read<OrdersCubit>()
-                                            .updateOrderInList(updated);
-                                        _selectOrder(updated, updateUrl: true);
-                                        context
-                                            .read<OrdersCubit>()
-                                            .loadOrders(background: true);
-                                      }
-                                    },
+                      child: RepaintBoundary(
+                        child: Container(
+                          color: const Color(0xFFF8FAFC),
+                          child:
+                              currentSelectedOrder == null
+                                  ? const AppEmptyState(
+                                    icon: Icons.receipt_long_rounded,
+                                    title: 'Ningún pedido seleccionado',
+                                    message:
+                                        'Selecciona un pedido de la lista para ver o editar sus detalles.',
+                                  )
+                                  : AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 300),
+                                    child: OrderDetailSheet(
+                                      key: ValueKey(currentSelectedOrder.id),
+                                      order: currentSelectedOrder,
+                                      isEmbedded: true,
+                                      onPop: _onOrderEmbeddedPop,
+                                      onOrderUpdated: (updated) {
+                                        if (mounted) {
+                                          context
+                                              .read<OrdersCubit>()
+                                              .updateOrderInList(updated);
+                                          _selectOrder(updated, updateUrl: true);
+                                          context
+                                              .read<OrdersCubit>()
+                                              .loadOrders(background: true);
+                                        }
+                                      },
+                                    ),
                                   ),
-                                ),
+                        ),
                       ),
                     ),
                   ],

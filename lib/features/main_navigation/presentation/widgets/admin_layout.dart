@@ -10,7 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_offline_banner.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_desktop_top_bar.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_shell_layout.dart';
@@ -121,11 +121,11 @@ class _AdminLayoutState extends State<AdminLayout> {
         });
       }
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error loading sidebar state in AdminLayout',
         error: e,
         stackTrace: st,
-        name: 'AdminLayout',
+        tag: 'AdminLayout',
       );
       AdminShellLayout.hasLoadedFromPrefs = true;
     }
@@ -150,11 +150,11 @@ class _AdminLayoutState extends State<AdminLayout> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_sidebarCollapsedKey, newValue);
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error saving sidebar state in AdminLayout',
         error: e,
         stackTrace: st,
-        name: 'AdminLayout',
+        tag: 'AdminLayout',
       );
     }
   }
@@ -351,15 +351,24 @@ class _AdminLayoutState extends State<AdminLayout> {
       return;
     }
 
-    final currentUri = GoRouterState.of(context).uri;
-    final pathSegments = currentUri.pathSegments;
+    try {
+      final currentUri = GoRouterState.of(context).uri;
+      final pathSegments = currentUri.pathSegments;
 
-    // Si tiene más de 1 segmento (ej. /customers/customer-detail), vamos al padre (/customers)
-    if (pathSegments.length > 1) {
-      final parentPath =
-          '/${pathSegments.sublist(0, pathSegments.length - 1).join('/')}';
-      context.go(parentPath);
-      return;
+      // Si tiene más de 1 segmento (ej. /customers/customer-detail), vamos al padre (/customers)
+      if (pathSegments.length > 1) {
+        final parentPath =
+            '/${pathSegments.sublist(0, pathSegments.length - 1).join('/')}';
+        context.go(parentPath);
+        return;
+      }
+    } catch (e, st) {
+      LoggerService.w(
+        'Error resolviendo ruta padre en AdminLayout._handleBackButton',
+        error: e,
+        stackTrace: st,
+        tag: 'AdminLayout',
+      );
     }
 
     // Fallback genérico
@@ -374,11 +383,11 @@ class _AdminLayoutState extends State<AdminLayout> {
       final path = GoRouterState.of(context).uri.path;
       return AdminShellHelper.resolveBreadcrumb(path);
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error al construir breadcrumb',
         error: e,
         stackTrace: st,
-        name: 'AdminLayout',
+        tag: 'AdminLayout',
       );
       return 'Panel de Administración ERP';
     }

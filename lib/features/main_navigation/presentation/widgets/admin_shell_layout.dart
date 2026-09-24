@@ -1,5 +1,5 @@
-import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -255,7 +255,14 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
           breadcrumb: AdminShellHelper.resolveBreadcrumb(path),
         );
       }
-    } catch (_) {}
+    } catch (e, st) {
+      LoggerService.w(
+        'Error resolviendo ruta en didChangeDependencies',
+        error: e,
+        stackTrace: st,
+        tag: 'AdminShellLayout',
+      );
+    }
   }
 
   @override
@@ -276,11 +283,11 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
         });
       }
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error loading sidebar state in AdminShellLayout',
         error: e,
         stackTrace: st,
-        name: 'AdminShellLayout',
+        tag: 'AdminShellLayout',
       );
       AdminShellLayout.hasLoadedFromPrefs = true;
     }
@@ -294,11 +301,11 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_sidebarCollapsedKey, newValue);
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error saving sidebar state in AdminShellLayout',
         error: e,
         stackTrace: st,
-        name: 'AdminShellLayout',
+        tag: 'AdminShellLayout',
       );
     }
   }
@@ -325,7 +332,14 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
         context.go(parentPath);
         return;
       }
-    } catch (_) {}
+    } catch (e, st) {
+      LoggerService.w(
+        'Error calculando ruta padre en back',
+        error: e,
+        stackTrace: st,
+        tag: 'AdminShellLayout',
+      );
+    }
 
     context.go('/');
   }

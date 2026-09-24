@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
@@ -305,11 +305,11 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
         final name = (profile['full_name'] as String?)?.trim();
         if (name != null && name.isNotEmpty) return name;
       } catch (e, st) {
-        developer.log(
+        LoggerService.w(
           'Error parseando cliente',
           error: e,
           stackTrace: st,
-          name: 'OrderDetailSheet',
+          tag: 'OrderDetailSheet',
         );
       }
     }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:developer' as developer;
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -988,6 +988,8 @@ class _DrawerFooter extends StatelessWidget {
                                           data.avatarUrl!.isNotEmpty
                                       ? CachedNetworkImageProvider(
                                         data.avatarUrl!,
+                                        maxWidth: 72,
+                                        maxHeight: 72,
                                       )
                                       : null,
                               child:
@@ -1044,11 +1046,11 @@ class _DrawerFooter extends StatelessWidget {
                                     navigator.pop();
                                   }
                                 } catch (e, st) {
-                                  developer.log(
+                                  LoggerService.e(
                                     'Error al cerrar sesión',
                                     error: e,
                                     stackTrace: st,
-                                    name: 'AppDrawer',
+                                    tag: 'AppDrawer',
                                   );
                                   messenger.showSnackBar(
                                     const SnackBar(

@@ -106,6 +106,8 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
                         width: 52,
                         height: 52,
                         fit: BoxFit.cover,
+                        memCacheWidth: 104,
+                        memCacheHeight: 104,
                         placeholder:
                             (context, url) => Container(
                               width: 52,
