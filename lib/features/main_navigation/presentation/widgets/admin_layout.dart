@@ -163,6 +163,24 @@ class _AdminLayoutState extends State<AdminLayout> {
   Widget build(BuildContext context) {
     final shell = AdminShellScope.maybeOf(context);
 
+    // ── Optmización Crítica: Cortocircuito en Desktop + Shell ────────────────
+    // Cuando el AdminShellLayout persistente está activo en Desktop, él ya provee:
+    // Sidebar, TopBar, OfflineBanner, AnnotatedRegion y Scaffold raíz.
+    // AdminLayout NO debe duplicarlos — entrega solo el body en un Scaffold
+    // transparente para conservar soporte a FABs y SnackBars locales.
+    // Esto elimina: N LayoutBuilders anidados, N AnnotatedRegions redundantes.
+    if (shell != null && shell.isDesktop) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: widget.body,
+        floatingActionButton: widget.floatingActionButton,
+        bottomNavigationBar: widget.bottomNavigationBar,
+      );
+    }
+
+    // ── Fallback: Standalone Desktop o Mobile/Tablet ──────────────────────────
+    // Cuando no hay AdminShellLayout (p. ej. pantalla autónoma o mobile),
+    // se construye la estructura completa con Sidebar/AppBar propios.
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -173,19 +191,7 @@ class _AdminLayoutState extends State<AdminLayout> {
         builder: (context, constraints) {
           final isDesktop = constraints.maxWidth >= 1024;
 
-          // ── 1. Adaptación Camaleónica: Dentro del Persistent Shell en Desktop ──
-          if (shell != null && isDesktop) {
-            // Entrega directamente el body dentro de un Scaffold transparente para
-            // retener soporte a FABs y Snackbars sin duplicar Sidebar, TopBar ni OfflineBanner.
-            return Scaffold(
-              backgroundColor: Colors.transparent,
-              body: widget.body,
-              floatingActionButton: widget.floatingActionButton,
-              bottomNavigationBar: widget.bottomNavigationBar,
-            );
-          }
-
-          // ── 2. Modo Autónomo (Standalone Desktop si no hay Persistent Shell) ──
+          // ── 2. Modo Autónomo (Standalone Desktop sin Persistent Shell) ──
           if (isDesktop) {
             return Scaffold(
               backgroundColor: AppColors.background,

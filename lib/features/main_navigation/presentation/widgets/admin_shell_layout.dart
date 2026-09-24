@@ -309,10 +309,6 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
     }
   }
 
-  bool _isPosTerminalRoute(String path) {
-    return path == '/pos' || path == '/pos-checkout';
-  }
-
   void _handleDefaultBack(BuildContext context) {
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
@@ -336,23 +332,6 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
 
   @override
   Widget build(BuildContext context) {
-    final currentPath = GoRouterState.of(context).uri.path;
-
-    // Rutas de pantalla completa exclusiva de POS: no renderizan la barra lateral de administración
-    if (_isPosTerminalRoute(currentPath)) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          final isDesktop = constraints.maxWidth >= 1024;
-          return AdminShellScope(
-            headerNotifier: _headerNotifier,
-            isDesktop: isDesktop,
-            updateHeader: _updateHeader,
-            child: widget.child,
-          );
-        },
-      );
-    }
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final isDesktop = constraints.maxWidth >= 1024;
@@ -399,13 +378,13 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
                             final displayTitle =
                                 header.title.isNotEmpty
                                     ? header.title
-                                    : AdminShellHelper.resolveTitle(currentPath);
+                                    : AdminShellHelper.resolveTitle(_currentPath);
                             final displayBreadcrumb =
                                 (header.breadcrumb != null &&
                                         header.breadcrumb!.isNotEmpty)
                                     ? header.breadcrumb!
                                     : AdminShellHelper.resolveBreadcrumb(
-                                      currentPath,
+                                      _currentPath,
                                     );
 
                             return AdminDesktopTopBar(

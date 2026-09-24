@@ -65,18 +65,23 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   int _selectedSidebarIndex = 0;
   InventoryCubit? _inventoryCubit;
   bool _isMountedReady = false;
+  // Controla si el POS es el branch activo (evita que los shortcuts de hardware
+  // intercepten teclas del ERP cuando el POS está en IndexedStack pero invisible).
+  bool _isPosActive = false;
 
   @override
   void initState() {
     super.initState();
     _catalogCubit = context.read<AdminCatalogCubit>();
-    HardwareKeyboard.instance.addHandler(_handleGlobalHardwareKey);
+    // No registramos el handler aquí; se registra en didChangeDependencies
+    // cuando confirmamos que la ruta POS es la activa.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_isMountedReady) {
+      if (!mounted) return;
+      if (!_isMountedReady) {
         setState(() => _isMountedReady = true);
       }
       if (_catalogCubit.state.filterIsActive != true) {
-        _catalogCubit.setFilterIsActive(true); // Asegurar que no se vendan productos inactivos
+        _catalogCubit.setFilterIsActive(true);
       }
       if (_searchCtrl.text != _catalogCubit.state.searchTerm) {
         _searchCtrl.text = _catalogCubit.state.searchTerm;
@@ -89,6 +94,23 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
         posCubit.initPosData();
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Con StatefulShellRoute + IndexedStack, el POS puede estar montado pero
+    // oculto (cuando el ERP es el branch activo). Activamos/desactivamos el
+    // handler de hardware keyboard según la visibilidad real de la ruta.
+    final isNowActive = ModalRoute.of(context)?.isActive ?? false;
+    if (_isPosActive != isNowActive) {
+      _isPosActive = isNowActive;
+      if (_isPosActive) {
+        HardwareKeyboard.instance.addHandler(_handleGlobalHardwareKey);
+      } else {
+        HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKey);
+      }
+    }
   }
 
   bool _handleGlobalHardwareKey(KeyEvent event) {
@@ -261,7 +283,10 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
   @override
   void dispose() {
-    HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKey);
+    // Solo desregistrar si el handler fue registrado (primera visita activa).
+    if (_isPosActive) {
+      HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKey);
+    }
     _inventoryCubit?.close();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();

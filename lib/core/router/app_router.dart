@@ -31,6 +31,66 @@ final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
 );
 
+/// Navigator keys para los dos branches del StatefulShellRoute.
+final GlobalKey<NavigatorState> _erpNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'erp_shell',
+);
+final GlobalKey<NavigatorState> _posNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'pos_shell',
+);
+
+/// IndexedStack con montaje LAZY por branch.
+///
+/// Garantías:
+/// - Branch 0 (ERP) se monta inmediatamente al iniciar la app.
+/// - Branch 1 (POS) solo se monta cuando el usuario navega a /pos por primera vez.
+/// - A partir de la primera visita, ambos branches permanecen vivos (0ms en transiciones).
+/// - Evita consultas Supabase innecesarias al arrancar (PosCubit no llama initPosData hasta visitar /pos).
+class _LazyBranchContainer extends StatefulWidget {
+  final int currentIndex;
+  final List<Widget> children;
+
+  const _LazyBranchContainer({
+    required this.currentIndex,
+    required this.children,
+  });
+
+  @override
+  State<_LazyBranchContainer> createState() => _LazyBranchContainerState();
+}
+
+class _LazyBranchContainerState extends State<_LazyBranchContainer> {
+  late final List<bool> _activated;
+
+  @override
+  void initState() {
+    super.initState();
+    _activated = List.generate(
+      widget.children.length,
+      (i) => i == widget.currentIndex,
+    );
+  }
+
+  @override
+  void didUpdateWidget(_LazyBranchContainer old) {
+    super.didUpdateWidget(old);
+    if (!_activated[widget.currentIndex]) {
+      setState(() => _activated[widget.currentIndex] = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IndexedStack(
+      index: widget.currentIndex,
+      children: [
+        for (int i = 0; i < widget.children.length; i++)
+          if (_activated[i]) widget.children[i] else const SizedBox.shrink(),
+      ],
+    );
+  }
+}
+
 class AppRouter {
   static String? _pendingDeepLink;
 
@@ -38,13 +98,13 @@ class AppRouter {
     try {
       final uri = Uri.base;
       final path = uri.path;
-      // Filtramos rutas internas o espurias (como comandos /goal)
       if (path.isNotEmpty &&
           path != '/' &&
           path != '/splash' &&
           path != '/login' &&
           !path.startsWith('/goal')) {
-        _pendingDeepLink = path + (uri.query.isNotEmpty ? '?${uri.query}' : '');
+        _pendingDeepLink =
+            path + (uri.query.isNotEmpty ? '?${uri.query}' : '');
         LoggerService.i(
           'Deep link inicial capturado -> $_pendingDeepLink',
           tag: 'AppRouter',
@@ -73,11 +133,7 @@ class AppRouter {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.link_off_rounded,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
+                  const Icon(Icons.link_off_rounded, size: 64, color: Colors.grey),
                   const SizedBox(height: 16),
                   const Text(
                     'Esta página no existe',
@@ -114,7 +170,6 @@ class AppRouter {
           return isSplash ? null : '/splash';
         }
 
-        // Si no está autenticado: si ya está en /login se queda, si está en /splash u otra ruta privada va a /login
         if (authState.authStatus == AuthStatus.unauthenticated) {
           return isLogin ? null : '/login';
         }
@@ -123,7 +178,9 @@ class AppRouter {
             _pendingDeepLink != null) {
           final link = _pendingDeepLink!;
           _pendingDeepLink = null;
-          if (!link.startsWith('/goal') && link != '/splash' && link != '/login') {
+          if (!link.startsWith('/goal') &&
+              link != '/splash' &&
+              link != '/login') {
             return link;
           }
           return '/';
@@ -134,7 +191,6 @@ class AppRouter {
           return isLogin ? null : '/login';
         }
 
-        // Si ya está autenticado y accede a splash o login, dirigir a raíz '/'
         if (isSplash || isLogin) {
           return '/';
         }
@@ -145,10 +201,22 @@ class AppRouter {
         ...AuthRoutes.topLevelRoutes,
         ...CatalogRoutes.topLevelRoutes(authCubit),
 
-        // ADMIN ROUTES
-        ShellRoute(
+        // ── ADMIN ROUTES ──────────────────────────────────────────────────────
+        //
+        // StatefulShellRoute.indexedStack con lazy _LazyBranchContainer.
+        //
+        // Branch 0 – ERP: AdminShellLayout (sidebar + topbar) + todas las rutas admin.
+        // Branch 1 – POS: AdminPosScreen en pantalla completa (sin sidebar ERP).
+        //
+        // Navegación ERP ↔ POS = swap de visibilidad de 0ms en IndexedStack.
+        // Primer visita al POS: se monta el branch y PosDesktopSkeleton amortigua el frame 0.
+        // Visitas posteriores: instantáneo, sin destrucción ni reconstrucción de widgets.
+        //
+        // BLoCs compartidos entre ambos branches (AdminCatalogCubit, CartCubit,
+        // PosCubit, CashShiftsCubit) viven en el builder del StatefulShellRoute.
+        StatefulShellRoute(
           builder:
-              (context, state, child) => MultiBlocProvider(
+              (context, state, navigationShell) => MultiBlocProvider(
                 providers: [
                   BlocProvider(create: (_) => sl<SidebarBadgeCubit>()),
                   BlocProvider(
@@ -160,36 +228,59 @@ class AppRouter {
                   BlocProvider(create: (_) => sl<PosCubit>()),
                   BlocProvider(create: (_) => sl<CashShiftsCubit>()),
                 ],
-                child: AdminShellLayout(child: child),
+                child: navigationShell,
               ),
-          routes: [
-            GoRoute(
-              path: '/',
-              builder:
-                  (context, state) => AdminCatalogScreen(
-                    floatingActionButton: const PosCartFab(),
-                    onProfileAvatarTap: () {
-                      final auth = context.read<AuthCubit>();
-                      if (auth.state.currentUser == null) {
-                        context.go('/login');
-                      } else {
-                        context.push('/profile');
-                      }
-                    },
-                  ),
+          navigatorContainerBuilder:
+              (context, navigationShell, children) => _LazyBranchContainer(
+                currentIndex: navigationShell.currentIndex,
+                children: children,
+              ),
+          branches: [
+            // Branch 0 – ERP ───────────────────────────────────────────────
+            StatefulShellBranch(
+              navigatorKey: _erpNavigatorKey,
+              routes: [
+                ShellRoute(
+                  builder:
+                      (context, state, child) =>
+                          AdminShellLayout(child: child),
+                  routes: [
+                    GoRoute(
+                      path: '/',
+                      builder:
+                          (context, state) => AdminCatalogScreen(
+                            floatingActionButton: const PosCartFab(),
+                            onProfileAvatarTap: () {
+                              final auth = context.read<AuthCubit>();
+                              if (auth.state.currentUser == null) {
+                                context.go('/login');
+                              } else {
+                                context.push('/profile');
+                              }
+                            },
+                          ),
+                    ),
+                    ...AuthRoutes.adminRoutes,
+                    ...AppConfigRoutes.adminRoutes,
+                    ...CatalogRoutes.adminRoutes,
+                    ...CustomersRoutes.adminRoutes,
+                    ...DashboardRoutes.adminRoutes,
+                    ...FinancialRoutes.adminRoutes,
+                    ...InventoryRoutes.adminRoutes,
+                    ...LoyaltyRoutes.adminRoutes,
+                    ...OrdersRoutes.adminRoutes,
+                    ...PurchasesRoutes.adminRoutes,
+                    ...UsersRoutes.adminRoutes,
+                  ],
+                ),
+              ],
             ),
-            ...AuthRoutes.adminRoutes,
-            ...AppConfigRoutes.adminRoutes,
-            ...CatalogRoutes.adminRoutes,
-            ...CustomersRoutes.adminRoutes,
-            ...DashboardRoutes.adminRoutes,
-            ...FinancialRoutes.adminRoutes,
-            ...InventoryRoutes.adminRoutes,
-            ...LoyaltyRoutes.adminRoutes,
-            ...OrdersRoutes.adminRoutes,
-            ...PosRoutes.adminRoutes,
-            ...PurchasesRoutes.adminRoutes,
-            ...UsersRoutes.adminRoutes,
+
+            // Branch 1 – POS (pantalla completa, sin sidebar ERP) ─────────
+            StatefulShellBranch(
+              navigatorKey: _posNavigatorKey,
+              routes: PosRoutes.adminRoutes,
+            ),
           ],
         ),
       ],

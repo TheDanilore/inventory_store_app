@@ -39,31 +39,12 @@ class AdminCatalogScreen extends StatefulWidget {
 
 class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   final _searchCtrl = TextEditingController();
-  bool _isNavigatingToPos = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_isNavigatingToPos) {
-      _isNavigatingToPos = false;
-    }
-  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _searchCtrl.text = context.read<AdminCatalogCubit>().state.searchTerm;
-    });
-  }
-
-  void _navigateToPos() {
-    if (_isNavigatingToPos) return;
-    setState(() => _isNavigatingToPos = true);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.go('/pos');
-      }
     });
   }
 
@@ -455,30 +436,18 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         elevation: 4,
                         shadowColor: Colors.black.withValues(alpha: 0.25),
                         child: InkWell(
-                          onTap: _isNavigatingToPos ? null : _navigateToPos,
+                          onTap: () => context.go('/pos'),
                           borderRadius: BorderRadius.circular(16),
                           splashColor: Colors.white.withValues(alpha: 0.15),
                           highlightColor: Colors.white.withValues(alpha: 0.08),
-                          child: SizedBox(
+                          child: const SizedBox(
                             width: 52,
                             height: 52,
-                            child:
-                                _isNavigatingToPos
-                                    ? const Center(
-                                      child: SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    )
-                                    : const Icon(
-                                      Icons.point_of_sale_rounded,
-                                      color: Colors.white,
-                                      size: 24,
-                                    ),
+                            child: Icon(
+                              Icons.point_of_sale_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
                           ),
                         ),
                       ),
@@ -503,7 +472,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
           actions: [
             if (isDesktop)
               ElevatedButton.icon(
-                onPressed: _isNavigatingToPos ? null : _navigateToPos,
+                onPressed: () => context.go('/pos'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -516,22 +485,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                 ),
-                icon:
-                    _isNavigatingToPos
-                        ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                        : const Icon(Icons.point_of_sale_rounded, size: 16),
-                label: Text(
-                  _isNavigatingToPos
-                      ? 'Abriendo POS...'
-                      : 'Punto de Venta (POS)',
-                  style: const TextStyle(
+                icon: const Icon(Icons.point_of_sale_rounded, size: 16),
+                label: const Text(
+                  'Punto de Venta (POS)',
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
