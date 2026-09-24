@@ -307,34 +307,19 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
 
   Widget _buildPosEmbeddedHeader(BuildContext context, CashShiftsCubit cubit) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
-          ),
-        ),
-      ),
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         children: [
-          if (widget.onBack != null) ...[
-            IconButton(
-              icon: const Icon(Icons.arrow_back_rounded),
-              tooltip: 'Regresar al POS',
-              onPressed: widget.onBack,
-            ),
-            const SizedBox(width: 8),
-          ],
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
-              color: const Color(0xFF1B4D3E).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              color: const Color(0xFF142B1A).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
               Icons.point_of_sale_rounded,
-              color: Color(0xFF1B4D3E),
+              color: Color(0xFF142B1A),
               size: 20,
             ),
           ),
@@ -344,18 +329,24 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
+                const Text(
                   'Historial de Turnos de Caja',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  style: TextStyle(
+                    fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: -0.2,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.4,
                   ),
                 ),
                 Text(
                   'Supervisa aperturas, cierres, arqueos y montos esperados',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                    color:
+                        Theme.of(context).textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.7,
+                        ) ??
+                        AppColors.textSecondary,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -391,6 +382,10 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                     child: CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       slivers: [
+                        if (widget.isEmbedded)
+                          SliverToBoxAdapter(
+                            child: _buildPosEmbeddedHeader(context, cubit),
+                          ),
                         const SliverToBoxAdapter(child: SizedBox(height: 8)),
                         // ── 1. KPI Cards Bar ─────────────────────────────────
                         SliverToBoxAdapter(child: _buildKpiBar(context, state)),
@@ -400,7 +395,12 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                         SliverToBoxAdapter(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: _buildControlToolbar(context, cubit, state, isDesktop),
+                            child: _buildControlToolbar(
+                              context,
+                              cubit,
+                              state,
+                              isDesktop,
+                            ),
                           ),
                         ),
                         const SliverToBoxAdapter(child: SizedBox(height: 12)),
@@ -418,9 +418,10 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                           )
                         else
                           SliverToBoxAdapter(
-                            child: isDesktop
-                                ? _buildDesktopDataTable(context, state)
-                                : _buildMobileCardList(context, state),
+                            child:
+                                isDesktop
+                                    ? _buildDesktopDataTable(context, state)
+                                    : _buildMobileCardList(context, state),
                           ),
                       ],
                     ),
@@ -437,9 +438,9 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                       color: Theme.of(context).cardColor,
                       border: Border(
                         top: BorderSide(
-                          color: Theme.of(context)
-                              .dividerColor
-                              .withValues(alpha: 0.3),
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: 0.3),
                         ),
                       ),
                     ),
@@ -460,12 +461,7 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
       return Scaffold(
         backgroundColor: AppColors.background,
         body: SafeArea(
-          child: Column(
-            children: [
-              _buildPosEmbeddedHeader(context, cubit),
-              Expanded(child: shiftContent),
-            ],
-          ),
+          child: shiftContent,
         ),
       );
     }

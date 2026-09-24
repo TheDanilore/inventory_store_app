@@ -260,203 +260,267 @@ class _CatalogHeaderState extends State<CatalogHeader> {
   }
 
   Widget _buildSearchField({bool isDesktop = false}) {
-    return CompositedTransformTarget(
-      link: _layerLink,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        height: 44,
-        decoration: BoxDecoration(
-          color:
-              widget.searchByIngredient
-                  ? const Color(0xFFECFDF5)
-                  : AppColors.background,
-          borderRadius: BorderRadius.circular(AppColors.radius),
-          border: Border.all(
-            color:
-                widget.searchByIngredient
-                    ? const Color(0xFF10B981)
-                    : AppColors.border,
-            width: widget.searchByIngredient ? 1.5 : 1,
+    const activeBlue = Color(0xFF2563EB);
+    const activeBorderBlue = Color(0xFF3B82F6);
+
+    return Row(
+      children: [
+        // ── Selector Segmentado de Modo de Búsqueda (Estilo POS) ───────────
+        Container(
+          height: 48,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border, width: 1),
           ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: widget.searchController,
-                focusNode: widget.searchFocusNode,
-                textInputAction: TextInputAction.search,
-                onSubmitted: _executeSearch,
-                onChanged: widget.onSearchChanged,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w500,
-                ),
-                decoration: InputDecoration(
-                  hintText:
-                      widget.searchByIngredient
-                          ? 'Ej: Glifosato, Clorpirifos, Paracetamol...'
-                          : 'Buscar producto...',
-                  hintStyle: TextStyle(
-                    color:
-                        widget.searchByIngredient
-                            ? const Color(0xFF6EE7B7)
-                            : AppColors.textMuted,
-                    fontSize: 14,
-                  ),
-                  prefixIcon: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      widget.searchByIngredient
-                          ? Icons.science_rounded
-                          : Icons.search_rounded,
-                      key: ValueKey(widget.searchByIngredient),
-                      color:
-                          widget.searchByIngredient
-                              ? const Color(0xFF10B981)
-                              : AppColors.textMuted,
-                      size: 20,
-                    ),
-                  ),
-                  suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: widget.searchController,
-                    builder: (context, value, child) {
-                      if (value.text.isEmpty) return const SizedBox.shrink();
-                      return IconButton(
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          size: 18,
-                          color: AppColors.textMuted,
-                        ),
-                        onPressed: _clearSearch,
-                        tooltip: 'Borrar búsqueda',
-                      );
-                    },
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-            // ── Botón dedicado "Buscar" ─────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: Material(
-                color:
-                    widget.searchByIngredient
-                        ? const Color(0xFF059669)
-                        : AppColors.primary,
-                borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 1. Modo Producto (Cubo 3D)
+              Tooltip(
+                message: 'Buscar por Producto (Alt+T)',
                 child: InkWell(
                   onTap: () {
-                    HapticFeedback.lightImpact();
-                    _executeSearch(widget.searchController.text);
+                    if (widget.searchByIngredient) {
+                      widget.onToggleIngredientSearch(false);
+                    }
                   },
-                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                  splashColor: Colors.white.withValues(alpha: 0.2),
-                  highlightColor: Colors.white.withValues(alpha: 0.1),
-                  child: Container(
-                    height: 34,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isDesktop ? 12 : 10,
+                  mouseCursor: SystemMouseCursors.click,
+                  borderRadius: BorderRadius.circular(8),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
                     ),
-                    alignment: Alignment.center,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.search_rounded,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                        if (isDesktop) ...[
-                          const SizedBox(width: 5),
-                          const Text(
-                            'Buscar',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ],
-                      ],
+                    decoration: BoxDecoration(
+                      color:
+                          !widget.searchByIngredient
+                              ? Colors.white
+                              : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border:
+                          !widget.searchByIngredient
+                              ? Border.all(
+                                color: AppColors.border.withValues(alpha: 0.6),
+                                width: 1,
+                              )
+                              : null,
+                      boxShadow:
+                          !widget.searchByIngredient
+                              ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.06),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ]
+                              : null,
+                    ),
+                    child: Icon(
+                      Icons.inventory_2_outlined,
+                      size: 20,
+                      color:
+                          !widget.searchByIngredient
+                              ? activeBlue
+                              : AppColors.textMuted,
                     ),
                   ),
                 ),
               ),
-            ),
-            Container(
-              width: 1,
-              height: 22,
-              color: AppColors.border,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-            ),
-            Tooltip(
-              message: 'Buscar por ingrediente activo',
-              child: GestureDetector(
-                onTap:
-                    () => widget.onToggleIngredientSearch(
-                      !widget.searchByIngredient,
+              const SizedBox(width: 4),
+
+              // 2. Modo Ingrediente Activo (Matraz químico / Tubo)
+              Tooltip(
+                message: 'Buscar por Ingrediente Activo (Alt+T)',
+                child: InkWell(
+                  onTap: () {
+                    if (!widget.searchByIngredient) {
+                      widget.onToggleIngredientSearch(true);
+                    }
+                  },
+                  mouseCursor: SystemMouseCursors.click,
+                  borderRadius: BorderRadius.circular(8),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
                     ),
-                child: Container(
-                  padding: const EdgeInsets.only(left: 6, right: 12),
-                  color: Colors.transparent,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Ingrediente',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color:
-                              widget.searchByIngredient
-                                  ? const Color(0xFF059669)
-                                  : AppColors.textMuted,
-                        ),
+                    decoration: BoxDecoration(
+                      color:
+                          widget.searchByIngredient
+                              ? Colors.white
+                              : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border:
+                          widget.searchByIngredient
+                              ? Border.all(
+                                color: AppColors.border.withValues(alpha: 0.6),
+                                width: 1,
+                              )
+                              : null,
+                      boxShadow:
+                          widget.searchByIngredient
+                              ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.06),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ]
+                              : null,
+                    ),
+                    child: Icon(
+                      Icons.science_outlined,
+                      size: 20,
+                      color:
+                          widget.searchByIngredient
+                              ? activeBlue
+                              : AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+
+        // ── Campo de Entrada con Borde Activo y Prefijo Dinámico ───────────
+        Expanded(
+          child: CompositedTransformTarget(
+            link: _layerLink,
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: activeBorderBlue, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: activeBorderBlue.withValues(alpha: 0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: widget.searchController,
+                      focusNode: _searchFocusNode,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: _executeSearch,
+                      onChanged: widget.onSearchChanged,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const SizedBox(width: 5),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        width: 32,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(9),
-                          color:
-                              widget.searchByIngredient
-                                  ? const Color(0xFF10B981)
-                                  : AppColors.border,
+                      decoration: InputDecoration(
+                        hintText:
+                            widget.searchByIngredient
+                                ? 'Buscar por ingrediente activo...'
+                                : 'Buscar producto por nombre o SKU...',
+                        hintStyle: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 14,
                         ),
-                        child: Stack(
+                        prefixIcon: Icon(
+                          widget.searchByIngredient
+                              ? Icons.science_outlined
+                              : Icons.inventory_2_outlined,
+                          color: activeBlue,
+                          size: 20,
+                        ),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            AnimatedPositioned(
-                              duration: const Duration(milliseconds: 200),
-                              curve: Curves.easeInOut,
-                              left: widget.searchByIngredient ? 16 : 2,
-                              top: 2,
-                              child: Container(
-                                width: 14,
-                                height: 14,
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
+                            ValueListenableBuilder<TextEditingValue>(
+                              valueListenable: widget.searchController,
+                              builder: (context, value, child) {
+                                if (value.text.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                return IconButton(
+                                  icon: const Icon(
+                                    Icons.cancel_rounded,
+                                    size: 18,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  onPressed: _clearSearch,
+                                  tooltip: 'Borrar búsqueda',
+                                );
+                              },
+                            ),
+                            if (isDesktop)
+                              Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.background,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: AppColors.border,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Alt K',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textSecondary,
+                                    letterSpacing: 0.5,
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                        ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        _executeSearch(widget.searchController.text);
+                      },
+                      icon: const Icon(Icons.search_rounded, size: 16),
+                      label: Text(isDesktop ? 'Buscar' : ''),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: activeBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isDesktop ? 14 : 10,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 

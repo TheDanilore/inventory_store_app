@@ -64,7 +64,6 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   final _desktopPanelKey = GlobalKey<DesktopPosPanelState>();
   late final AdminCatalogCubit _catalogCubit;
   int _selectedSidebarIndex = 0;
-  int _previousSidebarIndex = 0;
   InventoryCubit? _inventoryCubit;
   CashShiftsCubit? _cashShiftsCubit;
   bool _isMountedReady = false;
@@ -214,7 +213,6 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       _cashShiftsCubit = sl<CashShiftsCubit>();
     }
     setState(() {
-      _previousSidebarIndex = _selectedSidebarIndex;
       _selectedSidebarIndex = index;
     });
   }
@@ -495,7 +493,6 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                   child: AllCashShiftsScreen(
                     isEmbedded: true,
                     cubit: _cashShiftsCubit,
-                    onBack: () => setState(() => _selectedSidebarIndex = _previousSidebarIndex),
                   ),
                 );
               } else {

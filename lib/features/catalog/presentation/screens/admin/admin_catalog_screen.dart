@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
@@ -39,6 +40,7 @@ class AdminCatalogScreen extends StatefulWidget {
 
 class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   final _searchCtrl = TextEditingController();
+  final _searchFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -51,6 +53,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -225,6 +228,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         children: [
                           CatalogHeader(
                             searchController: _searchCtrl,
+                            searchFocusNode: _searchFocusNode,
                             isExporting: state.actionState == ViewState.loading,
                             onExport:
                                 () => _exportCatalogPdf(
@@ -495,7 +499,35 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 ),
               ),
           ],
-          body: bodyContent,
+          body: Focus(
+            autofocus: true,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent) {
+                final isAlt = HardwareKeyboard.instance.isAltPressed;
+                // Alt+K: Enfocar buscador y seleccionar texto
+                if (isAlt && event.logicalKey == LogicalKeyboardKey.keyK) {
+                  _searchFocusNode.requestFocus();
+                  _searchCtrl.selection = TextSelection(
+                    baseOffset: 0,
+                    extentOffset: _searchCtrl.text.length,
+                  );
+                  return KeyEventResult.handled;
+                }
+                // Alt+T: Alternar modo Producto / Ingrediente
+                if (isAlt && event.logicalKey == LogicalKeyboardKey.keyT) {
+                  cubit.toggleSearchByIngredient(!cubit.state.searchByIngredient);
+                  return KeyEventResult.handled;
+                }
+                // Escape: Desenfocar buscador si tiene el foco
+                if (event.logicalKey == LogicalKeyboardKey.escape && _searchFocusNode.hasFocus) {
+                  _searchFocusNode.unfocus();
+                  return KeyEventResult.handled;
+                }
+              }
+              return KeyEventResult.ignored;
+            },
+            child: bodyContent,
+          ),
           floatingActionButton: widget.floatingActionButton ?? floatingBtn,
         );
       },

@@ -362,9 +362,11 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
               body: Row(
                 children: [
                   // ── Left Sidebar (Desktop, MONTADO UNA SOLA VEZ) ─────────
-                  AdminSidebar(
-                    isCollapsed: _isSidebarCollapsed,
-                    onToggleCollapse: _toggleSidebar,
+                  RepaintBoundary(
+                    child: AdminSidebar(
+                      isCollapsed: _isSidebarCollapsed,
+                      onToggleCollapse: _toggleSidebar,
+                    ),
                   ),
 
                   // ── Right Main Area (TopBar + Banner + Child) ───────────
@@ -372,43 +374,53 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
                     child: Column(
                       children: [
                         // ── Persistent TopBar Reactiva ───────────────────
-                        ValueListenableBuilder<AdminHeaderConfig>(
-                          valueListenable: _headerNotifier,
-                          builder: (context, header, _) {
-                            final displayTitle =
-                                header.title.isNotEmpty
-                                    ? header.title
-                                    : AdminShellHelper.resolveTitle(_currentPath);
-                            final displayBreadcrumb =
-                                (header.breadcrumb != null &&
-                                        header.breadcrumb!.isNotEmpty)
-                                    ? header.breadcrumb!
-                                    : AdminShellHelper.resolveBreadcrumb(
-                                      _currentPath,
-                                    );
+                        RepaintBoundary(
+                          child: ValueListenableBuilder<AdminHeaderConfig>(
+                            valueListenable: _headerNotifier,
+                            builder: (context, header, _) {
+                              final displayTitle =
+                                  header.title.isNotEmpty
+                                      ? header.title
+                                      : AdminShellHelper.resolveTitle(
+                                        _currentPath,
+                                      );
+                              final displayBreadcrumb =
+                                  (header.breadcrumb != null &&
+                                          header.breadcrumb!.isNotEmpty)
+                                      ? header.breadcrumb!
+                                      : AdminShellHelper.resolveBreadcrumb(
+                                        _currentPath,
+                                      );
 
-                            return AdminDesktopTopBar(
-                              isSidebarCollapsed: _isSidebarCollapsed,
-                              onToggleSidebar: _toggleSidebar,
-                              showBackButton: header.showBackButton,
-                              onBack:
-                                  header.onBack ??
-                                  () => _handleDefaultBack(context),
-                              title: displayTitle,
-                              breadcrumbText: displayBreadcrumb,
-                              actions: header.actions,
-                              showSettingsButton: header.showSettingsButton,
-                              settingsActions: header.settingsActions,
-                              onSettingsSelected: header.onSettingsSelected,
-                            );
-                          },
+                              return AdminDesktopTopBar(
+                                isSidebarCollapsed: _isSidebarCollapsed,
+                                onToggleSidebar: _toggleSidebar,
+                                showBackButton: header.showBackButton,
+                                onBack:
+                                    header.onBack ??
+                                    () => _handleDefaultBack(context),
+                                title: displayTitle,
+                                breadcrumbText: displayBreadcrumb,
+                                actions: header.actions,
+                                showSettingsButton: header.showSettingsButton,
+                                settingsActions: header.settingsActions,
+                                onSettingsSelected: header.onSettingsSelected,
+                              );
+                            },
+                          ),
                         ),
 
                         // ── Persistent Offline Banner ────────────────────
-                        const AdminOfflineBanner(),
+                        const RepaintBoundary(
+                          child: AdminOfflineBanner(),
+                        ),
 
                         // ── Content View (Swapped reactively by GoRouter) ─
-                        Expanded(child: widget.child),
+                        Expanded(
+                          child: RepaintBoundary(
+                            child: widget.child,
+                          ),
+                        ),
                       ],
                     ),
                   ),
