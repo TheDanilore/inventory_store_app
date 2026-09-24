@@ -69,6 +69,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   void initState() {
     super.initState();
     _catalogCubit = context.read<AdminCatalogCubit>();
+    HardwareKeyboard.instance.addHandler(_handleGlobalHardwareKey);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _catalogCubit.setFilterIsActive(true); // Asegurar que no se vendan productos inactivos
       if (_searchCtrl.text != _catalogCubit.state.searchTerm) {
@@ -82,6 +83,83 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
         posCubit.initPosData();
       }
     });
+  }
+
+  bool _handleGlobalHardwareKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+
+    // F2 (Cobrar sin modificador)
+    if (event.logicalKey == LogicalKeyboardKey.f2) {
+      _desktopPanelKey.currentState?.triggerCheckout();
+      return true;
+    }
+
+    // Escape (Salir al ERP o desenfocar buscador)
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      if (_searchFocusNode.hasFocus) {
+        _searchFocusNode.unfocus();
+      } else {
+        _onExitPos();
+      }
+      return true;
+    }
+
+    final isAlt = HardwareKeyboard.instance.isAltPressed;
+    if (!isAlt) return false;
+
+    // Alt + 1 / Numpad 1 / Alt + V: Tab 0 (Venta)
+    if (event.logicalKey == LogicalKeyboardKey.digit1 ||
+        event.logicalKey == LogicalKeyboardKey.numpad1 ||
+        event.logicalKey == LogicalKeyboardKey.keyV) {
+      _onSidebarTabSelected(0);
+      return true;
+    }
+
+    // Alt + 2 / Numpad 2 / Alt + L / Alt + S: Tab 1 (Lotes/Stock)
+    if (event.logicalKey == LogicalKeyboardKey.digit2 ||
+        event.logicalKey == LogicalKeyboardKey.numpad2 ||
+        event.logicalKey == LogicalKeyboardKey.keyL ||
+        event.logicalKey == LogicalKeyboardKey.keyS) {
+      _onSidebarTabSelected(1);
+      return true;
+    }
+
+    // Alt + 3 / Numpad 3 / Alt + H: Tab 2 (Ventas)
+    if (event.logicalKey == LogicalKeyboardKey.digit3 ||
+        event.logicalKey == LogicalKeyboardKey.numpad3 ||
+        event.logicalKey == LogicalKeyboardKey.keyH) {
+      _onSidebarTabSelected(2);
+      return true;
+    }
+
+    // Alt + 4 / Numpad 4 / Alt + T: Tab 3 (Turnos)
+    if (event.logicalKey == LogicalKeyboardKey.digit4 ||
+        event.logicalKey == LogicalKeyboardKey.numpad4 ||
+        event.logicalKey == LogicalKeyboardKey.keyT) {
+      _onSidebarTabSelected(3);
+      return true;
+    }
+
+    // Alt + K / Alt + B: Foco en Buscador
+    if (event.logicalKey == LogicalKeyboardKey.keyK ||
+        event.logicalKey == LogicalKeyboardKey.keyB) {
+      _focusSearch();
+      return true;
+    }
+
+    // Alt + I: Alternar modo de búsqueda Producto vs Ingrediente Activo
+    if (event.logicalKey == LogicalKeyboardKey.keyI) {
+      _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
+      return true;
+    }
+
+    // Alt + C: Cobrar en Desktop
+    if (event.logicalKey == LogicalKeyboardKey.keyC) {
+      _desktopPanelKey.currentState?.triggerCheckout();
+      return true;
+    }
+
+    return false;
   }
 
   void _onSearchChanged(String val) {
@@ -145,6 +223,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKey);
     _catalogCubit.setFilterIsActive(null); // Restaurar catálogo para mostrar todos los estados
     _inventoryCubit?.close();
     _searchCtrl.dispose();
@@ -168,28 +247,33 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
-        // Foco de Búsqueda (Ctrl+K, Meta+K, Alt+B)
-        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _focusSearch,
-        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _focusSearch,
+        // Foco de Búsqueda (Alt+K, Alt+B)
+        const SingleActivator(LogicalKeyboardKey.keyK, alt: true): _focusSearch,
         const SingleActivator(LogicalKeyboardKey.keyB, alt: true): _focusSearch,
 
-        // Navegación Sidebar: Venta (Alt+1 / Alt+V)
+        // Navegación Sidebar: Venta (Alt+1 / Alt+V / Numpad 1)
         const SingleActivator(LogicalKeyboardKey.digit1, alt: true): () => _onSidebarTabSelected(0),
+        const SingleActivator(LogicalKeyboardKey.numpad1, alt: true): () => _onSidebarTabSelected(0),
         const SingleActivator(LogicalKeyboardKey.keyV, alt: true): () => _onSidebarTabSelected(0),
 
-        // Navegación Sidebar: Lotes / Stock (Alt+2 / Alt+S)
+        // Navegación Sidebar: Lotes / Stock (Alt+2 / Alt+L / Alt+S / Numpad 2)
         const SingleActivator(LogicalKeyboardKey.digit2, alt: true): () => _onSidebarTabSelected(1),
+        const SingleActivator(LogicalKeyboardKey.numpad2, alt: true): () => _onSidebarTabSelected(1),
+        const SingleActivator(LogicalKeyboardKey.keyL, alt: true): () => _onSidebarTabSelected(1),
         const SingleActivator(LogicalKeyboardKey.keyS, alt: true): () => _onSidebarTabSelected(1),
 
-        // Navegación Sidebar: Ventas / Historial (Alt+3 / Alt+H)
+        // Navegación Sidebar: Ventas / Historial (Alt+3 / Alt+H / Numpad 3)
         const SingleActivator(LogicalKeyboardKey.digit3, alt: true): () => _onSidebarTabSelected(2),
+        const SingleActivator(LogicalKeyboardKey.numpad3, alt: true): () => _onSidebarTabSelected(2),
         const SingleActivator(LogicalKeyboardKey.keyH, alt: true): () => _onSidebarTabSelected(2),
 
-        // Navegación Sidebar: Turnos de Caja (Alt+4 / Alt+T)
+        // Navegación Sidebar: Turnos de Caja (Alt+4 / Alt+T / Numpad 4)
         const SingleActivator(LogicalKeyboardKey.digit4, alt: true): () => _onSidebarTabSelected(3),
+        const SingleActivator(LogicalKeyboardKey.numpad4, alt: true): () => _onSidebarTabSelected(3),
+        const SingleActivator(LogicalKeyboardKey.keyT, alt: true): () => _onSidebarTabSelected(3),
 
-        // Alternar modo de búsqueda Producto vs Ingrediente Activo (Alt+T)
-        const SingleActivator(LogicalKeyboardKey.keyT, alt: true): () {
+        // Alternar modo de búsqueda Producto vs Ingrediente Activo (Alt+I)
+        const SingleActivator(LogicalKeyboardKey.keyI, alt: true): () {
           _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
         },
 
@@ -228,65 +312,68 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
             HapticFeedback.lightImpact();
           }
         },
-        child: Scaffold(
-          key: _scaffoldKey,
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          bottomNavigationBar: isDesktop
-              ? null
-              : NavigationBar(
-                  selectedIndex: _selectedSidebarIndex,
-                  onDestinationSelected: _onSidebarTabSelected,
-                  backgroundColor: Colors.white,
-                  elevation: 8,
-                  indicatorColor: const Color(0xFFD4E157).withValues(alpha: 0.25),
-                  destinations: const [
-                    NavigationDestination(
-                      icon: Icon(Icons.point_of_sale_outlined),
-                      selectedIcon: Icon(Icons.point_of_sale, color: Color(0xFF1B4D3E)),
-                      label: 'Venta',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.inventory_2_outlined),
-                      selectedIcon: Icon(Icons.inventory_2, color: Color(0xFF1B4D3E)),
-                      label: 'Lotes/Stock',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.receipt_long_outlined),
-                      selectedIcon: Icon(Icons.receipt_long, color: Color(0xFF1B4D3E)),
-                      label: 'Ventas',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.account_balance_wallet_outlined),
-                      selectedIcon: Icon(Icons.account_balance_wallet, color: Color(0xFF1B4D3E)),
-                      label: 'Turnos',
-                    ),
-                  ],
-                ),
-          body: Builder(
-            builder: (context) {
-              Widget catalogContent = Column(
-                children: [
-                  Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Column(
-                      children: [
-                        BlocSelector<AdminCatalogCubit, AdminCatalogState, bool>(
-                          selector: (state) => state.searchByIngredient,
-                          builder: (context, searchByIngredient) {
-                            return PosHeader(
-                              searchController: _searchCtrl,
-                              searchFocusNode: _searchFocusNode,
-                              onSearchChanged: _onSearchChanged,
-                              searchByIngredient: searchByIngredient,
-                              onToggleIngredientSearch:
-                                  context.read<AdminCatalogCubit>().toggleSearchByIngredient,
-                            );
-                          },
-                        ),
+        child: FocusScope(
+          autofocus: true,
+          child: Scaffold(
+            key: _scaffoldKey,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            bottomNavigationBar: isDesktop
+                ? null
+                : NavigationBar(
+                    selectedIndex: _selectedSidebarIndex,
+                    onDestinationSelected: _onSidebarTabSelected,
+                    backgroundColor: Colors.white,
+                    elevation: 8,
+                    indicatorColor: const Color(0xFFD4E157).withValues(alpha: 0.25),
+                    destinations: const [
+                      NavigationDestination(
+                        icon: Icon(Icons.point_of_sale_outlined),
+                        selectedIcon: Icon(Icons.point_of_sale, color: Color(0xFF1B4D3E)),
+                        label: 'Venta',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.inventory_2_outlined),
+                        selectedIcon: Icon(Icons.inventory_2, color: Color(0xFF1B4D3E)),
+                        label: 'Lotes/Stock',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.receipt_long_outlined),
+                        selectedIcon: Icon(Icons.receipt_long, color: Color(0xFF1B4D3E)),
+                        label: 'Ventas',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.account_balance_wallet_outlined),
+                        selectedIcon: Icon(Icons.account_balance_wallet, color: Color(0xFF1B4D3E)),
+                        label: 'Turnos',
+                      ),
+                    ],
+                  ),
+            body: Builder(
+              builder: (context) {
+                Widget catalogContent = Column(
+                  children: [
+                    Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Column(
+                        children: [
+                          BlocSelector<AdminCatalogCubit, AdminCatalogState, bool>(
+                            selector: (state) => state.searchByIngredient,
+                            builder: (context, searchByIngredient) {
+                              return PosHeader(
+                                searchController: _searchCtrl,
+                                searchFocusNode: _searchFocusNode,
+                                onSearchChanged: _onSearchChanged,
+                                searchByIngredient: searchByIngredient,
+                                onToggleIngredientSearch:
+                                    context.read<AdminCatalogCubit>().toggleSearchByIngredient,
+                                onBack: _onExitPos,
+                              );
+                            },
+                          ),
                         const SizedBox(height: 12),
                         BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
                           buildWhen: (prev, current) =>
@@ -498,6 +585,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                         );
                       },
                     ),
+          ),
         ),
       ),
     );

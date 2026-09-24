@@ -103,6 +103,17 @@ class PosHeader extends StatelessWidget {
         children: [
           Row(
             children: [
+              if (onBack != null) ...[
+                IconButton(
+                  onPressed: onBack,
+                  icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+                  tooltip: 'Volver al ERP',
+                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+                const SizedBox(width: 4),
+              ],
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -715,7 +726,7 @@ class PosHeader extends StatelessWidget {
                                 ),
                               ),
                               child: const Text(
-                                'Ctrl K',
+                                'Alt K',
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
