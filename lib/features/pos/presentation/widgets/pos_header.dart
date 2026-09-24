@@ -16,7 +16,7 @@ class PosHeader extends StatelessWidget {
   final ValueChanged<String> onSearchChanged;
   final bool searchByIngredient;
   final ValueChanged<bool> onToggleIngredientSearch;
-  final VoidCallback onBack;
+  final VoidCallback? onBack;
 
   const PosHeader({
     super.key,
@@ -24,7 +24,7 @@ class PosHeader extends StatelessWidget {
     required this.onSearchChanged,
     required this.searchByIngredient,
     required this.onToggleIngredientSearch,
-    required this.onBack,
+    this.onBack,
     this.searchFocusNode,
   });
 
@@ -56,22 +56,6 @@ class PosHeader extends StatelessWidget {
         // ── Barra Superior: Título, Estado de Caja y Almacén Activo ────────
         Row(
           children: [
-            IconButton(
-              onPressed: onBack,
-              icon: const Icon(
-                Icons.arrow_back_rounded,
-                color: AppColors.textPrimary,
-              ),
-              tooltip: 'Volver',
-              style: IconButton.styleFrom(
-                backgroundColor: AppColors.background,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: AppColors.border, width: 0.5),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -102,24 +86,6 @@ class PosHeader extends StatelessWidget {
 
             // ── Selector de Almacén (Global para POS) ──────────────
             _buildWarehouseSelector(context, posState),
-            const SizedBox(width: 12),
-
-            // ── Botón de Operaciones ──────
-            IconButton(
-              onPressed: () => Scaffold.of(context).openDrawer(),
-              icon: const Icon(
-                Icons.receipt_long_rounded,
-                color: AppColors.textPrimary,
-              ),
-              tooltip: 'Operaciones de Caja',
-              style: IconButton.styleFrom(
-                backgroundColor: AppColors.background,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: AppColors.border, width: 0.5),
-                ),
-              ),
-            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -137,30 +103,23 @@ class PosHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              IconButton(
-                onPressed: onBack,
-                icon: const Icon(
-                  Icons.arrow_back_rounded,
-                  color: AppColors.textPrimary,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                tooltip: 'Volver',
-                constraints: const BoxConstraints(
-                  minWidth: 48,
-                  minHeight: 48,
-                ), // Regla 48dp
-                style: IconButton.styleFrom(
-                  backgroundColor: AppColors.background,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: AppColors.border, width: 0.5),
-                  ),
+                child: const Icon(
+                  Icons.point_of_sale_rounded,
+                  color: AppColors.primary,
+                  size: 18,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               const Text(
-                'Caja',
+                'Caja POS',
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                   letterSpacing: -0.5,
@@ -168,27 +127,10 @@ class PosHeader extends StatelessWidget {
               ),
               const Spacer(),
               IconButton(
-                onPressed: () => Scaffold.of(context).openDrawer(),
-                icon: const Icon(
-                  Icons.receipt_long_rounded,
-                  color: AppColors.textPrimary,
-                ),
-                tooltip: 'Operaciones',
-                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                style: IconButton.styleFrom(
-                  backgroundColor: AppColors.background,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: AppColors.border, width: 0.5),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
                 onPressed: () => _showMobileOptionsSheet(context, posState),
                 icon: const Icon(Icons.tune_rounded, color: AppColors.primary),
                 tooltip: 'Opciones de Caja',
-                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                 style: IconButton.styleFrom(
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   shape: RoundedRectangleBorder(
@@ -712,7 +654,6 @@ class PosHeader extends StatelessWidget {
                   child: TextField(
                     controller: searchController,
                     focusNode: searchFocusNode,
-                    onChanged: onSearchChanged,
                     onSubmitted: (val) {
                       onSearchChanged(val);
                     },

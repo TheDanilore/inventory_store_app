@@ -21,12 +21,14 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_add_to_cart_sheet.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/desktop_pos_panel.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_operations_drawer.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_sidebar_rail.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_quick_stock_dialog.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_screen.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_sales_view.dart';
 
 extension ProductToCartExtension on ProductEntity {
   CartItemEntity toCartItem() {
@@ -60,6 +62,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   final _desktopPanelKey = GlobalKey<DesktopPosPanelState>();
   late final AdminCatalogCubit _catalogCubit;
   int _selectedSidebarIndex = 0;
+  InventoryCubit? _inventoryCubit;
 
   @override
   void initState() {
@@ -81,8 +84,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   }
 
   void _onSearchChanged(String val) {
-    // AdminCatalogCubit.setSearchTerm gestiona su propio debounce de 500ms de manera óptima.
-    _catalogCubit.setSearchTerm(val);
+    _catalogCubit.submitSearch(val, force: true);
   }
 
   void _focusSearch() {
@@ -94,19 +96,10 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   }
 
   void _onSidebarTabSelected(int index) {
-    if (index == 0) {
-      setState(() => _selectedSidebarIndex = 0);
-    } else if (index == 1) {
-      // ── LOTES / STOCK: Modal interactivo sin interrumpir la venta ──
-      PosQuickStockDialog.show(
-        context,
-        products: _catalogCubit.state.products,
-        onAddToCart: _irAVenta,
-      );
-    } else if (index == 2) {
-      // ── VENTAS / OPERACIONES: Abre drawer de historial y turnos ──
-      _scaffoldKey.currentState?.openDrawer();
+    if (index == 1 && _inventoryCubit == null) {
+      _inventoryCubit = sl<InventoryCubit>()..initStockTab();
     }
+    setState(() => _selectedSidebarIndex = index);
   }
 
   Future<void> _onExitPos() async {
@@ -152,6 +145,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   @override
   void dispose() {
     _catalogCubit.setFilterIsActive(null); // Restaurar catálogo para mostrar todos los estados
+    _inventoryCubit?.close();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -169,6 +163,8 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
+
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
         // Foco de Búsqueda (Ctrl+K, Meta+K, Alt+B)
@@ -230,11 +226,35 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
         },
         child: Scaffold(
           key: _scaffoldKey,
-          drawer: const PosOperationsDrawer(),
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          bottomNavigationBar: isDesktop
+              ? null
+              : NavigationBar(
+                  selectedIndex: _selectedSidebarIndex,
+                  onDestinationSelected: _onSidebarTabSelected,
+                  backgroundColor: Colors.white,
+                  elevation: 8,
+                  indicatorColor: const Color(0xFFD4E157).withValues(alpha: 0.25),
+                  destinations: const [
+                    NavigationDestination(
+                      icon: Icon(Icons.point_of_sale_outlined),
+                      selectedIcon: Icon(Icons.point_of_sale, color: Color(0xFF1B4D3E)),
+                      label: 'Venta',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.inventory_2_outlined),
+                      selectedIcon: Icon(Icons.inventory_2, color: Color(0xFF1B4D3E)),
+                      label: 'Lotes/Stock',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.receipt_long_outlined),
+                      selectedIcon: Icon(Icons.receipt_long, color: Color(0xFF1B4D3E)),
+                      label: 'Ventas',
+                    ),
+                  ],
+                ),
           body: Builder(
             builder: (context) {
-              final isDesktop = MediaQuery.of(context).size.width >= 800;
               Widget catalogContent = Column(
                 children: [
                   Container(
@@ -255,7 +275,6 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                               searchByIngredient: searchByIngredient,
                               onToggleIngredientSearch:
                                   context.read<AdminCatalogCubit>().toggleSearchByIngredient,
-                              onBack: () => context.go('/'),
                             );
                           },
                         ),
@@ -335,17 +354,21 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                 ],
               );
 
-              return Stack(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+              Widget activeView;
+              if (_selectedSidebarIndex == 1) {
+                _inventoryCubit ??= sl<InventoryCubit>()..initStockTab();
+                activeView = Expanded(
+                  child: BlocProvider.value(
+                    value: _inventoryCubit!,
+                    child: const InventoryScreen(isEmbedded: true),
+                  ),
+                );
+              } else if (_selectedSidebarIndex == 2) {
+                activeView = const Expanded(child: PosSalesView());
+              } else {
+                activeView = Expanded(
+                  child: Row(
                     children: [
-                      if (isDesktop)
-                        PosSidebarRail(
-                          selectedIndex: _selectedSidebarIndex,
-                          onDestinationSelected: _onSidebarTabSelected,
-                          onExitPos: _onExitPos,
-                        ),
                       Expanded(flex: 6, child: catalogContent),
                       if (isDesktop)
                         Container(
@@ -383,6 +406,23 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                         ),
                     ],
                   ),
+                );
+              }
+
+              return Stack(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (isDesktop)
+                        PosSidebarRail(
+                          selectedIndex: _selectedSidebarIndex,
+                          onDestinationSelected: _onSidebarTabSelected,
+                          onExitPos: _onExitPos,
+                        ),
+                      activeView,
+                    ],
+                  ),
                   // Overlay global de procesamiento: cubre toda la pantalla
                   BlocSelector<PosCubit, PosState, bool>(
                     selector: (s) => s.status == PosStatus.loading,
@@ -397,47 +437,47 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
             },
           ),
           floatingActionButton:
-              MediaQuery.of(context).size.width >= 800
+              isDesktop || _selectedSidebarIndex != 0
                   ? null
                   : BlocBuilder<CartCubit, CartState>(
-                    builder: (context, cartState) {
-                      final hasItems = cartState.items.isNotEmpty;
-                      final itemCount = cartState.items.values.fold<int>(
-                        0,
-                        (sum, item) => sum + item.quantity,
-                      );
-                      final totalAmount = cartState.totalAmount;
+                      builder: (context, cartState) {
+                        final hasItems = cartState.items.isNotEmpty;
+                        final itemCount = cartState.items.values.fold<int>(
+                          0,
+                          (sum, item) => sum + item.quantity,
+                        );
+                        final totalAmount = cartState.totalAmount;
 
-                      return FloatingActionButton.extended(
-                        onPressed: () async {
-                          final sold = await context.push<Map<String, int>>('/pos-checkout');
-                          if (sold != null && context.mounted) {
-                            context.read<AdminCatalogCubit>().decrementStockLocal(sold);
-                          }
-                        },
-                        backgroundColor:
+                        return FloatingActionButton.extended(
+                          onPressed: () async {
+                            final sold = await context.push<Map<String, int>>('/pos-checkout');
+                            if (sold != null && context.mounted) {
+                              context.read<AdminCatalogCubit>().decrementStockLocal(sold);
+                            }
+                          },
+                          backgroundColor:
+                              hasItems
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
+                          foregroundColor: Colors.white,
+                          icon: Icon(
                             hasItems
-                                ? AppColors.primary
-                                : AppColors.textPrimary,
-                        foregroundColor: Colors.white,
-                        icon: Icon(
-                          hasItems
-                              ? Icons.shopping_bag_rounded
-                              : Icons.shopping_cart_checkout_rounded,
-                          size: 20,
-                        ),
-                        label: Text(
-                          hasItems
-                              ? 'Ir a Caja ($itemCount) • S/ ${totalAmount.toStringAsFixed(2)}'
-                              : 'Ir a Caja',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                                ? Icons.shopping_bag_rounded
+                                : Icons.shopping_cart_checkout_rounded,
+                            size: 20,
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                          label: Text(
+                            hasItems
+                                ? 'Ir a Caja ($itemCount) • S/ ${totalAmount.toStringAsFixed(2)}'
+                                : 'Ir a Caja',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
         ),
       ),
     );
