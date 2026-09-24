@@ -499,7 +499,10 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                 activeView = Expanded(
                   child: Row(
                     children: [
-                      Expanded(flex: 6, child: catalogContent),
+                      Expanded(
+                        flex: 6,
+                        child: RepaintBoundary(child: catalogContent),
+                      ),
                       if (isDesktop)
                         Container(
                           width:
@@ -525,13 +528,15 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                               ),
                             ],
                           ),
-                          child: DesktopPosPanel(
-                            key: _desktopPanelKey,
-                            onSaleCompleted: (soldQuantities) {
-                              context
-                                  .read<AdminCatalogCubit>()
-                                  .decrementStockLocal(soldQuantities);
-                            },
+                          child: RepaintBoundary(
+                            child: DesktopPosPanel(
+                              key: _desktopPanelKey,
+                              onSaleCompleted: (soldQuantities) {
+                                context
+                                    .read<AdminCatalogCubit>()
+                                    .decrementStockLocal(soldQuantities);
+                              },
+                            ),
                           ),
                         ),
                     ],
@@ -545,10 +550,12 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       if (isDesktop)
-                        PosSidebarRail(
-                          selectedIndex: _selectedSidebarIndex,
-                          onDestinationSelected: _onSidebarTabSelected,
-                          onExitPos: _onExitPos,
+                        RepaintBoundary(
+                          child: PosSidebarRail(
+                            selectedIndex: _selectedSidebarIndex,
+                            onDestinationSelected: _onSidebarTabSelected,
+                            onExitPos: _onExitPos,
+                          ),
                         ),
                       activeView,
                     ],

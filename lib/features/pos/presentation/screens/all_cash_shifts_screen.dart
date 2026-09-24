@@ -371,88 +371,83 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
       builder: (context, state) {
         final isDesktop = MediaQuery.of(context).size.width >= 900;
 
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1400),
-            child: Column(
-              children: [
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () async => cubit.fetchShifts(),
-                    child: CustomScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: [
-                        if (widget.isEmbedded)
-                          SliverToBoxAdapter(
-                            child: _buildPosEmbeddedHeader(context, cubit),
-                          ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 8)),
-                        // ── 1. KPI Cards Bar ─────────────────────────────────
-                        SliverToBoxAdapter(child: _buildKpiBar(context, state)),
-                        const SliverToBoxAdapter(child: SizedBox(height: 12)),
+        return Column(
+          children: [
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async => cubit.fetchShifts(),
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    if (widget.isEmbedded)
+                      SliverToBoxAdapter(
+                        child: _buildPosEmbeddedHeader(context, cubit),
+                      ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                    // ── 1. KPI Cards Bar ─────────────────────────────────
+                    SliverToBoxAdapter(child: _buildKpiBar(context, state)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-                        // ── 2. Unified Control Bar (Filters & Controls) ──────
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: _buildControlToolbar(
-                              context,
-                              cubit,
-                              state,
-                              isDesktop,
-                            ),
-                          ),
-                        ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-                        // ── 3. Main Shift Content (Table / Cards) ─────────────
-                        if (state.isLoading && state.shifts.isEmpty)
-                          const SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: _ShiftsSkeleton(),
-                          )
-                        else if (state.shifts.isEmpty)
-                          SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: _buildEmptyState(context),
-                          )
-                        else
-                          SliverToBoxAdapter(
-                            child:
-                                isDesktop
-                                    ? _buildDesktopDataTable(context, state)
-                                    : _buildMobileCardList(context, state),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Paginación corporativa
-                if (state.totalPages > 1)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
-                      border: Border(
-                        top: BorderSide(
-                          color: Theme.of(
-                            context,
-                          ).dividerColor.withValues(alpha: 0.3),
+                    // ── 2. Unified Control Bar (Filters & Controls) ──────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _buildControlToolbar(
+                          context,
+                          cubit,
+                          state,
+                          isDesktop,
                         ),
                       ),
                     ),
-                    child: AdminPageBlocks(
-                      currentPage: state.currentPage,
-                      totalPages: state.totalPages,
-                      onPageChanged: (page) => cubit.setPage(page),
+                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+                    // ── 3. Main Shift Content (Table / Cards) ─────────────
+                    if (state.isLoading && state.shifts.isEmpty)
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: _ShiftsSkeleton(),
+                      )
+                    else if (state.shifts.isEmpty)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: _buildEmptyState(context),
+                      )
+                    else
+                      SliverToBoxAdapter(
+                        child:
+                            isDesktop
+                                ? _buildDesktopDataTable(context, state)
+                                : _buildMobileCardList(context, state),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            // Paginación corporativa
+            if (state.totalPages > 1)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  border: Border(
+                    top: BorderSide(
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.3),
                     ),
                   ),
-              ],
-            ),
-          ),
+                ),
+                child: AdminPageBlocks(
+                  currentPage: state.currentPage,
+                  totalPages: state.totalPages,
+                  onPageChanged: (page) => cubit.setPage(page),
+                ),
+              ),
+          ],
         );
       },
     );

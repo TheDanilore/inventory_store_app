@@ -1,5 +1,6 @@
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
@@ -50,17 +51,19 @@ class PosAddToCartSheet extends StatefulWidget {
                             ..loadData(product, warehouseId: warehouseId),
                 ),
               ],
-              child: Dialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 500),
-                  child: PosAddToCartSheet(
-                    productEntity: product,
-                    isDialogMode: true,
-                    warehouseId: warehouseId,
+              child: RepaintBoundary(
+                child: Dialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 500),
+                    child: PosAddToCartSheet(
+                      productEntity: product,
+                      isDialogMode: true,
+                      warehouseId: warehouseId,
+                    ),
                   ),
                 ),
               ),
@@ -234,12 +237,16 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                     borderRadius: BorderRadius.circular(14),
                     child:
                         imageUrl != null
-                            ? Image.network(
-                              imageUrl,
+                            ? CachedNetworkImage(
+                              imageUrl: imageUrl,
                               width: 72,
                               height: 72,
+                              memCacheWidth: 144,
+                              memCacheHeight: 144,
                               fit: BoxFit.cover,
-                              errorBuilder:
+                              placeholder:
+                                  (_, _) => const _ImgPlaceholder(size: 72),
+                              errorWidget:
                                   (_, _, _) => const _ImgPlaceholder(size: 72),
                             )
                             : const _ImgPlaceholder(size: 72),
