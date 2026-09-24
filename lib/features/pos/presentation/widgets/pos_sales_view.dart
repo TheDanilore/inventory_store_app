@@ -366,6 +366,10 @@ class _PosSalesViewState extends State<PosSalesView> {
                     _reimprimirTicket(_selectedOrder!.id);
                   }
                 },
+                // Alt+K enfoca el buscador de ventas
+                const SingleActivator(LogicalKeyboardKey.keyK, alt: true): () {
+                  _searchFocusNode.requestFocus();
+                },
                 const SingleActivator(LogicalKeyboardKey.escape): () {
                   if (_selectedOrder != null) {
                     setState(() => _selectedOrder = null);
@@ -731,7 +735,7 @@ class _PosSalesViewState extends State<PosSalesView> {
           context.read<PosCubit>().fetchRecentOrders(query: val.trim(), forceRefresh: true);
         },
         decoration: InputDecoration(
-          hintText: 'Buscar por cliente o código de comprobante...',
+          hintText: 'Buscar por cliente o código de comprobante... (Alt+K)',
           hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
           prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted, size: 20),
           suffixIcon: ValueListenableBuilder<TextEditingValue>(

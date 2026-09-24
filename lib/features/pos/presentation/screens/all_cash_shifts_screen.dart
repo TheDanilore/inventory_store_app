@@ -534,7 +534,7 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
     );
   }
 
-  // ── 2. Unified Control Toolbar (Zero-Clutter) ───────────────────────────────
+  // ── 2. Unified Control Toolbar (Zero-Clutter + Date Range Filter) ────────────
   Widget _buildControlToolbar(
     BuildContext context,
     CashShiftsCubit cubit,
@@ -542,12 +542,46 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
     bool isDesktop,
   ) {
     final theme = Theme.of(context);
+    final dateFormat = DateFormat('dd/MM/yy');
+
     String selectedUserName = 'Todos los usuarios';
     if (state.profileFilter != null) {
       final p = state.profiles
           .where((p) => p['id'] == state.profileFilter)
           .firstOrNull;
       if (p != null) selectedUserName = p['full_name'] as String;
+    }
+
+    final hasDateFilter = state.dateFrom != null || state.dateTo != null;
+    final dateLabel = hasDateFilter
+        ? '${state.dateFrom != null ? dateFormat.format(state.dateFrom!) : '…'} — ${state.dateTo != null ? dateFormat.format(state.dateTo!) : '…'}'
+        : 'Fecha';
+
+    Future<void> pickDateRange() async {
+      final now = DateTime.now();
+      final picked = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(2020),
+        lastDate: now,
+        initialDateRange: (state.dateFrom != null && state.dateTo != null)
+            ? DateTimeRange(start: state.dateFrom!, end: state.dateTo!)
+            : DateTimeRange(
+                start: now.subtract(const Duration(days: 30)),
+                end: now,
+              ),
+        locale: const Locale('es'),
+        builder: (ctx, child) => Theme(
+          data: Theme.of(ctx).copyWith(
+            colorScheme: Theme.of(ctx).colorScheme.copyWith(
+              primary: AppColors.primary,
+            ),
+          ),
+          child: child!,
+        ),
+      );
+      if (picked != null) {
+        cubit.setDateRange(picked.start, picked.end);
+      }
     }
 
     if (isDesktop) {
@@ -575,9 +609,68 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
             const SizedBox(width: 6),
             _buildStatusChip(cubit, state, 'CLOSED', 'Cerrados'),
 
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             Container(width: 1, height: 24, color: theme.dividerColor.withValues(alpha: 0.4)),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
+
+            // ── Compact Date Range Selector ──────────────────────────────
+            InkWell(
+              onTap: pickDateRange,
+              borderRadius: BorderRadius.circular(10),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                decoration: BoxDecoration(
+                  color: hasDateFilter
+                      ? AppColors.primary.withValues(alpha: 0.08)
+                      : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: hasDateFilter
+                        ? AppColors.primary.withValues(alpha: 0.3)
+                        : theme.dividerColor.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calendar_month_rounded,
+                      size: 15,
+                      color: hasDateFilter ? AppColors.primary : AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      dateLabel,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: hasDateFilter ? FontWeight.w700 : FontWeight.w500,
+                        color: hasDateFilter ? AppColors.primary : theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 15,
+                      color: hasDateFilter ? AppColors.primary : AppColors.textSecondary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (hasDateFilter) ...[
+              const SizedBox(width: 2),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 14),
+                tooltip: 'Limpiar filtro de fecha',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => cubit.setDateRange(null, null),
+              ),
+            ],
+
+            const SizedBox(width: 12),
+            Container(width: 1, height: 24, color: theme.dividerColor.withValues(alpha: 0.4)),
+            const SizedBox(width: 12),
 
             // Compact User Selector
             InkWell(
@@ -606,7 +699,7 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                     ),
                     const SizedBox(width: 8),
                     ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 180),
+                      constraints: const BoxConstraints(maxWidth: 160),
                       child: Text(
                         state.isLoadingProfiles ? 'Cargando...' : selectedUserName,
                         maxLines: 1,
@@ -673,25 +766,76 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildStatusChip(cubit, state, 'Todos', 'Todos'),
-                      const SizedBox(width: 6),
-                      _buildStatusChip(cubit, state, 'OPEN', 'Abiertos'),
-                      const SizedBox(width: 6),
-                      _buildStatusChip(cubit, state, 'CLOSED', 'Cerrados'),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          // Status chips row
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildStatusChip(cubit, state, 'Todos', 'Todos'),
+                const SizedBox(width: 6),
+                _buildStatusChip(cubit, state, 'OPEN', 'Abiertos'),
+                const SizedBox(width: 6),
+                _buildStatusChip(cubit, state, 'CLOSED', 'Cerrados'),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
+
+          // ── Date Range Filter (Mobile) ────────────────────────────────
+          InkWell(
+            onTap: pickDateRange,
+            borderRadius: BorderRadius.circular(10),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: hasDateFilter
+                    ? AppColors.primary.withValues(alpha: 0.07)
+                    : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: hasDateFilter
+                      ? AppColors.primary.withValues(alpha: 0.3)
+                      : theme.dividerColor.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_month_rounded,
+                    color: hasDateFilter ? AppColors.primary : AppColors.textSecondary,
+                    size: 17,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      hasDateFilter ? dateLabel : 'Filtrar por fecha',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: hasDateFilter ? FontWeight.w700 : FontWeight.w600,
+                        color: hasDateFilter ? AppColors.primary : theme.colorScheme.onSurface,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (hasDateFilter)
+                    GestureDetector(
+                      onTap: () => cubit.setDateRange(null, null),
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                    )
+                  else
+                    const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // User Selector Row (Mobile)
           InkWell(
             onTap: () => _showUserPickerAdaptive(cubit, state),
             borderRadius: BorderRadius.circular(10),

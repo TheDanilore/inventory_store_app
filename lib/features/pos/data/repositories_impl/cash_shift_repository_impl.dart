@@ -125,6 +125,15 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         openQuery = openQuery.eq('opened_by', profileId);
         closedQuery = closedQuery.eq('opened_by', profileId);
       }
+      // ── Fix Bug #5: aplicar filtros de fecha a los counts ──────────────
+      if (dateFrom != null) {
+        openQuery = openQuery.gte('opened_at', dateFrom.toIso8601String());
+        closedQuery = closedQuery.gte('opened_at', dateFrom.toIso8601String());
+      }
+      if (dateTo != null) {
+        openQuery = openQuery.lte('opened_at', dateTo.toIso8601String());
+        closedQuery = closedQuery.lte('opened_at', dateTo.toIso8601String());
+      }
 
       final openRes = await openQuery.count(CountOption.exact);
       final closedRes = await closedQuery.count(CountOption.exact);
