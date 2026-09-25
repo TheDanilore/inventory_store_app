@@ -14,6 +14,7 @@ class AdminProductCard extends StatefulWidget {
   final VoidCallback? onTap;
   final String? highlightIngredient;
   final bool isFullPosMode;
+  final bool isSelected;
 
   const AdminProductCard({
     super.key,
@@ -24,6 +25,7 @@ class AdminProductCard extends StatefulWidget {
     this.onTap,
     this.highlightIngredient,
     this.isFullPosMode = false,
+    this.isSelected = false,
   });
 
   @override
@@ -74,10 +76,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.border,
-                  width: 1,
-                ),
+                border: Border.all(color: AppColors.border, width: 1),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -103,7 +102,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textMuted,
+                color: AppColors.textSecondary,
                 letterSpacing: 0.2,
               ),
             ),
@@ -158,7 +157,6 @@ class _AdminProductCardState extends State<AdminProductCard> {
           },
           onLongPress: () {
             HapticFeedback.mediumImpact();
-            // Podría abrir un modal o bottomSheet de acciones secundarias
           },
           child: Ink(
             decoration: BoxDecoration(
@@ -166,10 +164,12 @@ class _AdminProductCardState extends State<AdminProductCard> {
               borderRadius: BorderRadius.circular(AppColors.radius),
               border: Border.all(
                 color:
-                    isDesactivado
-                        ? const Color(0xFFE2E8F0)
-                        : const Color(0xFFE5E7EB),
-                width: 1.0,
+                    widget.isSelected
+                        ? AppColors.primary
+                        : (isDesactivado
+                            ? const Color(0xFFE2E8F0)
+                            : const Color(0xFFE5E7EB)),
+                width: widget.isSelected ? 2.0 : 1.0,
               ),
               boxShadow:
                   isDesactivado
@@ -214,9 +214,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                   ),
                           child: Opacity(
                             opacity:
-                                isDesactivado
-                                    ? 0.45
-                                    : (isAgotado ? 0.75 : 1.0),
+                                isDesactivado ? 0.45 : (isAgotado ? 0.75 : 1.0),
                             child:
                                 widget.product.images.isNotEmpty
                                     ? CachedNetworkImage(
@@ -244,13 +242,14 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                               child: SizedBox(
                                                 width: 24,
                                                 height: 24,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  color:
-                                                      Theme.of(
-                                                        context,
-                                                      ).colorScheme.primary,
-                                                ),
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color:
+                                                          Theme.of(
+                                                            context,
+                                                          ).colorScheme.primary,
+                                                    ),
                                               ),
                                             ),
                                           ),
@@ -462,7 +461,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                           color:
                               isDesactivado
                                   ? AppColors.textMuted
-                                  : const Color(0xFF0B7A73),
+                                  : AppColors.tealDark,
                           fontWeight: FontWeight.w900,
                           fontSize: 14,
                         ),
@@ -506,7 +505,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                           icon: Icons.edit_rounded,
                           label: 'Editar',
                           enabled: true,
-                          color: Colors.blue,
+                          color: const Color(0xFF2563EB),
                           onTap: widget.onEdit,
                           isFullWidth: false,
                         ),
@@ -626,7 +625,7 @@ class _PrimaryCardAction extends StatelessWidget {
               borderRadius: radius,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                height: 40,
+                height: 44,
                 decoration: BoxDecoration(
                   color:
                       enabled
@@ -698,7 +697,7 @@ class _IconCardAction extends StatelessWidget {
               onTap: isDisabled ? null : () => onTap(),
               borderRadius: BorderRadius.circular(8),
               child: SizedBox(
-                height: 40,
+                height: 44,
                 child: Icon(
                   icon,
                   size: 18,

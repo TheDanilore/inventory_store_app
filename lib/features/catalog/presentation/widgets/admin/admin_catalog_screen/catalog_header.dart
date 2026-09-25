@@ -15,6 +15,8 @@ class CatalogHeader extends StatefulWidget {
   final bool isPosMode;
   final VoidCallback? onBack;
   final FocusNode? searchFocusNode;
+  final bool isTableView;
+  final ValueChanged<bool>? onToggleTableView;
 
   const CatalogHeader({
     super.key,
@@ -29,6 +31,8 @@ class CatalogHeader extends StatefulWidget {
     this.isPosMode = false,
     this.onBack,
     this.searchFocusNode,
+    this.isTableView = false,
+    this.onToggleTableView,
   });
 
   @override
@@ -567,7 +571,118 @@ class _CatalogHeaderState extends State<CatalogHeader> {
             ],
             Expanded(child: _buildSearchField(isDesktop: true)),
             if (!widget.isPosMode) ...[
-              const SizedBox(width: 16),
+              if (widget.onToggleTableView != null) ...[
+                const SizedBox(width: 12),
+                Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  padding: const EdgeInsets.all(3),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Tooltip(
+                        message: 'Vista Cuadrícula / Tarjetas (Alt+V)',
+                        child: InkWell(
+                          onTap: () => widget.onToggleTableView!(false),
+                          borderRadius: BorderRadius.circular(7),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: !widget.isTableView
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(7),
+                              boxShadow: !widget.isTableView
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.06),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Icon(
+                              Icons.grid_view_rounded,
+                              size: 18,
+                              color: !widget.isTableView
+                                  ? AppColors.primary
+                                  : AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Tooltip(
+                        message: 'Vista Tabla Pro / Alta densidad (Alt+V)',
+                        child: InkWell(
+                          onTap: () => widget.onToggleTableView!(true),
+                          borderRadius: BorderRadius.circular(7),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: widget.isTableView
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(7),
+                              boxShadow: widget.isTableView
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.06),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Icon(
+                              Icons.table_rows_rounded,
+                              size: 18,
+                              color: widget.isTableView
+                                  ? AppColors.primary
+                                  : AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: widget.isExporting ? null : widget.onExport,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.slate,
+                  side: const BorderSide(color: AppColors.border),
+                  backgroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
+                label: const Text(
+                  'Exportar',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+              ),
+              const SizedBox(width: 12),
               ElevatedButton.icon(
                 onPressed: widget.onAddProduct,
                 style: ElevatedButton.styleFrom(
@@ -579,7 +694,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                     vertical: 12,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radius),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
                 icon: const Icon(Icons.add, size: 18),

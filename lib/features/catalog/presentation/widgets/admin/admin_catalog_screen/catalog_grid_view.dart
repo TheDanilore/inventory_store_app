@@ -21,6 +21,7 @@ class CatalogGridScrollView extends StatelessWidget {
   final Widget? headerSliver;
   final Widget? chipsSliver;
   final bool isPosMode;
+  final String? selectedProductId;
 
   const CatalogGridScrollView({
     super.key,
@@ -39,6 +40,7 @@ class CatalogGridScrollView extends StatelessWidget {
     this.matchedIngredients = const {},
     this.bottomPadding = 0,
     this.isPosMode = false,
+    this.selectedProductId,
   });
 
   @override
@@ -80,29 +82,38 @@ class CatalogGridScrollView extends StatelessWidget {
             ),
           ),
         ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 300,
-              mainAxisExtent: 280,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ),
-            delegate: SliverChildBuilderDelegate((context, index) {
-              final product = pageItems[index];
-              return AdminProductCard(
-                product: product,
-                onSale: () => onSale(product),
-                onToggleActive: () => onToggleActive(product),
-                onEdit: () => onEdit(product),
-                onTap: onProductTap != null ? () => onProductTap!(product) : null,
-                isFullPosMode: isPosMode,
-                highlightIngredient:
-                    searchByIngredient ? matchedIngredients[product.id] : null,
-              );
-            }, childCount: pageItems.length),
-          ),
+        Builder(
+          builder: (context) {
+            final screenWidth = MediaQuery.of(context).size.width;
+            final double maxExtent = screenWidth < 500 ? 210 : (screenWidth < 900 ? 260 : 300);
+            final double mainExtent = screenWidth < 500 ? 272 : 280;
+
+            return SliverPadding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+              sliver: SliverGrid(
+                gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: maxExtent,
+                  mainAxisExtent: mainExtent,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final product = pageItems[index];
+                  return AdminProductCard(
+                    product: product,
+                    onSale: () => onSale(product),
+                    onToggleActive: () => onToggleActive(product),
+                    onEdit: () => onEdit(product),
+                    onTap: onProductTap != null ? () => onProductTap!(product) : null,
+                    isFullPosMode: isPosMode,
+                    isSelected: selectedProductId == product.id,
+                    highlightIngredient:
+                        searchByIngredient ? matchedIngredients[product.id] : null,
+                  );
+                }, childCount: pageItems.length),
+              ),
+            );
+          },
         ),
         // La paginación (AdminPageBlocks) fue extraída a la pantalla principal
         // para estar anclada abajo fuera del scroll.

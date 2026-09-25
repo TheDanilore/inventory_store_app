@@ -1,24 +1,31 @@
-import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
-import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_header.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_category_chips.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_grid_view.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_product_skeleton.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_fab_buttons.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_grid_view.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_header.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_pro_table_view.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_product_skeleton.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_side_inspector.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_add_to_cart_sheet.dart';
+
+/// Modos de visualización del catálogo de productos.
+enum CatalogViewMode {
+  grid,
+  table,
+}
 
 class AdminCatalogScreen extends StatefulWidget {
   final Widget? floatingActionButton;
@@ -42,6 +49,12 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
 
+  /// Modo de visualización activo: Tarjetas visuales o Tabla Pro de alta densidad.
+  CatalogViewMode _viewMode = CatalogViewMode.grid;
+
+  /// Producto actualmente inspeccionado en el panel Master-Detail lateral.
+  ProductEntity? _selectedProduct;
+
   @override
   void initState() {
     super.initState();
@@ -57,41 +70,91 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     super.dispose();
   }
 
+  void _handleProductInteraction({
+    required BuildContext context,
+    required ProductEntity product,
+    required bool isMobile,
+    required AdminCatalogCubit cubit,
+  }) {
+    if (widget.onProductTap != null) {
+      widget.onProductTap!(product);
+      return;
+    }
+
+    if (isMobile) {
+      CatalogSideInspector.showAsBottomSheet(
+        context,
+        product: product,
+        onEdit: () {
+          context.go(
+            '/products/product-form/${product.id}',
+            extra: {'productToEdit': product},
+          );
+        },
+        onAddToCart: () {
+          if (widget.onAddToCart != null) {
+            widget.onAddToCart!(product);
+          } else {
+            PosAddToCartSheet.show(context, product);
+          }
+        },
+        onToggleActive: () => _toggleProductoActivo(product, cubit),
+      );
+    } else {
+      setState(() {
+        _selectedProduct =
+            (_selectedProduct?.id == product.id) ? null : product;
+      });
+    }
+  }
+
   Future<void> _toggleProductoActivo(
     ProductEntity product,
     AdminCatalogCubit cubit,
   ) async {
     final willActivate = !product.isActive;
-
     final success = await cubit.toggleProductActive(product);
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            willActivate
-                ? '${product.name} ha sido activado'
-                : '${product.name} ha sido desactivado',
-          ),
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'Deshacer',
-            onPressed: () async {
-              await cubit.toggleProductActive(
-                product.copyWith(isActive: willActivate),
-              );
-            },
-          ),
-        ),
+      // Actualizar producto seleccionado en el inspector si coincide
+      if (_selectedProduct?.id == product.id) {
+        setState(() {
+          _selectedProduct = _selectedProduct!.copyWith(isActive: willActivate);
+        });
+      }
+
+      AppSnackbar.show(
+        context,
+        message: willActivate
+            ? '${product.name} ha sido activado'
+            : '${product.name} ha sido pausado',
+        type: willActivate ? SnackbarType.success : SnackbarType.info,
       );
     }
   }
 
   List<PopupMenuEntry<String>> _buildMenuItems(AdminCatalogState state) {
     return [
-      const PopupMenuItem(value: 'export', child: Text('Exportar')),
-      const PopupMenuItem(value: 'sync', child: Text('Forzar Sincronización')),
+      const PopupMenuItem(
+        value: 'export',
+        child: Row(
+          children: [
+            Icon(Icons.picture_as_pdf_outlined, size: 18),
+            SizedBox(width: 10),
+            Text('Exportar a PDF'),
+          ],
+        ),
+      ),
+      const PopupMenuItem(
+        value: 'sync',
+        child: Row(
+          children: [
+            Icon(Icons.sync_rounded, size: 18),
+            SizedBox(width: 10),
+            Text('Forzar Sincronización'),
+          ],
+        ),
+      ),
     ];
   }
 
@@ -110,7 +173,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         if (ctx.mounted) {
           AppSnackbar.show(
             ctx,
-            message: 'Sincronización completada.',
+            message: 'Sincronización completada exitosamente.',
             type: SnackbarType.success,
           );
         }
@@ -137,17 +200,16 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder:
-          (_) => const AlertDialog(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 20),
-                Text('Generando Catálogo PDF...', textAlign: TextAlign.center),
-              ],
-            ),
-          ),
+      builder: (_) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text('Generando Catálogo PDF...', textAlign: TextAlign.center),
+          ],
+        ),
+      ),
     );
 
     await cubit.exportCatalogPdf(
@@ -164,18 +226,21 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isDesktop = constraints.maxWidth >= 900;
+        final screenWidth = constraints.maxWidth;
+        final isMobile = screenWidth < 650;
+        final isTablet = screenWidth >= 650 && screenWidth < 1100;
+        final isDesktop = screenWidth >= 1100;
+
         final cubit = context.read<AdminCatalogCubit>();
 
         final bodyContent = BlocListener<AdminCatalogCubit, AdminCatalogState>(
-          listenWhen:
-              (prev, current) =>
-                  prev.searchTerm != current.searchTerm ||
-                  (current.actionState == ViewState.error &&
-                      prev.actionState != current.actionState) ||
-                  (current.errorMessage != null &&
-                      prev.errorMessage != current.errorMessage &&
-                      current.products.isNotEmpty),
+          listenWhen: (prev, current) =>
+              prev.searchTerm != current.searchTerm ||
+              (current.actionState == ViewState.error &&
+                  prev.actionState != current.actionState) ||
+              (current.errorMessage != null &&
+                  prev.errorMessage != current.errorMessage &&
+                  current.products.isNotEmpty),
           listener: (context, state) {
             if (_searchCtrl.text != state.searchTerm) {
               _searchCtrl.text = state.searchTerm;
@@ -191,75 +256,80 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             }
           },
           child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
-            buildWhen:
-              (prev, current) =>
-                  prev.catalogState != current.catalogState ||
-                  prev.products != current.products ||
-                  prev.categories != current.categories ||
-                  prev.selectedCategoryId != current.selectedCategoryId ||
-                  prev.brands != current.brands ||
-                  prev.selectedBrandId != current.selectedBrandId ||
-                  prev.searchTerm != current.searchTerm ||
-                  prev.searchByIngredient != current.searchByIngredient ||
-                  prev.filterIsActive != current.filterIsActive ||
-                  prev.sortOption != current.sortOption ||
-                  prev.stockFilter != current.stockFilter ||
-                  prev.currentPage != current.currentPage ||
-                  prev.totalPages != current.totalPages ||
-                  prev.totalCount != current.totalCount ||
-                  prev.actionState != current.actionState ||
-                  prev.errorMessage != current.errorMessage,
-          builder: (context, state) {
-            const double fabsBottomPadding = 54;
+            buildWhen: (prev, current) =>
+                prev.catalogState != current.catalogState ||
+                prev.products != current.products ||
+                prev.categories != current.categories ||
+                prev.selectedCategoryId != current.selectedCategoryId ||
+                prev.brands != current.brands ||
+                prev.selectedBrandId != current.selectedBrandId ||
+                prev.searchTerm != current.searchTerm ||
+                prev.searchByIngredient != current.searchByIngredient ||
+                prev.filterIsActive != current.filterIsActive ||
+                prev.sortOption != current.sortOption ||
+                prev.stockFilter != current.stockFilter ||
+                prev.currentPage != current.currentPage ||
+                prev.totalPages != current.totalPages ||
+                prev.totalCount != current.totalCount ||
+                prev.actionState != current.actionState ||
+                prev.errorMessage != current.errorMessage,
+            builder: (context, state) {
+              const double fabsBottomPadding = 54;
 
-            Widget mainContent = Builder(
-              builder: (context) {
-                final headerSliver = SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _CatalogHeaderDelegate(
-                    minHeight: 68.0,
-                    maxHeight: state.searchByIngredient ? 120.0 : 68.0,
-                    isExporting: state.actionState == ViewState.loading,
-                    searchByIngredient: state.searchByIngredient,
-                    child: Container(
-                      color: const Color(0xFFF9FAFB),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CatalogHeader(
-                            searchController: _searchCtrl,
-                            searchFocusNode: _searchFocusNode,
-                            isExporting: state.actionState == ViewState.loading,
-                            onExport:
-                                () => _exportCatalogPdf(
-                                  context,
-                                  cubit,
-                                  state,
-                                ),
-                            onSearchSubmitted: cubit.submitSearch,
-                            searchByIngredient: state.searchByIngredient,
-                            onToggleIngredientSearch:
-                                cubit.toggleSearchByIngredient,
-                            onAddProduct:
-                                () => context.go(
-                                  '/products/product-form',
-                                ),
-                          ),
-                          if (state.actionState == ViewState.loading)
-                            const LinearProgressIndicator(
-                              color: AppColors.teal,
-                              minHeight: 2,
+              Widget mainContent = Builder(
+                builder: (context) {
+                  final headerSliver = SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _CatalogHeaderDelegate(
+                      minHeight: 68.0,
+                      maxHeight: state.searchByIngredient ? 120.0 : 68.0,
+                      isExporting: state.actionState == ViewState.loading,
+                      searchByIngredient: state.searchByIngredient,
+                      child: Container(
+                        color: AppColors.background,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CatalogHeader(
+                              searchController: _searchCtrl,
+                              searchFocusNode: _searchFocusNode,
+                              isExporting: state.actionState == ViewState.loading,
+                              isTableView: _viewMode == CatalogViewMode.table,
+                              onToggleTableView: (isTable) {
+                                setState(() {
+                                  _viewMode = isTable
+                                      ? CatalogViewMode.table
+                                      : CatalogViewMode.grid;
+                                });
+                              },
+                              onExport: () => _exportCatalogPdf(
+                                context,
+                                cubit,
+                                state,
+                              ),
+                              onSearchSubmitted: cubit.submitSearch,
+                              searchByIngredient: state.searchByIngredient,
+                              onToggleIngredientSearch:
+                                  cubit.toggleSearchByIngredient,
+                              onAddProduct: () => context.go(
+                                '/products/product-form',
+                              ),
                             ),
-                        ],
+                            if (state.actionState == ViewState.loading)
+                              const LinearProgressIndicator(
+                                color: AppColors.teal,
+                                minHeight: 2,
+                              ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
+                  );
 
-                final chipsSliver =
-                    ((state.categories.isNotEmpty || state.brands.isNotEmpty) &&
-                            !state.searchByIngredient)
-                        ? SliverToBoxAdapter(
+                  final chipsSliver = ((state.categories.isNotEmpty ||
+                              state.brands.isNotEmpty) &&
+                          !state.searchByIngredient)
+                      ? SliverToBoxAdapter(
                           child: CategoryChips(
                             categories: state.categories,
                             selectedCategoryId: state.selectedCategoryId,
@@ -275,206 +345,292 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                             onStockFilterSelected: cubit.setStockFilter,
                           ),
                         )
-                        : null;
+                      : null;
 
-                if (state.catalogState == ViewState.loading ||
-                    state.catalogState == ViewState.initial) {
-                  return RefreshIndicator(
-                    color: Theme.of(context).colorScheme.primary,
-                    onRefresh: () async => cubit.refreshProducts(),
-                    child: CustomScrollView(
-                      slivers: [
-                        headerSliver,
-                        if (chipsSliver != null) chipsSliver,
-                        SliverPadding(
-                          padding: const EdgeInsets.all(16),
-                          sliver: SliverGrid(
-                            gridDelegate:
-                                const SliverGridDelegateWithMaxCrossAxisExtent(
-                                  maxCrossAxisExtent: 300,
+                  // ── Estado de Carga (Skeletons Shimmer) ───────────────────
+                  if (state.catalogState == ViewState.loading ||
+                      state.catalogState == ViewState.initial) {
+                    return RefreshIndicator(
+                      color: Theme.of(context).colorScheme.primary,
+                      onRefresh: () async => cubit.refreshProducts(),
+                      child: CustomScrollView(
+                        slivers: [
+                          headerSliver,
+                          if (chipsSliver != null) chipsSliver,
+                          if (_viewMode == CatalogViewMode.table && !isMobile)
+                            const SliverPadding(
+                              padding: EdgeInsets.all(16),
+                              sliver: SliverToBoxAdapter(
+                                child: CatalogTableSkeleton(),
+                              ),
+                            )
+                          else
+                            SliverPadding(
+                              padding: const EdgeInsets.all(16),
+                              sliver: SliverGrid(
+                                gridDelegate:
+                                    const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 260,
                                   mainAxisExtent: 280,
-                                  crossAxisSpacing: 16,
-                                  mainAxisSpacing: 16,
+                                  crossAxisSpacing: 14,
+                                  mainAxisSpacing: 14,
                                 ),
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) => const AdminProductSkeleton(),
-                              childCount: 20,
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) =>
+                                      const AdminProductSkeleton(),
+                                  childCount: 16,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // ── Estado de Error ───────────────────────────────────────
+                  if (state.errorMessage != null && state.products.isEmpty) {
+                    return RefreshIndicator(
+                      color: Theme.of(context).colorScheme.primary,
+                      onRefresh: () async => cubit.refreshProducts(),
+                      child: CustomScrollView(
+                        slivers: [
+                          headerSliver,
+                          if (chipsSliver != null) chipsSliver,
+                          SliverFillRemaining(
+                            child: CatalogErrorState(
+                              message: (state.errorMessage ?? ''),
+                              onRetry: () => cubit.refreshProducts(),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+                        ],
+                      ),
+                    );
+                  }
 
-                if (state.errorMessage != null && state.products.isEmpty) {
-                  return RefreshIndicator(
-                    color: Theme.of(context).colorScheme.primary,
-                    onRefresh: () async => cubit.refreshProducts(),
-                    child: CustomScrollView(
-                      slivers: [
-                        headerSliver,
-                        if (chipsSliver != null) chipsSliver,
-                        SliverFillRemaining(
-                          child: CatalogErrorState(
-                            message: (state.errorMessage ?? ''),
-                            onRetry: () => cubit.refreshProducts(),
+                  // ── Estado Vacío ──────────────────────────────────────────
+                  if (state.products.isEmpty &&
+                      (state.catalogState == ViewState.success ||
+                          state.catalogState == ViewState.empty)) {
+                    return RefreshIndicator(
+                      color: Theme.of(context).colorScheme.primary,
+                      onRefresh: () async => cubit.refreshProducts(),
+                      child: CustomScrollView(
+                        slivers: [
+                          headerSliver,
+                          if (chipsSliver != null) chipsSliver,
+                          SliverFillRemaining(
+                            child: CatalogEmptyState(
+                              searchByIngredient: state.searchByIngredient,
+                              searchTerm: state.searchTerm,
+                              onRetry: () {
+                                if (state.searchTerm.isNotEmpty) {
+                                  _searchCtrl.clear();
+                                  cubit.clearSearch();
+                                } else {
+                                  cubit.refreshProducts(forceRefresh: true);
+                                }
+                              },
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+                        ],
+                      ),
+                    );
+                  }
 
-                if (state.products.isEmpty &&
-                    (state.catalogState == ViewState.success ||
-                        state.catalogState == ViewState.empty)) {
-                  return RefreshIndicator(
-                    color: Theme.of(context).colorScheme.primary,
-                    onRefresh: () async => cubit.refreshProducts(),
-                    child: CustomScrollView(
-                      slivers: [
-                        headerSliver,
-                        if (chipsSliver != null) chipsSliver,
-                        SliverFillRemaining(
-                          child: CatalogEmptyState(
-                            searchByIngredient: state.searchByIngredient,
-                            searchTerm: state.searchTerm,
-                            onRetry: () {
-                              if (state.searchTerm.isNotEmpty) {
-                                _searchCtrl.clear();
-                                cubit.clearSearch();
-                              } else {
-                                cubit.refreshProducts(forceRefresh: true);
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return RefreshIndicator(
-                  color: Theme.of(context).colorScheme.primary,
-                  onRefresh: () async => cubit.refreshProducts(),
-                  child: CatalogGridScrollView(
-                    products: state.products,
-                    pageSize: AdminCatalogState.pageSize,
-                    currentPage: state.currentPage,
-                    totalCount: state.totalCount,
-                    onPageChanged: cubit.setPage,
-                    onSale:
-                        widget.onAddToCart ??
-                        (product) => PosAddToCartSheet.show(context, product),
-                    onToggleActive: (p) => _toggleProductoActivo(p, cubit),
-                    onProductTap: widget.onProductTap,
-                    searchByIngredient: state.searchByIngredient,
-                    matchedIngredients: state.matchedIngredients,
-                    bottomPadding: fabsBottomPadding,
-                    headerSliver: headerSliver,
-                    chipsSliver: chipsSliver,
-                    onEdit: (product) async {
-                      context.go(
-                        '/products/product-form/${product.id}',
-                        extra: {'productToEdit': product},
-                      );
-                    },
-                    isPosMode: false,
-                  ),
-                );
-              },
-            );
-
-            Widget catalogBody = Column(
-              children: [
-                Expanded(child: mainContent),
-                if (state.products.isNotEmpty && state.totalPages > 1)
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, -4),
-                        ),
-                      ],
-                    ),
-                    child: SafeArea(
-                      top: false,
-                      child: AdminPageBlocks(
+                  // ── Vista Tabla Pro (Desktop & Tablet) ────────────────────
+                  if (_viewMode == CatalogViewMode.table && !isMobile) {
+                    return RefreshIndicator(
+                      color: Theme.of(context).colorScheme.primary,
+                      onRefresh: () async => cubit.refreshProducts(),
+                      child: CatalogProTableView(
+                        products: state.products,
+                        pageSize: AdminCatalogState.pageSize,
                         currentPage: state.currentPage,
-                        totalPages: state.totalPages,
+                        totalCount: state.totalCount,
                         onPageChanged: cubit.setPage,
+                        headerSliver: headerSliver,
+                        chipsSliver: chipsSliver,
+                        bottomPadding: fabsBottomPadding,
+                        selectedProduct: _selectedProduct,
+                        onProductSelected: (product) =>
+                            _handleProductInteraction(
+                          context: context,
+                          product: product,
+                          isMobile: isMobile,
+                          cubit: cubit,
+                        ),
+                        onSale: widget.onAddToCart ??
+                            (product) =>
+                                PosAddToCartSheet.show(context, product),
+                        onToggleActive: (p) => _toggleProductoActivo(p, cubit),
+                        onEdit: (product) {
+                          context.go(
+                            '/products/product-form/${product.id}',
+                            extra: {'productToEdit': product},
+                          );
+                        },
                       ),
+                    );
+                  }
+
+                  // ── Vista Cuadrícula Fluid (Móvil / Tablet / Desktop) ──────
+                  return RefreshIndicator(
+                    color: Theme.of(context).colorScheme.primary,
+                    onRefresh: () async => cubit.refreshProducts(),
+                    child: CatalogGridScrollView(
+                      products: state.products,
+                      pageSize: AdminCatalogState.pageSize,
+                      currentPage: state.currentPage,
+                      totalCount: state.totalCount,
+                      onPageChanged: cubit.setPage,
+                      onSale: widget.onAddToCart ??
+                          (product) =>
+                              PosAddToCartSheet.show(context, product),
+                      onToggleActive: (p) => _toggleProductoActivo(p, cubit),
+                      onProductTap: (product) => _handleProductInteraction(
+                        context: context,
+                        product: product,
+                        isMobile: isMobile,
+                        cubit: cubit,
+                      ),
+                      selectedProductId: _selectedProduct?.id,
+                      searchByIngredient: state.searchByIngredient,
+                      matchedIngredients: state.matchedIngredients,
+                      bottomPadding: fabsBottomPadding,
+                      headerSliver: headerSliver,
+                      chipsSliver: chipsSliver,
+                      onEdit: (product) async {
+                        context.go(
+                          '/products/product-form/${product.id}',
+                          extra: {'productToEdit': product},
+                        );
+                      },
+                      isPosMode: false,
                     ),
-                  ),
-              ],
-            );
+                  );
+                },
+              );
 
-            if (isDesktop) {
-              return Container(color: AppColors.background, child: catalogBody);
-            }
-
-            return catalogBody;
-          },
-        ),
-      );
-
-        final floatingBtn =
-            isDesktop
-                ? null
-                : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    // FAB de acceso rápido al POS (siempre visible en mobile)
-                    Tooltip(
-                      message: 'Ir a Punto de Venta',
-                      child: Material(
-                        color: const Color(0xFF0D9488),
-                        borderRadius: BorderRadius.circular(16),
-                        elevation: 4,
-                        shadowColor: Colors.black.withValues(alpha: 0.25),
-                        child: InkWell(
-                          onTap: () => context.go('/pos'),
-                          borderRadius: BorderRadius.circular(16),
-                          splashColor: Colors.white.withValues(alpha: 0.15),
-                          highlightColor: Colors.white.withValues(alpha: 0.08),
-                          child: const SizedBox(
-                            width: 52,
-                            height: 52,
-                            child: Icon(
-                              Icons.point_of_sale_rounded,
-                              color: Colors.white,
-                              size: 24,
-                            ),
+              Widget catalogBody = Column(
+                children: [
+                  Expanded(child: mainContent),
+                  if (state.products.isNotEmpty && state.totalPages > 1)
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        border: const Border(
+                          top: BorderSide(color: AppColors.border, width: 1),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, -2),
                           ),
+                        ],
+                      ),
+                      child: SafeArea(
+                        top: false,
+                        child: AdminPageBlocks(
+                          currentPage: state.currentPage,
+                          totalPages: state.totalPages,
+                          onPageChanged: cubit.setPage,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    CatalogAddProductFab(
-                      onTap: () {
-                        context.go('/products/product-form');
+                ],
+              );
+
+              // ── Master-Detail Layout en Tablet / Desktop ─────────────────
+              if (!isMobile && _selectedProduct != null) {
+                catalogBody = Row(
+                  children: [
+                    Expanded(child: catalogBody),
+                    CatalogSideInspector(
+                      product: _selectedProduct!,
+                      onClose: () => setState(() => _selectedProduct = null),
+                      onEdit: () {
+                        context.go(
+                          '/products/product-form/${_selectedProduct!.id}',
+                          extra: {'productToEdit': _selectedProduct},
+                        );
                       },
+                      onAddToCart: () {
+                        if (widget.onAddToCart != null) {
+                          widget.onAddToCart!(_selectedProduct!);
+                        } else {
+                          PosAddToCartSheet.show(context, _selectedProduct!);
+                        }
+                      },
+                      onToggleActive: () =>
+                          _toggleProductoActivo(_selectedProduct!, cubit),
                     ),
                   ],
                 );
+              }
+
+              if (isDesktop || isTablet) {
+                return Container(
+                  color: AppColors.background,
+                  child: catalogBody,
+                );
+              }
+
+              return catalogBody;
+            },
+          ),
+        );
+
+        // ── Botones Flotantes en Móvil (Apple HIG Safe Thumb Zone) ─────────
+        final floatingBtn = isMobile
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Acceso rápido al POS
+                  Tooltip(
+                    message: 'Ir a Punto de Venta',
+                    child: Material(
+                      color: AppColors.teal,
+                      borderRadius: BorderRadius.circular(16),
+                      elevation: 4,
+                      shadowColor: Colors.black.withValues(alpha: 0.25),
+                      child: InkWell(
+                        onTap: () => context.go('/pos'),
+                        borderRadius: BorderRadius.circular(16),
+                        child: const SizedBox(
+                          width: 52,
+                          height: 52,
+                          child: Icon(
+                            Icons.point_of_sale_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  CatalogAddProductFab(
+                    onTap: () {
+                      context.go('/products/product-form');
+                    },
+                  ),
+                ],
+              )
+            : null;
 
         return AdminLayout(
           title: 'Catálogo',
           showSettingsButton: true,
           settingsActions: _buildMenuItems(cubit.state),
-          onSettingsSelected:
-              (value) =>
-                  _handleMenuSelection(value, cubit, cubit.state, context),
+          onSettingsSelected: (value) =>
+              _handleMenuSelection(value, cubit, cubit.state, context),
           showAppBar: true,
           actions: [
-            if (isDesktop)
+            if (!isMobile)
               ElevatedButton.icon(
                 onPressed: () => context.go('/pos'),
                 style: ElevatedButton.styleFrom(
@@ -504,8 +660,12 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             onKeyEvent: (node, event) {
               if (event is KeyDownEvent) {
                 final isAlt = HardwareKeyboard.instance.isAltPressed;
-                // Alt+K: Enfocar buscador y seleccionar texto
-                if (isAlt && event.logicalKey == LogicalKeyboardKey.keyK) {
+                final isControl = HardwareKeyboard.instance.isControlPressed;
+                final isMeta = HardwareKeyboard.instance.isMetaPressed;
+                final isModifier = isAlt || isControl || isMeta;
+
+                // ⌘K / Ctrl+K / Alt+K: Enfocar buscador y seleccionar texto
+                if (isModifier && event.logicalKey == LogicalKeyboardKey.keyK) {
                   _searchFocusNode.requestFocus();
                   _searchCtrl.selection = TextSelection(
                     baseOffset: 0,
@@ -513,15 +673,41 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   );
                   return KeyEventResult.handled;
                 }
-                // Alt+T: Alternar modo Producto / Ingrediente
-                if (isAlt && event.logicalKey == LogicalKeyboardKey.keyT) {
-                  cubit.toggleSearchByIngredient(!cubit.state.searchByIngredient);
+
+                // Alt+N / Ctrl+N: Crear nuevo producto
+                if (isModifier && event.logicalKey == LogicalKeyboardKey.keyN) {
+                  context.go('/products/product-form');
                   return KeyEventResult.handled;
                 }
-                // Escape: Desenfocar buscador si tiene el foco
-                if (event.logicalKey == LogicalKeyboardKey.escape && _searchFocusNode.hasFocus) {
-                  _searchFocusNode.unfocus();
+
+                // Alt+V: Alternar vista Cuadrícula / Tabla Pro
+                if (isAlt && event.logicalKey == LogicalKeyboardKey.keyV) {
+                  setState(() {
+                    _viewMode = _viewMode == CatalogViewMode.grid
+                        ? CatalogViewMode.table
+                        : CatalogViewMode.grid;
+                  });
                   return KeyEventResult.handled;
+                }
+
+                // Alt+T: Alternar modo Producto / Ingrediente
+                if (isAlt && event.logicalKey == LogicalKeyboardKey.keyT) {
+                  cubit.toggleSearchByIngredient(
+                    !cubit.state.searchByIngredient,
+                  );
+                  return KeyEventResult.handled;
+                }
+
+                // Escape: Descartar inspector lateral o desenfocar buscador
+                if (event.logicalKey == LogicalKeyboardKey.escape) {
+                  if (_selectedProduct != null) {
+                    setState(() => _selectedProduct = null);
+                    return KeyEventResult.handled;
+                  }
+                  if (_searchFocusNode.hasFocus) {
+                    _searchFocusNode.unfocus();
+                    return KeyEventResult.handled;
+                  }
                 }
               }
               return KeyEventResult.ignored;
