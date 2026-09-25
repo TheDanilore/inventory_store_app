@@ -12,18 +12,7 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/brands/br
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/brands/brand_form_sheet.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/brands/brands_skeleton.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-
-class _NewBrandIntent extends Intent {
-  const _NewBrandIntent();
-}
-
-class _SearchFocusIntent extends Intent {
-  const _SearchFocusIntent();
-}
-
-class _EscapeIntent extends Intent {
-  const _EscapeIntent();
-}
+import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 
 class BrandsManagementScreen extends StatefulWidget {
   const BrandsManagementScreen({super.key});
@@ -136,40 +125,37 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
     final isMobile = screenWidth < 720;
     final cubit = context.read<BrandsCubit>();
 
-    return Shortcuts(
-      shortcuts: <LogicalKeySet, Intent>{
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyK):
-            const _SearchFocusIntent(),
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyN):
-            const _NewBrandIntent(),
-        LogicalKeySet(LogicalKeyboardKey.escape): const _EscapeIntent(),
-      },
-      child: Actions(
-        actions: <Type, Action<Intent>>{
-          _SearchFocusIntent: CallbackAction<_SearchFocusIntent>(
-            onInvoke: (_) {
-              _searchFocusNode.requestFocus();
-              return null;
-            },
-          ),
-          _NewBrandIntent: CallbackAction<_NewBrandIntent>(
-            onInvoke: (_) {
-              _showBrandForm();
-              return null;
-            },
-          ),
-          _EscapeIntent: CallbackAction<_EscapeIntent>(
-            onInvoke: (_) {
-              if (_searchFocusNode.hasFocus) {
-                _searchFocusNode.unfocus();
-              } else if (_searchCtrl.text.isNotEmpty) {
-                _searchCtrl.clear();
-                cubit.clearSearch();
-              }
-              return null;
-            },
-          ),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () {
+          _searchFocusNode.requestFocus();
         },
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () {
+          _searchFocusNode.requestFocus();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyK, alt: true): () {
+          _searchFocusNode.requestFocus();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true): () {
+          _showBrandForm();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyN, meta: true): () {
+          _showBrandForm();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyN, alt: true): () {
+          _showBrandForm();
+        },
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (_searchFocusNode.hasFocus) {
+            _searchFocusNode.unfocus();
+          } else if (_searchCtrl.text.isNotEmpty) {
+            _searchCtrl.clear();
+            cubit.clearSearch();
+          }
+        },
+      },
+      child: Focus(
+        autofocus: true,
         child: AdminLayout(
           title: 'Marcas y Fabricantes',
           showBackButton: true,
@@ -260,7 +246,7 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      _buildKbdBadge('Ctrl+K'),
+                                      _buildKbdBadge(AppShortcutLabels.search),
                                     ],
                                   ),
                                 )
@@ -322,7 +308,7 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(width: 8),
-                      _buildKbdBadge('Ctrl+N', isDark: true),
+                      _buildKbdBadge(AppShortcutLabels.newRecord, isDark: true),
                     ],
                   ),
                 ),

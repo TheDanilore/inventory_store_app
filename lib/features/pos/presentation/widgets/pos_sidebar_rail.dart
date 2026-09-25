@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 
 /// Sidebar vertical exclusivo para el módulo POS inspirado en terminales
 /// de punto de venta modernas (estilo Clover, Shopify POS y sistemas agronómicos).
@@ -79,7 +80,7 @@ class PosSidebarRail extends StatelessWidget {
               index: 0,
               icon: Icons.grid_view_rounded,
               label: 'VENTA',
-              shortcut: 'Alt+1',
+              shortcut: AppShortcutLabels.tab(1),
             ),
             const SizedBox(height: 12),
 
@@ -87,7 +88,7 @@ class PosSidebarRail extends StatelessWidget {
               index: 1,
               icon: Icons.assignment_outlined,
               label: 'LOTES',
-              shortcut: 'Alt+2',
+              shortcut: AppShortcutLabels.tab(2),
             ),
             const SizedBox(height: 12),
 
@@ -95,7 +96,7 @@ class PosSidebarRail extends StatelessWidget {
               index: 2,
               icon: Icons.history_rounded,
               label: 'VENTAS',
-              shortcut: 'Alt+3',
+              shortcut: AppShortcutLabels.tab(3),
             ),
             const SizedBox(height: 12),
 
@@ -103,7 +104,7 @@ class PosSidebarRail extends StatelessWidget {
               index: 3,
               icon: Icons.point_of_sale_rounded,
               label: 'TURNOS',
-              shortcut: 'Alt+4',
+              shortcut: AppShortcutLabels.tab(4),
             ),
 
             const Spacer(),

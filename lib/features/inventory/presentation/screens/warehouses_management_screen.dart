@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses/warehouses_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses/warehouses_state.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -24,6 +26,7 @@ class WarehousesManagementScreen extends StatefulWidget {
 class _WarehousesManagementScreenState
     extends State<WarehousesManagementScreen> {
   final _searchCtrl = TextEditingController();
+  final _searchFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
@@ -50,7 +53,18 @@ class _WarehousesManagementScreenState
     _isFabExtended.dispose();
     _scrollController.dispose();
     _searchCtrl.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  void _focusSearch() {
+    _searchFocusNode.requestFocus();
+  }
+
+  void _unfocusSearch() {
+    if (_searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+    }
   }
 
   void _showWarehouseForm(
@@ -123,73 +137,122 @@ class _WarehousesManagementScreenState
     WarehousesCubit cubit,
     WarehousesState state,
   ) {
-    return AdminLayout(
-      title: 'Almacenes',
-      showBackButton: true,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ─── BUSCADOR ───────────────────────────────────────────────────────
-          Container(
-            margin: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true):
+            _focusSearch,
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true):
+            _focusSearch,
+        const SingleActivator(LogicalKeyboardKey.keyK, alt: true):
+            _focusSearch,
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true):
+            () => _showWarehouseForm(context, cubit),
+        const SingleActivator(LogicalKeyboardKey.keyN, meta: true):
+            () => _showWarehouseForm(context, cubit),
+        const SingleActivator(LogicalKeyboardKey.keyN, alt: true):
+            () => _showWarehouseForm(context, cubit),
+        const SingleActivator(LogicalKeyboardKey.escape): _unfocusSearch,
+      },
+      child: Focus(
+        autofocus: true,
+        child: AdminLayout(
+          title: 'Almacenes',
+          showBackButton: true,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ─── BUSCADOR ───────────────────────────────────────────────────────
+              Container(
+                margin: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: cubit.updateSearch,
-              decoration: InputDecoration(
-                hintText: 'Buscar almacén por nombre o dirección...',
-                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                prefixIcon: Icon(
-                  Icons.search_rounded,
-                  color: Colors.grey.shade400,
-                ),
-                suffixIcon:
-                    state.searchQuery.isNotEmpty
-                        ? IconButton(
-                          icon: const Icon(
-                            Icons.clear_rounded,
-                            color: Colors.grey,
-                          ),
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            cubit.clearSearch();
-                          },
-                        )
-                        : null,
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 0,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
-                    width: 1.5,
+                child: TextField(
+                  controller: _searchCtrl,
+                  focusNode: _searchFocusNode,
+                  onChanged: cubit.updateSearch,
+                  decoration: InputDecoration(
+                    hintText:
+                        'Buscar almacén por nombre o dirección (${AppShortcutLabels.modPlus}K)...',
+                    hintStyle: TextStyle(
+                      color: Colors.grey.shade400,
+                      fontSize: 14,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: Colors.grey.shade400,
+                    ),
+                    suffixIcon:
+                        state.searchQuery.isNotEmpty
+                            ? IconButton(
+                              icon: const Icon(
+                                Icons.clear_rounded,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                cubit.clearSearch();
+                              },
+                            )
+                            : Tooltip(
+                              message: 'Atajo: ${AppShortcutLabels.search}',
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.border,
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: Text(
+                                    AppShortcutLabels.search,
+                                    style: const TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 0,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: Colors.grey.shade200),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: Colors.grey.shade200),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 1.5,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -443,6 +506,7 @@ class _WarehousesManagementScreenState
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showWarehouseForm(context, cubit),
         backgroundColor: AppColors.primary,
+        tooltip: 'Crear nuevo almacén (${AppShortcutLabels.newRecord})',
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: ValueListenableBuilder<bool>(
           valueListenable: _isFabExtended,
@@ -463,6 +527,8 @@ class _WarehousesManagementScreenState
           },
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }

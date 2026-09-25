@@ -33,6 +33,20 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <script>
+    // Interceptor global de atajos de teclado para ERP en navegadores web.
+    // Evita que Chrome / Edge secuestren Ctrl+K (omnibox), Ctrl+N (nueva ventana),
+    // Ctrl+1..4 (pestañas), Ctrl+P (imprimir), etc., permitiendo que Flutter los procese.
+    window.addEventListener('keydown', function(e) {
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        var key = (e.key || '').toLowerCase();
+        if (['k', 'n', 'b', 'p', 's', 'i', 'v', 't', '1', '2', '3', '4'].includes(key)) {
+          // Prevenir la acción nativa del navegador web
+          e.preventDefault();
+        }
+      }
+    }, { capture: true });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

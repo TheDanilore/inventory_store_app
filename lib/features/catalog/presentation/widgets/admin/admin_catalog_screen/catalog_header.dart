@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 
 /// Barra superior del catálogo admin: buscador con botón 'X', historial reciente + toggle de ingrediente activo.
 class CatalogHeader extends StatefulWidget {
@@ -283,7 +284,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
             children: [
               // 1. Modo Producto (Cubo 3D)
               Tooltip(
-                message: 'Buscar por Producto (Alt+T)',
+                message: 'Buscar por Producto (${AppShortcutLabels.modPlus}T)',
                 child: InkWell(
                   onTap: () {
                     if (widget.searchByIngredient) {
@@ -337,7 +338,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
 
               // 2. Modo Ingrediente Activo (Matraz químico / Tubo)
               Tooltip(
-                message: 'Buscar por Ingrediente Activo (Alt+T)',
+                message: 'Buscar por Ingrediente Activo (${AppShortcutLabels.modPlus}T)',
                 child: InkWell(
                   onTap: () {
                     if (!widget.searchByIngredient) {
@@ -475,9 +476,9 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                                     width: 1,
                                   ),
                                 ),
-                                child: const Text(
-                                  'Alt K',
-                                  style: TextStyle(
+                                child: Text(
+                                  AppShortcutLabels.search,
+                                  style: const TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.textSecondary,
@@ -585,7 +586,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Tooltip(
-                        message: 'Vista Cuadrícula / Tarjetas (Alt+V)',
+                        message: 'Vista Cuadrícula / Tarjetas (${AppShortcutLabels.modPlus}V)',
                         child: InkWell(
                           onTap: () => widget.onToggleTableView!(false),
                           borderRadius: BorderRadius.circular(7),
@@ -622,7 +623,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                       ),
                       const SizedBox(width: 2),
                       Tooltip(
-                        message: 'Vista Tabla Pro / Alta densidad (Alt+V)',
+                        message: 'Vista Tabla Pro / Alta densidad (${AppShortcutLabels.modPlus}V)',
                         child: InkWell(
                           onTap: () => widget.onToggleTableView!(true),
                           borderRadius: BorderRadius.circular(7),

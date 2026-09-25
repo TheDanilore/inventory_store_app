@@ -12,6 +12,7 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredien
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredient_form_sheet.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredients_skeleton.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 
 /// Formatea nombres de ingredientes químicos a Title Case inteligente,
 /// preservando siglas técnicas cortas (ej: "PREFONOFOS" -> "Prefonofos", "NPK" -> "NPK").
@@ -153,10 +154,16 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
         const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () {
           _searchFocusNode.requestFocus();
         },
+        const SingleActivator(LogicalKeyboardKey.keyK, alt: true): () {
+          _searchFocusNode.requestFocus();
+        },
         const SingleActivator(LogicalKeyboardKey.keyN, control: true): () {
           _showIngredientForm();
         },
         const SingleActivator(LogicalKeyboardKey.keyN, meta: true): () {
+          _showIngredientForm();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyN, alt: true): () {
           _showIngredientForm();
         },
         const SingleActivator(LogicalKeyboardKey.escape): () {
@@ -600,9 +607,9 @@ class _SearchBarState extends State<_SearchBar> {
                                   color: const Color(0xFFE2E8F0),
                                 ),
                               ),
-                              child: const Text(
-                                'Ctrl K',
-                                style: TextStyle(
+                              child: Text(
+                                AppShortcutLabels.search,
+                                style: const TextStyle(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.textSecondary,

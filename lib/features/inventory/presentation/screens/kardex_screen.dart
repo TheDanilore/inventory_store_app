@@ -15,6 +15,7 @@ import 'package:inventory_store_app/features/inventory/presentation/widgets/kard
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_ledger_table.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_movement_inspector_drawer.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
@@ -201,6 +202,11 @@ class _KardexScreenState extends State<KardexScreen> {
             onKeyEvent: (node, event) {
               if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
+              final isAlt = HardwareKeyboard.instance.isAltPressed;
+              final isControl = HardwareKeyboard.instance.isControlPressed;
+              final isMeta = HardwareKeyboard.instance.isMetaPressed;
+              final isModifier = isAlt || isControl || isMeta;
+
               // ESC -> Cerrar inspector o limpiar búsqueda
               if (event.logicalKey == LogicalKeyboardKey.escape) {
                 if (_selectedMovement != null) {
@@ -216,31 +222,38 @@ class _KardexScreenState extends State<KardexScreen> {
                 return KeyEventResult.handled;
               }
 
+              // ⌘K / Ctrl+K / Alt+K o "/" -> Enfocar búsqueda
+              if ((isModifier && event.logicalKey == LogicalKeyboardKey.keyK) ||
+                  (!isModifier &&
+                      event.logicalKey == LogicalKeyboardKey.slash &&
+                      !_searchFocusNode.hasFocus)) {
+                _searchFocusNode.requestFocus();
+                _searchCtrl.selection = TextSelection(
+                  baseOffset: 0,
+                  extentOffset: _searchCtrl.text.length,
+                );
+                return KeyEventResult.handled;
+              }
+
               // Si el input de búsqueda ya tiene foco, dejamos escribir normalmente
               if (_searchFocusNode.hasFocus) {
                 return KeyEventResult.ignored;
               }
 
-              // Atajo "/" -> Enfocar búsqueda
-              if (event.logicalKey == LogicalKeyboardKey.slash) {
-                _searchFocusNode.requestFocus();
-                return KeyEventResult.handled;
-              }
-
-              // Atajo "E" -> Nuevo Ingreso
-              if (event.logicalKey == LogicalKeyboardKey.keyE) {
+              // ⌘E / Ctrl+E / Alt+E -> Nuevo Ingreso
+              if (isModifier && event.logicalKey == LogicalKeyboardKey.keyE) {
                 _openEntryScreen(context);
                 return KeyEventResult.handled;
               }
 
-              // Atajo "S" -> Nueva Salida
-              if (event.logicalKey == LogicalKeyboardKey.keyS) {
+              // ⌘S / Ctrl+S / Alt+S -> Nueva Salida
+              if (isModifier && event.logicalKey == LogicalKeyboardKey.keyS) {
                 _openExitScreen(context);
                 return KeyEventResult.handled;
               }
 
-              // Atajo "P" -> Exportar PDF
-              if (event.logicalKey == LogicalKeyboardKey.keyP) {
+              // ⌘P / Ctrl+P / Alt+P -> Exportar PDF
+              if (isModifier && event.logicalKey == LogicalKeyboardKey.keyP) {
                 context.read<KardexCubit>().exportToPdf();
                 return KeyEventResult.handled;
               }
@@ -538,7 +551,7 @@ class _KardexScreenState extends State<KardexScreen> {
                     return _SearchInput(
                       controller: _searchCtrl,
                       focusNode: _searchFocusNode,
-                      hint: 'Buscar producto, variante o SKU...',
+                      hint: 'Buscar producto, variante o SKU... (${AppShortcutLabels.modPlus}K)',
                       isLoading: isSearching,
                       onChanged: _onSearchChanged,
                       onSubmitted: _onSearchSubmitted,

@@ -702,8 +702,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   return KeyEventResult.handled;
                 }
 
-                // Alt+V: Alternar vista Cuadrícula / Tabla Pro
-                if (isAlt && event.logicalKey == LogicalKeyboardKey.keyV) {
+                // ⌘V / Ctrl+V / Alt+V: Alternar vista Cuadrícula / Tabla Pro
+                if (isModifier && event.logicalKey == LogicalKeyboardKey.keyV) {
                   setState(() {
                     _viewMode = _viewMode == CatalogViewMode.grid
                         ? CatalogViewMode.table
@@ -712,8 +712,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   return KeyEventResult.handled;
                 }
 
-                // Alt+T: Alternar modo Producto / Ingrediente
-                if (isAlt && event.logicalKey == LogicalKeyboardKey.keyT) {
+                // ⌘T / Ctrl+T / Alt+T: Alternar modo Producto / Ingrediente
+                if (isModifier && event.logicalKey == LogicalKeyboardKey.keyT) {
                   cubit.toggleSearchByIngredient(
                     !cubit.state.searchByIngredient,
                   );

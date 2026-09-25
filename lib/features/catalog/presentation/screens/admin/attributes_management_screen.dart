@@ -13,19 +13,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/attributes/attribute_value_dialog.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/attributes/attributes_skeleton.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-
-// Intents para atajos de teclado Pro Tool (Linear / Stripe style)
-class _NewAttributeIntent extends Intent {
-  const _NewAttributeIntent();
-}
-
-class _SearchFocusIntent extends Intent {
-  const _SearchFocusIntent();
-}
-
-class _EscapeIntent extends Intent {
-  const _EscapeIntent();
-}
+import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 
 enum _AttributeFilter { all, withValues, withoutValues }
 
@@ -92,39 +80,37 @@ class _AttributesManagementScreenState
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isMobile = screenWidth < 720;
 
-    return Shortcuts(
-      shortcuts: <ShortcutActivator, Intent>{
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyN):
-            const _NewAttributeIntent(),
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyK):
-            const _SearchFocusIntent(),
-        LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyK):
-            const _SearchFocusIntent(),
-        LogicalKeySet(LogicalKeyboardKey.escape): const _EscapeIntent(),
-      },
-      child: Actions(
-        actions: <Type, Action<Intent>>{
-          _NewAttributeIntent: CallbackAction<_NewAttributeIntent>(
-            onInvoke: (_) {
-              _openForm();
-              return null;
-            },
-          ),
-          _SearchFocusIntent: CallbackAction<_SearchFocusIntent>(
-            onInvoke: (_) {
-              _searchFocusNode.requestFocus();
-              return null;
-            },
-          ),
-          _EscapeIntent: CallbackAction<_EscapeIntent>(
-            onInvoke: (_) {
-              if (_searchFocusNode.hasFocus) {
-                _searchFocusNode.unfocus();
-              }
-              return null;
-            },
-          ),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () {
+          _searchFocusNode.requestFocus();
         },
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () {
+          _searchFocusNode.requestFocus();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyK, alt: true): () {
+          _searchFocusNode.requestFocus();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true): () {
+          _openForm();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyN, meta: true): () {
+          _openForm();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyN, alt: true): () {
+          _openForm();
+        },
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (_searchFocusNode.hasFocus) {
+            _searchFocusNode.unfocus();
+          } else if (_searchQuery.isNotEmpty) {
+            _searchCtrl.clear();
+            setState(() => _searchQuery = '');
+          }
+        },
+      },
+      child: Focus(
+        autofocus: true,
         child: AdminLayout(
           title: 'Atributos de Variantes',
           showBackButton: true,
@@ -344,9 +330,9 @@ class _AttributesManagementScreenState
                                       borderRadius: BorderRadius.circular(4),
                                       border: Border.all(color: AppColors.border),
                                     ),
-                                    child: const Text(
-                                      'Ctrl K',
-                                      style: TextStyle(
+                                    child: Text(
+                                      AppShortcutLabels.search,
+                                      style: const TextStyle(
                                         fontSize: 10.5,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.textSecondary,

@@ -314,38 +314,72 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
-        // Foco de Búsqueda (Alt+K, Alt+B)
+        // Foco de Búsqueda (Ctrl+K, Cmd+K, Alt+K, Ctrl+B, Cmd+B, Alt+B)
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _focusSearch,
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _focusSearch,
         const SingleActivator(LogicalKeyboardKey.keyK, alt: true): _focusSearch,
+        const SingleActivator(LogicalKeyboardKey.keyB, control: true): _focusSearch,
+        const SingleActivator(LogicalKeyboardKey.keyB, meta: true): _focusSearch,
         const SingleActivator(LogicalKeyboardKey.keyB, alt: true): _focusSearch,
 
-        // Navegación Sidebar: Venta (Alt+1 / Alt+V / Numpad 1)
+        // Navegación Sidebar: Venta (Ctrl+1 / Cmd+1 / Alt+1 / Alt+V / Numpad 1)
+        const SingleActivator(LogicalKeyboardKey.digit1, control: true): () => _onSidebarTabSelected(0),
+        const SingleActivator(LogicalKeyboardKey.digit1, meta: true): () => _onSidebarTabSelected(0),
         const SingleActivator(LogicalKeyboardKey.digit1, alt: true): () => _onSidebarTabSelected(0),
-        const SingleActivator(LogicalKeyboardKey.numpad1, alt: true): () => _onSidebarTabSelected(0),
+        const SingleActivator(LogicalKeyboardKey.numpad1): () => _onSidebarTabSelected(0),
+        const SingleActivator(LogicalKeyboardKey.keyV, control: true): () => _onSidebarTabSelected(0),
+        const SingleActivator(LogicalKeyboardKey.keyV, meta: true): () => _onSidebarTabSelected(0),
         const SingleActivator(LogicalKeyboardKey.keyV, alt: true): () => _onSidebarTabSelected(0),
 
-        // Navegación Sidebar: Lotes / Stock (Alt+2 / Alt+L / Alt+S / Numpad 2)
+        // Navegación Sidebar: Lotes / Stock (Ctrl+2 / Cmd+2 / Alt+2 / Alt+L / Alt+S / Numpad 2)
+        const SingleActivator(LogicalKeyboardKey.digit2, control: true): () => _onSidebarTabSelected(1),
+        const SingleActivator(LogicalKeyboardKey.digit2, meta: true): () => _onSidebarTabSelected(1),
         const SingleActivator(LogicalKeyboardKey.digit2, alt: true): () => _onSidebarTabSelected(1),
-        const SingleActivator(LogicalKeyboardKey.numpad2, alt: true): () => _onSidebarTabSelected(1),
+        const SingleActivator(LogicalKeyboardKey.numpad2): () => _onSidebarTabSelected(1),
+        const SingleActivator(LogicalKeyboardKey.keyL, control: true): () => _onSidebarTabSelected(1),
+        const SingleActivator(LogicalKeyboardKey.keyL, meta: true): () => _onSidebarTabSelected(1),
         const SingleActivator(LogicalKeyboardKey.keyL, alt: true): () => _onSidebarTabSelected(1),
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () => _onSidebarTabSelected(1),
+        const SingleActivator(LogicalKeyboardKey.keyS, meta: true): () => _onSidebarTabSelected(1),
         const SingleActivator(LogicalKeyboardKey.keyS, alt: true): () => _onSidebarTabSelected(1),
 
-        // Navegación Sidebar: Ventas / Historial (Alt+3 / Alt+H / Numpad 3)
+        // Navegación Sidebar: Ventas / Historial (Ctrl+3 / Cmd+3 / Alt+3 / Alt+H / Numpad 3)
+        const SingleActivator(LogicalKeyboardKey.digit3, control: true): () => _onSidebarTabSelected(2),
+        const SingleActivator(LogicalKeyboardKey.digit3, meta: true): () => _onSidebarTabSelected(2),
         const SingleActivator(LogicalKeyboardKey.digit3, alt: true): () => _onSidebarTabSelected(2),
-        const SingleActivator(LogicalKeyboardKey.numpad3, alt: true): () => _onSidebarTabSelected(2),
+        const SingleActivator(LogicalKeyboardKey.numpad3): () => _onSidebarTabSelected(2),
+        const SingleActivator(LogicalKeyboardKey.keyH, control: true): () => _onSidebarTabSelected(2),
+        const SingleActivator(LogicalKeyboardKey.keyH, meta: true): () => _onSidebarTabSelected(2),
         const SingleActivator(LogicalKeyboardKey.keyH, alt: true): () => _onSidebarTabSelected(2),
 
-        // Navegación Sidebar: Turnos de Caja (Alt+4 / Alt+T / Numpad 4)
+        // Navegación Sidebar: Turnos de Caja (Ctrl+4 / Cmd+4 / Alt+4 / Alt+T / Numpad 4)
+        const SingleActivator(LogicalKeyboardKey.digit4, control: true): () => _onSidebarTabSelected(3),
+        const SingleActivator(LogicalKeyboardKey.digit4, meta: true): () => _onSidebarTabSelected(3),
         const SingleActivator(LogicalKeyboardKey.digit4, alt: true): () => _onSidebarTabSelected(3),
-        const SingleActivator(LogicalKeyboardKey.numpad4, alt: true): () => _onSidebarTabSelected(3),
+        const SingleActivator(LogicalKeyboardKey.numpad4): () => _onSidebarTabSelected(3),
+        const SingleActivator(LogicalKeyboardKey.keyT, control: true): () => _onSidebarTabSelected(3),
+        const SingleActivator(LogicalKeyboardKey.keyT, meta: true): () => _onSidebarTabSelected(3),
         const SingleActivator(LogicalKeyboardKey.keyT, alt: true): () => _onSidebarTabSelected(3),
 
-        // Alternar modo de búsqueda Producto vs Ingrediente Activo (Alt+I)
+        // Alternar modo de búsqueda Producto vs Ingrediente Activo (Ctrl+I / Cmd+I / Alt+I)
+        const SingleActivator(LogicalKeyboardKey.keyI, control: true): () {
+          _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
+        },
+        const SingleActivator(LogicalKeyboardKey.keyI, meta: true): () {
+          _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
+        },
         const SingleActivator(LogicalKeyboardKey.keyI, alt: true): () {
           _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
         },
 
-        // Cobrar Inmediato en Desktop (F2 o Alt+C)
+        // Cobrar Inmediato en Desktop (F2 o Ctrl+C / Cmd+C / Alt+C)
         const SingleActivator(LogicalKeyboardKey.f2): () {
+          _desktopPanelKey.currentState?.triggerCheckout();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyC, control: true): () {
+          _desktopPanelKey.currentState?.triggerCheckout();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyC, meta: true): () {
           _desktopPanelKey.currentState?.triggerCheckout();
         },
         const SingleActivator(LogicalKeyboardKey.keyC, alt: true): () {

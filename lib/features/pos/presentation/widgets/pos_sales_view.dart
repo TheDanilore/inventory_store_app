@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
@@ -397,9 +398,12 @@ class _PosSalesViewState extends State<PosSalesView> {
               onKeyEvent: (node, event) {
                 if (event is KeyDownEvent) {
                   final isAlt = HardwareKeyboard.instance.isAltPressed;
+                  final isControl = HardwareKeyboard.instance.isControlPressed;
+                  final isMeta = HardwareKeyboard.instance.isMetaPressed;
+                  final isModifier = isAlt || isControl || isMeta;
 
-                  // Alt+K: Enfoca y selecciona el texto del buscador de ventas
-                  if (isAlt && event.logicalKey == LogicalKeyboardKey.keyK) {
+                  // ⌘K / Ctrl+K / Alt+K: Enfoca y selecciona el texto del buscador de ventas
+                  if (isModifier && event.logicalKey == LogicalKeyboardKey.keyK) {
                     _searchFocusNode.requestFocus();
                     _searchCtrl.selection = TextSelection(
                       baseOffset: 0,
@@ -432,8 +436,8 @@ class _PosSalesViewState extends State<PosSalesView> {
                     }
                   }
 
-                  // Alt+P: Reimprimir ticket de la venta seleccionada
-                  if (isAlt &&
+                  // ⌘P / Ctrl+P / Alt+P: Reimprimir ticket de la venta seleccionada
+                  if (isModifier &&
                       event.logicalKey == LogicalKeyboardKey.keyP &&
                       _selectedOrder != null) {
                     _reimprimirTicket(_selectedOrder!.id);
@@ -839,7 +843,7 @@ class _PosSalesViewState extends State<PosSalesView> {
           );
         },
         decoration: InputDecoration(
-          hintText: 'Buscar por cliente o código de comprobante... (Alt+K)',
+          hintText: 'Buscar por cliente o código de comprobante... (${AppShortcutLabels.modPlus}K)',
           hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
           prefixIcon: const Icon(
             Icons.search_rounded,

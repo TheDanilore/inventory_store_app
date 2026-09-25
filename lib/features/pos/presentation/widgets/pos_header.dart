@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
@@ -563,7 +564,7 @@ class PosHeader extends StatelessWidget {
             children: [
               // 1. Modo Producto (Cubo 3D)
               Tooltip(
-                message: 'Buscar por Producto (Alt+T)',
+                message: 'Buscar por Producto (${AppShortcutLabels.modPlus}I)',
                 child: InkWell(
                   onTap: () {
                     if (searchByIngredient) onToggleIngredientSearch(false);
@@ -601,7 +602,7 @@ class PosHeader extends StatelessWidget {
 
               // 2. Modo Ingrediente Activo (Matraz químico / Tubo)
               Tooltip(
-                message: 'Buscar por Ingrediente Activo (Alt+T)',
+                message: 'Buscar por Ingrediente Activo (${AppShortcutLabels.modPlus}I)',
                 child: InkWell(
                   onTap: () {
                     if (!searchByIngredient) onToggleIngredientSearch(true);
@@ -725,9 +726,9 @@ class PosHeader extends StatelessWidget {
                                   width: 1,
                                 ),
                               ),
-                              child: const Text(
-                                'Alt K',
-                                style: TextStyle(
+                              child: Text(
+                                AppShortcutLabels.search,
+                                style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.textSecondary,

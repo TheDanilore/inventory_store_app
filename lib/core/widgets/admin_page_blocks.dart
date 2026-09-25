@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 
 /// Componente de Paginación Adaptativo de Nivel Internacional (Stripe / Linear / Apple HIG).
 ///
@@ -73,13 +74,16 @@ class AdminPageBlocks extends StatelessWidget {
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent) {
           final isAlt = HardwareKeyboard.instance.isAltPressed;
-          if (isAlt && event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+          final isControl = HardwareKeyboard.instance.isControlPressed;
+          final isMeta = HardwareKeyboard.instance.isMetaPressed;
+          final isModifier = isAlt || isControl || isMeta;
+          if (isModifier && event.logicalKey == LogicalKeyboardKey.arrowLeft) {
             if (currentPage > 0) {
               onPageChanged(currentPage - 1);
               return KeyEventResult.handled;
             }
           }
-          if (isAlt && event.logicalKey == LogicalKeyboardKey.arrowRight) {
+          if (isModifier && event.logicalKey == LogicalKeyboardKey.arrowRight) {
             if (currentPage < totalPages - 1) {
               onPageChanged(currentPage + 1);
               return KeyEventResult.handled;
@@ -217,7 +221,7 @@ class AdminPageBlocks extends StatelessWidget {
               // Chevron Anterior
               _DesktopChevronButton(
                 icon: Icons.chevron_left_rounded,
-                tooltip: 'Página anterior (Alt + ←)',
+                tooltip: 'Página anterior (${AppShortcutLabels.modPlus}←)',
                 enabled: canPrev,
                 onTap: () => onPageChanged(currentPage - 1),
               ),
@@ -256,7 +260,7 @@ class AdminPageBlocks extends StatelessWidget {
               // Chevron Siguiente
               _DesktopChevronButton(
                 icon: Icons.chevron_right_rounded,
-                tooltip: 'Página siguiente (Alt + →)',
+                tooltip: 'Página siguiente (${AppShortcutLabels.modPlus}→)',
                 enabled: canNext,
                 onTap: () => onPageChanged(currentPage + 1),
               ),

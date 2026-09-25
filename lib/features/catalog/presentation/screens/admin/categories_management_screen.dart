@@ -14,21 +14,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-
-// ── Intents para atajos de teclado estilo Pro Tool ───────────────────────────
-class _NewCategoryIntent extends Intent {
-  const _NewCategoryIntent();
-}
-
-class _SearchFocusIntent extends Intent {
-  const _SearchFocusIntent();
-}
-
-class _EscapeIntent extends Intent {
-  const _EscapeIntent();
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
+import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 
 class CategoriesManagementScreen extends StatefulWidget {
   const CategoriesManagementScreen({super.key});
@@ -143,6 +129,16 @@ class _CategoriesManagementScreenState
     }
   }
 
+  void _focusSearch() {
+    _searchFocusNode.requestFocus();
+  }
+
+  void _unfocusSearch() {
+    if (_searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+    }
+  }
+
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -150,149 +146,129 @@ class _CategoriesManagementScreenState
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isMobile = screenWidth < 720;
 
-    return Shortcuts(
-      shortcuts: <ShortcutActivator, Intent>{
+    return CallbackShortcuts(
+      bindings: {
         const SingleActivator(LogicalKeyboardKey.keyN, control: true):
-            const _NewCategoryIntent(),
+            _showCategoryForm,
         const SingleActivator(LogicalKeyboardKey.keyN, meta: true):
-            const _NewCategoryIntent(),
+            _showCategoryForm,
+        const SingleActivator(LogicalKeyboardKey.keyN, alt: true):
+            _showCategoryForm,
         const SingleActivator(LogicalKeyboardKey.keyK, control: true):
-            const _SearchFocusIntent(),
+            _focusSearch,
         const SingleActivator(LogicalKeyboardKey.keyK, meta: true):
-            const _SearchFocusIntent(),
-        const SingleActivator(LogicalKeyboardKey.escape): const _EscapeIntent(),
+            _focusSearch,
+        const SingleActivator(LogicalKeyboardKey.keyK, alt: true):
+            _focusSearch,
+        const SingleActivator(LogicalKeyboardKey.escape): _unfocusSearch,
       },
-      child: Actions(
-        actions: <Type, Action<Intent>>{
-          _NewCategoryIntent: CallbackAction<_NewCategoryIntent>(
-            onInvoke: (_) {
-              _showCategoryForm();
-              return null;
-            },
-          ),
-          _SearchFocusIntent: CallbackAction<_SearchFocusIntent>(
-            onInvoke: (_) {
-              _searchFocusNode.requestFocus();
-              return null;
-            },
-          ),
-          _EscapeIntent: CallbackAction<_EscapeIntent>(
-            onInvoke: (_) {
-              if (_searchFocusNode.hasFocus) {
-                _searchFocusNode.unfocus();
-              }
-              return null;
-            },
-          ),
-        },
-        child: Focus(
-          autofocus: true,
-          child: AdminLayout(
-            title: 'Categorías',
-            showBackButton: true,
-            actions: [
-              if (isMobile)
-                IconButton(
-                  icon: const Icon(Icons.refresh_rounded),
-                  tooltip: 'Actualizar',
-                  onPressed: () => context
-                      .read<CategoriesCubit>()
-                      .loadCategories(forceRefresh: true),
-                )
-              else ...[
-                OutlinedButton.icon(
-                  onPressed: () => context
-                      .read<CategoriesCubit>()
-                      .loadCategories(forceRefresh: true),
-                  icon: const Icon(
-                    Icons.refresh_rounded,
-                    size: 16,
+      child: Focus(
+        autofocus: true,
+        child: AdminLayout(
+          title: 'Categorías',
+          showBackButton: true,
+          actions: [
+            if (isMobile)
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                tooltip: 'Actualizar',
+                onPressed: () => context
+                    .read<CategoriesCubit>()
+                    .loadCategories(forceRefresh: true),
+              )
+            else ...[
+              OutlinedButton.icon(
+                onPressed: () => context
+                    .read<CategoriesCubit>()
+                    .loadCategories(forceRefresh: true),
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
+                label: const Text(
+                  'Actualizar',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
                     color: AppColors.textSecondary,
                   ),
-                  label: const Text(
-                    'Actualizar',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.border),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.border),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: () => _showCategoryForm(),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text(
-                    'Nueva Categoría',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: () => _showCategoryForm(),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text(
+                  'Nueva Categoría',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
                   ),
                 ),
-              ],
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
             ],
-            floatingActionButton: isMobile
-                ? FloatingActionButton.extended(
-                    onPressed: () => _showCategoryForm(),
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    tooltip: 'Crear nueva categoría',
-                    icon: const Icon(Icons.add_rounded),
-                    label: ValueListenableBuilder<bool>(
-                      valueListenable: _isFabExtended,
-                      builder: (context, extended, _) => AnimatedSize(
-                        duration: const Duration(milliseconds: 200),
-                        child: extended
-                            ? const Text(
-                                'Nueva',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              )
-                            : const SizedBox.shrink(),
-                      ),
+          ],
+          floatingActionButton: isMobile
+              ? FloatingActionButton.extended(
+                  onPressed: () => _showCategoryForm(),
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  tooltip: 'Crear nueva categoría (${AppShortcutLabels.newRecord})',
+                  icon: const Icon(Icons.add_rounded),
+                  label: ValueListenableBuilder<bool>(
+                    valueListenable: _isFabExtended,
+                    builder: (context, extended, _) => AnimatedSize(
+                      duration: const Duration(milliseconds: 200),
+                      child: extended
+                          ? const Text(
+                              'Nueva',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            )
+                          : const SizedBox.shrink(),
                     ),
-                  )
-                : null,
-            body: BlocConsumer<CategoriesCubit, CategoriesState>(
-              listenWhen: (prev, curr) =>
-                  curr.errorMessage != null &&
-                  curr.errorMessage != prev.errorMessage,
-              listener: (context, state) {
-                if (state.errorMessage != null) {
-                  AppSnackbar.show(
-                    context,
-                    message: state.errorMessage!,
-                    type: SnackbarType.error,
-                  );
-                }
-              },
-              builder: (context, state) {
-                final cubit = context.read<CategoriesCubit>();
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isDesktopLayout = constraints.maxWidth >= 960;
-                    return isDesktopLayout
-                        ? _buildDesktopLayout(context, state, cubit)
-                        : _buildMobileLayout(context, state, cubit);
-                  },
+                  ),
+                )
+              : null,
+          body: BlocConsumer<CategoriesCubit, CategoriesState>(
+            listenWhen: (prev, curr) =>
+                curr.errorMessage != null &&
+                curr.errorMessage != prev.errorMessage,
+            listener: (context, state) {
+              if (state.errorMessage != null) {
+                AppSnackbar.show(
+                  context,
+                  message: state.errorMessage!,
+                  type: SnackbarType.error,
                 );
-              },
-            ),
+              }
+            },
+            builder: (context, state) {
+              final cubit = context.read<CategoriesCubit>();
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final isDesktopLayout = constraints.maxWidth >= 960;
+                  return isDesktopLayout
+                      ? _buildDesktopLayout(context, state, cubit)
+                      : _buildMobileLayout(context, state, cubit);
+                },
+              );
+            },
           ),
         ),
       ),
@@ -1113,7 +1089,7 @@ class _AnimatedSearchBarState extends State<_AnimatedSearchBar> {
                 )
               : (isDesktop
                   ? Tooltip(
-                      message: 'Atajo de teclado: Ctrl K',
+                      message: 'Atajo: ${AppShortcutLabels.search}',
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 10),
@@ -1124,9 +1100,9 @@ class _AnimatedSearchBarState extends State<_AnimatedSearchBar> {
                             color: AppColors.border,
                             borderRadius: BorderRadius.circular(5),
                           ),
-                          child: const Text(
-                            'Ctrl K',
-                            style: TextStyle(
+                          child: Text(
+                            AppShortcutLabels.search,
+                            style: const TextStyle(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textSecondary,

@@ -10,6 +10,7 @@ import 'package:inventory_store_app/features/inventory/presentation/widgets/inve
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_product_quick_view_sheet.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'dart:async';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
@@ -113,8 +114,12 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           onKeyEvent: (node, event) {
             if (event is KeyDownEvent) {
               final isAlt = HardwareKeyboard.instance.isAltPressed;
-              // Alt+K enfoca el buscador y selecciona el texto
-              if (isAlt && event.logicalKey == LogicalKeyboardKey.keyK) {
+              final isControl = HardwareKeyboard.instance.isControlPressed;
+              final isMeta = HardwareKeyboard.instance.isMetaPressed;
+              final isModifier = isAlt || isControl || isMeta;
+
+              // ⌘K / Ctrl+K / Alt+K enfoca el buscador y selecciona el texto
+              if (isModifier && event.logicalKey == LogicalKeyboardKey.keyK) {
                 _searchFocusNode.requestFocus();
                 _searchCtrl.selection = TextSelection(
                   baseOffset: 0,
@@ -210,7 +215,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                             child: _SearchField(
                               controller: _searchCtrl,
                               focusNode: _searchFocusNode,
-                              hint: 'Buscar producto o SKU... (Alt+K)',
+                              hint: 'Buscar producto o SKU... (${AppShortcutLabels.modPlus}K)',
                               onChanged: _onSearchChanged,
                               onSubmitted: _onSearchSubmitted,
                               isLoading: state.isSearchingStock,
