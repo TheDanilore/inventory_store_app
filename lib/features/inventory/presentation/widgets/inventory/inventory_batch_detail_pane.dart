@@ -240,13 +240,19 @@ class InventoryBatchDetailPane extends StatelessWidget {
                 runSpacing: 4,
                 children: [
                   if (batch.variantAttrs != null &&
-                      batch.variantAttrs!.isNotEmpty &&
-                      batch.variantAttrs != 'Única')
+                      batch.variantAttrs!.trim().isNotEmpty &&
+                      batch.variantAttrs!.trim() != 'Única' &&
+                      batch.variantAttrs!.trim().toLowerCase() !=
+                          'variante estándar' &&
+                      batch.variantAttrs!.trim().toLowerCase() !=
+                          'variante única')
                     _TagBadge(
                       label: batch.variantAttrs!,
                       icon: Icons.style_outlined,
                     ),
-                  if (batch.sku != null && batch.sku!.isNotEmpty)
+                  if (batch.sku != null &&
+                      batch.sku!.trim().isNotEmpty &&
+                      batch.sku!.trim() != 'N/A')
                     _TagBadge(
                       label: 'SKU: ${batch.sku!}',
                       icon: Icons.qr_code_rounded,

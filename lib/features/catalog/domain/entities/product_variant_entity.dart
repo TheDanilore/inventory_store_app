@@ -13,18 +13,18 @@ class ProductVariantEntity {
           )
           .join(' / ');
     }
-    if (sku != null && sku!.trim().isNotEmpty) {
+    if (sku != null && sku!.trim().isNotEmpty && sku!.trim() != 'N/A') {
       return sku!;
     }
-    return 'Variante Estándar';
+    return '';
   }
 
   String get shortLabel {
     if (attributeValues.isNotEmpty) {
       return attributeValues.map((av) => av.value).join(' / ');
     }
-    if (sku != null && sku!.trim().isNotEmpty) return sku!;
-    return 'Variante Estándar';
+    if (sku != null && sku!.trim().isNotEmpty && sku!.trim() != 'N/A') return sku!;
+    return '';
   }
 
   Map<String, String> get attributeMap {

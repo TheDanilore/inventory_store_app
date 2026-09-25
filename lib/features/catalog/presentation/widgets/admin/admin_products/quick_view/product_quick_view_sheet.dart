@@ -128,6 +128,17 @@ class ProductQuickViewContent extends StatelessWidget {
                 product.details['principio_activo'] ??
                 product.details['formula'])
             ?.toString();
+    final bool isSimpleProduct =
+        variants.length == 1 &&
+        variants.first.attributeValues.isEmpty;
+    final String sectionTitle =
+        isSimpleProduct
+            ? 'Presentación'
+            : 'Variantes (${variants.length})';
+    final IconData sectionIcon =
+        isSimpleProduct
+            ? Icons.inventory_2_outlined
+            : Icons.style_outlined;
 
     return Column(
       children: [
@@ -495,20 +506,20 @@ class ProductQuickViewContent extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
-                // Sección Variantes
+                // Sección Variantes o Presentación
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
-                        const Icon(
-                          Icons.style_outlined,
+                        Icon(
+                          sectionIcon,
                           size: 16,
                           color: AppColors.primary,
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Variantes (${variants.length})',
+                          sectionTitle,
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -558,6 +569,7 @@ class ProductQuickViewContent extends StatelessWidget {
                       final v = variants[index];
                       return ProductQuickViewVariantCard(
                         variant: v,
+                        productName: product.name,
                         index: index,
                         isSingleVariant: variants.length == 1,
                         productStock: product.totalStock,

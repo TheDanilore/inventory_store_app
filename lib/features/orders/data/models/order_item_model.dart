@@ -118,7 +118,7 @@ class OrderItemModel extends OrderItemEntity {
   @override
   String get variantLabel {
     if (attributes.isEmpty) {
-      return sku?.trim().isNotEmpty == true ? sku! : 'Variante estándar';
+      return '';
     }
 
     return attributes.entries

@@ -44,9 +44,11 @@ class OrderItemEntity extends Equatable {
           ? productImageUrl
           : null;
 
+  bool get hasVariantAttributes => attributes.isNotEmpty;
+
   String get variantLabel {
     if (attributes.isEmpty) {
-      return sku?.trim().isNotEmpty == true ? sku! : 'Variante estándar';
+      return '';
     }
     return attributes.entries
         .map((entry) => '${entry.key}: ${entry.value}')

@@ -6,6 +6,7 @@ import 'package:inventory_store_app/features/inventory/data/models/warehouse_sto
 /// Tarjeta individual para listar una variante de producto dentro del Quick View Sheet.
 class ProductQuickViewVariantCard extends StatelessWidget {
   final ProductVariantEntity variant;
+  final String? productName;
   final int index;
   final bool isSingleVariant;
   final int productStock;
@@ -14,6 +15,7 @@ class ProductQuickViewVariantCard extends StatelessWidget {
   const ProductQuickViewVariantCard({
     super.key,
     required this.variant,
+    this.productName,
     this.index = 0,
     required this.isSingleVariant,
     required this.productStock,
@@ -25,12 +27,16 @@ class ProductQuickViewVariantCard extends StatelessWidget {
     String displayTitle;
     if (variant.attributeValues.isNotEmpty) {
       displayTitle = variant.label;
-    } else if (variant.sku != null && variant.sku!.trim().isNotEmpty) {
+    } else if (variant.sku != null &&
+        variant.sku!.trim().isNotEmpty &&
+        variant.sku!.trim() != 'N/A') {
       displayTitle = variant.sku!;
     } else if (!isSingleVariant) {
       displayTitle = 'Variante #${index + 1}';
+    } else if (productName != null && productName!.trim().isNotEmpty) {
+      displayTitle = productName!.trim();
     } else {
-      displayTitle = 'Variante Estándar';
+      displayTitle = 'Producto Base';
     }
 
     final salePrice = variant.salePrice;
@@ -113,7 +119,10 @@ class ProductQuickViewVariantCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (sku != null && sku.isNotEmpty && displayTitle != sku)
+                if (sku != null &&
+                    sku.isNotEmpty &&
+                    sku.trim() != 'N/A' &&
+                    displayTitle != sku)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(

@@ -109,7 +109,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
         productId: prod?['id'] as String? ?? '',
         variantId: variantId ?? '',
         productName: prod?['name'] as String? ?? '—',
-        variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
+        variantAttrs: attrsText.isNotEmpty ? attrsText : '',
         quantity: (r['quantity'] as num).toDouble(),
         unitCost: (r['unit_cost'] as num).toDouble(),
         batchNumber: r['batch_number'] as String? ?? 'DEFAULT',

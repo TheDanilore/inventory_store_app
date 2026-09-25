@@ -286,8 +286,10 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                 ],
               ),
 
-              // Variantes
-              if (loadedState.variants.isNotEmpty) ...[
+              // Variantes (Solo mostrar selector si el producto tiene múltiples variantes o atributos reales)
+              if (loadedState.variants.length > 1 ||
+                  (loadedState.variants.length == 1 &&
+                      loadedState.variants.first.attributeValues.isNotEmpty)) ...[
                 const SizedBox(height: 20),
                 const Text(
                   'Variante',
@@ -321,10 +323,15 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                                 loadedState.hasStockControl
                                     ? '($vStock en stock)'
                                     : '(Stock Libre)';
+                            final vName = v.label.isNotEmpty
+                                ? v.label
+                                : (v.sku?.isNotEmpty == true && v.sku != 'N/A'
+                                    ? v.sku!
+                                    : 'Opción');
                             return DropdownMenuItem(
                               value: v,
                               child: Text(
-                                '${v.label} · S/ ${(v.salePrice)?.toStringAsFixed(2)} $stockLabel',
+                                '$vName · S/ ${(v.salePrice)?.toStringAsFixed(2)} $stockLabel',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textPrimary,

@@ -75,7 +75,7 @@ class KardexMovementModel {
         attrValues.add(av['value'].toString());
       }
     }
-    final attrsText = attrValues.isNotEmpty ? attrValues.join(' · ') : 'Única';
+    final attrsText = attrValues.isNotEmpty ? attrValues.join(' · ') : '';
 
     // Extracción de la imagen (Prioridad: Variante -> Producto)
     String? finalImageUrl;

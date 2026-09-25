@@ -446,9 +446,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                                           .textPrimary,
                                                                 ),
                                                               ),
-                                                              if (item
-                                                                  .attrsText
-                                                                  .isNotEmpty)
+                                                              if (item.attrsText.trim().isNotEmpty &&
+                                                                  item.attrsText.trim() != 'Única' &&
+                                                                  item.attrsText.trim().toLowerCase() != 'variante estándar')
                                                                 Text(
                                                                   item.attrsText,
                                                                   style: const TextStyle(

@@ -177,10 +177,16 @@ class InventoryStockCard extends StatelessWidget {
                           Text(
                             [
                               item.category,
-                              if (item.attrsText.isNotEmpty &&
-                                  item.attrsText != 'Única')
+                              if (item.attrsText.trim().isNotEmpty &&
+                                  item.attrsText.trim() != 'Única' &&
+                                  item.attrsText.trim().toLowerCase() !=
+                                      'variante estándar' &&
+                                  item.attrsText.trim().toLowerCase() !=
+                                      'variante única')
                                 item.attrsText,
-                              if (item.sku != null && item.sku!.isNotEmpty)
+                              if (item.sku != null &&
+                                  item.sku!.trim().isNotEmpty &&
+                                  item.sku!.trim() != 'N/A')
                                 'SKU: ${item.sku}',
                             ].join(' · '),
                             style: const TextStyle(

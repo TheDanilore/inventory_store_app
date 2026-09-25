@@ -879,7 +879,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     final attrValues =
         item.variant.attributeValues.map((v) => v.value).toList();
     final attrsText = attrValues.join(' · ');
-    final displayVariantText = attrsText.isNotEmpty ? attrsText : 'Única';
+    final displayVariantText = attrsText.isNotEmpty ? attrsText : '';
     final batchNumber = item.selectedBatch?['batch_number'] ?? 'DEFAULT';
     final double maxAvailable =
         (item.selectedBatch?['available_quantity'] as num?)?.toDouble() ?? 0.0;
@@ -957,14 +957,16 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Variante: $displayVariantText',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
+                if (displayVariantText.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Variante: $displayVariantText',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
+                ],
                 if (item.product.usesBatches)
                   Text(
                     isBatchMissing ? '⚠ Lote Requerido' : 'Lote: $batchNumber',

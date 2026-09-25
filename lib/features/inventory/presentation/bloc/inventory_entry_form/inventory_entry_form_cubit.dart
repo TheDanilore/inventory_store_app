@@ -471,7 +471,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
               productName: itemJson['product_name'] as String? ?? '—',
               variantId: itemJson['variant_id'] as String? ?? '',
               variantLabel:
-                  itemJson['variant_label'] as String? ?? 'Variante Única',
+                  itemJson['variant_label'] as String? ?? '',
               imageUrl: itemJson['image_url'] as String?,
               usesBatches: itemJson['uses_batches'] as bool? ?? false,
               quantity: (itemJson['quantity'] as num).toDouble(),

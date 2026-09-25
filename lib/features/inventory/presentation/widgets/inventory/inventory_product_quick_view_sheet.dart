@@ -185,11 +185,16 @@ class _InventoryProductQuickViewContentState
     final v = _activeVariant;
     if (v != null) {
       if (v.attributeValues.isNotEmpty) return v.label;
-      if (v.sku?.isNotEmpty == true) return v.sku!;
+      if (v.sku?.isNotEmpty == true && v.sku != 'N/A') return v.sku!;
     }
-    return widget.item.attrsText.isNotEmpty
-        ? widget.item.attrsText
-        : 'Variante Estándar';
+    final raw = widget.item.attrsText.trim();
+    if (raw.isNotEmpty &&
+        raw != 'Única' &&
+        raw.toLowerCase() != 'variante estándar' &&
+        raw.toLowerCase() != 'estándar') {
+      return raw;
+    }
+    return '';
   }
 
   String? get _activeVariantSku {
@@ -319,7 +324,7 @@ class _InventoryProductQuickViewContentState
                       children: [
                         Flexible(
                           child: Text(
-                            _activeVariantTitle,
+                            item.productName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -353,7 +358,12 @@ class _InventoryProductQuickViewContentState
                       ],
                     ),
                     Text(
-                      item.productName,
+                      _activeVariantTitle.isNotEmpty &&
+                              _activeVariantTitle != item.productName
+                          ? (item.category.isNotEmpty
+                              ? '$_activeVariantTitle · ${item.category}'
+                              : _activeVariantTitle)
+                          : item.category,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -590,9 +600,9 @@ class _InventoryProductQuickViewContentState
                                     ),
                                 errorWidget:
                                     (ctx, url, err) =>
-                                        _buildMonogram(_activeVariantTitle, 72),
+                                        _buildMonogram(item.productName, 72),
                               )
-                              : _buildMonogram(_activeVariantTitle, 72),
+                              : _buildMonogram(item.productName, 72),
                     ),
                     const SizedBox(width: 14),
 
@@ -602,7 +612,7 @@ class _InventoryProductQuickViewContentState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _activeVariantTitle,
+                            item.productName,
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
@@ -610,15 +620,18 @@ class _InventoryProductQuickViewContentState
                               height: 1.2,
                             ),
                           ),
-                          const SizedBox(height: 3),
-                          Text(
-                            item.productName,
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w500,
+                          if (_activeVariantTitle.isNotEmpty &&
+                              _activeVariantTitle != item.productName) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              _activeVariantTitle,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
+                          ],
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 6,
@@ -1142,10 +1155,10 @@ class _InventoryProductQuickViewContentState
                         final displayTitle =
                             v.attributeValues.isNotEmpty
                                 ? v.label
-                                : (v.sku?.isNotEmpty == true
+                                : (v.sku?.isNotEmpty == true && v.sku != 'N/A'
                                     ? v.sku!
                                     : (variants.length == 1
-                                        ? 'Variante Estándar'
+                                        ? item.productName
                                         : 'Variante #${index + 1}'));
 
                         return _VariantRowItem(

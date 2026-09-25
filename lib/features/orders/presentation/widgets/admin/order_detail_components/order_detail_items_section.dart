@@ -142,16 +142,32 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
                       letterSpacing: -0.2,
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    widget.item.variantLabel,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'SKU: ${widget.item.sku ?? 'N/A'}',
-                    style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted),
-                  ),
+                  if (widget.item.hasVariantAttributes &&
+                      widget.item.variantLabel.trim().isNotEmpty &&
+                      widget.item.variantLabel.toLowerCase() !=
+                          'variante estándar' &&
+                      widget.item.variantLabel.toLowerCase() != 'única') ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      widget.item.variantLabel,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                  if (widget.item.sku != null &&
+                      widget.item.sku!.trim().isNotEmpty &&
+                      widget.item.sku != 'N/A') ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'SKU: ${widget.item.sku}',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 3),
                   Text(
                     'P. unit: S/ ${widget.item.appliedPrice.toStringAsFixed(2)}',

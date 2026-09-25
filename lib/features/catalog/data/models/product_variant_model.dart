@@ -53,8 +53,8 @@ class ProductVariantModel {
           )
           .join(' / ');
     }
-    if (sku != null && sku!.trim().isNotEmpty) return sku!;
-    return 'Variante estándar';
+    if (sku != null && sku!.trim().isNotEmpty && sku!.trim() != 'N/A') return sku!;
+    return '';
   }
 
   /// Mapa key→value de los atributos para mostrar en UI (ej: {"Color":"Rojo"})

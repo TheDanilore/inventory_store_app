@@ -351,8 +351,12 @@ class _LedgerRowState extends State<_LedgerRow> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           if (item.attrsText != null &&
-                              item.attrsText!.isNotEmpty &&
-                              item.attrsText != 'Única')
+                              item.attrsText!.trim().isNotEmpty &&
+                              item.attrsText!.trim() != 'Única' &&
+                              item.attrsText!.trim().toLowerCase() !=
+                                  'variante estándar' &&
+                              item.attrsText!.trim().toLowerCase() !=
+                                  'variante única')
                             Text(
                               item.attrsText!,
                               style: const TextStyle(

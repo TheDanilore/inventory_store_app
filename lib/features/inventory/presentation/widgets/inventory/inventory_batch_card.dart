@@ -154,11 +154,23 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                                 Text(
                                   [
                                     if (widget.batch.variantAttrs != null &&
-                                        widget.batch.variantAttrs!.isNotEmpty &&
-                                        widget.batch.variantAttrs != 'Única')
+                                        widget.batch.variantAttrs!
+                                            .trim()
+                                            .isNotEmpty &&
+                                        widget.batch.variantAttrs!.trim() !=
+                                            'Única' &&
+                                        widget.batch.variantAttrs!
+                                                .trim()
+                                                .toLowerCase() !=
+                                            'variante estándar' &&
+                                        widget.batch.variantAttrs!
+                                                .trim()
+                                                .toLowerCase() !=
+                                            'variante única')
                                       widget.batch.variantAttrs!,
                                     if (widget.batch.sku != null &&
-                                        widget.batch.sku!.isNotEmpty)
+                                        widget.batch.sku!.trim().isNotEmpty &&
+                                        widget.batch.sku!.trim() != 'N/A')
                                       'SKU: ${widget.batch.sku}',
                                     if (widget.batch.warehouseName != null)
                                       widget.batch.warehouseName!,

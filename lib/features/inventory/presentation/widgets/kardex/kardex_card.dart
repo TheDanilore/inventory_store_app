@@ -76,11 +76,15 @@ class KardexCard extends StatelessWidget {
     // Construcción de la línea de metadata del producto y variante
     final List<String> metaParts = [];
     if (item.attrsText != null &&
-        item.attrsText!.isNotEmpty &&
-        item.attrsText != 'Única') {
+        item.attrsText!.trim().isNotEmpty &&
+        item.attrsText!.trim() != 'Única' &&
+        item.attrsText!.trim().toLowerCase() != 'variante estándar' &&
+        item.attrsText!.trim().toLowerCase() != 'variante única') {
       metaParts.add(item.attrsText!);
     }
-    if (item.sku != null && item.sku!.isNotEmpty) {
+    if (item.sku != null &&
+        item.sku!.trim().isNotEmpty &&
+        item.sku!.trim() != 'N/A') {
       metaParts.add('SKU: ${item.sku}');
     }
     if (item.batchNumber != null &&
