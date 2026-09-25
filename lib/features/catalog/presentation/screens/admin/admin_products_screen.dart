@@ -39,6 +39,7 @@ class EscapeIntent extends Intent {
 
 /// Pantalla Principal de Catálogo de Productos para Administradores.
 /// Diseño camaleónico de alta densidad para Desktop y estilo Apple HIG para Móvil.
+/// Optimizado para ultra-bajo consumo de memoria y scroll fluido sin header estático.
 class AdminProductsScreen extends StatefulWidget {
   const AdminProductsScreen({super.key});
 
@@ -52,31 +53,68 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
-  // Selección múltiple para acciones por lote estilo Pro Tool
-  final Set<String> _selectedProductIds = {};
+  // Selección múltiple aislada mediante ValueNotifier (previene re-renders globales)
+  final ValueNotifier<Set<String>> _selectedProductIdsNotifier =
+      ValueNotifier<Set<String>>({});
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(() {
-      if (_scrollController.offset > 15 && _isFabExtended.value) {
-        _isFabExtended.value = false;
-      } else if (_scrollController.offset <= 15 && !_isFabExtended.value) {
-        _isFabExtended.value = true;
-      }
-    });
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _searchCtrl.text = context.read<AdminCatalogCubit>().state.searchTerm;
     });
   }
 
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      if (_scrollController.offset > 20 && _isFabExtended.value) {
+        _isFabExtended.value = false;
+      } else if (_scrollController.offset <= 20 && !_isFabExtended.value) {
+        _isFabExtended.value = true;
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _isFabExtended.dispose();
     _scrollController.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
+    _selectedProductIdsNotifier.dispose();
     super.dispose();
+  }
+
+  void _toggleProductSelected(String id, bool isSelected) {
+    final current = Set<String>.from(_selectedProductIdsNotifier.value);
+    if (isSelected) {
+      current.add(id);
+    } else {
+      current.remove(id);
+    }
+    _selectedProductIdsNotifier.value = current;
+  }
+
+  void _selectAllPage(List<ProductEntity> pageProducts, bool selectAll) {
+    final current = Set<String>.from(_selectedProductIdsNotifier.value);
+    if (selectAll) {
+      for (final p in pageProducts) {
+        current.add(p.id);
+      }
+    } else {
+      for (final p in pageProducts) {
+        current.remove(p.id);
+      }
+    }
+    _selectedProductIdsNotifier.value = current;
+  }
+
+  void _clearSelection() {
+    if (_selectedProductIdsNotifier.value.isNotEmpty) {
+      _selectedProductIdsNotifier.value = {};
+    }
   }
 
   Future<void> _toggleProductoActivo(
@@ -105,9 +143,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       onConfirmAsync: () async {
         final success = await cubit.deleteProduct(product.id);
         if (success && mounted) {
-          setState(() {
-            _selectedProductIds.remove(product.id);
-          });
+          _toggleProductSelected(product.id, false);
           AppSnackbar.show(
             context,
             message: 'Producto eliminado correctamente',
@@ -137,10 +173,11 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   }
 
   void _handleBulkExportPdf(AdminCatalogCubit cubit) {
-    if (_selectedProductIds.isEmpty) return;
+    final selected = _selectedProductIdsNotifier.value;
+    if (selected.isEmpty) return;
     cubit.exportCatalogPdf(
       optionsMode: 2,
-      selectedIds: _selectedProductIds.toList(),
+      selectedIds: selected.toList(),
     );
   }
 
@@ -200,8 +237,8 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
           ),
           EscapeIntent: CallbackAction<EscapeIntent>(
             onInvoke: (EscapeIntent intent) {
-              if (_selectedProductIds.isNotEmpty) {
-                setState(() => _selectedProductIds.clear());
+              if (_selectedProductIdsNotifier.value.isNotEmpty) {
+                _clearSelection();
               } else {
                 _searchFocusNode.unfocus();
               }
@@ -212,9 +249,8 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         child: Focus(
           autofocus: true,
           child: BlocListener<AdminCatalogCubit, AdminCatalogState>(
-            listenWhen:
-                (previous, current) =>
-                    previous.actionState != current.actionState,
+            listenWhen: (previous, current) =>
+                previous.actionState != current.actionState,
             listener: (context, state) {
               if (state.actionState == ViewState.error) {
                 AppSnackbar.show(
@@ -225,6 +261,20 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
               }
             },
             child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+              buildWhen: (prev, current) =>
+                  prev.catalogState != current.catalogState ||
+                  prev.products != current.products ||
+                  prev.currentPage != current.currentPage ||
+                  prev.totalPages != current.totalPages ||
+                  prev.totalCount != current.totalCount ||
+                  prev.actionState != current.actionState ||
+                  prev.selectedCategoryId != current.selectedCategoryId ||
+                  prev.selectedBrandId != current.selectedBrandId ||
+                  prev.filterIsActive != current.filterIsActive ||
+                  prev.stockFilter != current.stockFilter ||
+                  prev.sortOption != current.sortOption ||
+                  prev.searchTerm != current.searchTerm ||
+                  prev.searchByIngredient != current.searchByIngredient,
               builder: (context, state) {
                 return AdminLayout(
                   title: 'Inventario de Productos',
@@ -239,8 +289,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                       IconButton(
                         icon: const Icon(Icons.upload_file_rounded),
                         tooltip: 'Importar Lote (CSV)',
-                        onPressed:
-                            () => context.go('/products/bulk-import'),
+                        onPressed: () => context.go('/products/bulk-import'),
                       ),
                     ],
                     if (isDesktop) ...[
@@ -269,8 +318,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                       ),
                       const SizedBox(width: 8),
                       OutlinedButton.icon(
-                        onPressed:
-                            () => context.go('/products/bulk-import'),
+                        onPressed: () => context.go('/products/bulk-import'),
                         icon: const Icon(Icons.upload_file_rounded, size: 16),
                         label: const Text(
                           'Importar CSV',
@@ -289,8 +337,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                       ),
                       const SizedBox(width: 8),
                       FilledButton.icon(
-                        onPressed:
-                            () => context.go('/products/product-form'),
+                        onPressed: () => context.go('/products/product-form'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
@@ -310,17 +357,14 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                       ),
                     ],
                   ],
-                  floatingActionButton:
-                      !isDesktop
-                          ? ValueListenableBuilder<bool>(
-                            valueListenable: _isFabExtended,
-                            builder: (context, extended, child) {
-                              return extended
-                                  ? FloatingActionButton.extended(
-                                    onPressed:
-                                        () => context.go(
-                                          '/products/product-form',
-                                        ),
+                  floatingActionButton: !isDesktop
+                      ? ValueListenableBuilder<bool>(
+                          valueListenable: _isFabExtended,
+                          builder: (context, extended, child) {
+                            return extended
+                                ? FloatingActionButton.extended(
+                                    onPressed: () =>
+                                        context.go('/products/product-form'),
                                     backgroundColor: AppColors.primary,
                                     foregroundColor: Colors.white,
                                     elevation: 4,
@@ -333,20 +377,18 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                       ),
                                     ),
                                   )
-                                  : FloatingActionButton(
-                                    onPressed:
-                                        () => context.go(
-                                          '/products/product-form',
-                                        ),
+                                : FloatingActionButton(
+                                    onPressed: () =>
+                                        context.go('/products/product-form'),
                                     backgroundColor: AppColors.primary,
                                     foregroundColor: Colors.white,
                                     elevation: 4,
                                     tooltip: 'Nuevo Producto',
                                     child: const Icon(Icons.add_rounded),
                                   );
-                            },
-                          )
-                          : null,
+                          },
+                        )
+                      : null,
                   body: LayoutBuilder(
                     builder: (context, constraints) {
                       final isDesktopLayout = constraints.maxWidth >= 900;
@@ -355,58 +397,103 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                         children: [
                           Container(
                             color: AppColors.background,
-                            padding: EdgeInsets.all(
-                              isDesktopLayout ? 24.0 : 16.0,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // ── Command Bar ─────────────────────────────────────────
-                                if (isDesktopLayout)
-                                  ProductsDesktopCommandBar(
-                                    cubit: cubit,
-                                    state: state,
-                                    searchCtrl: _searchCtrl,
-                                    searchFocusNode: _searchFocusNode,
-                                  )
-                                else
-                                  ProductsMobileCommandBar(
-                                    cubit: cubit,
-                                    state: state,
-                                    searchCtrl: _searchCtrl,
-                                    searchFocusNode: _searchFocusNode,
-                                    onOpenFilters:
-                                        () => ProductsMobileFiltersSheet.show(
-                                          context,
-                                          cubit,
-                                        ),
+                            child: RefreshIndicator(
+                              color: Theme.of(context).colorScheme.primary,
+                              onRefresh: () async => cubit.refreshProducts(),
+                              child: CustomScrollView(
+                                controller: _scrollController,
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                slivers: [
+                                  // ── Command Bar Dinámica (No estática: scrollea con la página) ──
+                                  SliverToBoxAdapter(
+                                    child: Padding(
+                                      padding: EdgeInsets.fromLTRB(
+                                        isDesktopLayout ? 24.0 : 16.0,
+                                        isDesktopLayout ? 24.0 : 16.0,
+                                        isDesktopLayout ? 24.0 : 16.0,
+                                        16.0,
+                                      ),
+                                      child: isDesktopLayout
+                                          ? ProductsDesktopCommandBar(
+                                              cubit: cubit,
+                                              state: state,
+                                              searchCtrl: _searchCtrl,
+                                              searchFocusNode: _searchFocusNode,
+                                            )
+                                          : ProductsMobileCommandBar(
+                                              cubit: cubit,
+                                              state: state,
+                                              searchCtrl: _searchCtrl,
+                                              searchFocusNode: _searchFocusNode,
+                                              onOpenFilters: () =>
+                                                  ProductsMobileFiltersSheet.show(
+                                                context,
+                                                cubit,
+                                              ),
+                                            ),
+                                    ),
                                   ),
 
-                                const SizedBox(height: 16),
-
-                                // ── Contenido Principal (Data-Grid vs Tarjetas) ─────────
-                                Expanded(
-                                  child: _buildBodyContent(
+                                  // ── Contenido Principal (Data-Grid vs Tarjetas) ─────────
+                                  _buildSliverBody(
                                     state,
                                     cubit,
                                     isDesktop: isDesktopLayout,
                                   ),
-                                ),
-                              ],
+
+                                  // ── Paginación Integrada al Flujo de Scroll ─────────────
+                                  if (state.products.isNotEmpty &&
+                                      state.totalPages > 1)
+                                    SliverToBoxAdapter(
+                                      child: Container(
+                                        margin: EdgeInsets.fromLTRB(
+                                          isDesktopLayout ? 24.0 : 16.0,
+                                          16.0,
+                                          isDesktopLayout ? 24.0 : 16.0,
+                                          32.0,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surface,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: AppColors.border
+                                                .withValues(alpha: 0.8),
+                                          ),
+                                        ),
+                                        child: AdminPageBlocks(
+                                          currentPage: state.currentPage,
+                                          totalPages: state.totalPages,
+                                          onPageChanged: cubit.setPage,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
 
-                          // ── Floating Bulk Action Bar ───────────────────────────
-                          if (_selectedProductIds.isNotEmpty)
-                            ProductsFloatingBulkBar(
-                              selectedCount: _selectedProductIds.length,
-                              isDesktop: isDesktopLayout,
-                              onExportPdf: () => _handleBulkExportPdf(cubit),
-                              onClearSelection:
-                                  () => setState(
-                                    () => _selectedProductIds.clear(),
-                                  ),
-                            ),
+                          // ── Floating Bulk Action Bar (Aislado con ValueListenableBuilder) ──
+                          ValueListenableBuilder<Set<String>>(
+                            valueListenable: _selectedProductIdsNotifier,
+                            builder: (context, selectedIds, _) {
+                              if (selectedIds.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              return ProductsFloatingBulkBar(
+                                selectedCount: selectedIds.length,
+                                isDesktop: isDesktopLayout,
+                                onExportPdf: () => _handleBulkExportPdf(cubit),
+                                onClearSelection: _clearSelection,
+                              );
+                            },
+                          ),
 
                           // ── Overlay de carga de acciones ───────────────────────
                           if (state.actionState == ViewState.loading)
@@ -431,217 +518,195 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     );
   }
 
-  Widget _buildBodyContent(
+  Widget _buildSliverBody(
     AdminCatalogState state,
     AdminCatalogCubit cubit, {
     required bool isDesktop,
   }) {
     if (state.catalogState == ViewState.loading ||
         state.catalogState == ViewState.initial) {
-      return isDesktop
-          ? Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppColors.radiusLg),
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.8),
-              ),
-            ),
-            child: const ProductsDesktopShimmer(rows: 6),
-          )
-          : ListView.builder(
-            itemCount: 6,
-            padding: const EdgeInsets.only(bottom: 80),
-            itemBuilder:
-                (context, index) => const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
-                  child: AppShimmer(
-                    width: double.infinity,
-                    height: 104,
-                    borderRadius: 16,
+      return SliverPadding(
+        padding: EdgeInsets.symmetric(horizontal: isDesktop ? 24.0 : 16.0),
+        sliver: SliverToBoxAdapter(
+          child: isDesktop
+              ? Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                    border: Border.all(
+                      color: AppColors.border.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  child: const ProductsDesktopShimmer(rows: 6),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 6,
+                  itemBuilder: (context, index) => const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: AppShimmer(
+                      width: double.infinity,
+                      height: 104,
+                      borderRadius: 16,
+                    ),
                   ),
                 ),
-          );
+        ),
+      );
     }
 
     if (state.errorMessage != null && state.products.isEmpty) {
-      return Center(
-        child: CatalogErrorState(
-          message: state.errorMessage!,
-          onRetry: () => cubit.refreshProducts(),
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48.0),
+          child: Center(
+            child: CatalogErrorState(
+              message: state.errorMessage!,
+              onRetry: () => cubit.refreshProducts(),
+            ),
+          ),
         ),
       );
     }
 
     if (state.products.isEmpty) {
-      return Center(
+      return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.06),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.inventory_2_outlined,
-                  size: 32,
-                  color: AppColors.textMuted,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'No se encontraron productos',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Prueba ajustando el término de búsqueda o cambiando los filtros seleccionados.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: () {
-                  _searchCtrl.clear();
-                  setState(() => _selectedProductIds.clear());
-                  cubit.setSearchTerm('');
-                  cubit.setCategory(null);
-                  cubit.setStockFilter(CatalogStockFilter.all);
-                  cubit.setFilterIsActive(null);
-                  if (state.searchByIngredient) {
-                    cubit.toggleSearchByIngredient(false);
-                  }
-                },
-                icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text('Restablecer Filtros'),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.border),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.06),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.inventory_2_outlined,
+                    size: 32,
+                    color: AppColors.textMuted,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                const Text(
+                  'No se encontraron productos',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Prueba ajustando el término de búsqueda o cambiando los filtros seleccionados.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    _clearSelection();
+                    cubit.setSearchTerm('');
+                    cubit.setCategory(null);
+                    cubit.setStockFilter(CatalogStockFilter.all);
+                    cubit.setFilterIsActive(null);
+                    if (state.searchByIngredient) {
+                      cubit.toggleSearchByIngredient(false);
+                    }
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('Restablecer Filtros'),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
-    Widget contentList;
     if (isDesktop) {
-      contentList = Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppColors.radiusLg),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 24,
-              spreadRadius: -4,
-              offset: const Offset(0, 8),
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        sliver: SliverToBoxAdapter(
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
+              border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 24,
+                  spreadRadius: -4,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppColors.radiusLg),
-          child: ProductsDesktopTable(
-            products: state.products,
-            selectedProductIds: _selectedProductIds,
-            matchedIngredients: state.matchedIngredients,
-            onProductSelected: (id, isSelected) {
-              setState(() {
-                if (isSelected) {
-                  _selectedProductIds.add(id);
-                } else {
-                  _selectedProductIds.remove(id);
-                }
-              });
-            },
-            onSelectAllPage: (selectAll) {
-              setState(() {
-                if (selectAll) {
-                  for (final p in state.products) {
-                    _selectedProductIds.add(p.id);
-                  }
-                } else {
-                  for (final p in state.products) {
-                    _selectedProductIds.remove(p.id);
-                  }
-                }
-              });
-            },
-            onRowTap: (p) => _showProductQuickView(p, cubit),
-            onToggleActive: (p) => _toggleProductoActivo(p, cubit),
-            onEdit: (p) {
-              context.go(
-                '/products/product-form/${p.id}',
-                extra: {'productToEdit': p},
-              );
-            },
-            onDelete: (p) => _confirmDeleteProduct(p, cubit),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
+              child: ValueListenableBuilder<Set<String>>(
+                valueListenable: _selectedProductIdsNotifier,
+                builder: (context, selectedIds, _) {
+                  return ProductsDesktopTable(
+                    products: state.products,
+                    selectedProductIds: selectedIds,
+                    matchedIngredients: state.matchedIngredients,
+                    onProductSelected: _toggleProductSelected,
+                    onSelectAllPage: (selectAll) =>
+                        _selectAllPage(state.products, selectAll),
+                    onRowTap: (p) => _showProductQuickView(p, cubit),
+                    onToggleActive: (p) => _toggleProductoActivo(p, cubit),
+                    onEdit: (p) {
+                      context.go(
+                        '/products/product-form/${p.id}',
+                        extra: {'productToEdit': p},
+                      );
+                    },
+                    onDelete: (p) => _confirmDeleteProduct(p, cubit),
+                  );
+                },
+              ),
+            ),
           ),
         ),
-      );
-    } else {
-      contentList = ProductsMobileCardList(
-        products: state.products,
-        matchedIngredients: state.matchedIngredients,
-        scrollController: _scrollController,
-        onTapProduct: (p) => _showProductQuickView(p, cubit),
-        onToggleActive: (p) => _toggleProductoActivo(p, cubit),
-        onEdit: (p) {
-          context.go(
-            '/products/product-form/${p.id}',
-            extra: {'productToEdit': p},
-          );
-        },
-        onDelete: (p) => _confirmDeleteProduct(p, cubit),
-        onOpenFullDetail: (p) {
-          context.go('/product/${p.id}', extra: p);
-        },
       );
     }
 
-    return Column(
-      children: [
-        Expanded(
-          child: RefreshIndicator(
-            color: Theme.of(context).colorScheme.primary,
-            onRefresh: () async => cubit.refreshProducts(),
-            child: contentList,
-          ),
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      sliver: SliverToBoxAdapter(
+        child: ProductsMobileCardList(
+          products: state.products,
+          matchedIngredients: state.matchedIngredients,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          onTapProduct: (p) => _showProductQuickView(p, cubit),
+          onToggleActive: (p) => _toggleProductoActivo(p, cubit),
+          onEdit: (p) {
+            context.go(
+              '/products/product-form/${p.id}',
+              extra: {'productToEdit': p},
+            );
+          },
+          onDelete: (p) => _confirmDeleteProduct(p, cubit),
+          onOpenFullDetail: (p) {
+            context.go('/product/${p.id}', extra: p);
+          },
         ),
-        if (state.products.isNotEmpty && state.totalPages > 1)
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              border: Border(
-                top: BorderSide(color: AppColors.border.withValues(alpha: 0.8)),
-              ),
-            ),
-            child: SafeArea(
-              top: false,
-              child: AdminPageBlocks(
-                currentPage: state.currentPage,
-                totalPages: state.totalPages,
-                onPageChanged: cubit.setPage,
-              ),
-            ),
-          ),
-      ],
+      ),
     );
   }
 }

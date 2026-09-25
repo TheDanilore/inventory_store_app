@@ -27,6 +27,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   final GetProductStockUC getProductStockUC;
 
   Timer? _debounce;
+  static const int _maxCacheEntries = 10;
   final Map<String, ({List<ProductEntity> products, int totalCount})> _productsCache = {};
 
   String _buildCacheKey() {
@@ -255,6 +256,9 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         );
       },
       (data) async {
+        if (_productsCache.length >= _maxCacheEntries) {
+          _productsCache.remove(_productsCache.keys.first);
+        }
         _productsCache[cacheKey] = data;
         final enriched = data.products;
 

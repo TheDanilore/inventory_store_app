@@ -8,7 +8,9 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 class ProductsMobileCardList extends StatelessWidget {
   final List<ProductEntity> products;
   final Map<String, String> matchedIngredients;
-  final ScrollController scrollController;
+  final ScrollController? scrollController;
+  final ScrollPhysics? physics;
+  final bool shrinkWrap;
   final void Function(ProductEntity product) onTapProduct;
   final void Function(ProductEntity product) onToggleActive;
   final void Function(ProductEntity product) onEdit;
@@ -19,7 +21,9 @@ class ProductsMobileCardList extends StatelessWidget {
     super.key,
     required this.products,
     required this.matchedIngredients,
-    required this.scrollController,
+    this.scrollController,
+    this.physics,
+    this.shrinkWrap = false,
     required this.onTapProduct,
     required this.onToggleActive,
     required this.onEdit,
@@ -32,7 +36,8 @@ class ProductsMobileCardList extends StatelessWidget {
     return ListView.builder(
       controller: scrollController,
       padding: const EdgeInsets.only(bottom: 84),
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: physics ?? const AlwaysScrollableScrollPhysics(),
+      shrinkWrap: shrinkWrap,
       itemCount: products.length,
       itemBuilder: (context, index) {
         final product = products[index];
