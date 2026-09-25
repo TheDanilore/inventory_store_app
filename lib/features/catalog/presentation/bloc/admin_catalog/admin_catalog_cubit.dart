@@ -157,6 +157,20 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     refreshProducts();
   }
 
+  void resetAllFilters() {
+    emit(
+      state.copyWith(
+        clearCategory: true,
+        clearBrand: true,
+        clearFilterIsActive: true,
+        sortOption: CatalogSortOption.recent,
+        stockFilter: CatalogStockFilter.all,
+        currentPage: 0,
+      ),
+    );
+    refreshProducts();
+  }
+
   void setPage(int page) {
     if (state.currentPage == page) return;
     emit(state.copyWith(currentPage: page));

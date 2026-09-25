@@ -274,7 +274,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 prev.actionState != current.actionState ||
                 prev.errorMessage != current.errorMessage,
             builder: (context, state) {
-              const double fabsBottomPadding = 54;
+              final double fabsBottomPadding = isMobile ? 80.0 : 16.0;
 
               Widget mainContent = Builder(
                 builder: (context) {
@@ -343,6 +343,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                             onSortSelected: cubit.setSortOption,
                             stockFilter: state.stockFilter,
                             onStockFilterSelected: cubit.setStockFilter,
+                            onClearAllFilters: cubit.resetAllFilters,
                           ),
                         )
                       : null;
@@ -582,45 +583,66 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
           ),
         );
 
-        // ── Botones Flotantes en Móvil (Apple HIG Safe Thumb Zone) ─────────
-        final floatingBtn = isMobile
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  // Acceso rápido al POS
-                  Tooltip(
-                    message: 'Ir a Punto de Venta',
-                    child: Material(
-                      color: AppColors.teal,
+        // ── Botones Flotantes (ESTRICTAMENTE solo en Móvil, NUNCA en Desktop/Tablet) ──
+        final Widget? effectiveFab;
+        if (isMobile) {
+          if (widget.floatingActionButton != null) {
+            effectiveFab = Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                widget.floatingActionButton!,
+                const SizedBox(height: 12),
+                CatalogAddProductFab(
+                  onTap: () {
+                    context.go('/products/product-form');
+                  },
+                ),
+              ],
+            );
+          } else {
+            effectiveFab = Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Acceso rápido al POS
+                Tooltip(
+                  message: 'Ir a Punto de Venta',
+                  child: Material(
+                    color: AppColors.teal,
+                    borderRadius: BorderRadius.circular(16),
+                    elevation: 4,
+                    shadowColor: Colors.black.withValues(alpha: 0.25),
+                    child: InkWell(
+                      onTap: () => context.go('/pos'),
                       borderRadius: BorderRadius.circular(16),
-                      elevation: 4,
-                      shadowColor: Colors.black.withValues(alpha: 0.25),
-                      child: InkWell(
-                        onTap: () => context.go('/pos'),
-                        borderRadius: BorderRadius.circular(16),
-                        child: const SizedBox(
-                          width: 52,
-                          height: 52,
-                          child: Icon(
-                            Icons.point_of_sale_rounded,
-                            color: Colors.white,
-                            size: 24,
-                          ),
+                      child: const SizedBox(
+                        width: 52,
+                        height: 52,
+                        child: Icon(
+                          Icons.point_of_sale_rounded,
+                          color: Colors.white,
+                          size: 24,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  CatalogAddProductFab(
-                    onTap: () {
-                      context.go('/products/product-form');
-                    },
-                  ),
-                ],
-              )
-            : null;
+                ),
+                const SizedBox(height: 12),
+                CatalogAddProductFab(
+                  onTap: () {
+                    context.go('/products/product-form');
+                  },
+                ),
+              ],
+            );
+          }
+        } else {
+          // En Desktop y Tablet la acción de POS ya está en la barra superior y sidebar
+          effectiveFab = null;
+        }
 
         return AdminLayout(
           title: 'Catálogo',
@@ -714,7 +736,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             },
             child: bodyContent,
           ),
-          floatingActionButton: widget.floatingActionButton ?? floatingBtn,
+          floatingActionButton: effectiveFab,
         );
       },
     );
