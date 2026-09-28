@@ -236,49 +236,33 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
             ),
           ),
 
-          // ── Aviso turno de caja (inline, debajo de chips) ──────────
-          if (isCajaSelected) ...[
+          // ── Aviso turno de caja (solo cuando falta abrir turno) ──
+          if (isCajaSelected && activeShift == null) ...[
             const SizedBox(height: 8),
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
-                color:
-                    activeShift != null
-                        ? AppColors.successLight
-                        : AppColors.dangerLight,
+                color: AppColors.dangerLight,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color:
-                      activeShift != null
-                          ? AppColors.success.withValues(alpha: 0.3)
-                          : AppColors.danger.withValues(alpha: 0.3),
+                  color: AppColors.danger.withValues(alpha: 0.3),
                 ),
               ),
               child: Row(
-                children: [
+                children: const [
                   Icon(
-                    activeShift != null
-                        ? Icons.check_circle_rounded
-                        : Icons.lock_rounded,
+                    Icons.lock_rounded,
                     size: 13,
-                    color:
-                        activeShift != null
-                            ? AppColors.success
-                            : AppColors.danger,
+                    color: AppColors.danger,
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   Text(
-                    activeShift != null
-                        ? 'Turno de caja abierto ✓'
-                        : 'Caja sin turno abierto — no se puede cobrar',
+                    'Caja sin turno abierto — no se puede cobrar',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color:
-                          activeShift != null
-                              ? AppColors.success
-                              : AppColors.danger,
+                      color: AppColors.danger,
                     ),
                   ),
                 ],

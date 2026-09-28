@@ -414,10 +414,26 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final config = context.read<AppConfigCubit>();
-    final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
-    final earningRate = config.getDouble('points_earning_rate', 0.03);
-    final isLoyaltyEnabled = config.loyaltyGlobalEnabled;
+    final pointsToSolesRatio = context.select<AppConfigCubit, double>(
+      (c) => c.getDouble('points_to_soles_ratio', 0.01),
+    );
+    final earningRate = context.select<AppConfigCubit, double>(
+      (c) => c.getDouble('points_earning_rate', 0.03),
+    );
+    final isLoyaltyEnabled = context.select<AppConfigCubit, bool>(
+      (c) => c.loyaltyGlobalEnabled,
+    );
+
+    // Si el sistema de fidelidad está desactivado globalmente y hay puntos asignados, purgarlos
+    final posCubit = context.read<PosCubit>();
+    if (!isLoyaltyEnabled && posCubit.state.puntosAUsar > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted && posCubit.state.puntosAUsar > 0) {
+          posCubit.setPuntosAUsar(0);
+          _puntosCtrl.text = '0';
+        }
+      });
+    }
 
     return BlocListener<PosCubit, PosState>(
       listenWhen: (previous, current) => previous.status != current.status,
@@ -469,6 +485,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                           );
                         },
                         (details) async {
+                          final config = context.read<AppConfigCubit>();
                           final order = details.order;
                           final items = details.items;
                           final bytes = await IsolateUtils.run(() {

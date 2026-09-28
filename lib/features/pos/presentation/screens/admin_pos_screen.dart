@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
@@ -96,6 +97,12 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       final posCubit = context.read<PosCubit>();
       if (posCubit.state.warehouses.isEmpty || posCubit.state.accounts.isEmpty) {
         posCubit.initPosData();
+      }
+
+      // Asegurar que la configuración global de negocio (fidelidad, etc.) esté cargada
+      final appConfigCubit = context.read<AppConfigCubit>();
+      if (appConfigCubit.businessInfo == null) {
+        appConfigCubit.loadBusinessInfo();
       }
     });
   }
@@ -401,18 +408,17 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
           _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
         },
 
-        // Cobrar Inmediato en Desktop (F2 o Ctrl+C / Cmd+C / Alt+C)
+        // Cobrar Inmediato en Desktop (F2 o Alt+Enter)
         const SingleActivator(LogicalKeyboardKey.f2): () {
           _desktopPanelKey.currentState?.triggerCheckout();
         },
-        const SingleActivator(LogicalKeyboardKey.keyC, control: true): () {
+        const SingleActivator(LogicalKeyboardKey.enter, alt: true): () {
           _desktopPanelKey.currentState?.triggerCheckout();
         },
-        const SingleActivator(LogicalKeyboardKey.keyC, meta: true): () {
-          _desktopPanelKey.currentState?.triggerCheckout();
-        },
+
+        // Abrir Búsqueda de Cliente en Desktop (Alt+C)
         const SingleActivator(LogicalKeyboardKey.keyC, alt: true): () {
-          _desktopPanelKey.currentState?.triggerCheckout();
+          _desktopPanelKey.currentState?.openClientSearch();
         },
 
         // Nuevo Cliente Express (Alt+A)

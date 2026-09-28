@@ -34,6 +34,7 @@ class DesktopPosPanel extends StatefulWidget {
 class DesktopPosPanelState extends State<DesktopPosPanel> {
   // Controladores
   final _formKey = GlobalKey<FormState>();
+  final _clientHeaderBarKey = GlobalKey<PosClientHeaderBarState>();
   final _clienteCtrl = TextEditingController();
   final _puntosCtrl = TextEditingController();
   final _descuentoCtrl = TextEditingController();
@@ -45,6 +46,10 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
 
   /// Mutex local anti-doble-tap que previene la ejecución simultánea de ventas.
   bool _isProcessing = false;
+
+  void openClientSearch() {
+    _clientHeaderBarKey.currentState?.openSearch();
+  }
 
   @override
   void initState() {
@@ -306,10 +311,25 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
   Widget build(BuildContext context) {
     final posCubit = context.read<PosCubit>();
     final cartCubit = context.read<CartCubit>();
-    final config = context.read<AppConfigCubit>();
-    final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
-    final earningRate = config.getDouble('points_earning_rate', 0.03);
-    final isLoyaltyEnabled = config.loyaltyGlobalEnabled;
+    final pointsToSolesRatio = context.select<AppConfigCubit, double>(
+      (c) => c.getDouble('points_to_soles_ratio', 0.01),
+    );
+    final earningRate = context.select<AppConfigCubit, double>(
+      (c) => c.getDouble('points_earning_rate', 0.03),
+    );
+    final isLoyaltyEnabled = context.select<AppConfigCubit, bool>(
+      (c) => c.loyaltyGlobalEnabled,
+    );
+
+    // Si el sistema de fidelidad está desactivado globalmente y hay puntos asignados, purgarlos
+    if (!isLoyaltyEnabled && posCubit.state.puntosAUsar > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted && posCubit.state.puntosAUsar > 0) {
+          posCubit.setPuntosAUsar(0);
+          _puntosCtrl.text = '0';
+        }
+      });
+    }
 
     return BlocListener<PosCubit, PosState>(
       listenWhen: (previous, current) => previous.status != current.status,
@@ -367,6 +387,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                           }
                         },
                         (result) async {
+                          final config = context.read<AppConfigCubit>();
                           await OrderPdfGenerator.shareTicket(
                             result.order,
                             items: result.items,
@@ -529,6 +550,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
           builder: (context, cartTuple) {
             final (itemCount, isCartEmpty) = cartTuple;
             return PosClientHeaderBar(
+              key: _clientHeaderBarKey,
               controller: _clienteCtrl,
               onSearchChanged: _onClientSearchChanged,
               searching: posState.isLoading,

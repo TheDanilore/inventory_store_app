@@ -59,14 +59,22 @@ class PosClientHeaderBar extends StatefulWidget {
   });
 
   @override
-  State<PosClientHeaderBar> createState() => _PosClientHeaderBarState();
+  State<PosClientHeaderBar> createState() => PosClientHeaderBarState();
 }
 
-class _PosClientHeaderBarState extends State<PosClientHeaderBar> {
+class PosClientHeaderBarState extends State<PosClientHeaderBar> {
   final _layerLink = LayerLink();
   final _overlayPortalCtrl = OverlayPortalController();
   final _searchFocusNode = FocusNode();
   final _searchFieldCtrl = TextEditingController();
+
+  void openSearch() {
+    _onClientPillTapped(context);
+  }
+
+  void closeSearch() {
+    _closeDesktopSearch();
+  }
 
   @override
   void dispose() {
@@ -262,7 +270,7 @@ class _PosClientHeaderBarState extends State<PosClientHeaderBar> {
                                         subtitle: Text(
                                           [
                                             if (doc != null && doc.isNotEmpty) 'Doc: $doc',
-                                            if (wallet > 0) '$wallet pts',
+                                            if (widget.isLoyaltyEnabled && wallet > 0) '$wallet pts',
                                           ].join(' • '),
                                           style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted),
                                         ),
@@ -315,180 +323,197 @@ class _PosClientHeaderBarState extends State<PosClientHeaderBar> {
         : (clientName.isNotEmpty ? clientName : 'Cliente Varios');
 
     return Container(
-      height: 52,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
           bottom: BorderSide(color: Colors.grey.shade200, width: 1),
         ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── 1. INDICADOR CAJA + BADGE DE ITEMS ────────────────────────────
-          if (widget.showCajaHeader) ...[
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.point_of_sale_rounded,
-                  size: 18,
-                  color: AppColors.teal,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  widget.title,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.8,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                if (widget.cartItemCount > 0) ...[
-                  const SizedBox(width: 5),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                    decoration: BoxDecoration(
-                      color: AppColors.teal.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${widget.cartItemCount}',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.tealDark,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(width: 8),
-            Container(height: 18, width: 1, color: Colors.grey.shade300),
-            const SizedBox(width: 8),
-          ],
+          // ── TIER 1: TÍTULO CAJA + ACCIONES RÁPIDAS (Solo si showCajaHeader es true) ──
+          if (widget.showCajaHeader) _buildTier1Header(),
 
-          // ── 2. SELECTOR DE CLIENTE (PILL DINÁMICO CON OVERLAY ANCLADO) ────
-          Expanded(
-            child: CompositedTransformTarget(
-              link: _layerLink,
-              child: OverlayPortal(
-                controller: _overlayPortalCtrl,
-                overlayChildBuilder: (overlayCtx) {
-                  return Stack(
-                    children: [
-                      // Barrier transparente para cerrar al hacer click fuera
-                      Positioned.fill(
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.translucent,
-                          onTap: _closeDesktopSearch,
-                          child: const ColoredBox(color: Colors.transparent),
-                        ),
-                      ),
-                      // Popover flotante posicionado anclado al pill
-                      Positioned(
-                        child: CompositedTransformFollower(
-                          link: _layerLink,
-                          showWhenUnlinked: false,
-                          targetAnchor: Alignment.bottomLeft,
-                          followerAnchor: Alignment.topLeft,
-                          offset: const Offset(0, 6),
-                          child: TapRegion(
-                            onTapOutside: (_) => _closeDesktopSearch(),
-                            child: _buildFloatingSearchCard(context, hasClient),
+          // ── TIER 2: SELECTOR DE CLIENTE (ANCHO COMPLETO) + NUEVO EXPRESS ──
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              12,
+              widget.showCajaHeader ? 0 : 8,
+              12,
+              8,
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final stripWidth = constraints.maxWidth;
+                return CompositedTransformTarget(
+                  link: _layerLink,
+                  child: OverlayPortal(
+                    controller: _overlayPortalCtrl,
+                    overlayChildBuilder: (overlayCtx) {
+                      return Stack(
+                        children: [
+                          Positioned.fill(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onTap: _closeDesktopSearch,
+                              child: const ColoredBox(color: Colors.transparent),
+                            ),
+                          ),
+                          Positioned(
+                            child: CompositedTransformFollower(
+                              link: _layerLink,
+                              showWhenUnlinked: false,
+                              targetAnchor: Alignment.bottomLeft,
+                              followerAnchor: Alignment.topLeft,
+                              offset: const Offset(0, 6),
+                              child: TapRegion(
+                                onTapOutside: (_) => _closeDesktopSearch(),
+                                child: _buildFloatingSearchCard(
+                                  context,
+                                  hasClient,
+                                  stripWidth,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildClientSelectorCard(
+                            context,
+                            hasClient,
+                            displayName,
                           ),
                         ),
-                      ),
-                    ],
-                  );
-                },
-                child: _buildClientPill(context, hasClient, displayName),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 6),
-
-          // ── 3. BOTÓN + NUEVO CLIENTE EXPRESS (Alt+A) ───────────────────────
-          Tooltip(
-            message: 'Nuevo Cliente (Alt+A)',
-            child: Material(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => _openCreateCustomerDialog(),
-                child: Container(
-                  height: 32,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.22),
-                      width: 0.8,
+                        const SizedBox(width: 8),
+                        _buildQuickNewClientButton(),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(
-                        Icons.person_add_alt_1_rounded,
-                        size: 14,
-                        color: AppColors.primary,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'Nuevo',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+                );
+              },
             ),
           ),
-
-          // ── 4. BOTÓN VACIAR CAJA ──────────────────────────────────────────
-          if (widget.onClearCart != null) ...[
-            const SizedBox(width: 4),
-            Tooltip(
-              message: 'Vaciar caja',
-              child: IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                color: widget.isCartEmpty ? Colors.grey.shade300 : AppColors.textSecondary,
-                onPressed: widget.isCartEmpty ? null : widget.onClearCart,
-                style: IconButton.styleFrom(
-                  padding: const EdgeInsets.all(6),
-                  minimumSize: const Size(32, 32),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 
-  /// Construye el chip/pill compacto que muestra el cliente actual.
-  Widget _buildClientPill(BuildContext context, bool hasClient, String displayName) {
+  /// Tier 1: Fila compacta con título de Caja, contador de items y botón de vaciado rápido
+  Widget _buildTier1Header() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4.5),
+            decoration: BoxDecoration(
+              color: AppColors.teal.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(
+              Icons.point_of_sale_rounded,
+              size: 15,
+              color: AppColors.tealDark,
+            ),
+          ),
+          const SizedBox(width: 7),
+          Text(
+            widget.title,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          if (widget.cartItemCount > 0) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.teal.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${widget.cartItemCount} ${widget.cartItemCount == 1 ? 'ítem' : 'ítems'}',
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.tealDark,
+                ),
+              ),
+            ),
+          ],
+          const Spacer(),
+          if (widget.onClearCart != null)
+            Tooltip(
+              message: 'Vaciar caja',
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: widget.isCartEmpty ? null : widget.onClearCart,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.delete_outline_rounded,
+                          size: 14,
+                          color: widget.isCartEmpty
+                              ? Colors.grey.shade300
+                              : AppColors.error,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          'Vaciar',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: widget.isCartEmpty
+                                ? Colors.grey.shade300
+                                : AppColors.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Tier 2: Card de Cliente a Ancho Completo
+  Widget _buildClientSelectorCard(
+    BuildContext context,
+    bool hasClient,
+    String displayName,
+  ) {
     return Material(
-      color: hasClient ? AppColors.teal.withValues(alpha: 0.07) : Colors.grey.shade100,
-      borderRadius: BorderRadius.circular(8),
+      color: hasClient
+          ? AppColors.teal.withValues(alpha: 0.07)
+          : AppColors.surface,
+      borderRadius: BorderRadius.circular(9),
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(9),
         onTap: () => _onClientPillTapped(context),
+        hoverColor: AppColors.teal.withValues(alpha: 0.05),
         child: Container(
-          height: 34,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(9),
             border: Border.all(
               color: hasClient
                   ? AppColors.teal.withValues(alpha: 0.35)
@@ -498,32 +523,66 @@ class _PosClientHeaderBarState extends State<PosClientHeaderBar> {
           ),
           child: Row(
             children: [
-              Icon(
-                hasClient ? Icons.person_rounded : Icons.person_outline_rounded,
-                size: 15,
-                color: hasClient ? AppColors.teal : AppColors.textSecondary,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: hasClient ? FontWeight.w700 : FontWeight.w600,
-                    color: hasClient ? AppColors.tealDark : AppColors.textPrimary,
-                  ),
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: hasClient
+                      ? AppColors.teal.withValues(alpha: 0.15)
+                      : Colors.grey.shade200,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  hasClient ? Icons.person_rounded : Icons.person_outline_rounded,
+                  size: 14,
+                  color: hasClient ? AppColors.tealDark : AppColors.textSecondary,
                 ),
               ),
-              // Badge de puntos
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: hasClient ? FontWeight.w700 : FontWeight.w600,
+                        color: hasClient ? AppColors.tealDark : AppColors.textPrimary,
+                      ),
+                    ),
+                    if (hasClient && widget.creditInfo != null && widget.isCredito)
+                      Text(
+                        'Crédito: S/ ${(widget.creditInfo!['credit_limit'] ?? 0)}',
+                        style: const TextStyle(
+                          fontSize: 9.5,
+                          color: AppColors.textMuted,
+                          height: 1.1,
+                        ),
+                      )
+                    else if (!hasClient)
+                      const Text(
+                        'Venta rápida • Clic o Alt+C',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          color: AppColors.textMuted,
+                          height: 1.1,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // Badge de puntos SOLO si el sistema está activo y cliente tiene saldo
               if (hasClient && widget.isLoyaltyEnabled && widget.saldoActualCliente > 0) ...[
                 const SizedBox(width: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade100,
-                    borderRadius: BorderRadius.circular(5),
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(6),
                     border: Border.all(color: Colors.amber.shade300, width: 0.8),
                   ),
                   child: Text(
@@ -536,32 +595,35 @@ class _PosClientHeaderBarState extends State<PosClientHeaderBar> {
                   ),
                 ),
               ],
+              const SizedBox(width: 4),
               // Botón limpiar cliente si está asignado
               if (hasClient) ...[
-                const SizedBox(width: 4),
-                GestureDetector(
-                  onTap: () {
-                    widget.onClearClient();
-                    _closeDesktopSearch();
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close_rounded,
-                      size: 13,
-                      color: AppColors.textMuted,
+                Tooltip(
+                  message: 'Quitar cliente',
+                  child: InkWell(
+                    onTap: () {
+                      widget.onClearClient();
+                      _closeDesktopSearch();
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        size: 13,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ),
                 ),
               ] else ...[
-                const SizedBox(width: 4),
                 Icon(
                   Icons.unfold_more_rounded,
-                  size: 14,
+                  size: 15,
                   color: Colors.grey.shade500,
                 ),
               ],
@@ -572,10 +634,57 @@ class _PosClientHeaderBarState extends State<PosClientHeaderBar> {
     );
   }
 
-  /// Construye el Popover Flotante que flota sobre la caja sin mover el carrito.
-  Widget _buildFloatingSearchCard(BuildContext context, bool hasClient) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = screenWidth < 400 ? (screenWidth - 24) : 360.0;
+  /// Botón + Nuevo Cliente Express (Alt+A)
+  Widget _buildQuickNewClientButton() {
+    return Tooltip(
+      message: 'Nuevo Cliente Express (Alt+A)',
+      child: Material(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(9),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(9),
+          onTap: () => _openCreateCustomerDialog(),
+          child: Container(
+            height: 38,
+            padding: const EdgeInsets.symmetric(horizontal: 9),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.22),
+                width: 0.9,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(
+                  Icons.person_add_alt_1_rounded,
+                  size: 14,
+                  color: AppColors.primary,
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'Nuevo',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Construye el Popover Flotante que flota sobre la caja sin desbordar la pantalla.
+  Widget _buildFloatingSearchCard(
+    BuildContext context,
+    bool hasClient,
+    double cardWidth,
+  ) {
 
     return SizedBox(
       width: cardWidth,
@@ -805,7 +914,7 @@ class _PosClientHeaderBarState extends State<PosClientHeaderBar> {
                                             [
                                               if (doc != null && doc.isNotEmpty) 'Doc: $doc',
                                               if (phone != null && phone.isNotEmpty) 'Tel: $phone',
-                                              if (wallet > 0) '$wallet pts',
+                                              if (widget.isLoyaltyEnabled && wallet > 0) '$wallet pts',
                                             ].join(' • '),
                                             style: const TextStyle(
                                               fontSize: 10.5,

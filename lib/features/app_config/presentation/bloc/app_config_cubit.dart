@@ -47,9 +47,9 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   }
 
   bool get loyaltyGlobalEnabled =>
-      state.businessInfo?.loyaltyGlobalEnabled ?? true;
+      state.businessInfo?.loyaltyGlobalEnabled ?? false;
   bool get loyaltyCustomerVisible =>
-      state.businessInfo?.loyaltyCustomerVisible ?? true;
+      state.businessInfo?.loyaltyCustomerVisible ?? false;
 
   String get businessName => state.businessInfo?.businessName ?? '';
   String get businessTaxId => state.businessInfo?.taxId ?? '';
