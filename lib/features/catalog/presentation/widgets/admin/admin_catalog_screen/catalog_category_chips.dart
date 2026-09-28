@@ -19,6 +19,7 @@ class CategoryChips extends StatelessWidget {
   final ValueChanged<String?>? onBrandSelected;
   final bool? filterIsActive;
   final ValueChanged<bool?>? onStatusSelected;
+  final bool showStatusFilter;
   final CatalogSortOption sortOption;
   final ValueChanged<CatalogSortOption> onSortSelected;
   final CatalogStockFilter stockFilter;
@@ -35,6 +36,7 @@ class CategoryChips extends StatelessWidget {
     this.onBrandSelected,
     this.filterIsActive,
     this.onStatusSelected,
+    this.showStatusFilter = true,
     this.sortOption = CatalogSortOption.recent,
     required this.onSortSelected,
     this.stockFilter = CatalogStockFilter.all,
@@ -47,7 +49,7 @@ class CategoryChips extends StatelessWidget {
     if (selectedCategoryId != null) count++;
     if (selectedBrandId != null) count++;
     if (stockFilter != CatalogStockFilter.all) count++;
-    if (filterIsActive != null) count++;
+    if (showStatusFilter && filterIsActive != null) count++;
     if (sortOption != CatalogSortOption.recent) count++;
     return count;
   }
@@ -60,7 +62,9 @@ class CategoryChips extends StatelessWidget {
     // Fallback si no se provee el callback global
     onSelected(null);
     onBrandSelected?.call(null);
-    onStatusSelected?.call(null);
+    if (showStatusFilter) {
+      onStatusSelected?.call(null);
+    }
     onStockFilterSelected(CatalogStockFilter.all);
     onSortSelected(CatalogSortOption.recent);
   }
@@ -115,7 +119,7 @@ class CategoryChips extends StatelessWidget {
             const SizedBox(width: 8),
 
             // 5. Selector de Estado (Activos / Inactivos)
-            if (onStatusSelected != null) ...[
+            if (showStatusFilter && onStatusSelected != null) ...[
               _StatusFilterChip(
                 filterIsActive: filterIsActive,
                 onChanged: onStatusSelected!,

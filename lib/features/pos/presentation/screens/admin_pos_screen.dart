@@ -11,6 +11,7 @@ import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
@@ -21,6 +22,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_add_to_cart_sheet.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/desktop_pos_panel.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/quick_create_customer_dialog.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
@@ -186,11 +188,38 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
         }
         return false;
       }
+
+      // Alt + A: Nuevo Cliente express (solo en Tab 0)
+      if (event.logicalKey == LogicalKeyboardKey.keyA) {
+        if (_selectedSidebarIndex == 0) {
+          _openQuickCreateCustomer();
+          return true;
+        }
+        return false;
+      }
     } catch (_) {
       return false;
     }
 
     return false;
+  }
+
+  Future<void> _openQuickCreateCustomer() async {
+    final customer = await QuickCreateCustomerDialog.show(context);
+    if (customer != null && mounted) {
+      final posCubit = context.read<PosCubit>();
+      posCubit.setClient(
+        customer.id,
+        customer.fullName,
+        customer.walletBalance.toInt(),
+      );
+      posCubit.fetchClientCredit(customer.id);
+      AppSnackbar.show(
+        context,
+        message: 'Cliente "${customer.fullName}" seleccionado',
+        type: SnackbarType.success,
+      );
+    }
   }
 
   void _onSearchChanged(String val) {
@@ -385,6 +414,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
         const SingleActivator(LogicalKeyboardKey.keyC, alt: true): () {
           _desktopPanelKey.currentState?.triggerCheckout();
         },
+
+        // Nuevo Cliente Express (Alt+A)
+        const SingleActivator(LogicalKeyboardKey.keyA, alt: true): _openQuickCreateCustomer,
 
         // Escape solo desenfoca el buscador en Tab 0 (sin salir del ERP)
         const SingleActivator(LogicalKeyboardKey.escape): () {
@@ -707,11 +739,19 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
               selectedBrandId: state.selectedBrandId,
               onBrandSelected: context.read<AdminCatalogCubit>().setBrand,
               filterIsActive: state.filterIsActive,
-              onStatusSelected: context.read<AdminCatalogCubit>().setFilterIsActive,
+              showStatusFilter: false,
               sortOption: state.sortOption,
               onSortSelected: context.read<AdminCatalogCubit>().setSortOption,
               stockFilter: state.stockFilter,
               onStockFilterSelected: context.read<AdminCatalogCubit>().setStockFilter,
+              onClearAllFilters: () {
+                final cubit = context.read<AdminCatalogCubit>();
+                cubit.setCategory(null);
+                cubit.setBrand(null);
+                cubit.setStockFilter(CatalogStockFilter.all);
+                cubit.setSortOption(CatalogSortOption.recent);
+                cubit.setFilterIsActive(true);
+              },
             ),
           );
         },

@@ -6,10 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
 import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/admin_sale_client_section.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/admin_sale_points_section.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/payment_warehouse_account_card.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_cart_items_section.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_client_header_bar.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_total_summary_section.dart';
 import 'package:inventory_store_app/core/widgets/batch_edit_sheet.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
@@ -116,9 +116,19 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       client['points_balance'] ?? 0,
     );
     _clienteCtrl.text = client['full_name'];
+    if (mounted) setState(() {});
     FocusScope.of(context).unfocus();
 
     await posCubit.fetchClientCredit(client['id']);
+  }
+
+  void _clearClient() {
+    final posCubit = context.read<PosCubit>();
+    posCubit.removeClient();
+    posCubit.setPuntosAUsar(0);
+    _clienteCtrl.clear();
+    _puntosCtrl.text = '0';
+    if (mounted) setState(() {});
   }
 
   //  CÁLCULOS (Movidos a PosCalculatorUtils)
@@ -623,9 +633,15 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                     // Móvil (Columna única pero con Action Bar pegajoso al fondo)
                     return Column(
                       children: [
+                        // Cliente Sticky en la parte superior para selección inmediata
+                        _buildClientHeader(isLoyaltyEnabled),
+
                         Expanded(
                           child: SingleChildScrollView(
-                            padding: const EdgeInsets.all(24),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -672,8 +688,8 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                 PosCartItemsSection(
                                   onShowBatchEditSheet: _showBatchEditSheet,
                                 ),
-                                const SizedBox(height: 24),
-                                _buildClientAndPaymentSection(
+                                const SizedBox(height: 20),
+                                _buildPaymentAndConfigSection(
                                   pointsToSolesRatio,
                                   isLoyaltyEnabled,
                                 ),
@@ -721,13 +737,16 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   }) {
     return Column(
       children: [
+        // Cliente Sticky en la parte superior del panel derecho
+        _buildClientHeader(isLoyaltyEnabled),
+
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildClientAndPaymentSection(ratio, isLoyaltyEnabled),
+                _buildPaymentAndConfigSection(ratio, isLoyaltyEnabled),
                 const SizedBox(height: 24),
                 ListenableBuilder(
                   listenable: Listenable.merge([
@@ -757,42 +776,39 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     );
   }
 
-  Widget _buildClientAndPaymentSection(double ratio, bool isLoyaltyEnabled) {
+  Widget _buildClientHeader(bool isLoyaltyEnabled) {
+    return BlocBuilder<PosCubit, PosState>(
+      buildWhen:
+          (prev, curr) =>
+              prev.paymentMethod != curr.paymentMethod ||
+              prev.isLoading != curr.isLoading ||
+              prev.clientMatches != curr.clientMatches ||
+              prev.selectedClientId != curr.selectedClientId ||
+              prev.saldoActualCliente != curr.saldoActualCliente ||
+              prev.creditInfo != curr.creditInfo,
+      builder: (context, posState) {
+        final isCredito = posState.paymentMethod == 'CRÉDITO';
+        return PosClientHeaderBar(
+          controller: _clienteCtrl,
+          onSearchChanged: _onClientSearchChanged,
+          searching: posState.isLoading,
+          matches: posState.clientMatches,
+          selectedClientId: posState.selectedClientId,
+          onClientTap: _selectClient,
+          onClearClient: _clearClient,
+          saldoActualCliente: posState.saldoActualCliente,
+          creditInfo: posState.creditInfo,
+          isCredito: isCredito,
+          isLoyaltyEnabled: isLoyaltyEnabled,
+        );
+      },
+    );
+  }
+
+  Widget _buildPaymentAndConfigSection(double ratio, bool isLoyaltyEnabled) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PosSectionLabel('Cliente'),
-        BlocBuilder<PosCubit, PosState>(
-          buildWhen:
-              (prev, curr) =>
-                  prev.paymentMethod != curr.paymentMethod ||
-                  prev.isLoading != curr.isLoading ||
-                  prev.clientMatches != curr.clientMatches ||
-                  prev.selectedClientId != curr.selectedClientId ||
-                  prev.saldoActualCliente != curr.saldoActualCliente ||
-                  prev.creditInfo != curr.creditInfo,
-          builder: (context, posState) {
-            final isCredito = posState.paymentMethod == 'CRÉDITO';
-            return AdminSaleClientSection(
-              controller: _clienteCtrl,
-              onSearchChanged: _onClientSearchChanged,
-              searching: posState.isLoading,
-              matches: posState.clientMatches,
-              selectedClientId: posState.selectedClientId,
-              onClientTap: _selectClient,
-              onClearClient: () {
-                final posCubit = context.read<PosCubit>();
-                posCubit.removeClient();
-                posCubit.setPuntosAUsar(0);
-                _clienteCtrl.clear();
-              },
-              saldoActualCliente: posState.saldoActualCliente,
-              creditInfo: posState.creditInfo,
-              isCredito: isCredito,
-              isLoyaltyEnabled: isLoyaltyEnabled,
-            );
-          },
-        ),
         BlocBuilder<PosCubit, PosState>(
           buildWhen:
               (prev, curr) =>

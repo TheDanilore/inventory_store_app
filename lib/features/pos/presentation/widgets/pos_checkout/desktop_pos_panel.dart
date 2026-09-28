@@ -13,7 +13,7 @@ import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.d
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/admin_sale_client_section.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_client_header_bar.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/admin_sale_points_section.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/payment_warehouse_account_card.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_cart_items_section.dart';
@@ -94,6 +94,15 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     _puntosCtrl.text = '0';
     FocusScope.of(context).unfocus();
     posCubit.fetchClientCredit(id);
+    if (mounted) setState(() {});
+  }
+
+  void _clearClient() {
+    final posCubit = context.read<PosCubit>();
+    posCubit.removeClient();
+    _clienteCtrl.clear();
+    _puntosCtrl.text = '0';
+    if (mounted) setState(() {});
   }
 
   /// Invocado externamente (ej: atajo de teclado F2) para iniciar el cobro sin usar el mouse.
@@ -493,10 +502,16 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                   ),
                 ),
 
+                // Cliente Sticky en la parte superior (Ergonomía POS)
+                _buildClientHeader(isLoyaltyEnabled),
+
                 // Contenido Escroleable
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -504,14 +519,14 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                         PosCartItemsSection(
                           onShowBatchEditSheet: _showBatchEditSheet,
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 20),
 
-                        // Cliente
-                        _buildClientAndPaymentSection(
+                        // Configuración de venta y Puntos de lealtad
+                        _buildPaymentAndConfigSection(
                           pointsToSolesRatio,
                           isLoyaltyEnabled,
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 24),
 
                         // Resumen Total
                         _buildSummarySection(
@@ -534,35 +549,38 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     );
   }
 
-  Widget _buildClientAndPaymentSection(double ratio, bool isLoyaltyEnabled) {
+  Widget _buildClientHeader(bool isLoyaltyEnabled) {
+    return BlocBuilder<PosCubit, PosState>(
+      buildWhen: (prev, curr) =>
+          prev.paymentMethod != curr.paymentMethod ||
+          prev.isLoading != curr.isLoading ||
+          prev.clientMatches != curr.clientMatches ||
+          prev.selectedClientId != curr.selectedClientId ||
+          prev.saldoActualCliente != curr.saldoActualCliente ||
+          prev.creditInfo != curr.creditInfo,
+      builder: (context, posState) {
+        final isCredito = posState.paymentMethod == 'CRÉDITO';
+        return PosClientHeaderBar(
+          controller: _clienteCtrl,
+          onSearchChanged: _onClientSearchChanged,
+          searching: posState.isLoading,
+          matches: posState.clientMatches,
+          selectedClientId: posState.selectedClientId,
+          onClientTap: _selectClient,
+          onClearClient: _clearClient,
+          saldoActualCliente: posState.saldoActualCliente,
+          creditInfo: posState.creditInfo,
+          isCredito: isCredito,
+          isLoyaltyEnabled: isLoyaltyEnabled,
+        );
+      },
+    );
+  }
+
+  Widget _buildPaymentAndConfigSection(double ratio, bool isLoyaltyEnabled) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle('Cliente'),
-        BlocBuilder<PosCubit, PosState>(
-          buildWhen: (prev, curr) =>
-              prev.paymentMethod != curr.paymentMethod ||
-              prev.isLoading != curr.isLoading ||
-              prev.clientMatches != curr.clientMatches ||
-              prev.selectedClientId != curr.selectedClientId ||
-              prev.saldoActualCliente != curr.saldoActualCliente ||
-              prev.creditInfo != curr.creditInfo,
-          builder: (context, posState) {
-            final isCredito = posState.paymentMethod == 'CRÉDITO';
-            return AdminSaleClientSection(
-              controller: _clienteCtrl,
-              onSearchChanged: _onClientSearchChanged,
-              searching: posState.isLoading,
-              matches: posState.clientMatches,
-              selectedClientId: posState.selectedClientId,
-              onClientTap: _selectClient,
-              saldoActualCliente: posState.saldoActualCliente,
-              creditInfo: posState.creditInfo,
-              isCredito: isCredito,
-              isLoyaltyEnabled: isLoyaltyEnabled,
-            );
-          },
-        ),
         BlocBuilder<PosCubit, PosState>(
           buildWhen: (prev, curr) =>
               prev.paymentMethod != curr.paymentMethod ||
@@ -610,7 +628,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
             );
           },
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 20),
         const _SectionTitle('Configuración de venta'),
         BlocBuilder<PosCubit, PosState>(
           buildWhen: (prev, curr) =>
