@@ -54,7 +54,11 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
     setState(() => _montoRecibido = amount);
   }
 
+  bool _isConfirming = false;
+
   void _confirm() {
+    if (_isConfirming) return;
+    setState(() => _isConfirming = true);
     Navigator.pop(context, true);
     widget.onConfirm?.call();
   }
@@ -67,7 +71,7 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.enter): () {
-          if (!faltaDinero) _confirm();
+          if (!faltaDinero && !_isConfirming) _confirm();
         },
         const SingleActivator(LogicalKeyboardKey.escape): () {
           Navigator.pop(context, false);
@@ -378,7 +382,7 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
               ),
             ),
             FilledButton(
-              onPressed: faltaDinero ? null : _confirm,
+              onPressed: (faltaDinero || _isConfirming) ? null : _confirm,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.teal,
                 disabledBackgroundColor: Colors.grey.shade300,
@@ -390,21 +394,35 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.check_rounded, size: 18, color: Colors.white),
-                  SizedBox(width: 8),
+                  if (_isConfirming) ...[
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ] else ...[
+                    const Icon(Icons.check_rounded, size: 18, color: Colors.white),
+                    const SizedBox(width: 8),
+                  ],
                   Text(
-                    'Confirmar Venta',
-                    style: TextStyle(
+                    _isConfirming ? 'Procesando...' : 'Confirmar Venta',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
                     ),
                   ),
-                  SizedBox(width: 6),
-                  _KeyBadge('Enter', isPrimary: true),
+                  if (!_isConfirming) ...[
+                    const SizedBox(width: 6),
+                    const _KeyBadge('Enter', isPrimary: true),
+                  ],
                 ],
               ),
             ),

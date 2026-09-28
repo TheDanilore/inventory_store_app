@@ -95,7 +95,7 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              if (selectedAcc.isNotEmpty)
+              if (isCredito || selectedAcc.isNotEmpty)
                 Text(
                   isCredito ? 'Crédito' : (selectedAcc['name'] as String? ?? ''),
                   style: TextStyle(
@@ -227,9 +227,13 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                     height: 48,
                     child: Material(
                       color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => onCreditoToggle(!isCredito),
-                        borderRadius: BorderRadius.circular(10),
+                        child: InkWell(
+                          onTap: () {
+                            if (!isCredito) {
+                              onCreditoToggle(true);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(10),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

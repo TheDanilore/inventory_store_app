@@ -343,10 +343,10 @@ class PosCartItemRow extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      height: 28,
+                      height: 32,
                       decoration: BoxDecoration(
                         color: AppColors.background,
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppColors.border),
                       ),
                       child: Row(
@@ -363,32 +363,33 @@ class PosCartItemRow extends StatelessWidget {
                                         )
                                     : null,
                             borderRadius: const BorderRadius.horizontal(
-                              left: Radius.circular(6),
+                              left: Radius.circular(8),
                             ),
                             child: Container(
-                              width: 28,
+                              width: 30,
                               alignment: Alignment.center,
                               child: Icon(
                                 Icons.remove_rounded,
-                                size: 14,
+                                size: 15,
                                 color:
                                     item.quantity > 1
                                         ? AppColors.textSecondary
-                                        : AppColors.textMuted,
+                                        : AppColors.textMuted.withValues(alpha: 0.5),
                               ),
                             ),
                           ),
                           Material(
-                            color: AppColors.tealLight.withValues(alpha: 0.3),
+                            color: AppColors.tealLight.withValues(alpha: 0.4),
                             child: InkWell(
                               onTap: () => _showQuantityDialog(context),
                               child: Container(
-                                constraints: const BoxConstraints(minWidth: 28),
+                                constraints: const BoxConstraints(minWidth: 32),
+                                padding: const EdgeInsets.symmetric(horizontal: 6),
                                 alignment: Alignment.center,
                                 child: Text(
                                   '${item.quantity}',
                                   style: const TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 12.5,
                                     fontWeight: FontWeight.w800,
                                     color: AppColors.tealDark,
                                   ),
@@ -414,18 +415,18 @@ class PosCartItemRow extends StatelessWidget {
                                         }
                                         : null,
                                 borderRadius: const BorderRadius.horizontal(
-                                  right: Radius.circular(6),
+                                  right: Radius.circular(8),
                                 ),
                                 child: Container(
-                                  width: 28,
+                                  width: 30,
                                   alignment: Alignment.center,
                                   child: Icon(
                                     Icons.add_rounded,
-                                    size: 14,
+                                    size: 15,
                                     color:
                                         canIncrement
                                             ? AppColors.textSecondary
-                                            : AppColors.textMuted,
+                                            : AppColors.textMuted.withValues(alpha: 0.5),
                                   ),
                                 ),
                               );
@@ -439,7 +440,7 @@ class PosCartItemRow extends StatelessWidget {
                       'S/ ${item.unitPrice.toStringAsFixed(2)} c/u',
                       style: const TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.textMuted,
                       ),
                     ),
@@ -454,25 +455,35 @@ class PosCartItemRow extends StatelessWidget {
               Text(
                 'S/ ${item.subtotal.toStringAsFixed(2)}',
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w900,
                   color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 6),
-              GestureDetector(
-                onTap: () => context.read<CartCubit>().removeItem(item.cartKey),
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: AppColors.dangerLight,
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                  child: const Icon(
-                    Icons.delete_rounded,
-                    size: 14,
-                    color: AppColors.danger,
+              Tooltip(
+                message: 'Quitar producto',
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => context.read<CartCubit>().removeItem(item.cartKey),
+                    borderRadius: BorderRadius.circular(8),
+                    hoverColor: AppColors.dangerLight.withValues(alpha: 0.7),
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
+                      ),
+                      child: const Icon(
+                        Icons.delete_outline_rounded,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ),
                 ),
               ),

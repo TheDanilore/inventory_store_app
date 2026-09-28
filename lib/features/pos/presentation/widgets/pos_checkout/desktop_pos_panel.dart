@@ -217,7 +217,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
         item.productId: item.quantity,
     };
 
-    posCubit.processSale(
+    await posCubit.processSale(
       cartState: cartCubit.state,
       pointsToSolesRatio: pointsToSolesRatio,
       earningRate: earningRate,
@@ -796,12 +796,22 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     double ratio,
     int puntosSeguros,
   ) {
+    final isPercentage = posState.isDiscountPercentage;
+    final discountAmount = PosCalculatorUtils.getCustomDiscountAmount(
+      discountText: posState.discountText,
+      isDiscountPercentage: isPercentage,
+      pos: posState,
+      cart: cartState,
+      ratio: ratio,
+    );
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow(),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -809,115 +819,226 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
           Row(
             children: [
               const Icon(
-                Icons.discount_rounded,
-                size: 20,
-                color: AppColors.primary,
+                Icons.sell_outlined,
+                size: 16,
+                color: AppColors.textSecondary,
               ),
               const SizedBox(width: 8),
               const Text(
-                'Descuento manual',
+                'DESCUENTO MANUAL',
                 style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: AppColors.textSecondary,
                 ),
               ),
               const Spacer(),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Monto', style: TextStyle(fontSize: 12)),
-                  Switch(
-                    value: posState.isDiscountPercentage,
-                    onChanged: (val) {
-                      context.read<PosCubit>().setIsDiscountPercentage(val);
-                      _descuentoCtrl.text = '';
-                    },
-                    activeThumbColor: AppColors.primary,
+              if (discountAmount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: AppColors.success.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
-                  const Text('%', style: TextStyle(fontSize: 12)),
-                ],
-              ),
+                  child: Text(
+                    '- S/ ${discountAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF065F46),
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 12),
-          TextFormField(
-            controller: _descuentoCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-            ],
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-            validator:
-                (v) => PosCalculatorUtils.validateDiscountInput(
-                  text: v,
-                  isPercentage: posState.isDiscountPercentage,
-                  maxDiscountAmount: PosCalculatorUtils.getMaxCustomDiscount(
-                    cartState,
-                    ratio,
-                    puntosSeguros,
+          Row(
+            children: [
+              // ── Campo de Entrada 44px ──
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: TextFormField(
+                    controller: _descuentoCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                    ],
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                    validator:
+                        (v) => PosCalculatorUtils.validateDiscountInput(
+                          text: v,
+                          isPercentage: isPercentage,
+                          maxDiscountAmount: PosCalculatorUtils.getMaxCustomDiscount(
+                            cartState,
+                            ratio,
+                            puntosSeguros,
+                          ),
+                          cartTotal: cartState.totalAmount,
+                        ),
+                    decoration: InputDecoration(
+                      hintText: '0.00',
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.only(left: 12, right: 6),
+                        child: Text(
+                          isPercentage ? '%' : 'S/',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
+                      ),
+                    ),
+                    onChanged: (v) {
+                      if (v.trim().isEmpty) {
+                        context.read<PosCubit>().setDiscountText('');
+                        return;
+                      }
+                      final val = double.tryParse(v) ?? 0.0;
+                      final maxDiscount = PosCalculatorUtils.getMaxCustomDiscount(
+                        cartState,
+                        ratio,
+                        puntosSeguros,
+                      );
+                      final amt =
+                          isPercentage
+                              ? (cartState.totalAmount * (val / 100))
+                              : val;
+                      if (amt > maxDiscount) {
+                        if (isPercentage) {
+                          final maxPerc = (maxDiscount / cartState.totalAmount) * 100;
+                          final text = maxPerc.toStringAsFixed(2);
+                          _descuentoCtrl.value = TextEditingValue(
+                            text: text,
+                            selection: TextSelection.collapsed(offset: text.length),
+                          );
+                          context.read<PosCubit>().setDiscountText(text);
+                        } else {
+                          final text = maxDiscount.toStringAsFixed(2);
+                          _descuentoCtrl.value = TextEditingValue(
+                            text: text,
+                            selection: TextSelection.collapsed(offset: text.length),
+                          );
+                          context.read<PosCubit>().setDiscountText(text);
+                        }
+                      } else {
+                        context.read<PosCubit>().setDiscountText(v);
+                      }
+                    },
                   ),
-                  cartTotal: cartState.totalAmount,
                 ),
-            decoration: InputDecoration(
-              hintText: '0.00',
-              prefixText: posState.isDiscountPercentage ? null : 'S/ ',
-              suffixText: posState.isDiscountPercentage ? '%' : null,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+              const SizedBox(width: 8),
+
+              // ── Selector Segmentado Moderno [ S/ ] [ % ] 44px ──
+              Container(
+                height: 44,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.border, width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildSegmentButton(
+                      label: 'S/ Monto',
+                      isSelected: !isPercentage,
+                      onTap: () {
+                        if (isPercentage) {
+                          context.read<PosCubit>().setIsDiscountPercentage(false);
+                          _descuentoCtrl.text = '';
+                          context.read<PosCubit>().setDiscountText('');
+                        }
+                      },
+                    ),
+                    _buildSegmentButton(
+                      label: '% Porc.',
+                      isSelected: isPercentage,
+                      onTap: () {
+                        if (!isPercentage) {
+                          context.read<PosCubit>().setIsDiscountPercentage(true);
+                          _descuentoCtrl.text = '';
+                          context.read<PosCubit>().setDiscountText('');
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.primary),
-              ),
-            ),
-            onChanged: (v) {
-              if (v.trim().isEmpty) {
-                context.read<PosCubit>().setDiscountText('');
-                return;
-              }
-              final val = double.tryParse(v) ?? 0.0;
-              final maxDiscount = PosCalculatorUtils.getMaxCustomDiscount(
-                cartState,
-                ratio,
-                puntosSeguros,
-              );
-              final amt =
-                  posState.isDiscountPercentage
-                      ? (cartState.totalAmount * (val / 100))
-                      : val;
-              if (amt > maxDiscount) {
-                if (posState.isDiscountPercentage) {
-                  final maxPerc = (maxDiscount / cartState.totalAmount) * 100;
-                  final text = maxPerc.toStringAsFixed(2);
-                  _descuentoCtrl.value = TextEditingValue(
-                    text: text,
-                    selection: TextSelection.collapsed(offset: text.length),
-                  );
-                  context.read<PosCubit>().setDiscountText(text);
-                } else {
-                  final text = maxDiscount.toStringAsFixed(2);
-                  _descuentoCtrl.value = TextEditingValue(
-                    text: text,
-                    selection: TextSelection.collapsed(offset: text.length),
-                  );
-                  context.read<PosCubit>().setDiscountText(text);
-                }
-              } else {
-                context.read<PosCubit>().setDiscountText(v);
-              }
-            },
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentButton({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        mouseCursor: SystemMouseCursors.click,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+              color: isSelected ? AppColors.teal : AppColors.textSecondary,
+            ),
+          ),
+        ),
       ),
     );
   }

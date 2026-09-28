@@ -289,8 +289,15 @@ class PosHeader extends StatelessWidget {
     }
 
     final activeShift = posState.activeShift;
-    return InkWell(
-      mouseCursor: SystemMouseCursors.click,
+    final rawName = activeShift?.openedByName?.trim() ?? '';
+    final tooltipMsg = isShiftOpen
+        ? 'Cajero: ${rawName.isNotEmpty ? rawName : "Cajero en turno"} • Apertura: S/ ${activeShift?.openingAmount.toStringAsFixed(2) ?? "0.00"}\n(Clic para cerrar turno)'
+        : 'La caja física está cerrada. Clic para abrir turno.';
+
+    return Tooltip(
+      message: tooltipMsg,
+      child: InkWell(
+        mouseCursor: SystemMouseCursors.click,
       onTap: () async {
         if (isShiftOpen) {
           final shiftsCubit = context.read<CashShiftsCubit>();
@@ -371,10 +378,13 @@ class PosHeader extends StatelessWidget {
             ],
             Text(
               isShiftOpen
-                  ? (activeShift?.openedByName != null &&
-                          activeShift!.openedByName!.isNotEmpty
-                      ? 'Turno Abierto (${activeShift.openedByName})'
-                      : 'Turno Abierto • S/ ${activeShift!.openingAmount.toStringAsFixed(2)}')
+                  ? (() {
+                      final rawName = activeShift?.openedByName?.trim() ?? '';
+                      final firstName = rawName.isNotEmpty ? rawName.split(' ').first : '';
+                      return firstName.isNotEmpty
+                          ? 'Turno Abierto ($firstName)'
+                          : 'Turno Abierto • S/ ${activeShift!.openingAmount.toStringAsFixed(2)}';
+                    })()
                   : 'Caja Física Cerrada • Abrir Turno',
               style: TextStyle(
                 fontSize: 12.5,
@@ -388,8 +398,9 @@ class PosHeader extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildWarehouseSelector(BuildContext context, PosState posState) {
     if (posState.isLoading) {

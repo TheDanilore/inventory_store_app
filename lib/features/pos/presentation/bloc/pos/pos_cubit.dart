@@ -154,12 +154,27 @@ class PosCubit extends Cubit<PosState> {
   }
 
   void setSelectedAccountId(String? accountId) {
-    emit(state.copyWith(selectedAccountId: accountId));
+    String? resolvedPaymentMethod;
+    Map<String, dynamic>? account;
+
     if (accountId != null) {
-      final account = state.accounts.firstWhere(
+      account = state.accounts.firstWhere(
         (a) => a['id'] == accountId,
         orElse: () => <String, dynamic>{},
       );
+      if (account.isNotEmpty) {
+        resolvedPaymentMethod = account['name'] as String? ?? 'EFECTIVO';
+      }
+    }
+
+    emit(
+      state.copyWith(
+        selectedAccountId: accountId,
+        paymentMethod: resolvedPaymentMethod ?? (accountId == null ? state.paymentMethod : 'EFECTIVO'),
+      ),
+    );
+
+    if (accountId != null && account != null && account.isNotEmpty) {
       // Solo verificamos turno si la cuenta seleccionada es una caja física.
       // Cuentas digitales/bancarias no borran el turno de la caja física de la tienda.
       if (PosCalculatorUtils.accountRequiresShift(account)) {
