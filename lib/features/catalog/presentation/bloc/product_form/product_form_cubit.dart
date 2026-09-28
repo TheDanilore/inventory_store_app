@@ -590,9 +590,42 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       return;
     }
 
-    // Validación exhaustiva de cada una de las variantes
+    // Validación exhaustiva de cada una de las variantes (precios, costos, unicidad de SKU y barcode)
+    final seenSkus = <String, int>{};
+    final seenBarcodes = <String, int>{};
+
     for (int i = 0; i < _variantDrafts.length; i++) {
       final v = _variantDrafts[i];
+      final sku = v.sku.trim();
+      if (sku.isNotEmpty) {
+        if (seenSkus.containsKey(sku)) {
+          final firstIndex = seenSkus[sku]! + 1;
+          emit(
+            state.copyWith(
+              snackError:
+                  'El SKU "$sku" está repetido en la variante #$firstIndex y la variante #${i + 1}. Cada variante debe tener un SKU único.',
+            ),
+          );
+          return;
+        }
+        seenSkus[sku] = i;
+      }
+
+      final barcode = v.barcode.trim();
+      if (barcode.isNotEmpty) {
+        if (seenBarcodes.containsKey(barcode)) {
+          final firstIndex = seenBarcodes[barcode]! + 1;
+          emit(
+            state.copyWith(
+              snackError:
+                  'El código de barras "$barcode" está repetido en la variante #$firstIndex y la variante #${i + 1}.',
+            ),
+          );
+          return;
+        }
+        seenBarcodes[barcode] = i;
+      }
+
       final p = _parseDecimal(v.price);
       if (p == null || p <= 0) {
         emit(

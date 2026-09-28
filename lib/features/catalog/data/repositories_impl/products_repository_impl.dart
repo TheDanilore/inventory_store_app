@@ -211,7 +211,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
           await _supabase
               .from('products')
               .select(
-                'id, name, is_active, description, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(*), categories(name), brands(id, name, logo_url), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name)))), warehouse_stock_batches(*)',
+                'id, name, is_active, description, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(*), categories(name), brands(id, name, logo_url), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name))))',
               )
               .eq('id', id)
               .maybeSingle();
@@ -747,12 +747,12 @@ class ProductsRepositoryImpl implements ProductsRepository {
   @override
   Future<Either<Failure, bool>> hasVariantSales(String variantId) async {
     try {
-      final count = await _supabase
+      final rows = await _supabase
           .from('order_items')
-          .select()
+          .select('id')
           .eq('variant_id', variantId)
-          .count(CountOption.exact);
-      return right(count.count > 0);
+          .limit(1);
+      return right((rows as List).isNotEmpty);
     } catch (e, st) {
       return _handleError(e, st);
     }

@@ -15,56 +15,8 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 ///
 /// Gestiona controllers locales indexados por [IngredientRowModel.id].
 /// El Cubit mantiene la colección de modelos puros; el widget mantiene los controllers.
-class ProductIngredientsSection extends StatefulWidget {
+class ProductIngredientsSection extends StatelessWidget {
   const ProductIngredientsSection({super.key});
-
-  @override
-  State<ProductIngredientsSection> createState() =>
-      _ProductIngredientsSectionState();
-}
-
-class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
-  final Map<String, TextEditingController> _nameControllers = {};
-  final Map<String, TextEditingController> _concentrationControllers = {};
-  final Map<String, TextEditingController> _unitControllers = {};
-
-  @override
-  void dispose() {
-    for (final ctrl in _nameControllers.values) {
-      ctrl.dispose();
-    }
-    for (final ctrl in _concentrationControllers.values) {
-      ctrl.dispose();
-    }
-    for (final ctrl in _unitControllers.values) {
-      ctrl.dispose();
-    }
-    super.dispose();
-  }
-
-  void _syncControllers(List<IngredientRowModel> rows) {
-    final ids = rows.map((r) => r.id).toSet();
-
-    // Eliminar controllers huérfanos
-    _nameControllers.keys.toList().forEach((id) {
-      if (!ids.contains(id)) {
-        _nameControllers.remove(id)?.dispose();
-        _concentrationControllers.remove(id)?.dispose();
-        _unitControllers.remove(id)?.dispose();
-      }
-    });
-
-    // Crear controllers faltantes
-    for (final row in rows) {
-      if (!_nameControllers.containsKey(row.id)) {
-        _nameControllers[row.id] = TextEditingController(text: row.name);
-        _concentrationControllers[row.id] = TextEditingController(
-          text: row.concentration,
-        );
-        _unitControllers[row.id] = TextEditingController(text: row.unit);
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,8 +28,6 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
               p.ingredientsEnabled != c.ingredientsEnabled ||
               p.ingredientRows != c.ingredientRows,
       builder: (context, state) {
-        _syncControllers(state.ingredientRows);
-
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
@@ -213,182 +163,18 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
                                     (_, _) => const SizedBox(height: 10),
                                 itemBuilder: (context, idx) {
                                   final row = state.ingredientRows[idx];
-                                  final nameCtrl = _nameControllers[row.id]!;
-                                  final concentrationCtrl =
-                                      _concentrationControllers[row.id]!;
-                                  final unitCtrl = _unitControllers[row.id]!;
-                                  final isWideScreen =
-                                      MediaQuery.of(context).size.width >= 768;
-
-                                  Widget nameField = GestureDetector(
-                                    onTap: () async {
-                                      final result = await showDialog<
-                                        Map<String, dynamic>
-                                      >(
-                                        context: context,
-                                        builder:
-                                            (_) =>
-                                                const IngredientSearchDialog(),
-                                      );
-
-                                      if (result != null) {
-                                        nameCtrl.text =
-                                            result['name'] as String;
+                                  return _IngredientItemRow(
+                                    key: ValueKey(row.id),
+                                    row: row,
+                                    index: idx,
+                                    onChanged: (updated) =>
                                         cubit.updateIngredientRow(
                                           idx,
-                                          row.copyWith(
-                                            ingredientId:
-                                                result['id'] as String,
-                                            name:
-                                                result['name'] as String,
-                                          ),
-                                          syncState: true,
-                                        );
-                                      }
-                                    },
-                                    child: AbsorbPointer(
-                                      child: TextField(
-                                        controller: nameCtrl,
-                                        decoration: InputDecoration(
-                                          labelText:
-                                              'Componente / Ingrediente Activo *',
-                                          hintText:
-                                              'Buscar o crear ingrediente...',
-                                          isDense: true,
-                                          suffixIcon: const Icon(
-                                            Icons.search_rounded,
-                                            color: AppColors.primary,
-                                            size: 20,
-                                          ),
-                                          border: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                                vertical: 10,
-                                              ),
-                                        ),
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-
-                                  Widget concentrationField = TextField(
-                                    controller: concentrationCtrl,
-                                    keyboardType: TextInputType.number,
-                                    onChanged:
-                                        (val) => cubit.updateIngredientRow(
-                                          idx,
-                                          row.copyWith(concentration: val),
+                                          updated,
                                           syncState: true,
                                         ),
-                                    decoration: InputDecoration(
-                                      labelText: 'Concentración',
-                                      hintText: 'Ej: 500',
-                                      isDense: true,
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 10,
-                                          ),
-                                    ),
-                                    style: const TextStyle(fontSize: 13),
-                                  );
-
-                                  Widget unitField = TextField(
-                                    controller: unitCtrl,
-                                    onChanged:
-                                        (val) => cubit.updateIngredientRow(
-                                          idx,
-                                          row.copyWith(unit: val),
-                                          syncState: true,
-                                        ),
-                                    decoration: InputDecoration(
-                                      labelText: 'Unidad',
-                                      hintText: 'Ej: mg',
-                                      isDense: true,
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 10,
-                                          ),
-                                    ),
-                                    style: const TextStyle(fontSize: 13),
-                                  );
-
-                                  Widget deleteBtn = IconButton(
-                                    onPressed:
-                                        () => cubit.removeIngredientRow(idx),
-                                    icon: Icon(
-                                      Icons.delete_outline_rounded,
-                                      color: Colors.red.shade400,
-                                      size: 20,
-                                    ),
-                                    tooltip: 'Eliminar componente',
-                                  );
-
-                                  return Container(
-                                    key: ValueKey(row.id),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color: Colors.grey.shade200,
-                                      ),
-                                    ),
-                                    child: isWideScreen
-                                        ? Row(
-                                            children: [
-                                              Expanded(
-                                                flex: 5,
-                                                child: nameField,
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                flex: 2,
-                                                child: concentrationField,
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                flex: 2,
-                                                child: unitField,
-                                              ),
-                                              const SizedBox(width: 6),
-                                              deleteBtn,
-                                            ],
-                                          )
-                                        : Column(
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Expanded(child: nameField),
-                                                  deleteBtn,
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: concentrationField,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Expanded(child: unitField),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
+                                    onRemove: () =>
+                                        cubit.removeIngredientRow(idx),
                                   );
                                 },
                               ),
@@ -423,6 +209,216 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
           ),
         );
       },
+    );
+  }
+}
+
+/// Fila autónoma para un ingrediente/componente activo con su propio ciclo de vida de controllers.
+class _IngredientItemRow extends StatefulWidget {
+  final IngredientRowModel row;
+  final int index;
+  final ValueChanged<IngredientRowModel> onChanged;
+  final VoidCallback onRemove;
+
+  const _IngredientItemRow({
+    super.key,
+    required this.row,
+    required this.index,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  @override
+  State<_IngredientItemRow> createState() => _IngredientItemRowState();
+}
+
+class _IngredientItemRowState extends State<_IngredientItemRow> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _concentrationCtrl;
+  late final TextEditingController _unitCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.row.name);
+    _concentrationCtrl = TextEditingController(text: widget.row.concentration);
+    _unitCtrl = TextEditingController(text: widget.row.unit);
+  }
+
+  @override
+  void didUpdateWidget(covariant _IngredientItemRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.row.name != _nameCtrl.text) {
+      _nameCtrl.text = widget.row.name;
+    }
+    if (widget.row.concentration != _concentrationCtrl.text) {
+      _concentrationCtrl.text = widget.row.concentration;
+    }
+    if (widget.row.unit != _unitCtrl.text) {
+      _unitCtrl.text = widget.row.unit;
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _concentrationCtrl.dispose();
+    _unitCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isWideScreen = MediaQuery.of(context).size.width >= 768;
+
+    Widget nameField = GestureDetector(
+      onTap: () async {
+        final result = await showDialog<Map<String, dynamic>>(
+          context: context,
+          builder: (_) => const IngredientSearchDialog(),
+        );
+
+        if (result != null) {
+          final newName = result['name'] as String;
+          final newId = result['id'] as String;
+          _nameCtrl.text = newName;
+          widget.onChanged(
+            widget.row.copyWith(
+              ingredientId: newId,
+              name: newName,
+            ),
+          );
+        }
+      },
+      child: AbsorbPointer(
+        child: TextField(
+          controller: _nameCtrl,
+          decoration: InputDecoration(
+            labelText: 'Componente / Ingrediente Activo *',
+            hintText: 'Buscar o crear ingrediente...',
+            isDense: true,
+            suffixIcon: const Icon(
+              Icons.search_rounded,
+              color: AppColors.primary,
+              size: 20,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+          ),
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+
+    Widget concentrationField = TextField(
+      controller: _concentrationCtrl,
+      keyboardType: TextInputType.number,
+      onChanged: (val) => widget.onChanged(
+        widget.row.copyWith(concentration: val),
+      ),
+      decoration: InputDecoration(
+        labelText: 'Concentración',
+        hintText: 'Ej: 500',
+        isDense: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
+      ),
+      style: const TextStyle(fontSize: 13),
+    );
+
+    Widget unitField = TextField(
+      controller: _unitCtrl,
+      onChanged: (val) => widget.onChanged(
+        widget.row.copyWith(unit: val),
+      ),
+      decoration: InputDecoration(
+        labelText: 'Unidad',
+        hintText: 'Ej: mg',
+        isDense: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
+      ),
+      style: const TextStyle(fontSize: 13),
+    );
+
+    Widget deleteBtn = IconButton(
+      onPressed: widget.onRemove,
+      icon: Icon(
+        Icons.delete_outline_rounded,
+        color: Colors.red.shade400,
+        size: 20,
+      ),
+      tooltip: 'Eliminar componente',
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Colors.grey.shade200,
+        ),
+      ),
+      child: isWideScreen
+          ? Row(
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: nameField,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: concentrationField,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: unitField,
+                ),
+                const SizedBox(width: 6),
+                deleteBtn,
+              ],
+            )
+          : Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: nameField),
+                    deleteBtn,
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: concentrationField,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: unitField),
+                  ],
+                ),
+              ],
+            ),
     );
   }
 }

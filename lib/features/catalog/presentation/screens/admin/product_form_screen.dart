@@ -231,17 +231,30 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
         }
       },
       child: BlocBuilder<ProductFormCubit, ProductFormState>(
+        buildWhen: (prev, current) =>
+            prev.isInitializingData != current.isInitializingData ||
+            prev.hasErrorLoading != current.hasErrorLoading ||
+            prev.errorMessage != current.errorMessage,
         builder: (context, state) {
           final cubit = context.read<ProductFormCubit>();
-          final canPopNow =
-              _allowExplicitPop ||
-              (!cubit.hasUnsavedChanges &&
-                  !state.isSaving &&
-                  !state.isInitializingData);
+          final canPopNow = _allowExplicitPop;
           return PopScope(
             canPop: canPopNow,
             onPopInvokedWithResult: (didPop, result) async {
               if (didPop) return;
+              final currentCubit = context.read<ProductFormCubit>();
+              final currentState = currentCubit.state;
+              if (!currentCubit.hasUnsavedChanges &&
+                  !currentState.isSaving &&
+                  !currentState.isInitializingData) {
+                setState(() => _allowExplicitPop = true);
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context, result);
+                } else {
+                  context.go('/products');
+                }
+                return;
+              }
               final shouldPop = await _onWillPop();
               if (shouldPop && context.mounted) {
                 setState(() => _allowExplicitPop = true);
@@ -298,14 +311,12 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                     if (isDesktop)
                                       _buildDesktopSplitLayout(
                                         context,
-                                        state,
                                         cubit,
                                         isEdit,
                                       )
                                     else
                                       _buildMobileSingleColumnLayout(
                                         context,
-                                        state,
                                         cubit,
                                         isEdit,
                                       ),
@@ -396,7 +407,6 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
   // ── Layout Desktop: Split ERP 2 Columnas (width >= 1024) ────────────────────
   Widget _buildDesktopSplitLayout(
     BuildContext context,
-    ProductFormState state,
     ProductFormCubit cubit,
     bool isEdit,
   ) {
@@ -428,9 +438,9 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                         const SizedBox(height: 20),
                         const ProductBatchSection(),
                         const SizedBox(height: 20),
-                        _buildVariantsHeader(cubit, state),
+                        _buildVariantsHeader(cubit),
                         const SizedBox(height: 12),
-                        _buildVariantsList(state, cubit),
+                        _buildVariantsList(cubit),
                       ],
                     ),
                   ),
@@ -445,7 +455,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                         const SizedBox(height: 20),
                         const ProductConfigSection(),
                         const SizedBox(height: 20),
-                        _buildDesktopSaveCard(cubit, state, isEdit),
+                        _buildDesktopSaveCard(cubit, isEdit),
                       ],
                     ),
                   ),
@@ -579,54 +589,58 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        FilledButton.icon(
-                          onPressed: state.isSaving ? null : _guardar,
-                          icon:
-                              state.isSaving
-                                  ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                  : const Icon(Icons.check_rounded, size: 18),
-                          label: Text(
-                            isEdit
-                                ? 'Actualizar Producto (Alt+G)'
-                                : 'Guardar Producto (Alt+G)',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.success,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
+                      BlocSelector<ProductFormCubit, ProductFormState, bool>(
+                        selector: (s) => s.isSaving,
+                        builder: (context, isSaving) {
+                          return FilledButton.icon(
+                            onPressed: isSaving ? null : _guardar,
+                            icon:
+                                isSaving
+                                    ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                    : const Icon(Icons.check_rounded, size: 18),
+                            label: Text(
+                              isEdit
+                                  ? 'Actualizar Producto (Alt+G)'
+                                  : 'Guardar Producto (Alt+G)',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppColors.radius,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.success,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppColors.radius,
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
   Widget _buildDesktopSaveCard(
     ProductFormCubit cubit,
-    ProductFormState state,
     bool isEdit,
   ) {
     return Container(
@@ -661,62 +675,74 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 7,
-                  vertical: 3,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      cubit.hasUnsavedChanges
-                          ? Colors.orange.shade50
-                          : Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color:
-                        cubit.hasUnsavedChanges
-                            ? Colors.orange.shade200
-                            : Colors.green.shade200,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
+              BlocBuilder<ProductFormCubit, ProductFormState>(
+                buildWhen: (p, c) => p.isDirty != c.isDirty,
+                builder: (context, state) {
+                  final isDirty = cubit.hasUnsavedChanges;
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          isDirty
+                              ? Colors.orange.shade50
+                              : Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
                         color:
-                            cubit.hasUnsavedChanges
-                                ? Colors.orange.shade600
-                                : Colors.green.shade600,
-                        shape: BoxShape.circle,
+                            isDirty
+                                ? Colors.orange.shade200
+                                : Colors.green.shade200,
                       ),
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      cubit.hasUnsavedChanges ? 'Sin guardar' : 'Al día',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color:
-                            cubit.hasUnsavedChanges
-                                ? Colors.orange.shade800
-                                : Colors.green.shade800,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color:
+                                isDirty
+                                    ? Colors.orange.shade600
+                                    : Colors.green.shade600,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          isDirty ? 'Sin guardar' : 'Al día',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color:
+                                isDirty
+                                    ? Colors.orange.shade800
+                                    : Colors.green.shade800,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ],
           ),
           const SizedBox(height: 16),
-          AppPrimaryButton(
-            label: isEdit ? 'Actualizar Producto' : 'Guardar Producto',
-            icon: const Icon(Icons.check_rounded, size: 20),
-            onPressed: state.isSaving ? null : _guardar,
-            backgroundColor: AppColors.success,
-            foregroundColor: Colors.white,
+          BlocSelector<ProductFormCubit, ProductFormState, bool>(
+            selector: (s) => s.isSaving,
+            builder: (context, isSaving) {
+              return AppPrimaryButton(
+                label: isEdit ? 'Actualizar Producto' : 'Guardar Producto',
+                icon: const Icon(Icons.check_rounded, size: 20),
+                onPressed: isSaving ? null : _guardar,
+                loading: isSaving,
+                backgroundColor: AppColors.success,
+                foregroundColor: Colors.white,
+              );
+            },
           ),
           const SizedBox(height: 12),
           Row(
@@ -791,7 +817,6 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
   // ── Layout Móvil: 1 Columna Vertical Continua (width < 1024) ─────────────
   Widget _buildMobileSingleColumnLayout(
     BuildContext context,
-    ProductFormState state,
     ProductFormCubit cubit,
     bool isEdit,
   ) {
@@ -818,9 +843,9 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                   const SizedBox(height: 16),
                   const ProductBatchSection(),
                   const SizedBox(height: 20),
-                  _buildVariantsHeader(cubit, state),
+                  _buildVariantsHeader(cubit),
                   const SizedBox(height: 12),
-                  _buildVariantsList(state, cubit),
+                  _buildVariantsList(cubit),
                 ]),
               ),
             ),
@@ -880,15 +905,25 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: AppPrimaryButton(
-                          label:
-                              isEdit
-                                  ? 'Actualizar Producto'
-                                  : 'Guardar Producto',
-                          icon: const Icon(Icons.check_rounded, size: 20),
-                          onPressed: state.isSaving ? null : _guardar,
-                          backgroundColor: AppColors.success,
-                          foregroundColor: Colors.white,
+                        child: BlocSelector<
+                          ProductFormCubit,
+                          ProductFormState,
+                          bool
+                        >(
+                          selector: (s) => s.isSaving,
+                          builder: (context, isSaving) {
+                            return AppPrimaryButton(
+                              label:
+                                  isEdit
+                                      ? 'Actualizar Producto'
+                                      : 'Guardar Producto',
+                              icon: const Icon(Icons.check_rounded, size: 20),
+                              onPressed: isSaving ? null : _guardar,
+                              loading: isSaving,
+                              backgroundColor: AppColors.success,
+                              foregroundColor: Colors.white,
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -903,231 +938,247 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
   }
 
   // ── Headers & Listas de Variantes ──────────────────────────────────────────
-  Widget _buildVariantsHeader(ProductFormCubit cubit, ProductFormState state) {
-    final count = state.variantDrafts.length;
-    final activeCount = state.variantDrafts.where((d) => d.isActive).length;
-    final isAllExpanded = _allExpanded == true;
+  Widget _buildVariantsHeader(ProductFormCubit cubit) {
+    return BlocBuilder<ProductFormCubit, ProductFormState>(
+      buildWhen: (p, c) =>
+          p.variantDrafts.length != c.variantDrafts.length ||
+          p.variantDrafts.where((d) => d.isActive).length !=
+              c.variantDrafts.where((d) => d.isActive).length,
+      builder: (context, state) {
+        final count = state.variantDrafts.length;
+        final activeCount = state.variantDrafts.where((d) => d.isActive).length;
+        final isAllExpanded = _allExpanded == true;
 
-    return Row(
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
+        return Row(
           children: [
-            const Text(
-              'Variantes',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Variantes',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2.5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$count ${count == 1 ? 'variante' : 'variantes'}${count > 0 ? ' • $activeCount activas' : ''}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 2.5,
+            const Spacer(),
+            if (count > 1) ...[
+              TextButton.icon(
+                onPressed: _toggleExpandCollapseAll,
+                icon: Icon(
+                  isAllExpanded
+                      ? Icons.unfold_less_rounded
+                      : Icons.unfold_more_rounded,
+                  size: 16,
+                ),
+                label: Text(
+                  isAllExpanded ? 'Colapsar todo' : 'Expandir todo',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                ),
               ),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
+              const SizedBox(width: 6),
+            ],
+            FilledButton.icon(
+              onPressed: cubit.addVariantDraft,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text(
+                'Agregar variante',
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
               ),
-              child: Text(
-                '$count ${count == 1 ? 'variante' : 'variantes'}${count > 0 ? ' • $activeCount activas' : ''}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radius),
                 ),
               ),
             ),
           ],
-        ),
-        const Spacer(),
-        if (count > 1) ...[
-          TextButton.icon(
-            onPressed: _toggleExpandCollapseAll,
-            icon: Icon(
-              isAllExpanded
-                  ? Icons.unfold_less_rounded
-                  : Icons.unfold_more_rounded,
-              size: 16,
-            ),
-            label: Text(
-              isAllExpanded ? 'Colapsar todo' : 'Expandir todo',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.textSecondary,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            ),
-          ),
-          const SizedBox(width: 6),
-        ],
-        FilledButton.icon(
-          onPressed: cubit.addVariantDraft,
-          icon: const Icon(Icons.add_rounded, size: 18),
-          label: const Text(
-            'Agregar variante',
-            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-          ),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppColors.radius),
-            ),
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
-  Widget _buildVariantsList(ProductFormState state, ProductFormCubit cubit) {
-    if (state.variantDrafts.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.border.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(AppColors.radius),
-        ),
-        child: const Text(
-          'Sin variantes aún. Agrega una si este producto cambia por color, talla, etc.',
-          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-        ),
-      );
-    }
-
-    final totalCount = state.variantDrafts.length;
-    final term = _variantSearchTerm.trim().toLowerCase();
-
-    final List<int> filteredIndices = [];
-    for (int i = 0; i < totalCount; i++) {
-      if (term.isEmpty) {
-        filteredIndices.add(i);
-      } else {
-        final d = state.variantDrafts[i];
-        final matchSku = d.sku.toLowerCase().contains(term);
-        final matchNum = (i + 1).toString() == term;
-        final matchAttr = d.selectedAttributes.any((a) {
-          final an = (a['attribute_name'] ?? '').toString().toLowerCase();
-          final vn = (a['value_name'] ?? '').toString().toLowerCase();
-          return an.contains(term) || vn.contains(term);
-        });
-        if (matchSku || matchNum || matchAttr) {
-          filteredIndices.add(i);
-        }
-      }
-    }
-
-    return Column(
-      children: [
-        if (totalCount > 4) ...[
-          Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: TextField(
-              controller: _variantSearchCtrl,
-              onChanged: (val) => setState(() => _variantSearchTerm = val),
-              decoration: InputDecoration(
-                hintText: 'Filtrar variantes por modelo, atributo o SKU...',
-                hintStyle: TextStyle(
-                  fontSize: 12.5,
-                  color: Colors.grey.shade400,
-                ),
-                prefixIcon: const Icon(Icons.search_rounded, size: 18),
-                suffixIcon:
-                    _variantSearchTerm.isNotEmpty
-                        ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 16),
-                          onPressed: () {
-                            _variantSearchCtrl.clear();
-                            setState(() => _variantSearchTerm = '');
-                          },
-                        )
-                        : null,
-                isDense: true,
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: AppColors.border),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: AppColors.border),
-                ),
-              ),
-            ),
-          ),
-        ],
-        if (filteredIndices.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(24),
-            alignment: Alignment.center,
+  Widget _buildVariantsList(ProductFormCubit cubit) {
+    return BlocBuilder<ProductFormCubit, ProductFormState>(
+      buildWhen: (p, c) => p.variantDrafts != c.variantDrafts,
+      builder: (context, state) {
+        if (state.variantDrafts.isEmpty) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.border.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(AppColors.radius),
-              border: Border.all(color: AppColors.border),
             ),
-            child: Text(
-              'No se encontraron variantes que coincidan con "$_variantSearchTerm"',
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
+            child: const Text(
+              'Sin variantes aún. Agrega una si este producto cambia por color, talla, etc.',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
-          )
-        else
-          ...filteredIndices.map((index) {
-            final draft = state.variantDrafts[index];
-            return VariantDraftCard(
-              key: ValueKey(
-                '${draft.id ?? 'draft_${draft.hashCode}_$index'}_v$_expandCollapseVersion',
-              ),
-              index: index,
-              draft: draft,
-              isExpanded: _allExpanded,
-              onRemove: () => cubit.removeVariantDraft(index),
-              onDuplicate: () => cubit.duplicateVariantDraft(index),
-              onActiveChanged: (val) {
-                cubit.updateVariantDraft(
-                  index,
-                  draft.copyWith(isActive: val),
-                  syncState: true,
-                );
-              },
-              onPickImage: () => cubit.pickVariantImage(index),
-              onUpdate:
-                  (newDraft, {syncState = false}) => cubit.updateVariantDraft(
-                    index,
-                    newDraft,
-                    syncState: syncState,
+          );
+        }
+
+        final totalCount = state.variantDrafts.length;
+        final term = _variantSearchTerm.trim().toLowerCase();
+
+        final List<int> filteredIndices = [];
+        for (int i = 0; i < totalCount; i++) {
+          if (term.isEmpty) {
+            filteredIndices.add(i);
+          } else {
+            final d = state.variantDrafts[i];
+            final matchSku = d.sku.toLowerCase().contains(term);
+            final matchNum = (i + 1).toString() == term;
+            final matchAttr = d.selectedAttributes.any((a) {
+              final an = (a['attribute_name'] ?? '').toString().toLowerCase();
+              final vn = (a['value_name'] ?? '').toString().toLowerCase();
+              return an.contains(term) || vn.contains(term);
+            });
+            if (matchSku || matchNum || matchAttr) {
+              filteredIndices.add(i);
+            }
+          }
+        }
+
+        return Column(
+          children: [
+            if (totalCount > 4) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: TextField(
+                  controller: _variantSearchCtrl,
+                  onChanged: (val) => setState(() => _variantSearchTerm = val),
+                  decoration: InputDecoration(
+                    hintText: 'Filtrar variantes por modelo, atributo o SKU...',
+                    hintStyle: TextStyle(
+                      fontSize: 12.5,
+                      color: Colors.grey.shade400,
+                    ),
+                    prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                    suffixIcon:
+                        _variantSearchTerm.isNotEmpty
+                            ? IconButton(
+                              icon: const Icon(Icons.clear_rounded, size: 16),
+                              onPressed: () {
+                                _variantSearchCtrl.clear();
+                                setState(() => _variantSearchTerm = '');
+                              },
+                            )
+                            : null,
+                    isDense: true,
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
                   ),
-            );
-          }),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: cubit.addVariantDraft,
-            icon: const Icon(Icons.add_circle_outline),
-            label: const Text('Agregar otra variante'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppColors.radius),
+                ),
+              ),
+            ],
+            if (filteredIndices.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(24),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppColors.radius),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text(
+                  'No se encontraron variantes que coincidan con "$_variantSearchTerm"',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              )
+            else
+              ...filteredIndices.map((index) {
+                final draft = state.variantDrafts[index];
+                return VariantDraftCard(
+                  key: ValueKey(
+                    '${draft.id ?? 'draft_${draft.hashCode}_$index'}_v$_expandCollapseVersion',
+                  ),
+                  index: index,
+                  draft: draft,
+                  isExpanded: _allExpanded,
+                  onRemove: () => cubit.removeVariantDraft(index),
+                  onDuplicate: () => cubit.duplicateVariantDraft(index),
+                  onActiveChanged: (val) {
+                    cubit.updateVariantDraft(
+                      index,
+                      draft.copyWith(isActive: val),
+                      syncState: true,
+                    );
+                  },
+                  onPickImage: () => cubit.pickVariantImage(index),
+                  onUpdate:
+                      (newDraft, {syncState = false}) =>
+                          cubit.updateVariantDraft(
+                            index,
+                            newDraft,
+                            syncState: syncState,
+                          ),
+                );
+              }),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: cubit.addVariantDraft,
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text('Agregar otra variante'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radius),
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
