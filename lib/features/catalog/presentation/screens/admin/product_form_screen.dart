@@ -621,22 +621,24 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
+                    final draft = state.variantDrafts[index];
                     return VariantDraftCard(
+                      key: ValueKey(draft.id ?? 'draft_${draft.hashCode}_$index'),
                       index: index,
-                      draft: state.variantDrafts[index],
+                      draft: draft,
                       onRemove: () => cubit.removeVariantDraft(index),
                       onDuplicate: () => cubit.duplicateVariantDraft(index),
                       onActiveChanged: (val) {
                         cubit.updateVariantDraft(
                           index,
-                          state.variantDrafts[index].copyWith(isActive: val),
+                          draft.copyWith(isActive: val),
                           syncState: true,
                         );
                       },
                       onPickImage: () => cubit.pickVariantImage(index),
                       onUpdate:
-                          (newDraft) =>
-                              cubit.updateVariantDraft(index, newDraft, syncState: true),
+                          (newDraft, {syncState = false}) =>
+                              cubit.updateVariantDraft(index, newDraft, syncState: syncState),
                     );
                   }, childCount: state.variantDrafts.length),
                 ),
@@ -794,22 +796,24 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     return Column(
       children: [
         ...List.generate(state.variantDrafts.length, (index) {
+          final draft = state.variantDrafts[index];
           return VariantDraftCard(
+            key: ValueKey(draft.id ?? 'draft_${draft.hashCode}_$index'),
             index: index,
-            draft: state.variantDrafts[index],
+            draft: draft,
             onRemove: () => cubit.removeVariantDraft(index),
             onDuplicate: () => cubit.duplicateVariantDraft(index),
             onActiveChanged: (val) {
               cubit.updateVariantDraft(
                 index,
-                state.variantDrafts[index].copyWith(isActive: val),
+                draft.copyWith(isActive: val),
                 syncState: true,
               );
             },
             onPickImage: () => cubit.pickVariantImage(index),
             onUpdate:
-                (newDraft) =>
-                    cubit.updateVariantDraft(index, newDraft, syncState: true),
+                (newDraft, {syncState = false}) =>
+                    cubit.updateVariantDraft(index, newDraft, syncState: syncState),
           );
         }),
         const SizedBox(height: 8),

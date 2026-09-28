@@ -8,6 +8,11 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_form_model.dart';
 
+typedef VariantDraftUpdateCallback = void Function(
+  VariantDraftFormModel newDraft, {
+  bool syncState,
+});
+
 class VariantDraftCard extends StatefulWidget {
   final int index;
   final VariantDraftFormModel draft;
@@ -15,7 +20,7 @@ class VariantDraftCard extends StatefulWidget {
   final VoidCallback onDuplicate;
   final VoidCallback onPickImage;
   final ValueChanged<bool> onActiveChanged;
-  final ValueChanged<VariantDraftFormModel> onUpdate;
+  final VariantDraftUpdateCallback onUpdate;
 
   const VariantDraftCard({
     super.key,
@@ -71,11 +76,11 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
   }
 
   void _onFieldChanged() {
-    _syncAllToDraft();
-    if (mounted) setState(() {});
+    // Sincroniza en memoria el modelo sin disparar rebuilds de pantalla ni de BLoC
+    _syncAllToDraft(syncState: false);
   }
 
-  void _syncAllToDraft() {
+  void _syncAllToDraft({bool syncState = false}) {
     if (!mounted) return;
     final List<Map<String, dynamic>> finalAttributes = [];
     for (final row in _selectedAttributes) {
@@ -91,15 +96,16 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
 
     widget.onUpdate(
       widget.draft.copyWith(
-        sku: skuCtrl.text,
-        barcode: barcodeCtrl.text,
-        price: priceCtrl.text,
-        wholesalePrice: wholesalePriceCtrl.text,
-        wholesaleMinQuantity: wholesaleMinQuantityCtrl.text,
-        reorderPoint: reorderPointCtrl.text,
-        unitCost: unitCostCtrl.text,
+        sku: skuCtrl.text.trim(),
+        barcode: barcodeCtrl.text.trim(),
+        price: priceCtrl.text.trim(),
+        wholesalePrice: wholesalePriceCtrl.text.trim(),
+        wholesaleMinQuantity: wholesaleMinQuantityCtrl.text.trim(),
+        reorderPoint: reorderPointCtrl.text.trim(),
+        unitCost: unitCostCtrl.text.trim(),
         selectedAttributes: finalAttributes,
       ),
+      syncState: syncState,
     );
   }
 
@@ -313,17 +319,25 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                       ),
                     ),
                   ),
-                  if (!_isExpanded && priceCtrl.text.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      'S/ ${priceCtrl.text}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                  ],
+                  ListenableBuilder(
+                    listenable: priceCtrl,
+                    builder: (context, _) {
+                      if (!_isExpanded && priceCtrl.text.trim().isNotEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Text(
+                            'S/ ${priceCtrl.text.trim()}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
                   const Spacer(),
                   Transform.scale(
                     scale: 0.85,
@@ -406,6 +420,12 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                   controller: skuCtrl,
                                   icon: Icons.qr_code_2_rounded,
                                   hintText: 'Ej: PROD-001',
+                                  validator: (val) {
+                                    if (val != null && val.isNotEmpty && val.trim().isEmpty) {
+                                      return 'SKU inválido';
+                                    }
+                                    return null;
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -419,6 +439,13 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
                                   ],
+                                  validator: (val) {
+                                    if (val != null && val.trim().isNotEmpty) {
+                                      final n = int.tryParse(val.trim());
+                                      if (n == null || n < 0) return 'No negativo';
+                                    }
+                                    return null;
+                                  },
                                 ),
                               ),
                             ],
@@ -459,7 +486,13 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                       ),
                                     ),
                                     const Spacer(),
-                                    _buildMarginBadge(),
+                                    ListenableBuilder(
+                                      listenable: Listenable.merge([
+                                        unitCostCtrl,
+                                        priceCtrl,
+                                      ]),
+                                      builder: (context, _) => _buildMarginBadge(),
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 12),
@@ -490,6 +523,13 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                             RegExp(r'^\d+\.?\d{0,2}'),
                                           ),
                                         ],
+                                        validator: (val) {
+                                          if (val != null && val.trim().isNotEmpty) {
+                                            final n = double.tryParse(val.trim());
+                                            if (n == null || n < 0) return 'No negativo';
+                                          }
+                                          return null;
+                                        },
                                       ),
                                     ),
                                     const SizedBox(width: 12),
@@ -516,6 +556,16 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                             RegExp(r'^\d+\.?\d{0,2}'),
                                           ),
                                         ],
+                                        validator: (val) {
+                                          if (val == null || val.trim().isEmpty) {
+                                            return 'Requerido';
+                                          }
+                                          final n = double.tryParse(val.trim());
+                                          if (n == null || n <= 0) {
+                                            return 'Debe ser > 0';
+                                          }
+                                          return null;
+                                        },
                                       ),
                                     ),
                                   ],
@@ -548,6 +598,13 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                             RegExp(r'^\d+\.?\d{0,2}'),
                                           ),
                                         ],
+                                        validator: (val) {
+                                          if (val != null && val.trim().isNotEmpty) {
+                                            final n = double.tryParse(val.trim());
+                                            if (n == null || n <= 0) return 'Debe ser > 0';
+                                          }
+                                          return null;
+                                        },
                                       ),
                                     ),
                                     const SizedBox(width: 12),
@@ -569,6 +626,18 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                           FilteringTextInputFormatter
                                               .digitsOnly,
                                         ],
+                                        validator: (val) {
+                                          if (wholesalePriceCtrl.text.trim().isNotEmpty) {
+                                            if (val == null || val.trim().isEmpty) {
+                                              return 'Requerido';
+                                            }
+                                            final n = int.tryParse(val.trim());
+                                            if (n == null || n <= 1) {
+                                              return 'Debe ser > 1';
+                                            }
+                                          }
+                                          return null;
+                                        },
                                       ),
                                     ),
                                   ],

@@ -70,6 +70,27 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     super.dispose();
   }
 
+  Future<void> _navigateToProductForm({ProductEntity? product}) async {
+    final cubit = context.read<AdminCatalogCubit>();
+    final uri = product != null
+        ? '/products/product-form/${product.id}'
+        : '/products/product-form';
+
+    final result = await context.push<bool>(
+      uri,
+      extra: product != null ? {'productToEdit': product} : null,
+    );
+
+    if (result == true && mounted) {
+      await cubit.refreshProducts(forceRefresh: true);
+      if (_selectedProduct != null &&
+          product != null &&
+          _selectedProduct!.id == product.id) {
+        setState(() => _selectedProduct = null);
+      }
+    }
+  }
+
   void _handleProductInteraction({
     required BuildContext context,
     required ProductEntity product,
@@ -85,12 +106,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
       CatalogSideInspector.showAsBottomSheet(
         context,
         product: product,
-        onEdit: () {
-          context.go(
-            '/products/product-form/${product.id}',
-            extra: {'productToEdit': product},
-          );
-        },
+        onEdit: () => _navigateToProductForm(product: product),
         onAddToCart: () {
           if (widget.onAddToCart != null) {
             widget.onAddToCart!(product);
@@ -311,9 +327,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               searchByIngredient: state.searchByIngredient,
                               onToggleIngredientSearch:
                                   cubit.toggleSearchByIngredient,
-                              onAddProduct: () => context.go(
-                                '/products/product-form',
-                              ),
+                              onAddProduct: () => _navigateToProductForm(),
                             ),
                             if (state.actionState == ViewState.loading)
                               const LinearProgressIndicator(
@@ -464,12 +478,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                             (product) =>
                                 PosAddToCartSheet.show(context, product),
                         onToggleActive: (p) => _toggleProductoActivo(p, cubit),
-                        onEdit: (product) {
-                          context.go(
-                            '/products/product-form/${product.id}',
-                            extra: {'productToEdit': product},
-                          );
-                        },
+                        onEdit: (product) => _navigateToProductForm(product: product),
                       ),
                     );
                   }
@@ -500,12 +509,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                       bottomPadding: fabsBottomPadding,
                       headerSliver: headerSliver,
                       chipsSliver: chipsSliver,
-                      onEdit: (product) async {
-                        context.go(
-                          '/products/product-form/${product.id}',
-                          extra: {'productToEdit': product},
-                        );
-                      },
+                      onEdit: (product) => _navigateToProductForm(product: product),
                       isPosMode: false,
                     ),
                   );
@@ -551,12 +555,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     CatalogSideInspector(
                       product: _selectedProduct!,
                       onClose: () => setState(() => _selectedProduct = null),
-                      onEdit: () {
-                        context.go(
-                          '/products/product-form/${_selectedProduct!.id}',
-                          extra: {'productToEdit': _selectedProduct},
-                        );
-                      },
+                      onEdit: () => _navigateToProductForm(product: _selectedProduct),
                       onAddToCart: () {
                         if (widget.onAddToCart != null) {
                           widget.onAddToCart!(_selectedProduct!);
@@ -595,9 +594,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 widget.floatingActionButton!,
                 const SizedBox(height: 12),
                 CatalogAddProductFab(
-                  onTap: () {
-                    context.go('/products/product-form');
-                  },
+                  onTap: () => _navigateToProductForm(),
                 ),
               ],
             );
@@ -632,9 +629,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 ),
                 const SizedBox(height: 12),
                 CatalogAddProductFab(
-                  onTap: () {
-                    context.go('/products/product-form');
-                  },
+                  onTap: () => _navigateToProductForm(),
                 ),
               ],
             );
@@ -698,7 +693,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
                 // Alt+N / Ctrl+N: Crear nuevo producto
                 if (isModifier && event.logicalKey == LogicalKeyboardKey.keyN) {
-                  context.go('/products/product-form');
+                  _navigateToProductForm();
                   return KeyEventResult.handled;
                 }
 

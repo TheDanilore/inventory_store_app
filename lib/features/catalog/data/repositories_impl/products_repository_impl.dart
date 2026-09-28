@@ -110,7 +110,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
           searchQuery.trim().isNotEmpty) {
         selectString +=
             ', product_active_ingredients!inner(active_ingredients!inner(name))';
-      } else {
+      } else if (searchByIngredient) {
         selectString +=
             ', product_active_ingredients(active_ingredients(name))';
       }
@@ -673,7 +673,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
     try {
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
       final path = '$folder/$fileName';
-      await _supabase.storage.from('products').uploadBinary(path, bytes);
+      await _supabase.storage.from('products').uploadBinary(
+        path,
+        bytes,
+        fileOptions: const FileOptions(
+          contentType: 'image/jpeg',
+          upsert: false,
+        ),
+      );
       final publicUrl = _supabase.storage.from('products').getPublicUrl(path);
       return right(publicUrl);
     } catch (e, st) {
@@ -1222,7 +1229,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
               final path = 'productos/$fileName';
               await _supabase.storage
                   .from('products')
-                  .uploadBinary(path, item.newBytes!);
+                  .uploadBinary(
+                    path,
+                    item.newBytes!,
+                    fileOptions: const FileOptions(
+                      contentType: 'image/jpeg',
+                      upsert: false,
+                    ),
+                  );
               uploadedPaths.add(path);
               final publicUrl = _supabase.storage
                   .from('products')
@@ -1247,7 +1261,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
               final path = 'variantes/$fileName';
               await _supabase.storage
                   .from('products')
-                  .uploadBinary(path, draft.newImageBytes!);
+                  .uploadBinary(
+                    path,
+                    draft.newImageBytes!,
+                    fileOptions: const FileOptions(
+                      contentType: 'image/jpeg',
+                      upsert: false,
+                    ),
+                  );
               uploadedPaths.add(path);
               newImageUrl = _supabase.storage
                   .from('products')

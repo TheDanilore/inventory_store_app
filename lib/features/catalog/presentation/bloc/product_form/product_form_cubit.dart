@@ -16,7 +16,6 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_brands_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_by_id_uc.dart';
-import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_image_ucs.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_ingredient_ucs.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_variant_ucs.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_current_profile_id_usecase.dart';
@@ -31,8 +30,6 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   final GetBrandsUC _getBrandsUC;
   final GetProductByIdUC _getProductByIdUC;
   final GetProductIngredientsUC _getProductIngredientsUC;
-  final DeleteProductImageUC _deleteProductImageUC;
-  final DeleteVariantUC _deleteVariantUC;
   final HasVariantSalesUC _hasVariantSalesUC;
   final GetCurrentProfileIdUseCase _getCurrentProfileIdUC;
   final SaveProductUseCase _saveProductUC;
@@ -74,8 +71,6 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     this._getBrandsUC,
     this._getProductByIdUC,
     this._getProductIngredientsUC,
-    this._deleteProductImageUC,
-    this._deleteVariantUC,
     this._hasVariantSalesUC,
     this._getCurrentProfileIdUC,
     this._saveProductUC,
@@ -277,7 +272,13 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   Future<void> _fetchBrands() async {
     try {
       _brands = await _unwrap(_getBrandsUC.call());
-    } catch (_) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al cargar marcas en ProductFormCubit',
+        tag: 'PRODUCT_FORM_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
       _brands = [];
     }
     _isLoadingBrands = false;
@@ -437,30 +438,15 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     _syncState();
   }
 
-  Future<void> removeImage(int index) async {
-    final item = _formImages[index];
-
-    if (item.isExisting) {
-      try {
-        await _unwrap(
-          _deleteProductImageUC.call(
-            item.existing!.id,
-            item.existing!.imageUrl,
-          ),
-        );
-      } catch (e) {
-        emit(state.copyWith(snackError: _parseNetworkError(e)));
-        return;
-      }
-    }
-
+  void removeImage(int index) {
+    if (index < 0 || index >= _formImages.length) return;
     _formImages = List.of(_formImages)..removeAt(index);
     markAsDirty();
     emit(
       state.copyWith(
         formImages: List.of(_formImages),
         isDirty: _isDirty,
-        snackMessage: item.isExisting ? 'Imagen eliminada.' : null,
+        snackMessage: 'Imagen removida del borrador.',
       ),
     );
   }
@@ -508,40 +494,41 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   }
 
   Future<void> removeVariantDraft(int index) async {
+    if (index < 0 || index >= _variantDrafts.length) return;
     final draft = _variantDrafts[index];
 
-    if (draft.id == null) {
-      _variantDrafts = List.of(_variantDrafts)..removeAt(index);
-      markAsDirty();
-      _syncState();
-      return;
-    }
-
-    try {
-      final hasSales = await _unwrap(_hasVariantSalesUC(draft.id!));
-      if (hasSales) {
-        emit(
-          state.copyWith(
-            snackError:
-                'No se puede eliminar: Esta variante tiene ventas asociadas.',
-          ),
-        );
+    if (draft.id != null && draft.id!.isNotEmpty) {
+      try {
+        final hasSales = await _unwrap(_hasVariantSalesUC(draft.id!));
+        if (hasSales) {
+          emit(
+            state.copyWith(
+              snackError:
+                  'No se puede eliminar: Esta variante tiene ventas asociadas.',
+            ),
+          );
+          return;
+        }
+      } catch (e) {
+        emit(state.copyWith(snackError: _parseNetworkError(e)));
         return;
       }
 
-      await _unwrap(_deleteVariantUC.call(draft.id!));
-      _variantDrafts = List.of(_variantDrafts)..removeAt(index);
-      markAsDirty();
-      emit(
-        state.copyWith(
-          variantDrafts: List.of(_variantDrafts),
-          isDirty: _isDirty,
-          snackMessage: 'Variante y su imagen eliminadas correctamente.',
-        ),
-      );
-    } catch (e) {
-      emit(state.copyWith(snackError: _parseNetworkError(e)));
+      if (!_removedVariantIds.contains(draft.id!)) {
+        _removedVariantIds.add(draft.id!);
+      }
     }
+
+    _variantDrafts = List.of(_variantDrafts)..removeAt(index);
+    markAsDirty();
+    emit(
+      state.copyWith(
+        variantDrafts: List.of(_variantDrafts),
+        removedVariantIds: List.of(_removedVariantIds),
+        isDirty: _isDirty,
+        snackMessage: 'Variante removida del borrador.',
+      ),
+    );
   }
 
   Future<void> pickVariantImage(int index) async {
@@ -570,9 +557,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     VariantDraftFormModel updated, {
     bool syncState = false,
   }) {
-    final list = List.of(_variantDrafts);
-    list[index] = updated;
-    _variantDrafts = list;
+    if (index >= 0 && index < _variantDrafts.length) {
+      _variantDrafts[index] = updated;
+    }
     markAsDirty();
     if (syncState) _syncState();
   }
@@ -588,9 +575,12 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     required String desc,
     required List<IngredientRowModel> ingredients,
   }) async {
-    // El precio ya no se edita a nivel de producto: cada variante trae su
-    // propio unitCost/salePrice/wholesalePrice. Por eso el producto necesita
-    // al menos una variante para tener un precio válido.
+    final cleanNombre = nombre.trim();
+    if (cleanNombre.isEmpty) {
+      emit(state.copyWith(snackError: 'El nombre del producto es obligatorio.'));
+      return;
+    }
+
     if (_variantDrafts.isEmpty) {
       emit(
         state.copyWith(
@@ -600,23 +590,47 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       return;
     }
 
-    // La unicidad de los SKU está protegida 100% atómicamente a nivel de
-    // base de datos (PostgreSQL UNIQUE constraint). Si un SKU está duplicado,
-    // el RPC fallará limpiamente y _parseNetworkError lo mapeará al usuario.
-
-    // Validar que la primera variante (usada como "base" de referencia)
-    // tenga un precio de venta válido.
-    final firstVariant = _variantDrafts.first;
-    final salePrice = _parseDecimal(firstVariant.price);
-    if (salePrice == null) {
-      emit(
-        state.copyWith(
-          snackError:
-              'Ingresa un precio de venta válido en la primera variante.',
-        ),
-      );
-      return;
+    // Validación exhaustiva de cada una de las variantes
+    for (int i = 0; i < _variantDrafts.length; i++) {
+      final v = _variantDrafts[i];
+      final p = _parseDecimal(v.price);
+      if (p == null || p <= 0) {
+        emit(
+          state.copyWith(
+            snackError:
+                'Variante #${i + 1}: Ingresa un precio de venta válido (> 0).',
+          ),
+        );
+        return;
+      }
+      if (v.wholesalePrice.trim().isNotEmpty) {
+        final wp = _parseDecimal(v.wholesalePrice);
+        if (wp == null || wp <= 0) {
+          emit(
+            state.copyWith(
+              snackError:
+                  'Variante #${i + 1}: El precio mayorista debe ser mayor a 0.',
+            ),
+          );
+          return;
+        }
+      }
+      if (v.unitCost.trim().isNotEmpty) {
+        final cost = _parseDecimal(v.unitCost);
+        if (cost == null || cost < 0) {
+          emit(
+            state.copyWith(
+              snackError:
+                  'Variante #${i + 1}: El costo unitario no puede ser negativo.',
+            ),
+          );
+          return;
+        }
+      }
     }
+
+    final firstVariant = _variantDrafts.first;
+    final salePrice = _parseDecimal(firstVariant.price)!;
 
     if (_ingredientsEnabled) {
       final sourceIngredients =

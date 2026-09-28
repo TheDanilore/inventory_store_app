@@ -48,7 +48,15 @@ class ProductBasicInfoSection extends StatelessWidget {
             controller: nombreCtrl,
             label: 'Nombre del producto',
             icon: Icons.inventory_2_outlined,
-            validator: (v) => v!.isEmpty ? 'Requerido' : null,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) {
+                return 'El nombre es obligatorio';
+              }
+              if (v.trim().length < 2) {
+                return 'El nombre es muy corto (mín. 2 caracteres)';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 16),
           LayoutBuilder(
