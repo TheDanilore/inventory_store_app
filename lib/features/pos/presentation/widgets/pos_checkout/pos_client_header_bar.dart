@@ -1,10 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/quick_create_customer_dialog.dart';
 
+/// Barra de comando unificada superior del panel POS.
+///
+/// Fusiona en un solo strip compacto de 52px de altura:
+/// 1. Título e indicador de Caja con contador dinámico de ítems en carrito.
+/// 2. Selector/Pill interactivo de Cliente (con badges de puntos de lealtad).
+/// 3. Botón de creación exprés de cliente (+ Nuevo / Alt+A).
+/// 4. Botón de vaciado de caja (con confirmación modal).
+///
+/// La búsqueda de cliente se despliega como un Popover Flotante anclado (Zero Layout Shift)
+/// en Desktop/Tablet y como un Modal BottomSheet nativo Apple HIG en Mobile.
 class PosClientHeaderBar extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<String> onSearchChanged;
@@ -18,6 +29,13 @@ class PosClientHeaderBar extends StatefulWidget {
   final bool isCredito;
   final bool isLoyaltyEnabled;
   final VoidCallback? onNewClientCreated;
+
+  /// Nuevas propiedades de la barra de comando unificada
+  final int cartItemCount;
+  final VoidCallback? onClearCart;
+  final bool isCartEmpty;
+  final String title;
+  final bool showCajaHeader;
 
   const PosClientHeaderBar({
     super.key,
@@ -33,6 +51,11 @@ class PosClientHeaderBar extends StatefulWidget {
     required this.isCredito,
     required this.isLoyaltyEnabled,
     this.onNewClientCreated,
+    this.cartItemCount = 0,
+    this.onClearCart,
+    this.isCartEmpty = true,
+    this.title = 'CAJA',
+    this.showCajaHeader = true,
   });
 
   @override
@@ -40,28 +63,52 @@ class PosClientHeaderBar extends StatefulWidget {
 }
 
 class _PosClientHeaderBarState extends State<PosClientHeaderBar> {
-  bool _isSearchExpanded = false;
+  final _layerLink = LayerLink();
+  final _overlayPortalCtrl = OverlayPortalController();
   final _searchFocusNode = FocusNode();
+  final _searchFieldCtrl = TextEditingController();
 
   @override
   void dispose() {
     _searchFocusNode.dispose();
+    _searchFieldCtrl.dispose();
     super.dispose();
   }
 
-  void _openSearch() {
-    setState(() => _isSearchExpanded = true);
+  void _openDesktopSearch() {
+    _searchFieldCtrl.clear();
+    widget.onSearchChanged('');
+    _overlayPortalCtrl.show();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _searchFocusNode.requestFocus();
+      if (mounted && _searchFocusNode.canRequestFocus) {
+        _searchFocusNode.requestFocus();
+      }
     });
   }
 
-  void _closeSearch() {
-    _searchFocusNode.unfocus();
-    setState(() => _isSearchExpanded = false);
+  void _closeDesktopSearch() {
+    if (_overlayPortalCtrl.isShowing) {
+      _searchFocusNode.unfocus();
+      _overlayPortalCtrl.hide();
+      _searchFieldCtrl.clear();
+    }
+  }
+
+  void _onClientPillTapped(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    if (isMobile) {
+      _openMobileClientPickerSheet(context);
+    } else {
+      if (_overlayPortalCtrl.isShowing) {
+        _closeDesktopSearch();
+      } else {
+        _openDesktopSearch();
+      }
+    }
   }
 
   Future<void> _openCreateCustomerDialog([String? query]) async {
+    _closeDesktopSearch();
     final customer = await QuickCreateCustomerDialog.show(
       context,
       initialQuery: query,
@@ -77,8 +124,186 @@ class _PosClientHeaderBarState extends State<PosClientHeaderBar> {
       posCubit.fetchClientCredit(customer.id);
       widget.controller.text = customer.fullName;
       widget.onNewClientCreated?.call();
-      _closeSearch();
     }
+  }
+
+  void _openMobileClientPickerSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (bottomSheetCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                ),
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // iOS Drag Handle
+                      Center(
+                        child: Container(
+                          width: 36,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      // Título y botón cerrar
+                      Row(
+                        children: [
+                          const Icon(Icons.person_search_rounded, color: AppColors.teal, size: 20),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Seleccionar Cliente',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            onPressed: () => Navigator.pop(bottomSheetCtx),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Input buscador
+                      Container(
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: TextField(
+                          autofocus: true,
+                          style: const TextStyle(fontSize: 13.5),
+                          decoration: const InputDecoration(
+                            hintText: 'Buscar por nombre, DNI o teléfono…',
+                            prefixIcon: Icon(Icons.search_rounded, size: 18),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          onChanged: (val) {
+                            widget.onSearchChanged(val);
+                            setModalState(() {});
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      // Opción Cliente Varios
+                      ListTile(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        leading: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: Colors.grey.shade200,
+                          child: const Icon(Icons.person_outline_rounded, size: 18, color: Colors.grey),
+                        ),
+                        title: const Text('Cliente Varios (Venta rápida)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                        subtitle: const Text('Venta genérica sin registrar datos', style: TextStyle(fontSize: 11.5)),
+                        onTap: () {
+                          widget.onClearClient();
+                          Navigator.pop(bottomSheetCtx);
+                        },
+                      ),
+                      const Divider(height: 1),
+                      // Lista de resultados
+                      Expanded(
+                        child: widget.searching
+                            ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.teal))
+                            : widget.matches.isEmpty
+                                ? Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.person_off_outlined, size: 36, color: Colors.grey.shade400),
+                                          const SizedBox(height: 8),
+                                          const Text('No se encontraron clientes', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                : ListView.separated(
+                                    shrinkWrap: true,
+                                    itemCount: widget.matches.length,
+                                    separatorBuilder: (_, _) => const Divider(height: 1),
+                                    itemBuilder: (context, idx) {
+                                      final c = widget.matches[idx];
+                                      final name = c['full_name'] as String? ?? 'Cliente';
+                                      final doc = c['document_number'] as String?;
+                                      final wallet = (c['wallet_balance'] as num?)?.toInt() ?? 0;
+                                      return ListTile(
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        leading: CircleAvatar(
+                                          radius: 16,
+                                          backgroundColor: AppColors.teal.withValues(alpha: 0.15),
+                                          child: const Icon(Icons.person_rounded, size: 18, color: AppColors.teal),
+                                        ),
+                                        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                                        subtitle: Text(
+                                          [
+                                            if (doc != null && doc.isNotEmpty) 'Doc: $doc',
+                                            if (wallet > 0) '$wallet pts',
+                                          ].join(' • '),
+                                          style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+                                        ),
+                                        onTap: () {
+                                          widget.onClientTap(c);
+                                          Navigator.pop(bottomSheetCtx);
+                                        },
+                                      );
+                                    },
+                                  ),
+                      ),
+                      // Botón Nuevo Cliente
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              side: const BorderSide(color: AppColors.primary),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                            label: const Text('Crear Nuevo Cliente Express', style: TextStyle(fontWeight: FontWeight.bold)),
+                            onPressed: () {
+                              Navigator.pop(bottomSheetCtx);
+                              _openCreateCustomerDialog();
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -90,219 +315,313 @@ class _PosClientHeaderBarState extends State<PosClientHeaderBar> {
         : (clientName.isNotEmpty ? clientName : 'Cliente Varios');
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: hasClient ? AppColors.teal.withValues(alpha: 0.05) : Colors.white,
-        borderRadius: BorderRadius.circular(AppColors.radius),
-        border: Border.all(
-          color: hasClient
-              ? AppColors.teal.withValues(alpha: 0.35)
-              : AppColors.border,
-          width: hasClient ? 1.5 : 1,
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade200, width: 1),
         ),
-        boxShadow: AppColors.cardShadow(),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Row(
         children: [
-          // ── BARRA SUPERIOR PRINCIPAL ──────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Row(
+          // ── 1. INDICADOR CAJA + BADGE DE ITEMS ────────────────────────────
+          if (widget.showCajaHeader) ...[
+            Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Selector Principal o Toggle de Búsqueda
-                Expanded(
-                  child: InkWell(
-                    onTap: _isSearchExpanded ? null : _openSearch,
-                    borderRadius: BorderRadius.circular(10),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              color: hasClient
-                                  ? AppColors.teal
-                                  : Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(9),
-                            ),
-                            child: Icon(
-                              hasClient
-                                  ? Icons.person_rounded
-                                  : Icons.person_outline_rounded,
-                              size: 19,
-                              color: hasClient
-                                  ? Colors.white
-                                  : Colors.grey.shade700,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        displayName,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: hasClient
-                                              ? AppColors.tealDark
-                                              : AppColors.textPrimary,
-                                        ),
-                                      ),
-                                    ),
-                                    if (hasClient &&
-                                        widget.isLoyaltyEnabled &&
-                                        widget.saldoActualCliente > 0) ...[
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 1.5,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.amber.shade100,
-                                          borderRadius:
-                                              BorderRadius.circular(6),
-                                          border: Border.all(
-                                            color: Colors.amber.shade400,
-                                            width: 0.8,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '${widget.saldoActualCliente} pts',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w800,
-                                            color: Colors.amber.shade900,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                                Text(
-                                  hasClient
-                                      ? 'Cliente registrado para venta'
-                                      : 'Venta rápida (Toca para buscar)',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: hasClient
-                                        ? AppColors.teal.withValues(alpha: 0.8)
-                                        : AppColors.textMuted,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (!hasClient)
-                            Icon(
-                              _isSearchExpanded
-                                  ? Icons.keyboard_arrow_up_rounded
-                                  : Icons.keyboard_arrow_down_rounded,
-                              size: 20,
-                              color: Colors.grey.shade500,
-                            ),
-                        ],
-                      ),
-                    ),
+                const Icon(
+                  Icons.point_of_sale_rounded,
+                  size: 18,
+                  color: AppColors.teal,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  widget.title,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-
-                const SizedBox(width: 6),
-
-                // Botón Limpiar Selección (si hay cliente seleccionado)
-                if (hasClient) ...[
-                  Tooltip(
-                    message: 'Quitar cliente (Venta Varios)',
-                    child: IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 18),
-                      color: AppColors.textMuted,
-                      style: IconButton.styleFrom(
-                        padding: const EdgeInsets.all(8),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                if (widget.cartItemCount > 0) ...[
+                  const SizedBox(width: 5),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: AppColors.teal.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${widget.cartItemCount}',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.tealDark,
                       ),
-                      onPressed: () {
-                        widget.onClearClient();
-                        _closeSearch();
-                      },
                     ),
                   ),
                 ],
+              ],
+            ),
+            const SizedBox(width: 8),
+            Container(height: 18, width: 1, color: Colors.grey.shade300),
+            const SizedBox(width: 8),
+          ],
 
-                // Botón + Nuevo Cliente
-                Tooltip(
-                  message: 'Nuevo Cliente (Alt+A)',
-                  child: Material(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    child: InkWell(
-                      onTap: () => _openCreateCustomerDialog(),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 7,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(
-                              Icons.add_rounded,
-                              size: 16,
-                              color: AppColors.primary,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'Nuevo',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
+          // ── 2. SELECTOR DE CLIENTE (PILL DINÁMICO CON OVERLAY ANCLADO) ────
+          Expanded(
+            child: CompositedTransformTarget(
+              link: _layerLink,
+              child: OverlayPortal(
+                controller: _overlayPortalCtrl,
+                overlayChildBuilder: (overlayCtx) {
+                  return Stack(
+                    children: [
+                      // Barrier transparente para cerrar al hacer click fuera
+                      Positioned.fill(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onTap: _closeDesktopSearch,
+                          child: const ColoredBox(color: Colors.transparent),
                         ),
                       ),
+                      // Popover flotante posicionado anclado al pill
+                      Positioned(
+                        child: CompositedTransformFollower(
+                          link: _layerLink,
+                          showWhenUnlinked: false,
+                          targetAnchor: Alignment.bottomLeft,
+                          followerAnchor: Alignment.topLeft,
+                          offset: const Offset(0, 6),
+                          child: TapRegion(
+                            onTapOutside: (_) => _closeDesktopSearch(),
+                            child: _buildFloatingSearchCard(context, hasClient),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+                child: _buildClientPill(context, hasClient, displayName),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 6),
+
+          // ── 3. BOTÓN + NUEVO CLIENTE EXPRESS (Alt+A) ───────────────────────
+          Tooltip(
+            message: 'Nuevo Cliente (Alt+A)',
+            child: Material(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => _openCreateCustomerDialog(),
+                child: Container(
+                  height: 32,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.22),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(
+                        Icons.person_add_alt_1_rounded,
+                        size: 14,
+                        color: AppColors.primary,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Nuevo',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ── 4. BOTÓN VACIAR CAJA ──────────────────────────────────────────
+          if (widget.onClearCart != null) ...[
+            const SizedBox(width: 4),
+            Tooltip(
+              message: 'Vaciar caja',
+              child: IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                color: widget.isCartEmpty ? Colors.grey.shade300 : AppColors.textSecondary,
+                onPressed: widget.isCartEmpty ? null : widget.onClearCart,
+                style: IconButton.styleFrom(
+                  padding: const EdgeInsets.all(6),
+                  minimumSize: const Size(32, 32),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Construye el chip/pill compacto que muestra el cliente actual.
+  Widget _buildClientPill(BuildContext context, bool hasClient, String displayName) {
+    return Material(
+      color: hasClient ? AppColors.teal.withValues(alpha: 0.07) : Colors.grey.shade100,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => _onClientPillTapped(context),
+        child: Container(
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: hasClient
+                  ? AppColors.teal.withValues(alpha: 0.35)
+                  : Colors.grey.shade300,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                hasClient ? Icons.person_rounded : Icons.person_outline_rounded,
+                size: 15,
+                color: hasClient ? AppColors.teal : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: hasClient ? FontWeight.w700 : FontWeight.w600,
+                    color: hasClient ? AppColors.tealDark : AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              // Badge de puntos
+              if (hasClient && widget.isLoyaltyEnabled && widget.saldoActualCliente > 0) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(color: Colors.amber.shade300, width: 0.8),
+                  ),
+                  child: Text(
+                    '${widget.saldoActualCliente} pts',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.amber.shade900,
                     ),
                   ),
                 ),
               ],
-            ),
-          ),
-
-          // ── ZONA DE BÚSQUEDA DESPLEGABLE ──────────────────────────────────
-          if (_isSearchExpanded) ...[
-            const Divider(height: 1, color: AppColors.border),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 40,
+              // Botón limpiar cliente si está asignado
+              if (hasClient) ...[
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () {
+                    widget.onClearClient();
+                    _closeDesktopSearch();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
+                      color: Colors.black.withValues(alpha: 0.05),
+                      shape: BoxShape.circle,
                     ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 13,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.unfold_more_rounded,
+                  size: 14,
+                  color: Colors.grey.shade500,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Construye el Popover Flotante que flota sobre la caja sin mover el carrito.
+  Widget _buildFloatingSearchCard(BuildContext context, bool hasClient) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = screenWidth < 400 ? (screenWidth - 24) : 360.0;
+
+    return SizedBox(
+      width: cardWidth,
+      child: Material(
+        elevation: 16,
+        shadowColor: Colors.black.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border, width: 1.2),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Barra de búsqueda con auto-focus y tecla Esc
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+                child: Container(
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Focus(
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent &&
+                          event.logicalKey == LogicalKeyboardKey.escape) {
+                        _closeDesktopSearch();
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
+                    },
                     child: TextField(
-                      controller: widget.controller,
+                      controller: _searchFieldCtrl,
                       focusNode: _searchFocusNode,
-                      onChanged: widget.onSearchChanged,
+                      onChanged: (val) {
+                        widget.onSearchChanged(val);
+                        setState(() {});
+                      },
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 12.5,
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w500,
                       ),
@@ -310,192 +629,281 @@ class _PosClientHeaderBarState extends State<PosClientHeaderBar> {
                         hintText: 'Buscar por nombre, DNI o teléfono…',
                         hintStyle: const TextStyle(
                           color: AppColors.textMuted,
-                          fontSize: 12.5,
+                          fontSize: 11.5,
                         ),
                         prefixIcon: const Icon(
                           Icons.search_rounded,
                           color: AppColors.textMuted,
-                          size: 17,
+                          size: 16,
                         ),
                         suffixIcon: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (widget.controller.text.isNotEmpty)
+                            if (_searchFieldCtrl.text.isNotEmpty)
                               IconButton(
-                                icon: const Icon(Icons.clear_rounded, size: 16),
+                                icon: const Icon(Icons.clear_rounded, size: 15),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                                 onPressed: () {
-                                  widget.controller.clear();
+                                  _searchFieldCtrl.clear();
                                   widget.onSearchChanged('');
+                                  setState(() {});
                                 },
                               ),
                             IconButton(
-                              icon: const Icon(Icons.arrow_upward_rounded, size: 16),
-                              tooltip: 'Cerrar buscador',
-                              onPressed: _closeSearch,
+                              icon: const Icon(Icons.close_rounded, size: 15),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                              tooltip: 'Cerrar (Esc)',
+                              onPressed: _closeDesktopSearch,
                             ),
                           ],
                         ),
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 9),
                       ),
                     ),
                   ),
+                ),
+              ),
 
-                  const SizedBox(height: 6),
+              const Divider(height: 1, color: AppColors.border),
 
-                  if (widget.searching)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Center(
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.teal,
+              // Contenido scrolleable
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 220),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Opción: Cliente Varios (Venta rápida sin datos)
+                      InkWell(
+                        onTap: () {
+                          widget.onClearClient();
+                          _closeDesktopSearch();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(7),
+                                ),
+                                child: Icon(
+                                  Icons.people_outline_rounded,
+                                  size: 16,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: const [
+                                    Text(
+                                      'Cliente Varios',
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Venta rápida sin comprobante con datos',
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (!hasClient)
+                                const Icon(
+                                  Icons.check_circle_rounded,
+                                  size: 16,
+                                  color: AppColors.teal,
+                                ),
+                            ],
                           ),
                         ),
                       ),
-                    )
-                  else if (widget.matches.isNotEmpty) ...[
-                    Container(
-                      constraints: const BoxConstraints(maxHeight: 180),
-                      margin: const EdgeInsets.only(top: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: AppColors.border),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: widget.matches.length,
-                        separatorBuilder: (_, _) =>
-                            const Divider(height: 1, color: AppColors.divider),
-                        itemBuilder: (context, index) {
-                          final c = widget.matches[index];
-                          final name = c['full_name'] as String? ?? 'Cliente';
-                          final doc = c['document_number'] as String?;
-                          final phone = c['phone'] as String?;
-                          final wallet =
-                              (c['wallet_balance'] as num?)?.toInt() ?? 0;
 
-                          return InkWell(
-                            onTap: () {
-                              widget.onClientTap(c);
-                              _closeSearch();
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 8,
+                      const Divider(height: 1, color: AppColors.divider),
+
+                      // Resultados o estado de búsqueda
+                      if (widget.searching)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.teal,
                               ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.person_outline_rounded,
-                                    size: 16,
-                                    color: AppColors.textMuted,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: const TextStyle(
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                        Text(
-                                          [
-                                            if (doc != null && doc.isNotEmpty)
-                                              'Doc: $doc',
-                                            if (phone != null &&
-                                                phone.isNotEmpty)
-                                              'Tel: $phone',
-                                            if (wallet > 0)
-                                              '$wallet pts',
-                                          ].join(' • '),
-                                          style: const TextStyle(
-                                            fontSize: 10.5,
-                                            color: AppColors.textMuted,
-                                          ),
-                                        ),
-                                      ],
+                            ),
+                          ),
+                        )
+                      else if (widget.matches.isNotEmpty)
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: widget.matches.length,
+                          separatorBuilder: (_, _) => const Divider(height: 1, color: AppColors.divider),
+                          itemBuilder: (context, index) {
+                            final c = widget.matches[index];
+                            final name = c['full_name'] as String? ?? 'Cliente';
+                            final doc = c['document_number'] as String?;
+                            final phone = c['phone'] as String?;
+                            final wallet = (c['wallet_balance'] as num?)?.toInt() ?? 0;
+                            final isSelected = c['id'] == widget.selectedClientId;
+
+                            return InkWell(
+                              onTap: () {
+                                widget.onClientTap(c);
+                                _closeDesktopSearch();
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 28,
+                                      height: 28,
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? AppColors.teal
+                                            : AppColors.teal.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                      child: Icon(
+                                        Icons.person_rounded,
+                                        size: 16,
+                                        color: isSelected ? Colors.white : AppColors.teal,
+                                      ),
                                     ),
-                                  ),
-                                  const Icon(
-                                    Icons.check_rounded,
-                                    size: 16,
-                                    color: AppColors.teal,
-                                  ),
-                                ],
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            name,
+                                            style: TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                          ),
+                                          Text(
+                                            [
+                                              if (doc != null && doc.isNotEmpty) 'Doc: $doc',
+                                              if (phone != null && phone.isNotEmpty) 'Tel: $phone',
+                                              if (wallet > 0) '$wallet pts',
+                                            ].join(' • '),
+                                            style: const TextStyle(
+                                              fontSize: 10.5,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      const Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 16,
+                                        color: AppColors.teal,
+                                      ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
+                            );
+                          },
+                        )
+                      else if (_searchFieldCtrl.text.trim().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.person_add_alt_1_rounded,
+                                size: 16,
+                                color: Colors.amber.shade800,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'No se encontró "${_searchFieldCtrl.text.trim()}".',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.amber.shade900,
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                ),
+                                onPressed: () {
+                                  final q = _searchFieldCtrl.text.trim();
+                                  _openCreateCustomerDialog(q);
+                                },
+                                child: const Text('Crear', style: TextStyle(fontSize: 11.5)),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Pie del popover con atajo y botón nuevo
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(11)),
+                  border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Atajo: Alt+A para nuevo',
+                      style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600),
                     ),
-                  ] else if (widget.controller.text.trim().isNotEmpty) ...[
-                    // No encontrado: Sugerencia de alta exprés
-                    Container(
-                      margin: const EdgeInsets.only(top: 4),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.amber.shade200),
+                    TextButton.icon(
+                      onPressed: () => _openCreateCustomerDialog(),
+                      icon: const Icon(Icons.add_rounded, size: 14),
+                      label: const Text(
+                        'Nuevo cliente',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.person_add_alt_1_rounded,
-                            size: 16,
-                            color: Colors.amber.shade800,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'No se encontró "${widget.controller.text.trim()}". ¿Registrarlo ahora?',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.amber.shade900,
-                              ),
-                            ),
-                          ),
-                          TextButton(
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: () => _openCreateCustomerDialog(
-                              widget.controller.text.trim(),
-                            ),
-                            child: const Text(
-                              'Crear',
-                              style: TextStyle(fontSize: 11.5),
-                            ),
-                          ),
-                        ],
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

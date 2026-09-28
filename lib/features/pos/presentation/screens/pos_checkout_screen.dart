@@ -776,7 +776,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     );
   }
 
-  Widget _buildClientHeader(bool isLoyaltyEnabled) {
+  Widget _buildClientHeader(bool isLoyaltyEnabled, {bool showCajaHeader = false}) {
     return BlocBuilder<PosCubit, PosState>(
       buildWhen:
           (prev, curr) =>
@@ -788,18 +788,31 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               prev.creditInfo != curr.creditInfo,
       builder: (context, posState) {
         final isCredito = posState.paymentMethod == 'CRÉDITO';
-        return PosClientHeaderBar(
-          controller: _clienteCtrl,
-          onSearchChanged: _onClientSearchChanged,
-          searching: posState.isLoading,
-          matches: posState.clientMatches,
-          selectedClientId: posState.selectedClientId,
-          onClientTap: _selectClient,
-          onClearClient: _clearClient,
-          saldoActualCliente: posState.saldoActualCliente,
-          creditInfo: posState.creditInfo,
-          isCredito: isCredito,
-          isLoyaltyEnabled: isLoyaltyEnabled,
+        return BlocSelector<CartCubit, CartState, (int, bool)>(
+          selector: (cart) => (
+            cart.items.values.fold<int>(0, (sum, item) => sum + item.quantity),
+            cart.items.isEmpty,
+          ),
+          builder: (context, cartTuple) {
+            final (itemCount, isCartEmpty) = cartTuple;
+            return PosClientHeaderBar(
+              controller: _clienteCtrl,
+              onSearchChanged: _onClientSearchChanged,
+              searching: posState.isLoading,
+              matches: posState.clientMatches,
+              selectedClientId: posState.selectedClientId,
+              onClientTap: _selectClient,
+              onClearClient: _clearClient,
+              saldoActualCliente: posState.saldoActualCliente,
+              creditInfo: posState.creditInfo,
+              isCredito: isCredito,
+              isLoyaltyEnabled: isLoyaltyEnabled,
+              cartItemCount: itemCount,
+              isCartEmpty: isCartEmpty,
+              onClearCart: _onClearCart,
+              showCajaHeader: showCajaHeader,
+            );
+          },
         );
       },
     );

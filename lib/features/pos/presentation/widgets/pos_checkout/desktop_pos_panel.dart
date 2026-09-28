@@ -403,106 +403,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
           children: [
             Column(
               children: [
-                // Header del Panel
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey.shade200),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.point_of_sale_rounded,
-                        color: AppColors.teal,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'CAJA',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.0,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const Spacer(),
-                      BlocSelector<CartCubit, CartState, bool>(
-                        selector: (state) => state.items.isEmpty,
-                        builder: (context, isCartEmpty) {
-                          return IconButton(
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              size: 20,
-                              color: AppColors.textSecondary,
-                            ),
-                            tooltip: 'Vaciar caja',
-                            onPressed:
-                                isCartEmpty
-                                    ? null
-                                    : () {
-                                      showDialog(
-                                        context: context,
-                                        builder:
-                                            (ctx) => AlertDialog(
-                                              title: const Text(
-                                                '¿Vaciar caja?',
-                                              ),
-                                              content: const Text(
-                                                'Se eliminarán todos los productos de la caja actual.',
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed:
-                                                      () => Navigator.pop(ctx),
-                                                  child: const Text(
-                                                    'Cancelar',
-                                                    style: TextStyle(
-                                                      color:
-                                                          AppColors
-                                                              .textSecondary,
-                                                    ),
-                                                  ),
-                                                ),
-                                                ElevatedButton(
-                                                  style:
-                                                      ElevatedButton.styleFrom(
-                                                        backgroundColor:
-                                                            AppColors.danger,
-                                                      ),
-                                                  onPressed: () {
-                                                    posCubit.removeClient();
-                                                    posCubit.setPuntosAUsar(0);
-                                                    posCubit.setDiscountText('');
-                                                    _clienteCtrl.clear();
-                                                    _puntosCtrl.text = '0';
-                                                    _descuentoCtrl.clear();
-                                                    cartCubit.clearCart();
-                                                    posCubit
-                                                        .clearAllBatchOverrides();
-                                                    Navigator.pop(ctx);
-                                                  },
-                                                  child: const Text(
-                                                    'Vaciar',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                      );
-                                    },
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Cliente Sticky en la parte superior (Ergonomía POS)
+                // ── BARRA UNIFICADA ERGONÓMICA (Caja + Cliente + Quick Actions en 52px)
                 _buildClientHeader(isLoyaltyEnabled),
 
                 // Contenido Escroleable
@@ -519,14 +420,14 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                         PosCartItemsSection(
                           onShowBatchEditSheet: _showBatchEditSheet,
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
 
                         // Configuración de venta y Puntos de lealtad
                         _buildPaymentAndConfigSection(
                           pointsToSolesRatio,
                           isLoyaltyEnabled,
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
 
                         // Resumen Total
                         _buildSummarySection(
@@ -549,29 +450,102 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     );
   }
 
+  void _onClearCartRequested() {
+    final posCubit = context.read<PosCubit>();
+    final cartCubit = context.read<CartCubit>();
+    if (cartCubit.state.items.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.delete_outline_rounded, color: AppColors.danger),
+                SizedBox(width: 8),
+                Text('¿Vaciar caja?'),
+              ],
+            ),
+            content: const Text(
+              'Se eliminarán todos los productos de la caja actual.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                ),
+                onPressed: () {
+                  posCubit.removeClient();
+                  posCubit.setPuntosAUsar(0);
+                  posCubit.setDiscountText('');
+                  _clienteCtrl.clear();
+                  _puntosCtrl.text = '0';
+                  _descuentoCtrl.clear();
+                  cartCubit.clearCart();
+                  posCubit.clearAllBatchOverrides();
+                  Navigator.pop(ctx);
+                },
+                child: const Text(
+                  'Vaciar',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
   Widget _buildClientHeader(bool isLoyaltyEnabled) {
     return BlocBuilder<PosCubit, PosState>(
-      buildWhen: (prev, curr) =>
-          prev.paymentMethod != curr.paymentMethod ||
-          prev.isLoading != curr.isLoading ||
-          prev.clientMatches != curr.clientMatches ||
-          prev.selectedClientId != curr.selectedClientId ||
-          prev.saldoActualCliente != curr.saldoActualCliente ||
-          prev.creditInfo != curr.creditInfo,
+      buildWhen:
+          (prev, curr) =>
+              prev.paymentMethod != curr.paymentMethod ||
+              prev.isLoading != curr.isLoading ||
+              prev.clientMatches != curr.clientMatches ||
+              prev.selectedClientId != curr.selectedClientId ||
+              prev.saldoActualCliente != curr.saldoActualCliente ||
+              prev.creditInfo != curr.creditInfo,
       builder: (context, posState) {
         final isCredito = posState.paymentMethod == 'CRÉDITO';
-        return PosClientHeaderBar(
-          controller: _clienteCtrl,
-          onSearchChanged: _onClientSearchChanged,
-          searching: posState.isLoading,
-          matches: posState.clientMatches,
-          selectedClientId: posState.selectedClientId,
-          onClientTap: _selectClient,
-          onClearClient: _clearClient,
-          saldoActualCliente: posState.saldoActualCliente,
-          creditInfo: posState.creditInfo,
-          isCredito: isCredito,
-          isLoyaltyEnabled: isLoyaltyEnabled,
+        return BlocSelector<CartCubit, CartState, (int, bool)>(
+          selector:
+              (cart) => (
+                cart.items.values.fold<int>(
+                  0,
+                  (sum, item) => sum + item.quantity,
+                ),
+                cart.items.isEmpty,
+              ),
+          builder: (context, cartTuple) {
+            final (itemCount, isCartEmpty) = cartTuple;
+            return PosClientHeaderBar(
+              controller: _clienteCtrl,
+              onSearchChanged: _onClientSearchChanged,
+              searching: posState.isLoading,
+              matches: posState.clientMatches,
+              selectedClientId: posState.selectedClientId,
+              onClientTap: _selectClient,
+              onClearClient: _clearClient,
+              saldoActualCliente: posState.saldoActualCliente,
+              creditInfo: posState.creditInfo,
+              isCredito: isCredito,
+              isLoyaltyEnabled: isLoyaltyEnabled,
+              cartItemCount: itemCount,
+              isCartEmpty: isCartEmpty,
+              onClearCart: _onClearCartRequested,
+              showCajaHeader: true,
+            );
+          },
         );
       },
     );
@@ -582,11 +556,12 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         BlocBuilder<PosCubit, PosState>(
-          buildWhen: (prev, curr) =>
-              prev.paymentMethod != curr.paymentMethod ||
-              prev.selectedClientId != curr.selectedClientId ||
-              prev.saldoActualCliente != curr.saldoActualCliente ||
-              prev.puntosAUsar != curr.puntosAUsar,
+          buildWhen:
+              (prev, curr) =>
+                  prev.paymentMethod != curr.paymentMethod ||
+                  prev.selectedClientId != curr.selectedClientId ||
+                  prev.saldoActualCliente != curr.saldoActualCliente ||
+                  prev.puntosAUsar != curr.puntosAUsar,
           builder: (context, posState) {
             final isCredito = posState.paymentMethod == 'CRÉDITO';
             return BlocSelector<CartCubit, CartState, double>(
@@ -631,13 +606,14 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
         const SizedBox(height: 20),
         const _SectionTitle('Configuración de venta'),
         BlocBuilder<PosCubit, PosState>(
-          buildWhen: (prev, curr) =>
-              prev.paymentMethod != curr.paymentMethod ||
-              prev.warehouses != curr.warehouses ||
-              prev.selectedWarehouseId != curr.selectedWarehouseId ||
-              prev.accounts != curr.accounts ||
-              prev.selectedAccountId != curr.selectedAccountId ||
-              prev.activeShift != curr.activeShift,
+          buildWhen:
+              (prev, curr) =>
+                  prev.paymentMethod != curr.paymentMethod ||
+                  prev.warehouses != curr.warehouses ||
+                  prev.selectedWarehouseId != curr.selectedWarehouseId ||
+                  prev.accounts != curr.accounts ||
+                  prev.selectedAccountId != curr.selectedAccountId ||
+                  prev.activeShift != curr.activeShift,
           builder: (context, posState) {
             final posCubit = context.read<PosCubit>();
             final isCredito = posState.paymentMethod == 'CRÉDITO';
@@ -684,14 +660,15 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     bool isLoyaltyEnabled,
   ) {
     return BlocBuilder<PosCubit, PosState>(
-      buildWhen: (prev, curr) =>
-          prev.paymentMethod != curr.paymentMethod ||
-          prev.puntosAUsar != curr.puntosAUsar ||
-          prev.selectedClientId != curr.selectedClientId ||
-          prev.saldoActualCliente != curr.saldoActualCliente ||
-          prev.creditInfo != curr.creditInfo ||
-          prev.discountText != curr.discountText ||
-          prev.isDiscountPercentage != curr.isDiscountPercentage,
+      buildWhen:
+          (prev, curr) =>
+              prev.paymentMethod != curr.paymentMethod ||
+              prev.puntosAUsar != curr.puntosAUsar ||
+              prev.selectedClientId != curr.selectedClientId ||
+              prev.saldoActualCliente != curr.saldoActualCliente ||
+              prev.creditInfo != curr.creditInfo ||
+              prev.discountText != curr.discountText ||
+              prev.isDiscountPercentage != curr.isDiscountPercentage,
       builder: (context, posState) {
         return BlocBuilder<CartCubit, CartState>(
           buildWhen: (prev, curr) => prev.totalAmount != curr.totalAmount,
@@ -743,15 +720,16 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                   puntosAplicables:
                       isCredito || !isLoyaltyEnabled ? 0 : puntosSeguros,
                   descuentoPuntos:
-                      isCredito || !isLoyaltyEnabled ? 0 : puntosSeguros * ratio,
+                      isCredito || !isLoyaltyEnabled
+                          ? 0
+                          : puntosSeguros * ratio,
                   isLoyaltyEnabled: isLoyaltyEnabled,
                   descuentoExtra:
                       isCredito
                           ? 0
                           : PosCalculatorUtils.getCustomDiscountAmount(
                             discountText: posState.discountText,
-                            isDiscountPercentage:
-                                posState.isDiscountPercentage,
+                            isDiscountPercentage: posState.isDiscountPercentage,
                             pos: posState,
                             cart: cartState,
                             ratio: ratio,
@@ -833,16 +811,17 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
             ],
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-            validator: (v) => PosCalculatorUtils.validateDiscountInput(
-              text: v,
-              isPercentage: posState.isDiscountPercentage,
-              maxDiscountAmount: PosCalculatorUtils.getMaxCustomDiscount(
-                cartState,
-                ratio,
-                puntosSeguros,
-              ),
-              cartTotal: cartState.totalAmount,
-            ),
+            validator:
+                (v) => PosCalculatorUtils.validateDiscountInput(
+                  text: v,
+                  isPercentage: posState.isDiscountPercentage,
+                  maxDiscountAmount: PosCalculatorUtils.getMaxCustomDiscount(
+                    cartState,
+                    ratio,
+                    puntosSeguros,
+                  ),
+                  cartTotal: cartState.totalAmount,
+                ),
             decoration: InputDecoration(
               hintText: '0.00',
               prefixText: posState.isDiscountPercentage ? null : 'S/ ',
@@ -916,21 +895,23 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
       child: SafeArea(
         top: false,
         child: BlocBuilder<PosCubit, PosState>(
-          buildWhen: (prev, curr) =>
-              prev.paymentMethod != curr.paymentMethod ||
-              prev.discountText != curr.discountText ||
-              prev.isDiscountPercentage != curr.isDiscountPercentage ||
-              prev.puntosAUsar != curr.puntosAUsar ||
-              prev.selectedClientId != curr.selectedClientId ||
-              prev.selectedAccountId != curr.selectedAccountId ||
-              prev.activeShift != curr.activeShift ||
-              prev.creditInfo != curr.creditInfo ||
-              prev.status != curr.status,
+          buildWhen:
+              (prev, curr) =>
+                  prev.paymentMethod != curr.paymentMethod ||
+                  prev.discountText != curr.discountText ||
+                  prev.isDiscountPercentage != curr.isDiscountPercentage ||
+                  prev.puntosAUsar != curr.puntosAUsar ||
+                  prev.selectedClientId != curr.selectedClientId ||
+                  prev.selectedAccountId != curr.selectedAccountId ||
+                  prev.activeShift != curr.activeShift ||
+                  prev.creditInfo != curr.creditInfo ||
+                  prev.status != curr.status,
           builder: (context, posState) {
             return BlocBuilder<CartCubit, CartState>(
-              buildWhen: (prev, curr) =>
-                  prev.totalAmount != curr.totalAmount ||
-                  prev.items.isEmpty != curr.items.isEmpty,
+              buildWhen:
+                  (prev, curr) =>
+                      prev.totalAmount != curr.totalAmount ||
+                      prev.items.isEmpty != curr.items.isEmpty,
               builder: (context, cartState) {
                 final posCubit = context.read<PosCubit>();
                 final cartCubit = context.read<CartCubit>();
