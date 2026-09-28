@@ -21,6 +21,7 @@ class VariantDraftCard extends StatefulWidget {
   final VoidCallback onPickImage;
   final ValueChanged<bool> onActiveChanged;
   final VariantDraftUpdateCallback onUpdate;
+  final bool? isExpanded;
 
   const VariantDraftCard({
     super.key,
@@ -31,6 +32,7 @@ class VariantDraftCard extends StatefulWidget {
     required this.onPickImage,
     required this.onActiveChanged,
     required this.onUpdate,
+    this.isExpanded,
   });
 
   @override
@@ -52,6 +54,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
   @override
   void initState() {
     super.initState();
+    _isExpanded = widget.isExpanded ?? (widget.index == 0);
     _parseInitialAttributes();
     // Inicializar controladores locales a partir del modelo mutable
     skuCtrl = TextEditingController(text: widget.draft.sku);
@@ -112,6 +115,10 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
   @override
   void didUpdateWidget(VariantDraftCard oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.isExpanded != null &&
+        widget.isExpanded != oldWidget.isExpanded) {
+      _isExpanded = widget.isExpanded!;
+    }
     if (widget.draft.sku != oldWidget.draft.sku &&
         widget.draft.sku != skuCtrl.text) {
       skuCtrl.text = widget.draft.sku;
@@ -265,6 +272,65 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
     }
   }
 
+  Widget _buildHeaderImagePreview() {
+    Widget? img;
+    if (widget.draft.nuevasImagenes.isNotEmpty) {
+      img = Image.memory(
+        widget.draft.nuevasImagenes.first,
+        fit: BoxFit.cover,
+        width: 34,
+        height: 34,
+      );
+    } else if (widget.draft.urlsExistentes.isNotEmpty) {
+      img = CachedNetworkImage(
+        imageUrl: widget.draft.urlsExistentes.first,
+        fit: BoxFit.cover,
+        width: 34,
+        height: 34,
+        placeholder: (context, url) => Container(color: Colors.grey.shade100),
+        errorWidget:
+            (context, url, error) => const Icon(
+              Icons.broken_image,
+              size: 15,
+              color: Colors.grey,
+            ),
+      );
+    } else if (widget.draft.externalImageUrl != null &&
+        widget.draft.externalImageUrl!.isNotEmpty) {
+      img = CachedNetworkImage(
+        imageUrl: widget.draft.externalImageUrl!,
+        fit: BoxFit.cover,
+        width: 34,
+        height: 34,
+        placeholder: (context, url) => Container(color: Colors.grey.shade100),
+        errorWidget:
+            (context, url, error) => const Icon(
+              Icons.broken_image,
+              size: 15,
+              color: Colors.grey,
+            ),
+      );
+    }
+
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child:
+          img ??
+          Icon(
+            Icons.layers_outlined,
+            size: 18,
+            color: Colors.grey.shade400,
+          ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isActive = widget.draft.isActive;
@@ -288,116 +354,250 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── CABECERA ────────────────────────────────────────────────────
+            // ── CABECERA INTELIGENTE & RESUMEN ENRIQUECIDO ─────────────────
             InkWell(
               onTap: () {
                 setState(() {
                   _isExpanded = !_isExpanded;
                 });
               },
-              borderRadius: BorderRadius.circular(8),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          isActive
-                              ? AppColors.primary.withValues(alpha: 0.1)
-                              : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Variante #${widget.index + 1}${isActive ? '' : ' (Inactiva)'}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    // Miniatura de imagen
+                    _buildHeaderImagePreview(),
+                    const SizedBox(width: 10),
+
+                    // Badge de número de variante
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
                         color:
-                            isActive ? AppColors.primary : Colors.grey.shade500,
+                            isActive
+                                ? AppColors.primary.withValues(alpha: 0.1)
+                                : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color:
+                              isActive
+                                  ? AppColors.primary.withValues(alpha: 0.2)
+                                  : Colors.grey.shade300,
+                        ),
+                      ),
+                      child: Text(
+                        '#${widget.index + 1}${isActive ? '' : ' (Inactiva)'}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color:
+                              isActive
+                                  ? AppColors.primary
+                                  : Colors.grey.shade600,
+                        ),
                       ),
                     ),
-                  ),
-                  ListenableBuilder(
-                    listenable: priceCtrl,
-                    builder: (context, _) {
-                      if (!_isExpanded && priceCtrl.text.trim().isNotEmpty) {
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 8),
-                          child: Text(
-                            'S/ ${priceCtrl.text.trim()}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                              color: Colors.grey.shade700,
-                            ),
+                    const SizedBox(width: 8),
+
+                    // Resumen flexible: Atributos, SKU y Precios
+                    Expanded(
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          // Chips de Atributos seleccionados (ej: Modelo: Batman)
+                          ..._selectedAttributes
+                              .where((a) => a.valueName.trim().isNotEmpty)
+                              .map(
+                                (attr) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.teal.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: AppColors.teal.withValues(alpha: 0.25),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    attr.attributeName.isNotEmpty
+                                        ? '${attr.attributeName}: ${attr.valueName}'
+                                        : attr.valueName,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                          // Chip de SKU
+                          ListenableBuilder(
+                            listenable: skuCtrl,
+                            builder: (context, _) {
+                              final sku = skuCtrl.text.trim();
+                              if (sku.isEmpty) return const SizedBox.shrink();
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                ),
+                                child: Text(
+                                  'SKU: $sku',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                  const Spacer(),
-                  Transform.scale(
-                    scale: 0.85,
-                    child: Switch(
-                      value: isActive,
-                      onChanged: widget.onActiveChanged,
-                      activeThumbColor: AppColors.success,
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    icon: const Icon(
-                      Icons.more_vert_rounded,
-                      color: Colors.grey,
-                    ),
-                    onSelected: (value) {
-                      if (value == 'duplicate') widget.onDuplicate();
-                      if (value == 'delete') widget.onRemove();
-                    },
-                    itemBuilder:
-                        (context) => [
-                          const PopupMenuItem(
-                            value: 'duplicate',
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.copy_rounded,
-                                  size: 20,
-                                  color: AppColors.primary,
-                                ),
-                                SizedBox(width: 8),
-                                Text('Duplicar'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.delete_outline,
-                                  size: 20,
-                                  color: Colors.redAccent,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Eliminar',
-                                  style: TextStyle(color: Colors.redAccent),
-                                ),
-                              ],
-                            ),
+
+                          // Precio de venta y Margen
+                          ListenableBuilder(
+                            listenable: Listenable.merge([priceCtrl, unitCostCtrl]),
+                            builder: (context, _) {
+                              final priceText = priceCtrl.text.trim();
+                              if (priceText.isEmpty) return const SizedBox.shrink();
+                              final p = double.tryParse(priceText) ?? 0.0;
+                              final c = double.tryParse(unitCostCtrl.text.trim()) ?? 0.0;
+                              final hasCost = c > 0 && p > 0;
+                              final margin = hasCost ? ((p - c) / p) * 100 : 0.0;
+
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'S/ ${p.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  if (hasCost) ...[
+                                    const SizedBox(width: 5),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 5,
+                                        vertical: 1.5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: margin >= 25
+                                            ? AppColors.success.withValues(alpha: 0.12)
+                                            : margin > 0
+                                                ? AppColors.warning.withValues(alpha: 0.12)
+                                                : AppColors.error.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        '${margin >= 0 ? '+' : ''}${margin.toStringAsFixed(0)}%',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: margin >= 25
+                                              ? AppColors.success
+                                              : margin > 0
+                                                  ? AppColors.warning
+                                                  : AppColors.error,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
                           ),
                         ],
-                  ),
-                  Icon(
-                    _isExpanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                    color: Colors.grey.shade500,
-                  ),
-                ],
+                      ),
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    // Switch Activa / Inactiva
+                    Transform.scale(
+                      scale: 0.82,
+                      child: Switch(
+                        value: isActive,
+                        onChanged: widget.onActiveChanged,
+                        activeThumbColor: AppColors.success,
+                      ),
+                    ),
+
+                    // Menú contextual
+                    PopupMenuButton<String>(
+                      icon: const Icon(
+                        Icons.more_vert_rounded,
+                        color: Colors.grey,
+                        size: 20,
+                      ),
+                      tooltip: 'Opciones de variante',
+                      onSelected: (value) {
+                        if (value == 'duplicate') widget.onDuplicate();
+                        if (value == 'delete') widget.onRemove();
+                      },
+                      itemBuilder:
+                          (context) => [
+                            const PopupMenuItem(
+                              value: 'duplicate',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.copy_rounded,
+                                    size: 18,
+                                    color: AppColors.primary,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text('Duplicar variante'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                    color: Colors.redAccent,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Eliminar variante',
+                                    style: TextStyle(color: Colors.redAccent),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                    ),
+
+                    // Chevron indicador de despliegue con rotación suave
+                    AnimatedRotation(
+                      turns: _isExpanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             AnimatedSize(
