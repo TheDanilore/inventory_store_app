@@ -255,11 +255,12 @@ class PosHeader extends StatelessWidget {
   ) {
     if (posState.isLoading) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: AppColors.background,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border, width: 0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border, width: 1),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -277,7 +278,7 @@ class PosHeader extends StatelessWidget {
             Text(
               'Verificando turno...',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
               ),
@@ -318,8 +319,7 @@ class PosHeader extends StatelessWidget {
                   .toList();
           final opened = await OpenShiftSheet.show(
             context,
-            accounts:
-                cashAccounts, // Pasar estricto las cajas para que el Empty State lo maneje si no hay
+            accounts: cashAccounts,
           );
           if (opened == true && context.mounted) {
             await context.read<PosCubit>().refreshAccountsAndShift();
@@ -329,20 +329,21 @@ class PosHeader extends StatelessWidget {
           }
         }
       },
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color:
               isShiftOpen
                   ? AppColors.success.withValues(alpha: 0.1)
-                  : AppColors.error.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(16),
+                  : const Color(0xFFFEF3C7),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color:
                 isShiftOpen
-                    ? AppColors.success.withValues(alpha: 0.35)
-                    : AppColors.error.withValues(alpha: 0.3),
+                    ? AppColors.success.withValues(alpha: 0.4)
+                    : const Color(0xFFF59E0B).withValues(alpha: 0.5),
             width: 1,
           ),
         ),
@@ -364,7 +365,7 @@ class PosHeader extends StatelessWidget {
               const Icon(
                 Icons.lock_clock_rounded,
                 size: 16,
-                color: AppColors.error,
+                color: Color(0xFFB45309),
               ),
               const SizedBox(width: 8),
             ],
@@ -374,14 +375,14 @@ class PosHeader extends StatelessWidget {
                           activeShift!.openedByName!.isNotEmpty
                       ? 'Turno Abierto (${activeShift.openedByName})'
                       : 'Turno Abierto • S/ ${activeShift!.openingAmount.toStringAsFixed(2)}')
-                  : 'Caja Cerrada • Abrir Turno',
+                  : 'Caja Física Cerrada • Abrir Turno',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w700,
                 color:
                     isShiftOpen
                         ? const Color(0xFF065F46)
-                        : AppColors.error,
+                        : const Color(0xFF92400E),
               ),
             ),
           ],
@@ -393,12 +394,12 @@ class PosHeader extends StatelessWidget {
   Widget _buildWarehouseSelector(BuildContext context, PosState posState) {
     if (posState.isLoading) {
       return Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: AppColors.background,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border, width: 0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border, width: 1),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -415,7 +416,7 @@ class PosHeader extends StatelessWidget {
             Text(
               'Cargando almacén...',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
               ),
@@ -427,14 +428,14 @@ class PosHeader extends StatelessWidget {
 
     if (posState.warehouses.isEmpty) {
       return Container(
-        height: 48,
+        height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: AppColors.error.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: AppColors.error.withValues(alpha: 0.25),
-            width: 0.5,
+            width: 1,
           ),
         ),
         child: Row(
@@ -449,7 +450,7 @@ class PosHeader extends StatelessWidget {
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 160),
               child: const Text(
-                'Sin almacenes disponibles',
+                'Sin almacenes',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -473,11 +474,12 @@ class PosHeader extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border, width: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border, width: 1),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(

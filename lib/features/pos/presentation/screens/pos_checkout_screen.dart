@@ -1353,58 +1353,131 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                   children: [
                     Row(
                       children: [
-                        Expanded(
-                          child: PosConfirmButton(
-                            loading: isProcessingSale,
-                            enabled: puedeVender,
-                            label:
-                                isCredito
-                                    ? 'Vender a crédito'
-                                    : 'Cobrar (S/ ${totalFinal.toStringAsFixed(2)})',
-                            onPressed:
-                                () => _processSale(
-                                  posCubit,
-                                  cartCubit,
-                                  isDraft: false,
+                        // Botón Secundario: Guardar Borrador
+                        SizedBox(
+                          height: 50,
+                          child: Tooltip(
+                            message: 'Guardar orden como borrador',
+                            child: OutlinedButton(
+                              onPressed:
+                                  (isProcessingSale ||
+                                          cartState.items.isEmpty ||
+                                          descuentoExcedido)
+                                      ? null
+                                      : () => _processSale(
+                                        posCubit,
+                                        cartCubit,
+                                        isDraft: true,
+                                      ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.textPrimary,
+                                backgroundColor: Colors.white,
+                                disabledForegroundColor: AppColors.textMuted,
+                                side: BorderSide(
+                                  color:
+                                      (cartState.items.isEmpty ||
+                                              descuentoExcedido)
+                                          ? Colors.grey.shade200
+                                          : AppColors.border,
+                                  width: 1.2,
                                 ),
-                          ),
-                        ),
-                        if (!isCredito) ...[
-                          const SizedBox(width: 12),
-                          SizedBox(
-                            width: 56,
-                            height: 56,
-                            child: Tooltip(
-                              message: 'Guardar borrador',
-                              child: OutlinedButton(
-                                onPressed:
-                                    (isProcessingSale ||
-                                            cartState.items.isEmpty ||
-                                            descuentoExcedido)
-                                        ? null
-                                        : () => _processSale(
-                                          posCubit,
-                                          cartCubit,
-                                          isDraft: true,
-                                        ),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.teal,
-                                  padding: EdgeInsets.zero,
-                                  side: BorderSide(
-                                    color: AppColors.teal.withValues(alpha: 0.4),
-                                    width: 1.5,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppColors.radius,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(Icons.bookmark_add_outlined, size: 18),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Borrador',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                                ),
-                                child: const Icon(Icons.save_as_rounded, size: 24),
+                                ],
                               ),
                             ),
                           ),
-                        ],
+                        ),
+                        const SizedBox(width: 10),
+
+                        // Botón Principal: Cobrar (CTA)
+                        Expanded(
+                          child: SizedBox(
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed:
+                                  (!puedeVender || isProcessingSale)
+                                      ? null
+                                      : () => _processSale(
+                                        posCubit,
+                                        cartCubit,
+                                        isDraft: false,
+                                      ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.teal,
+                                disabledBackgroundColor: Colors.grey.shade300,
+                                foregroundColor: Colors.white,
+                                disabledForegroundColor: Colors.grey.shade500,
+                                elevation: puedeVender ? 2 : 0,
+                                shadowColor: AppColors.teal.withValues(
+                                  alpha: 0.35,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                ),
+                              ),
+                              child:
+                                  isProcessingSale
+                                      ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          valueColor:
+                                              AlwaysStoppedAnimation(
+                                                Colors.white,
+                                              ),
+                                        ),
+                                      )
+                                      : Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons
+                                                .shopping_cart_checkout_rounded,
+                                            size: 19,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            child: Text(
+                                              isCredito
+                                                  ? 'Vender a crédito'
+                                                  : 'Cobrar S/ ${totalFinal.toStringAsFixed(2)}',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 14.5,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: -0.2,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     if (isProcessingSale)

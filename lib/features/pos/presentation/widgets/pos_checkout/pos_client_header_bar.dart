@@ -504,16 +504,16 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
       color: hasClient
           ? AppColors.teal.withValues(alpha: 0.07)
           : AppColors.surface,
-      borderRadius: BorderRadius.circular(9),
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(10),
         onTap: () => _onClientPillTapped(context),
         hoverColor: AppColors.teal.withValues(alpha: 0.05),
         child: Container(
-          height: 38,
+          height: 40,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(9),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: hasClient
                   ? AppColors.teal.withValues(alpha: 0.35)
@@ -640,18 +640,18 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
       message: 'Nuevo Cliente Express (Alt+A)',
       child: Material(
         color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(10),
         child: InkWell(
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(10),
           onTap: () => _openCreateCustomerDialog(),
           child: Container(
-            height: 38,
-            padding: const EdgeInsets.symmetric(horizontal: 9),
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.22),
-                width: 0.9,
+                color: AppColors.primary.withValues(alpha: 0.25),
+                width: 1,
               ),
             ),
             child: Row(
@@ -666,7 +666,7 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                 Text(
                   'Nuevo',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primary,
                   ),

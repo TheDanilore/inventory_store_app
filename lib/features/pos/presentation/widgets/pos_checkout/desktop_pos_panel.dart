@@ -125,6 +125,21 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     _processSale(posCubit, cartCubit, isDraft: false);
   }
 
+  /// Invocado externamente (ej: atajo de teclado Alt+B) para guardar borrador.
+  void triggerDraft() {
+    final posCubit = context.read<PosCubit>();
+    final cartCubit = context.read<CartCubit>();
+    if (cartCubit.state.items.isEmpty) {
+      AppSnackbar.show(
+        context,
+        message: 'No hay productos en la caja para guardar como borrador',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+    _processSale(posCubit, cartCubit, isDraft: true);
+  }
+
   Future<void> _processSale(
     PosCubit posCubit,
     CartCubit cartCubit, {
@@ -944,74 +959,226 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                   cart: cartState,
                   ratio: ratio,
                 );
+                final isCredito = posState.paymentMethod == 'CRÉDITO';
                 final isBusy =
                     _isProcessing || posState.status == PosStatus.loading;
-                final canProceed = cartState.items.isNotEmpty && !isBusy;
+
+                final accountData = posState.accounts.firstWhere(
+                  (a) => a['id'] == posState.selectedAccountId,
+                  orElse: () => <String, dynamic>{},
+                );
+                final requiresShift =
+                    PosCalculatorUtils.accountRequiresShift(accountData);
+                final noCajaAbierta =
+                    !isCredito &&
+                    posState.selectedAccountId != null &&
+                    requiresShift &&
+                    posState.activeShift == null;
+
+                final disp = PosCalculatorUtils.getCreditDisponible(
+                  posState.creditInfo,
+                );
+                final creditoInsuficiente =
+                    isCredito &&
+                    posState.selectedClientId != null &&
+                    PosCalculatorUtils.isCreditActivo(posState.creditInfo) &&
+                    disp < total;
+                final creditoSinCliente =
+                    isCredito && posState.selectedClientId == null;
+
+                final safePts = PosCalculatorUtils.clampPointsValue(
+                  posState.puntosAUsar,
+                  posState,
+                  cartState,
+                  ratio,
+                );
+                final maxAllowedDisc =
+                    cartState.totalAmount - (safePts * ratio);
+                final descuentoExtra =
+                    PosCalculatorUtils.getCustomDiscountAmount(
+                      discountText: posState.discountText,
+                      isDiscountPercentage: posState.isDiscountPercentage,
+                      pos: posState,
+                      cart: cartState,
+                      ratio: ratio,
+                    );
+                final descuentoExcedido = descuentoExtra > maxAllowedDisc;
+
+                final canProceed =
+                    cartState.items.isNotEmpty &&
+                    !isBusy &&
+                    !noCajaAbierta &&
+                    !creditoInsuficiente &&
+                    !creditoSinCliente &&
+                    !descuentoExcedido;
+
+                final canDraft =
+                    cartState.items.isNotEmpty && !isBusy && !descuentoExcedido;
 
                 return Row(
                   children: [
-                    Expanded(
-                      flex: 1,
-                      child: OutlinedButton.icon(
-                        onPressed:
-                            !canProceed
-                                ? null
-                                : () => _processSale(
-                                  posCubit,
-                                  cartCubit,
-                                  isDraft: true,
+                    // Botón Secundario: Guardar Borrador (Alt+B)
+                    SizedBox(
+                      height: 50,
+                      child: Tooltip(
+                        message: 'Guardar orden como borrador (Alt+B)',
+                        child: OutlinedButton(
+                          onPressed:
+                              !canDraft
+                                  ? null
+                                  : () => _processSale(
+                                    posCubit,
+                                    cartCubit,
+                                    isDraft: true,
+                                  ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textPrimary,
+                            backgroundColor: Colors.white,
+                            disabledForegroundColor: AppColors.textMuted,
+                            side: BorderSide(
+                              color:
+                                  canDraft
+                                      ? AppColors.border
+                                      : Colors.grey.shade200,
+                              width: 1.2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.bookmark_add_outlined, size: 18),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Borrador',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
                                 ),
-                        icon: const Icon(Icons.save_outlined),
-                        label: const Text('Borrador'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 1.5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.background,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: AppColors.border,
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Alt+B',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
+
+                    // Botón Principal: Cobrar (CTA F2 / Alt+Enter)
                     Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        onPressed:
-                            !canProceed
-                                ? null
-                                : () => _processSale(
-                                  posCubit,
-                                  cartCubit,
-                                  isDraft: false,
-                                ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              !canProceed
-                                  ? Colors.grey.shade400
-                                  : AppColors.teal,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.shopping_cart_checkout_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Cobrar S/ ${total.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
+                      child: SizedBox(
+                        height: 50,
+                        child: Tooltip(
+                          message:
+                              noCajaAbierta
+                                  ? 'Abre turno en caja física o cambia de método de pago'
+                                  : 'Completar venta (F2 o Alt+Enter)',
+                          child: ElevatedButton(
+                            onPressed:
+                                !canProceed
+                                    ? null
+                                    : () => _processSale(
+                                      posCubit,
+                                      cartCubit,
+                                      isDraft: false,
+                                    ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.teal,
+                              disabledBackgroundColor: Colors.grey.shade300,
+                              foregroundColor: Colors.white,
+                              disabledForegroundColor: Colors.grey.shade500,
+                              elevation: canProceed ? 2 : 0,
+                              shadowColor: AppColors.teal.withValues(alpha: 0.35),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
                             ),
-                          ],
+                            child:
+                                isBusy
+                                    ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        valueColor: AlwaysStoppedAnimation(
+                                          Colors.white,
+                                        ),
+                                      ),
+                                    )
+                                    : Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          Icons.shopping_cart_checkout_rounded,
+                                          size: 19,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            isCredito
+                                                ? 'Vender a crédito'
+                                                : 'Cobrar S/ ${total.toStringAsFixed(2)}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 14.5,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: -0.2,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 5,
+                                            vertical: 1.5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'F2',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                          ),
                         ),
                       ),
                     ),

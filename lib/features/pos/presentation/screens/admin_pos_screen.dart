@@ -167,14 +167,21 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
         return true;
       }
 
-      // Alt + K / Alt + B: Foco en Buscador del Catálogo POS (solo en Tab 0)
-      if (event.logicalKey == LogicalKeyboardKey.keyK ||
-          event.logicalKey == LogicalKeyboardKey.keyB) {
+      // Alt + K: Foco en Buscador del Catálogo POS (solo en Tab 0)
+      if (event.logicalKey == LogicalKeyboardKey.keyK) {
         if (_selectedSidebarIndex == 0) {
           _focusSearch();
           return true;
         }
-        // Permitir que fluya al Tab activo (Lotes/Stock o Ventas)
+        return false;
+      }
+
+      // Alt + B: Guardar Borrador rápido (solo en Tab 0)
+      if (event.logicalKey == LogicalKeyboardKey.keyB) {
+        if (_selectedSidebarIndex == 0) {
+          _desktopPanelKey.currentState?.triggerDraft();
+          return true;
+        }
         return false;
       }
 
@@ -287,7 +294,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
               builder: (ctx, setBtnState) {
                 return FilledButton(
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF142B1A),
+                    backgroundColor: AppColors.primary,
                   ),
                   onPressed: isExiting
                       ? null
@@ -350,13 +357,15 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
-        // Foco de Búsqueda (Ctrl+K, Cmd+K, Alt+K, Ctrl+B, Cmd+B, Alt+B)
+        // Foco de Búsqueda (Ctrl+K, Cmd+K, Alt+K)
         const SingleActivator(LogicalKeyboardKey.keyK, control: true): _focusSearch,
         const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _focusSearch,
         const SingleActivator(LogicalKeyboardKey.keyK, alt: true): _focusSearch,
-        const SingleActivator(LogicalKeyboardKey.keyB, control: true): _focusSearch,
-        const SingleActivator(LogicalKeyboardKey.keyB, meta: true): _focusSearch,
-        const SingleActivator(LogicalKeyboardKey.keyB, alt: true): _focusSearch,
+
+        // Guardar Borrador (Alt+B)
+        const SingleActivator(LogicalKeyboardKey.keyB, alt: true): () {
+          _desktopPanelKey.currentState?.triggerDraft();
+        },
 
         // Navegación Sidebar: Venta (Ctrl+1 / Cmd+1 / Alt+1 / Alt+V / Numpad 1)
         const SingleActivator(LogicalKeyboardKey.digit1, control: true): () => _onSidebarTabSelected(0),
@@ -461,26 +470,26 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                     onDestinationSelected: _onSidebarTabSelected,
                     backgroundColor: Colors.white,
                     elevation: 8,
-                    indicatorColor: const Color(0xFFD4E157).withValues(alpha: 0.25),
+                    indicatorColor: AppColors.teal.withValues(alpha: 0.15),
                     destinations: const [
                       NavigationDestination(
                         icon: Icon(Icons.point_of_sale_outlined),
-                        selectedIcon: Icon(Icons.point_of_sale, color: Color(0xFF1B4D3E)),
+                        selectedIcon: Icon(Icons.point_of_sale, color: AppColors.tealDark),
                         label: 'Venta',
                       ),
                       NavigationDestination(
                         icon: Icon(Icons.inventory_2_outlined),
-                        selectedIcon: Icon(Icons.inventory_2, color: Color(0xFF1B4D3E)),
+                        selectedIcon: Icon(Icons.inventory_2, color: AppColors.tealDark),
                         label: 'Lotes/Stock',
                       ),
                       NavigationDestination(
                         icon: Icon(Icons.receipt_long_outlined),
-                        selectedIcon: Icon(Icons.receipt_long, color: Color(0xFF1B4D3E)),
+                        selectedIcon: Icon(Icons.receipt_long, color: AppColors.tealDark),
                         label: 'Ventas',
                       ),
                       NavigationDestination(
                         icon: Icon(Icons.account_balance_wallet_outlined),
-                        selectedIcon: Icon(Icons.account_balance_wallet, color: Color(0xFF1B4D3E)),
+                        selectedIcon: Icon(Icons.account_balance_wallet, color: AppColors.tealDark),
                         label: 'Turnos',
                       ),
                     ],

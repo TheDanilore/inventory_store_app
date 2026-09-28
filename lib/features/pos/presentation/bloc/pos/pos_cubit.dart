@@ -46,9 +46,13 @@ class PosCubit extends Cubit<PosState> {
       },
       (accounts) {
         emit(state.copyWith(accounts: accounts));
-        final activeAccId = state.selectedAccountId;
-        if (activeAccId != null) {
-          checkActiveShift(activeAccId);
+        final cashAcc = accounts.firstWhere(
+          (a) => PosCalculatorUtils.accountRequiresShift(a),
+          orElse: () => accounts.isNotEmpty ? accounts.first : <String, dynamic>{},
+        );
+        final cashAccId = cashAcc['id'] as String?;
+        if (cashAccId != null) {
+          checkActiveShift(cashAccId);
         }
       },
     );
@@ -109,8 +113,14 @@ class PosCubit extends Cubit<PosState> {
           ),
         );
 
-        if (initialAccountId != null) {
-          checkActiveShift(initialAccountId);
+        // Monitorear siempre el turno de la caja física de la tienda
+        final cashAcc = data.accounts.firstWhere(
+          (a) => PosCalculatorUtils.accountRequiresShift(a),
+          orElse: () => data.accounts.isNotEmpty ? data.accounts.first : <String, dynamic>{},
+        );
+        final cashAccId = cashAcc['id'] as String?;
+        if (cashAccId != null) {
+          checkActiveShift(cashAccId);
         }
       },
     );
@@ -146,7 +156,15 @@ class PosCubit extends Cubit<PosState> {
   void setSelectedAccountId(String? accountId) {
     emit(state.copyWith(selectedAccountId: accountId));
     if (accountId != null) {
-      checkActiveShift(accountId);
+      final account = state.accounts.firstWhere(
+        (a) => a['id'] == accountId,
+        orElse: () => <String, dynamic>{},
+      );
+      // Solo verificamos turno si la cuenta seleccionada es una caja física.
+      // Cuentas digitales/bancarias no borran el turno de la caja física de la tienda.
+      if (PosCalculatorUtils.accountRequiresShift(account)) {
+        checkActiveShift(accountId);
+      }
     }
   }
 
@@ -350,7 +368,7 @@ class PosCubit extends Cubit<PosState> {
       orElse: () => <String, dynamic>{},
     );
     if (!PosCalculatorUtils.accountRequiresShift(account)) {
-      emit(state.copyWith(clearActiveShift: true));
+      // Las cuentas bancarias o billeteras digitales no manejan turno; no alteramos activeShift
       return;
     }
 
