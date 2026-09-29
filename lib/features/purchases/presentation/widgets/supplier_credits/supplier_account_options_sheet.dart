@@ -59,11 +59,11 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
           child: Row(
             children: [
               CircleAvatar(
-                backgroundColor: Colors.blue.shade100,
+                backgroundColor: AppColors.tealLight,
                 child: Text(
                   account.supplierName.substring(0, 1).toUpperCase(),
-                  style: TextStyle(
-                    color: Colors.blue.shade800,
+                  style: const TextStyle(
+                    color: AppColors.tealDark,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -120,7 +120,7 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
                       avatar: const Icon(
                         Icons.message_rounded,
                         size: 14,
-                        color: Colors.green,
+                        color: AppColors.success,
                       ),
                       label: const Text(
                         'WhatsApp',
@@ -136,7 +136,7 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
           ),
         const Divider(height: 20),
         ListTile(
-          leading: const Icon(Icons.history_rounded, color: Colors.blue),
+          leading: const Icon(Icons.history_rounded, color: AppColors.primary),
           title: const Text('Ver historial de movimientos'),
           onTap: () {
             Navigator.pop(context, SupplierAccountAction.viewHistory);
@@ -147,7 +147,7 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
           ListTile(
             leading: const Icon(
               Icons.payments_rounded,
-              color: AppColors.success,
+              color: AppColors.teal,
             ),
             title: const Text('Pagar al proveedor (Amortizar)'),
             onTap: () {
@@ -155,7 +155,7 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
             },
           ),
         ListTile(
-          leading: const Icon(Icons.edit_rounded, color: Colors.blue),
+          leading: const Icon(Icons.edit_rounded, color: AppColors.textSecondary),
           title: const Text('Editar línea de crédito'),
           onTap: () {
             Navigator.pop(context, SupplierAccountAction.edit);

@@ -1,0 +1,397 @@
+import 'package:flutter/material.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+
+class SupplierCreditsTable extends StatefulWidget {
+  final List<SupplierCreditEntity> accounts;
+  final Function(SupplierCreditEntity) onSelectAccount;
+  final Function(SupplierCreditEntity) onPay;
+  final Function(SupplierCreditEntity) onViewHistory;
+
+  const SupplierCreditsTable({
+    super.key,
+    required this.accounts,
+    required this.onSelectAccount,
+    required this.onPay,
+    required this.onViewHistory,
+  });
+
+  @override
+  State<SupplierCreditsTable> createState() => _SupplierCreditsTableState();
+}
+
+class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
+  int? _hoveredIndex;
+
+  Color _getDebtColor(double pct, bool isMaxedOut, double debt) {
+    if (debt == 0) return AppColors.success;
+    if (isMaxedOut || pct >= 0.90) return AppColors.danger;
+    if (pct >= 0.75) return AppColors.warning;
+    return AppColors.textPrimary;
+  }
+
+  Color _getProgressColor(double pct, bool isMaxedOut) {
+    if (isMaxedOut || pct >= 0.90) return AppColors.danger;
+    if (pct >= 0.75) return AppColors.warning;
+    return AppColors.teal;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          // --- Encabezado de Tabla ---
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: const BoxDecoration(
+              color: AppColors.background,
+              border: Border(bottom: BorderSide(color: AppColors.border)),
+            ),
+            child: const Row(
+              children: [
+                Expanded(
+                  flex: 4,
+                  child: Text(
+                    'PROVEEDOR',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'LÍNEA DE CRÉDITO',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'DEUDA ACTUAL',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'DISPONIBLE',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'USO DE LÍNEA',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'ESTADO',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 140,
+                  child: Text(
+                    'ACCIONES',
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // --- Filas de Datos ---
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: widget.accounts.length,
+            separatorBuilder:
+                (_, _) =>
+                    const Divider(height: 1, thickness: 1, color: AppColors.border),
+            itemBuilder: (context, index) {
+              final account = widget.accounts[index];
+              final isHovered = _hoveredIndex == index;
+              final pct = account.usagePercent.clamp(0.0, 1.0);
+              final progressColor = _getProgressColor(pct, account.isMaxedOut);
+              final debtColor = _getDebtColor(pct, account.isMaxedOut, account.currentDebt);
+
+              return MouseRegion(
+                cursor: SystemMouseCursors.click,
+                onEnter: (_) => setState(() => _hoveredIndex = index),
+                onExit: (_) => setState(() => _hoveredIndex = null),
+                child: InkWell(
+                  onTap: () => widget.onSelectAccount(account),
+                  child: Container(
+                    color: isHovered
+                        ? const Color(0xFFF8FAFC)
+                        : Colors.transparent,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        // Proveedor (Avatar + Nombre + RUC)
+                        Expanded(
+                          flex: 4,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: account.isActive
+                                      ? AppColors.tealLight
+                                      : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  account.supplierName.isNotEmpty
+                                      ? account.supplierName.substring(0, 1).toUpperCase()
+                                      : 'P',
+                                  style: TextStyle(
+                                    color: account.isActive
+                                        ? AppColors.tealDark
+                                        : Colors.grey.shade600,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      account.supplierName,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (account.supplierTaxId != null &&
+                                        account.supplierTaxId!.isNotEmpty)
+                                      Text(
+                                        'RUC ${account.supplierTaxId}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Línea Total
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            'S/ ${account.creditLimit.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+
+                        // Deuda Actual
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            'S/ ${account.currentDebt.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: debtColor,
+                            ),
+                          ),
+                        ),
+
+                        // Disponible
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            'S/ ${account.availableCredit.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: account.isActive
+                                  ? AppColors.tealDark
+                                  : AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+
+                        // Uso de Línea (Barra + %)
+                        Expanded(
+                          flex: 3,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: pct,
+                                    minHeight: 6,
+                                    backgroundColor: AppColors.background,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      progressColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 44,
+                                child: Text(
+                                  '${(pct * 100).toStringAsFixed(1)}%',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: progressColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Estado
+                        Expanded(
+                          flex: 2,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: account.isActive
+                                    ? AppColors.successLight
+                                    : Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                account.isActive ? 'Activo' : 'Suspendido',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: account.isActive
+                                      ? AppColors.successDark
+                                      : Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Acciones
+                        SizedBox(
+                          width: 140,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.payments_outlined,
+                                  size: 18,
+                                  color: AppColors.teal,
+                                ),
+                                tooltip: 'Registrar abono',
+                                onPressed: () => widget.onPay(account),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.history_rounded,
+                                  size: 18,
+                                  color: AppColors.textSecondary,
+                                ),
+                                tooltip: 'Ver movimientos',
+                                onPressed: () => widget.onViewHistory(account),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.more_horiz_rounded,
+                                  size: 18,
+                                  color: AppColors.textMuted,
+                                ),
+                                tooltip: 'Más opciones',
+                                onPressed: () => widget.onSelectAccount(account),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}

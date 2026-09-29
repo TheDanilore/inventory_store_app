@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class SupplierGlobalStatsBar extends StatelessWidget {
   final double totalDebt;
@@ -21,92 +22,184 @@ class SupplierGlobalStatsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue.shade700, Colors.blue.shade900],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withValues(alpha: 0.25),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width >= 800;
+
+    final cards = [
+      _BentoMetricCard(
+        title: 'Cuentas Activas',
+        value: '$activeAccounts',
+        subtitle:
+            suspendedAccounts > 0
+                ? '$suspendedAccounts suspendidas'
+                : '100% habilitadas',
+        icon: Icons.storefront_rounded,
+        iconBgColor: AppColors.tealLight,
+        iconColor: AppColors.tealDark,
       ),
-      child: Row(
-        children: [
-          _StatItem(
-            icon: Icons.storefront_rounded,
-            value: '$activeAccounts',
-            label: 'Activos',
-          ),
-          Container(height: 36, width: 1, color: Colors.white24),
-          _StatItem(
-            icon: Icons.warning_amber_rounded,
-            value: '$maxedOutAccounts',
-            label: 'Al límite',
-            valueColor:
-                maxedOutAccounts > 0 ? Colors.orange.shade200 : Colors.white,
-          ),
-          Container(height: 36, width: 1, color: Colors.white24),
-          _StatItem(
-            icon: Icons.account_balance_rounded,
-            value: _compact(totalDebt),
-            label: 'Por Pagar',
-            valueColor: totalDebt > 0 ? Colors.orange.shade200 : Colors.white,
-          ),
-        ],
+      _BentoMetricCard(
+        title: 'Al Límite (Riesgo)',
+        value: '$maxedOutAccounts',
+        subtitle:
+            maxedOutAccounts > 0 ? 'Requiere atención' : 'Líneas saludables',
+        icon: Icons.warning_amber_rounded,
+        iconBgColor:
+            maxedOutAccounts > 0 ? AppColors.dangerLight : AppColors.successLight,
+        iconColor:
+            maxedOutAccounts > 0 ? AppColors.danger : AppColors.successDark,
+        valueColor:
+            maxedOutAccounts > 0 ? AppColors.danger : AppColors.textPrimary,
+      ),
+      _BentoMetricCard(
+        title: 'Total por Pagar',
+        value: _compact(totalDebt),
+        subtitle:
+            totalDebt > 0
+                ? 'Deuda total a proveedores'
+                : 'Cuentas al día',
+        icon: Icons.account_balance_rounded,
+        iconBgColor: AppColors.primaryLight,
+        iconColor: AppColors.primary,
+        valueColor:
+            totalDebt > 0 ? AppColors.textPrimary : AppColors.successDark,
+      ),
+    ];
+
+    if (isDesktop) {
+      return Container(
+        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Row(
+          children: [
+            Expanded(child: cards[0]),
+            const SizedBox(width: 12),
+            Expanded(child: cards[1]),
+            const SizedBox(width: 12),
+            Expanded(child: cards[2]),
+          ],
+        ),
+      );
+    }
+
+    // Móvil / Tablet: Scroll horizontal sutil o columna compacta
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      height: 96,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: cards.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (_, index) => SizedBox(width: 220, child: cards[index]),
       ),
     );
   }
 }
 
-class _StatItem extends StatelessWidget {
-  final IconData icon;
+class _BentoMetricCard extends StatefulWidget {
+  final String title;
   final String value;
-  final String label;
+  final String subtitle;
+  final IconData icon;
+  final Color iconBgColor;
+  final Color iconColor;
   final Color? valueColor;
 
-  const _StatItem({
-    required this.icon,
+  const _BentoMetricCard({
+    required this.title,
     required this.value,
-    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.iconBgColor,
+    required this.iconColor,
     this.valueColor,
   });
 
   @override
+  State<_BentoMetricCard> createState() => _BentoMetricCardState();
+}
+
+class _BentoMetricCardState extends State<_BentoMetricCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Icon(icon, color: Colors.white70, size: 16),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              color: valueColor ?? Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _isHovered ? widget.iconColor.withValues(alpha: 0.35) : AppColors.border,
+            width: _isHovered ? 1.5 : 1,
           ),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.75),
-              fontSize: 10,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: _isHovered ? 0.05 : 0.02),
+              blurRadius: _isHovered ? 12 : 6,
+              offset: Offset(0, _isHovered ? 3 : 2),
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: widget.iconBgColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(widget.icon, color: widget.iconColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.title,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.value,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: widget.valueColor ?? AppColors.textPrimary,
+                      letterSpacing: -0.3,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.subtitle,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textMuted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
