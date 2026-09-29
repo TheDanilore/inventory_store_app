@@ -241,7 +241,23 @@ class _PosSalesViewState extends State<PosSalesView> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<PosCubit, PosState>(
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.slash): () {
+          if (!_searchFocusNode.hasFocus) {
+            _searchFocusNode.requestFocus();
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (_searchFocusNode.hasFocus) {
+            _searchFocusNode.unfocus();
+          }
+          if (_searchCtrl.text.isNotEmpty) {
+            _clearSearch();
+          }
+        },
+      },
+      child: BlocBuilder<PosCubit, PosState>(
       buildWhen:
           (prev, current) =>
               prev.recentOrders != current.recentOrders ||
@@ -603,8 +619,9 @@ class _PosSalesViewState extends State<PosSalesView> {
           },
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildHeader(BuildContext context, bool isMobile) {
     return Container(

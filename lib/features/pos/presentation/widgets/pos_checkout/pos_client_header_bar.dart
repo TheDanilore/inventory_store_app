@@ -750,22 +750,26 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                           children: [
                             if (_searchFieldCtrl.text.isNotEmpty)
                               IconButton(
-                                icon: const Icon(Icons.clear_rounded, size: 15),
+                                icon: const Icon(Icons.cancel_rounded, size: 16),
+                                color: AppColors.textMuted,
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                tooltip: 'Borrar texto',
                                 onPressed: () {
                                   _searchFieldCtrl.clear();
                                   widget.onSearchChanged('');
                                   setState(() {});
                                 },
+                              )
+                            else
+                              IconButton(
+                                icon: const Icon(Icons.close_rounded, size: 16),
+                                color: AppColors.textMuted,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                tooltip: 'Cerrar (Esc)',
+                                onPressed: _closeDesktopSearch,
                               ),
-                            IconButton(
-                              icon: const Icon(Icons.close_rounded, size: 15),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                              tooltip: 'Cerrar (Esc)',
-                              onPressed: _closeDesktopSearch,
-                            ),
                           ],
                         ),
                         border: InputBorder.none,

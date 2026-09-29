@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 
 /// Sidebar vertical exclusivo para el módulo POS inspirado en terminales
 /// de punto de venta modernas (estilo Clover, Shopify POS y sistemas agronómicos).
@@ -80,7 +79,8 @@ class PosSidebarRail extends StatelessWidget {
               index: 0,
               icon: Icons.grid_view_rounded,
               label: 'VENTA',
-              shortcut: AppShortcutLabels.tab(1),
+              singleKey: 'V',
+              shortcut: 'V o Alt+1',
             ),
             const SizedBox(height: 12),
 
@@ -88,7 +88,8 @@ class PosSidebarRail extends StatelessWidget {
               index: 1,
               icon: Icons.assignment_outlined,
               label: 'LOTES',
-              shortcut: AppShortcutLabels.tab(2),
+              singleKey: 'L',
+              shortcut: 'L o Alt+2',
             ),
             const SizedBox(height: 12),
 
@@ -96,7 +97,8 @@ class PosSidebarRail extends StatelessWidget {
               index: 2,
               icon: Icons.history_rounded,
               label: 'VENTAS',
-              shortcut: AppShortcutLabels.tab(3),
+              singleKey: 'H',
+              shortcut: 'H o Alt+3',
             ),
             const SizedBox(height: 12),
 
@@ -104,7 +106,8 @@ class PosSidebarRail extends StatelessWidget {
               index: 3,
               icon: Icons.point_of_sale_rounded,
               label: 'TURNOS',
-              shortcut: AppShortcutLabels.tab(4),
+              singleKey: 'T',
+              shortcut: 'T o Alt+4',
             ),
 
             const Spacer(),
@@ -150,12 +153,13 @@ class PosSidebarRail extends StatelessWidget {
     required int index,
     required IconData icon,
     required String label,
+    required String singleKey,
     required String shortcut,
   }) {
     final isSelected = selectedIndex == index;
 
     return Tooltip(
-      message: '$label ($shortcut)',
+      message: '$label (Atajo: $shortcut)',
       preferBelow: false,
       child: Material(
         color: Colors.transparent,
@@ -167,7 +171,7 @@ class PosSidebarRail extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOutCubic,
             width: 66,
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
             decoration: BoxDecoration(
               color: isSelected ? sidebarActiveBg : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
@@ -187,22 +191,56 @@ class PosSidebarRail extends StatelessWidget {
                     ]
                   : null,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                Icon(
-                  icon,
-                  color: isSelected ? limeAccentLight : const Color(0xFF94A3B8),
-                  size: 26,
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        icon,
+                        color: isSelected ? limeAccentLight : const Color(0xFF94A3B8),
+                        size: 24,
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          letterSpacing: 0.8,
+                          color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                    letterSpacing: 0.8,
-                    color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                Positioned(
+                  top: -2,
+                  right: 2,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? limeAccent.withValues(alpha: 0.25)
+                          : Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: isSelected
+                            ? limeAccent.withValues(alpha: 0.4)
+                            : Colors.white.withValues(alpha: 0.12),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Text(
+                      singleKey,
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w800,
+                        color: isSelected ? limeAccentLight : const Color(0xFF94A3B8),
+                      ),
+                    ),
                   ),
                 ),
               ],

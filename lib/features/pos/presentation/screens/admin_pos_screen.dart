@@ -124,92 +124,144 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     }
   }
 
+  bool _isInputFieldFocused() {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus == null) return false;
+    final context = primaryFocus.context;
+    if (context == null) return false;
+
+    if (context.widget is EditableText) return true;
+
+    bool isEditing = false;
+    context.visitAncestorElements((element) {
+      if (element.widget is EditableText) {
+        isEditing = true;
+        return false;
+      }
+      return true;
+    });
+    return isEditing;
+  }
+
+  void _refreshActiveTab() {
+    switch (_selectedSidebarIndex) {
+      case 0:
+        _catalogCubit.refreshProducts();
+        context.read<PosCubit>().refreshAccountsAndShift();
+        break;
+      case 1:
+        context.read<InventoryCubit>().initStockTab();
+        break;
+      case 2:
+        context.read<PosCubit>().fetchRecentOrders(forceRefresh: true);
+        context.read<PosCubit>().fetchDailySalesSummary();
+        break;
+      case 3:
+        context.read<CashShiftsCubit>().fetchShifts();
+        break;
+    }
+    AppSnackbar.show(
+      context,
+      message: 'Datos actualizados',
+      type: SnackbarType.info,
+    );
+  }
+
   bool _handleGlobalHardwareKey(KeyEvent event) {
     if (!mounted || event is! KeyDownEvent) return false;
 
-    // NOTA: Escape y F2 están en CallbackShortcuts (árbol de widgets).
-    // Este handler solo cubre Alt-keys para teclas que deben funcionar
-    // incluso cuando un TextField tiene el focus (fuera del árbol de focus).
     try {
       final isAlt = HardwareKeyboard.instance.isAltPressed;
-      if (!isAlt) return false;
+      final isControl = HardwareKeyboard.instance.isControlPressed;
+      final isMeta = HardwareKeyboard.instance.isMetaPressed;
+      final hasModifier = isAlt || isControl || isMeta;
 
-      // Alt + 1 / Numpad 1 / Alt + V: Tab 0 (Venta)
-      if (event.logicalKey == LogicalKeyboardKey.digit1 ||
-          event.logicalKey == LogicalKeyboardKey.numpad1 ||
-          event.logicalKey == LogicalKeyboardKey.keyV) {
+      // ── Regla de Aislamiento de Foco Pro Tools ───────────────────────────
+      // Si el usuario presiona una tecla SIN modificador pero tiene el foco
+      // en un campo de texto editable, NO interceptamos la tecla para permitir
+      // la escritura normal de caracteres.
+      if (!hasModifier && _isInputFieldFocused()) {
+        return false;
+      }
+
+      // 1. Tab 0: Venta POS (V, Alt+V, Alt+1, 1 numpad)
+      if (event.logicalKey == LogicalKeyboardKey.keyV ||
+          (isAlt && event.logicalKey == LogicalKeyboardKey.digit1) ||
+          event.logicalKey == LogicalKeyboardKey.numpad1) {
         _onSidebarTabSelected(0);
         return true;
       }
 
-      // Alt + 2 / Numpad 2 / Alt + L / Alt + S: Tab 1 (Lotes/Stock)
-      if (event.logicalKey == LogicalKeyboardKey.digit2 ||
-          event.logicalKey == LogicalKeyboardKey.numpad2 ||
-          event.logicalKey == LogicalKeyboardKey.keyL ||
-          event.logicalKey == LogicalKeyboardKey.keyS) {
+      // 2. Tab 1: Lotes / Inventario (L, Alt+L, Alt+2, 2 numpad)
+      if (event.logicalKey == LogicalKeyboardKey.keyL ||
+          (isAlt && event.logicalKey == LogicalKeyboardKey.digit2) ||
+          event.logicalKey == LogicalKeyboardKey.numpad2) {
         _onSidebarTabSelected(1);
         return true;
       }
 
-      // Alt + 3 / Numpad 3 / Alt + H: Tab 2 (Ventas)
-      if (event.logicalKey == LogicalKeyboardKey.digit3 ||
-          event.logicalKey == LogicalKeyboardKey.numpad3 ||
-          event.logicalKey == LogicalKeyboardKey.keyH) {
+      // 3. Tab 2: Historial de Ventas (H, Alt+H, Alt+3, 3 numpad)
+      if (event.logicalKey == LogicalKeyboardKey.keyH ||
+          (isAlt && event.logicalKey == LogicalKeyboardKey.digit3) ||
+          event.logicalKey == LogicalKeyboardKey.numpad3) {
         _onSidebarTabSelected(2);
         return true;
       }
 
-      // Alt + 4 / Numpad 4 / Alt + T: Tab 3 (Turnos)
-      if (event.logicalKey == LogicalKeyboardKey.digit4 ||
-          event.logicalKey == LogicalKeyboardKey.numpad4 ||
-          event.logicalKey == LogicalKeyboardKey.keyT) {
+      // 4. Tab 3: Turnos de Caja (T, Alt+T, Alt+4, 4 numpad)
+      if (event.logicalKey == LogicalKeyboardKey.keyT ||
+          (isAlt && event.logicalKey == LogicalKeyboardKey.digit4) ||
+          event.logicalKey == LogicalKeyboardKey.numpad4) {
         _onSidebarTabSelected(3);
         return true;
       }
 
-      // Alt + K: Foco en Buscador del Catálogo POS (solo en Tab 0)
-      if (event.logicalKey == LogicalKeyboardKey.keyK) {
+      // 5. Foco en Buscador de Productos ( / o K o Alt+K)
+      if (event.logicalKey == LogicalKeyboardKey.slash ||
+          event.logicalKey == LogicalKeyboardKey.keyK) {
         if (_selectedSidebarIndex == 0) {
           _focusSearch();
           return true;
         }
-        return false;
       }
 
-      // Alt + B: Guardar Borrador rápido (solo en Tab 0)
+      // 6. Guardar Borrador (B o Alt+B)
       if (event.logicalKey == LogicalKeyboardKey.keyB) {
         if (_selectedSidebarIndex == 0) {
           _desktopPanelKey.currentState?.triggerDraft();
           return true;
         }
-        return false;
       }
 
-      // Alt + I: Alternar modo de búsqueda Producto vs Ingrediente Activo (solo en Tab 0)
+      // 7. Abrir Buscador de Cliente (C o Alt+C)
+      if (event.logicalKey == LogicalKeyboardKey.keyC) {
+        if (_selectedSidebarIndex == 0) {
+          _desktopPanelKey.currentState?.openClientSearch();
+          return true;
+        }
+      }
+
+      // 8. Nuevo Cliente Express (N o Alt+A o Alt+N)
+      if (event.logicalKey == LogicalKeyboardKey.keyN ||
+          (isAlt && event.logicalKey == LogicalKeyboardKey.keyA)) {
+        if (_selectedSidebarIndex == 0) {
+          _openQuickCreateCustomer();
+          return true;
+        }
+      }
+
+      // 9. Alternar modo Producto vs Ingrediente Activo (I o Alt+I)
       if (event.logicalKey == LogicalKeyboardKey.keyI) {
         if (_selectedSidebarIndex == 0) {
           _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
           return true;
         }
-        return false;
       }
 
-      // Alt + C: Cobrar en Desktop (solo en Tab 0)
-      if (event.logicalKey == LogicalKeyboardKey.keyC) {
-        if (_selectedSidebarIndex == 0) {
-          _desktopPanelKey.currentState?.triggerCheckout();
-          return true;
-        }
-        return false;
-      }
-
-      // Alt + A: Nuevo Cliente express (solo en Tab 0)
-      if (event.logicalKey == LogicalKeyboardKey.keyA) {
-        if (_selectedSidebarIndex == 0) {
-          _openQuickCreateCustomer();
-          return true;
-        }
-        return false;
+      // 10. Recargar datos de la pestaña activa (R o Alt+R)
+      if (event.logicalKey == LogicalKeyboardKey.keyR) {
+        _refreshActiveTab();
+        return true;
       }
     } catch (_) {
       return false;
