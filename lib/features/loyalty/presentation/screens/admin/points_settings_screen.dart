@@ -363,7 +363,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
 
   Widget _buildContent(AppConfigState state, bool isSaving) {
     // Banner de advertencia cuando Lealtad está desactivada globalmente
-    final isDisabled = !(state.businessInfo?.loyaltyGlobalEnabled ?? true);
+    final isDisabled = !(state.businessInfo?.loyaltyGlobalEnabled ?? false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

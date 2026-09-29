@@ -314,7 +314,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   ),
                 ),
                 BlocSelector<AppConfigCubit, AppConfigState, bool>(
-                  selector: (s) => s.businessInfo?.loyaltyGlobalEnabled ?? true,
+                  selector: (s) => s.businessInfo?.loyaltyGlobalEnabled ?? false,
                   builder: (context, loyaltyEnabled) {
                     if (!loyaltyEnabled) return const SizedBox.shrink();
                     return _buildSidebarTile(

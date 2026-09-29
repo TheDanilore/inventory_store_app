@@ -37,8 +37,8 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   bool _hasChanges = false;
   bool _showManualUrlInput = false;
 
-  bool _loyaltyGlobalEnabled = true;
-  bool _loyaltyCustomerVisible = true;
+  bool _loyaltyGlobalEnabled = false;
+  bool _loyaltyCustomerVisible = false;
 
   String _previewName = '';
   String _previewAddress = '';

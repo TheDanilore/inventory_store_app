@@ -90,7 +90,9 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
         .limit(1);
 
     if (rawResponse.isNotEmpty) {
-      return BusinessInfoModel.fromMap(rawResponse.first).toEntity();
+      final entity = BusinessInfoModel.fromMap(rawResponse.first).toEntity();
+      await cacheBusinessInfo(entity);
+      return entity;
     }
     return null;
   }

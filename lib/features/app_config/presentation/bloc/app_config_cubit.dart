@@ -190,8 +190,8 @@ class AppConfigCubit extends Cubit<AppConfigState> {
                   address: '',
                   phone: '',
                   logoUrl: '',
-                  loyaltyGlobalEnabled: true,
-                  loyaltyCustomerVisible: true,
+                  loyaltyGlobalEnabled: false,
+                  loyaltyCustomerVisible: false,
                 ),
           ),
         );
@@ -208,8 +208,8 @@ class AppConfigCubit extends Cubit<AppConfigState> {
                   address: '',
                   phone: '',
                   logoUrl: '',
-                  loyaltyGlobalEnabled: true,
-                  loyaltyCustomerVisible: true,
+                  loyaltyGlobalEnabled: false,
+                  loyaltyCustomerVisible: false,
                 ),
           ),
         );
@@ -237,8 +237,8 @@ class AppConfigCubit extends Cubit<AppConfigState> {
           address: '',
           phone: '',
           logoUrl: '',
-          loyaltyGlobalEnabled: true,
-          loyaltyCustomerVisible: true,
+          loyaltyGlobalEnabled: false,
+          loyaltyCustomerVisible: false,
         );
 
     final updatedInfo = BusinessInfoEntity(
@@ -310,8 +310,8 @@ class AppConfigCubit extends Cubit<AppConfigState> {
               address: '',
               phone: '',
               logoUrl: '',
-              loyaltyGlobalEnabled: true,
-              loyaltyCustomerVisible: true,
+              loyaltyGlobalEnabled: false,
+              loyaltyCustomerVisible: false,
             );
 
         final updatedInfo = BusinessInfoEntity(

@@ -417,7 +417,7 @@ class _AppDrawerState extends State<AppDrawer> {
 
                 BlocSelector<AppConfigCubit, AppConfigState, bool>(
                   selector:
-                      (s) => s.businessInfo?.loyaltyGlobalEnabled ?? true,
+                      (s) => s.businessInfo?.loyaltyGlobalEnabled ?? false,
                   builder: (context, loyaltyEnabled) {
                     if (!loyaltyEnabled) return const SizedBox.shrink();
                     return _buildItem(

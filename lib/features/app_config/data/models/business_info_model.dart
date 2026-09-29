@@ -21,6 +21,18 @@ class BusinessInfoModel {
     required this.loyaltyCustomerVisible,
   });
 
+  static bool _parseBool(dynamic value, {bool defaultValue = false}) {
+    if (value == null) return defaultValue;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final v = value.trim().toLowerCase();
+      if (v == 'true' || v == '1' || v == 't') return true;
+      if (v == 'false' || v == '0' || v == 'f') return false;
+    }
+    return defaultValue;
+  }
+
   factory BusinessInfoModel.fromMap(Map<String, dynamic> map) {
     return BusinessInfoModel(
       id: map['id']?.toString(),
@@ -29,8 +41,10 @@ class BusinessInfoModel {
       address: map['address']?.toString() ?? '',
       phone: map['phone']?.toString() ?? '',
       logoUrl: map['logo_url']?.toString() ?? '',
-      loyaltyGlobalEnabled: map['loyalty_global_enabled'] as bool? ?? true,
-      loyaltyCustomerVisible: map['loyalty_customer_visible'] as bool? ?? true,
+      loyaltyGlobalEnabled:
+          _parseBool(map['loyalty_global_enabled'], defaultValue: false),
+      loyaltyCustomerVisible:
+          _parseBool(map['loyalty_customer_visible'], defaultValue: false),
     );
   }
 

@@ -126,14 +126,18 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     if (isDesktop) {
       showDialog(
         context: context,
-        builder: (_) => Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 620),
-            child: modal,
-          ),
-        ),
+        builder:
+            (_) => Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 24,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 620),
+                child: modal,
+              ),
+            ),
       );
     } else {
       showModalBottomSheet(
@@ -175,7 +179,10 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                     onPressed: () => _openSupplierModal(context),
                     backgroundColor: AppColors.teal,
                     tooltip: 'Nuevo Proveedor',
-                    child: const Icon(Icons.add_business_rounded, color: Colors.white),
+                    child: const Icon(
+                      Icons.add_business_rounded,
+                      color: Colors.white,
+                    ),
                   ),
           body: BlocBuilder<SuppliersCubit, SuppliersState>(
             builder: (context, state) {
@@ -212,7 +219,9 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
 
               final activeCount = suppliers.where((s) => s.isActive).length;
               final withRucCount =
-                  suppliers.where((s) => s.taxId != null && s.taxId!.isNotEmpty).length;
+                  suppliers
+                      .where((s) => s.taxId != null && s.taxId!.isNotEmpty)
+                      .length;
 
               return Column(
                 children: [
@@ -220,7 +229,8 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: _SuppliersKpiBar(
-                      totalCount: totalCount > 0 ? totalCount : suppliers.length,
+                      totalCount:
+                          totalCount > 0 ? totalCount : suppliers.length,
                       activeCount: activeCount,
                       withRucCount: withRucCount,
                       isDesktop: isDesktop,
@@ -246,59 +256,67 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                         ),
                       ],
                     ),
-                    child: isDesktop
-                        ? Row(
-                            children: [
-                              Expanded(child: _buildSearchField()),
-                              const SizedBox(width: 12),
+                    child:
+                        isDesktop
+                            ? Row(
+                              children: [
+                                Expanded(child: _buildSearchField()),
+                                const SizedBox(width: 12),
 
-                              // Switch de vista Tabla vs Cards
-                              _buildViewModeToggle(),
-                              const SizedBox(width: 12),
+                                // Switch de vista Tabla vs Cards
+                                _buildViewModeToggle(),
+                                const SizedBox(width: 12),
 
-                              IconButton(
-                                icon: const Icon(Icons.refresh_rounded, size: 20),
-                                color: AppColors.textSecondary,
-                                tooltip: 'Refrescar [R]',
-                                onPressed: () => context
-                                    .read<SuppliersCubit>()
-                                    .loadSuppliers(refresh: true),
-                              ),
-                              const SizedBox(width: 8),
-
-                              ElevatedButton.icon(
-                                onPressed: () => _openSupplierModal(context),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.teal,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 14,
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.refresh_rounded,
+                                    size: 20,
                                   ),
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                                  color: AppColors.textSecondary,
+                                  tooltip: 'Refrescar [R]',
+                                  onPressed:
+                                      () => context
+                                          .read<SuppliersCubit>()
+                                          .loadSuppliers(refresh: true),
                                 ),
-                                icon: const Icon(Icons.add_business_rounded, size: 18),
-                                label: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Text(
-                                      'Nuevo Proveedor',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                      ),
+                                const SizedBox(width: 8),
+
+                                ElevatedButton.icon(
+                                  onPressed: () => _openSupplierModal(context),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.teal,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 14,
                                     ),
-                                    const SizedBox(width: 6),
-                                    _buildKeyHint('N'),
-                                  ],
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.add_business_rounded,
+                                    size: 18,
+                                  ),
+                                  label: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        'Nuevo Proveedor',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      _buildKeyHint('N'),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          )
-                        : _buildSearchField(),
+                              ],
+                            )
+                            : _buildSearchField(),
                   ),
 
                   // --- 3. LISTADO / TABLA O GRILLA RESPONSIVA ---
@@ -313,116 +331,159 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                           return Center(
                             child: AppEmptyState(
                               icon: Icons.storefront_rounded,
-                              title: searchQuery.isNotEmpty
-                                  ? 'No se encontraron resultados'
-                                  : 'No hay proveedores registrados',
-                              message: searchQuery.isNotEmpty
-                                  ? 'Intenta con otro término o limpia el buscador.'
-                                  : 'Registra un nuevo proveedor para comenzar.',
-                              action: searchQuery.isNotEmpty
-                                  ? OutlinedButton.icon(
-                                      onPressed: () {
-                                        _searchCtrl.clear();
-                                        context
-                                            .read<SuppliersCubit>()
-                                            .setSearchQuery('');
-                                      },
-                                      icon: const Icon(Icons.clear_all_rounded),
-                                      label: const Text('Limpiar búsqueda'),
-                                    )
-                                  : ElevatedButton.icon(
-                                      onPressed: () => _openSupplierModal(context),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.teal,
-                                        foregroundColor: Colors.white,
+                              title:
+                                  searchQuery.isNotEmpty
+                                      ? 'No se encontraron resultados'
+                                      : 'No hay proveedores registrados',
+                              message:
+                                  searchQuery.isNotEmpty
+                                      ? 'Intenta con otro término o limpia el buscador.'
+                                      : 'Registra un nuevo proveedor para comenzar.',
+                              action:
+                                  searchQuery.isNotEmpty
+                                      ? OutlinedButton.icon(
+                                        onPressed: () {
+                                          _searchCtrl.clear();
+                                          context
+                                              .read<SuppliersCubit>()
+                                              .setSearchQuery('');
+                                        },
+                                        icon: const Icon(
+                                          Icons.clear_all_rounded,
+                                        ),
+                                        label: const Text('Limpiar búsqueda'),
+                                      )
+                                      : ElevatedButton.icon(
+                                        onPressed:
+                                            () => _openSupplierModal(context),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.teal,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        icon: const Icon(
+                                          Icons.add_business_rounded,
+                                        ),
+                                        label: const Text('Nuevo Proveedor'),
                                       ),
-                                      icon: const Icon(Icons.add_business_rounded),
-                                      label: const Text('Nuevo Proveedor'),
-                                    ),
                             ),
                           );
                         }
 
                         return RefreshIndicator(
-                          onRefresh: () async => context
-                              .read<SuppliersCubit>()
-                              .loadSuppliers(refresh: true),
+                          onRefresh:
+                              () async => context
+                                  .read<SuppliersCubit>()
+                                  .loadSuppliers(refresh: true),
                           child: CustomScrollView(
                             physics: const AlwaysScrollableScrollPhysics(),
                             slivers: [
                               SliverPadding(
-                                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                                sliver: (isDesktop && _isTableView)
-                                    // MODO TABLA PRO DE ALTA DENSIDAD
-                                    ? SliverToBoxAdapter(
-                                        child: SuppliersTableView(
-                                          suppliers: suppliers,
-                                          onEdit: (s) => _openSupplierModal(context, s),
-                                          onToggleStatus: (s) => context
-                                              .read<SuppliersCubit>()
-                                              .toggleSupplierStatus(s),
-                                        ),
-                                      )
-                                    // MODO TARJETAS (RESPONSIVE GRID)
-                                    : (isDesktop
-                                        ? SliverGrid(
-                                            gridDelegate:
-                                                const SliverGridDelegateWithMaxCrossAxisExtent(
-                                              maxCrossAxisExtent: 440,
-                                              mainAxisExtent: 180,
-                                              crossAxisSpacing: 16,
-                                              mainAxisSpacing: 16,
-                                            ),
-                                            delegate: SliverChildBuilderDelegate(
-                                              (context, index) {
-                                                final supplier = suppliers[index];
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  4,
+                                  16,
+                                  16,
+                                ),
+                                sliver:
+                                    (isDesktop && _isTableView)
+                                        // MODO TABLA PRO DE ALTA DENSIDAD
+                                        ? SliverToBoxAdapter(
+                                          child: SuppliersTableView(
+                                            suppliers: suppliers,
+                                            onEdit:
+                                                (s) => _openSupplierModal(
+                                                  context,
+                                                  s,
+                                                ),
+                                            onToggleStatus:
+                                                (s) => context
+                                                    .read<SuppliersCubit>()
+                                                    .toggleSupplierStatus(s),
+                                          ),
+                                        )
+                                        // MODO TARJETAS (RESPONSIVE GRID)
+                                        : (isDesktop
+                                            ? SliverGrid(
+                                              gridDelegate:
+                                                  const SliverGridDelegateWithMaxCrossAxisExtent(
+                                                    maxCrossAxisExtent: 440,
+                                                    mainAxisExtent: 180,
+                                                    crossAxisSpacing: 16,
+                                                    mainAxisSpacing: 16,
+                                                  ),
+                                              delegate: SliverChildBuilderDelegate((
+                                                context,
+                                                index,
+                                              ) {
+                                                final supplier =
+                                                    suppliers[index];
                                                 return SupplierCard(
                                                   supplier: supplier,
-                                                  onEdit: () => _openSupplierModal(
-                                                    context,
-                                                    supplier,
-                                                  ),
-                                                  onToggleStatus: () => context
-                                                      .read<SuppliersCubit>()
-                                                      .toggleSupplierStatus(supplier),
+                                                  onEdit:
+                                                      () => _openSupplierModal(
+                                                        context,
+                                                        supplier,
+                                                      ),
+                                                  onToggleStatus:
+                                                      () => context
+                                                          .read<
+                                                            SuppliersCubit
+                                                          >()
+                                                          .toggleSupplierStatus(
+                                                            supplier,
+                                                          ),
                                                 );
-                                              },
-                                              childCount: suppliers.length,
-                                            ),
-                                          )
-                                        : SliverList(
-                                            delegate: SliverChildBuilderDelegate(
-                                              (context, index) {
-                                                final supplier = suppliers[index];
+                                              }, childCount: suppliers.length),
+                                            )
+                                            : SliverList(
+                                              delegate: SliverChildBuilderDelegate((
+                                                context,
+                                                index,
+                                              ) {
+                                                final supplier =
+                                                    suppliers[index];
                                                 return Padding(
-                                                  padding: const EdgeInsets.only(
-                                                    bottom: 12,
-                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        bottom: 12,
+                                                      ),
                                                   child: SupplierCard(
                                                     supplier: supplier,
-                                                    onEdit: () => _openSupplierModal(
-                                                      context,
-                                                      supplier,
-                                                    ),
-                                                    onToggleStatus: () => context
-                                                        .read<SuppliersCubit>()
-                                                        .toggleSupplierStatus(supplier),
+                                                    onEdit:
+                                                        () =>
+                                                            _openSupplierModal(
+                                                              context,
+                                                              supplier,
+                                                            ),
+                                                    onToggleStatus:
+                                                        () => context
+                                                            .read<
+                                                              SuppliersCubit
+                                                            >()
+                                                            .toggleSupplierStatus(
+                                                              supplier,
+                                                            ),
                                                   ),
                                                 );
-                                              },
-                                              childCount: suppliers.length,
-                                            ),
-                                          )),
+                                              }, childCount: suppliers.length),
+                                            )),
                               ),
                               if (totalPages > 1)
                                 SliverToBoxAdapter(
                                   child: Padding(
-                                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      8,
+                                      16,
+                                      24,
+                                    ),
                                     child: AdminPageBlocks(
                                       currentPage: currentPage,
                                       totalPages: totalPages,
                                       onPageChanged:
-                                          context.read<SuppliersCubit>().setPage,
+                                          context
+                                              .read<SuppliersCubit>()
+                                              .setPage,
                                     ),
                                   ),
                                 )
@@ -577,11 +638,12 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
           mainAxisSpacing: 16,
         ),
         itemCount: 6,
-        itemBuilder: (_, _) => const AppShimmer(
-          width: double.infinity,
-          height: double.infinity,
-          borderRadius: 16,
-        ),
+        itemBuilder:
+            (_, _) => const AppShimmer(
+              width: double.infinity,
+              height: double.infinity,
+              borderRadius: 16,
+            ),
       );
     }
 
@@ -589,11 +651,12 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       padding: const EdgeInsets.all(16),
       itemCount: 5,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (_, _) => const AppShimmer(
-        width: double.infinity,
-        height: 160,
-        borderRadius: 16,
-      ),
+      itemBuilder:
+          (_, _) => const AppShimmer(
+            width: double.infinity,
+            height: 160,
+            borderRadius: 16,
+          ),
     );
   }
 }
@@ -614,7 +677,9 @@ class _SuppliersKpiBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activePct =
-        totalCount > 0 ? ((activeCount / totalCount) * 100).toStringAsFixed(0) : '100';
+        totalCount > 0
+            ? ((activeCount / totalCount) * 100).toStringAsFixed(0)
+            : '100';
 
     final cards = [
       _BentoSupplierKpiCard(
