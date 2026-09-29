@@ -8,6 +8,7 @@ import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
@@ -645,6 +646,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final pageItems = displayOrders;
 
     if (state.isLoading) {
+      if (_isTableView && isWide) {
+        return const SliverToBoxAdapter(
+          child: AppTableShimmer(),
+        );
+      }
       return SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, index) => const Padding(
@@ -1373,36 +1379,6 @@ class _OrdersToolbar extends StatelessWidget {
     );
   }
 
-  Widget _buildFilterChip({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.teal.withValues(alpha: 0.1) : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? AppColors.teal : const Color(0xFFE2E8F0),
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-            color: isSelected ? AppColors.tealDark : AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1462,38 +1438,10 @@ class _OrdersToolbar extends StatelessWidget {
                   physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: [
-                      _buildFilterChip(
-                        label: 'Todos',
-                        isSelected: state.statusFilter == 'ALL',
-                        onTap: () => cubit.setStatusFilter('ALL'),
-                      ),
-                      const SizedBox(width: 6),
-                      _buildFilterChip(
-                        label: 'Borradores',
-                        isSelected: state.statusFilter == 'PENDING',
-                        onTap: () => cubit.setStatusFilter('PENDING'),
-                      ),
-                      const SizedBox(width: 6),
-                      _buildFilterChip(
-                        label: 'Completados',
-                        isSelected: state.statusFilter == 'COMPLETED',
-                        onTap: () => cubit.setStatusFilter('COMPLETED'),
-                      ),
-                      const SizedBox(width: 6),
-                      _buildFilterChip(
-                        label: 'Cancelados',
-                        isSelected: state.statusFilter == 'CANCELLED',
-                        onTap: () => cubit.setStatusFilter('CANCELLED'),
-                      ),
-                      const SizedBox(width: 6),
-                      _buildFilterChip(
-                        label: 'Devueltos',
-                        isSelected: state.statusFilter == 'RETURNED',
-                        onTap: () => cubit.setStatusFilter('RETURNED'),
-                      ),
+                      _buildStatusDropdown(context),
                       const SizedBox(width: 8),
                       _buildPaymentDropdown(context),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       DateFilterCalendar(
                         height: 36,
                         borderRadius: BorderRadius.circular(10),
@@ -1506,6 +1454,15 @@ class _OrdersToolbar extends StatelessWidget {
                         onClear: () {
                           cubit.setDateRange(null, null);
                         },
+                      ),
+                      const SizedBox(width: 8),
+                      _buildViewToggle(),
+                      const SizedBox(width: 6),
+                      IconButton(
+                        icon: const Icon(Icons.refresh_rounded, size: 20),
+                        color: AppColors.textSecondary,
+                        tooltip: 'Refrescar pedidos',
+                        onPressed: () => cubit.loadOrders(reset: true),
                       ),
                     ],
                   ),

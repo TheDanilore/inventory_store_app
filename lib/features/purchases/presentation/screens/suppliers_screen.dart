@@ -8,6 +8,7 @@ import 'package:inventory_store_app/features/purchases/presentation/bloc/supplie
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/suppliers/supplier_card.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/suppliers/suppliers_table_view.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/suppliers/supplier_form_modal.dart';
@@ -560,6 +561,12 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   }
 
   Widget _buildSkeletons(bool isDesktop) {
+    if (isDesktop && _isTableView) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: AppTableShimmer(),
+      );
+    }
     if (isDesktop) {
       return GridView.builder(
         padding: const EdgeInsets.all(16),

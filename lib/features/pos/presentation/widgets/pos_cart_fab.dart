@@ -6,15 +6,22 @@ import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.d
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
 
 class PosCartFab extends StatelessWidget {
-  const PosCartFab({super.key});
+  final bool alwaysShow;
+
+  const PosCartFab({
+    super.key,
+    this.alwaysShow = true,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<CartCubit, CartState>(
       builder: (context, cartState) {
-        if (cartState.items.isEmpty) {
+        final hasItems = cartState.items.isNotEmpty;
+        if (!hasItems && !alwaysShow) {
           return const SizedBox.shrink();
         }
+
         return Material(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(16),
@@ -36,18 +43,16 @@ class PosCartFab extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.4),
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
+                    color: const Color(0xFF0D9488).withValues(alpha: 0.38),
+                    blurRadius: 16,
+                    offset: const Offset(0, 5),
                   ),
                 ],
               ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
+                  horizontal: 16,
+                  vertical: 12,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -60,28 +65,29 @@ class PosCartFab extends StatelessWidget {
                           color: Colors.white,
                           size: 22,
                         ),
-                        Positioned(
-                          top: -6,
-                          right: -6,
-                          child: Container(
-                            width: 16,
-                            height: 16,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFBBF24),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${cartState.items.length}',
-                                style: const TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
+                        if (hasItems)
+                          Positioned(
+                            top: -6,
+                            right: -6,
+                            child: Container(
+                              width: 16,
+                              height: 16,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFBBF24),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${cartState.items.length}',
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                     const SizedBox(width: 10),
@@ -89,19 +95,21 @@ class PosCartFab extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          'Caja',
-                          style: TextStyle(
+                        Text(
+                          hasItems ? 'Caja Activa' : 'Punto de Venta',
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 10,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         Text(
-                          'S/ ${cartState.totalAmount.toStringAsFixed(2)}',
+                          hasItems
+                              ? 'S/ ${cartState.totalAmount.toStringAsFixed(2)}'
+                              : 'Ir a Caja POS',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.w800,
                           ),
                         ),

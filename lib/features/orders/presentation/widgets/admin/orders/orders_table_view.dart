@@ -28,6 +28,8 @@ class OrdersTableView extends StatefulWidget {
 }
 
 class _OrdersTableViewState extends State<OrdersTableView> {
+  String? _hoveredId;
+
   void _copyToClipboard(BuildContext context, String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
     AppSnackbar.show(
@@ -290,18 +292,24 @@ class _OrdersTableViewState extends State<OrdersTableView> {
               final dateFormatted = DateFormat('dd MMM, hh:mm a', 'es').format(date);
               final pending = order.totalAmount - order.amountPaid;
 
+              final isHovered = _hoveredId == order.id;
+
               return MouseRegion(
                 cursor: SystemMouseCursors.click,
+                onEnter: (_) => setState(() => _hoveredId = order.id),
+                onExit: (_) => setState(() => _hoveredId = null),
                 child: InkWell(
                   onTap: () => widget.onSelectOrder(order),
                   hoverColor: Colors.transparent,
                   splashColor: Colors.transparent,
                   highlightColor: Colors.transparent,
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 140),
+                    curve: Curves.easeInOut,
                     decoration: BoxDecoration(
                       color: isSelected
                           ? AppColors.tealLight.withValues(alpha: 0.45)
-                          : Colors.transparent,
+                          : (isHovered ? const Color(0xFFF8FAFC) : Colors.transparent),
                       border: Border(
                         left: BorderSide(
                           color: isSelected ? AppColors.teal : Colors.transparent,

@@ -70,6 +70,16 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     super.dispose();
   }
 
+  /// Verifica si el foco activo actual reside dentro de un campo de texto editable.
+  bool _isEditableFocused() {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus == null) return false;
+    final context = primaryFocus.context;
+    if (context == null) return false;
+    return primaryFocus.context?.widget is EditableText ||
+        context.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
+
   Future<void> _navigateToProductForm({ProductEntity? product}) async {
     final cubit = context.read<AdminCatalogCubit>();
     final uri = product != null
@@ -95,6 +105,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     required BuildContext context,
     required ProductEntity product,
     required bool isMobile,
+    required bool isTablet,
     required AdminCatalogCubit cubit,
   }) {
     if (widget.onProductTap != null) {
@@ -104,6 +115,20 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
     if (isMobile) {
       CatalogSideInspector.showAsBottomSheet(
+        context,
+        product: product,
+        onEdit: () => _navigateToProductForm(product: product),
+        onAddToCart: () {
+          if (widget.onAddToCart != null) {
+            widget.onAddToCart!(product);
+          } else {
+            PosAddToCartSheet.show(context, product);
+          }
+        },
+        onToggleActive: () => _toggleProductoActivo(product, cubit),
+      );
+    } else if (isTablet) {
+      CatalogSideInspector.showAsDialog(
         context,
         product: product,
         onEdit: () => _navigateToProductForm(product: product),
@@ -290,7 +315,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 prev.actionState != current.actionState ||
                 prev.errorMessage != current.errorMessage,
             builder: (context, state) {
-              final double fabsBottomPadding = isMobile ? 80.0 : 16.0;
+              final double fabsBottomPadding = isMobile ? 128.0 : 16.0;
 
               Widget mainContent = Builder(
                 builder: (context) {
@@ -472,6 +497,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           context: context,
                           product: product,
                           isMobile: isMobile,
+                          isTablet: isTablet,
                           cubit: cubit,
                         ),
                         onSale: widget.onAddToCart ??
@@ -501,6 +527,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         context: context,
                         product: product,
                         isMobile: isMobile,
+                        isTablet: isTablet,
                         cubit: cubit,
                       ),
                       selectedProductId: _selectedProduct?.id,
@@ -547,8 +574,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 ],
               );
 
-              // ── Master-Detail Layout en Tablet / Desktop ─────────────────
-              if (!isMobile && _selectedProduct != null) {
+              // ── Master-Detail Layout ÚNICAMENTE en Desktop (>= 1100dp) ──
+              // En Móvil y Tablet se abre como BottomSheet o Diálogo modal centrado
+              if (isDesktop && _selectedProduct != null) {
                 catalogBody = Row(
                   children: [
                     Expanded(child: catalogBody),
@@ -585,55 +613,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         // ── Botones Flotantes (ESTRICTAMENTE solo en Móvil, NUNCA en Desktop/Tablet) ──
         final Widget? effectiveFab;
         if (isMobile) {
-          if (widget.floatingActionButton != null) {
-            effectiveFab = Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                widget.floatingActionButton!,
-                const SizedBox(height: 12),
-                CatalogAddProductFab(
-                  onTap: () => _navigateToProductForm(),
-                ),
-              ],
-            );
-          } else {
-            effectiveFab = Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                // Acceso rápido al POS
-                Tooltip(
-                  message: 'Ir a Punto de Venta',
-                  child: Material(
-                    color: AppColors.teal,
-                    borderRadius: BorderRadius.circular(16),
-                    elevation: 4,
-                    shadowColor: Colors.black.withValues(alpha: 0.25),
-                    child: InkWell(
-                      onTap: () => context.go('/pos'),
-                      borderRadius: BorderRadius.circular(16),
-                      child: const SizedBox(
-                        width: 52,
-                        height: 52,
-                        child: Icon(
-                          Icons.point_of_sale_rounded,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                CatalogAddProductFab(
-                  onTap: () => _navigateToProductForm(),
-                ),
-              ],
-            );
-          }
+          effectiveFab = CatalogMobileActionDock(
+            onAddProduct: () => _navigateToProductForm(),
+            customCartFab: widget.floatingActionButton,
+          );
         } else {
           // En Desktop y Tablet la acción de POS ya está en la barra superior y sidebar
           effectiveFab = null;
@@ -647,11 +630,23 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               _handleMenuSelection(value, cubit, cubit.state, context),
           showAppBar: true,
           actions: [
-            if (!isMobile)
+            if (isMobile)
+              Tooltip(
+                message: 'Punto de Venta (POS)',
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.point_of_sale_rounded,
+                    color: AppColors.tealDark,
+                    size: 22,
+                  ),
+                  onPressed: () => context.go('/pos'),
+                ),
+              )
+            else
               ElevatedButton.icon(
                 onPressed: () => context.go('/pos'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: AppColors.teal,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(
@@ -664,7 +659,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 ),
                 icon: const Icon(Icons.point_of_sale_rounded, size: 16),
                 label: const Text(
-                  'Punto de Venta (POS)',
+                  'Punto de Venta (POS) [P]',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
@@ -680,42 +675,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 final isControl = HardwareKeyboard.instance.isControlPressed;
                 final isMeta = HardwareKeyboard.instance.isMetaPressed;
                 final isModifier = isAlt || isControl || isMeta;
+                final isTyping = _isEditableFocused();
 
-                // ⌘K / Ctrl+K / Alt+K: Enfocar buscador y seleccionar texto
-                if (isModifier && event.logicalKey == LogicalKeyboardKey.keyK) {
-                  _searchFocusNode.requestFocus();
-                  _searchCtrl.selection = TextSelection(
-                    baseOffset: 0,
-                    extentOffset: _searchCtrl.text.length,
-                  );
-                  return KeyEventResult.handled;
-                }
-
-                // Alt+N / Ctrl+N: Crear nuevo producto
-                if (isModifier && event.logicalKey == LogicalKeyboardKey.keyN) {
-                  _navigateToProductForm();
-                  return KeyEventResult.handled;
-                }
-
-                // ⌘V / Ctrl+V / Alt+V: Alternar vista Cuadrícula / Tabla Pro
-                if (isModifier && event.logicalKey == LogicalKeyboardKey.keyV) {
-                  setState(() {
-                    _viewMode = _viewMode == CatalogViewMode.grid
-                        ? CatalogViewMode.table
-                        : CatalogViewMode.grid;
-                  });
-                  return KeyEventResult.handled;
-                }
-
-                // ⌘T / Ctrl+T / Alt+T: Alternar modo Producto / Ingrediente
-                if (isModifier && event.logicalKey == LogicalKeyboardKey.keyT) {
-                  cubit.toggleSearchByIngredient(
-                    !cubit.state.searchByIngredient,
-                  );
-                  return KeyEventResult.handled;
-                }
-
-                // Escape: Descartar inspector lateral o desenfocar buscador
+                // Escape: Descartar inspector lateral o desenfocar buscador (siempre activo)
                 if (event.logicalKey == LogicalKeyboardKey.escape) {
                   if (_selectedProduct != null) {
                     setState(() => _selectedProduct = null);
@@ -725,6 +687,70 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     _searchFocusNode.unfocus();
                     return KeyEventResult.handled;
                   }
+                }
+
+                // Si el usuario está escribiendo dentro de un TextField, no disparamos atajos de tecla única
+                if (isTyping && !isModifier) {
+                  return KeyEventResult.ignored;
+                }
+
+                // ── Atajos Globales y de Tecla Única (Estilo Pro Tools / Linear) ──
+
+                // '/' o ⌘K / Ctrl+K / Alt+K: Enfocar buscador y seleccionar texto
+                if ((event.logicalKey == LogicalKeyboardKey.slash && !isModifier) ||
+                    (isModifier && event.logicalKey == LogicalKeyboardKey.keyK)) {
+                  _searchFocusNode.requestFocus();
+                  _searchCtrl.selection = TextSelection(
+                    baseOffset: 0,
+                    extentOffset: _searchCtrl.text.length,
+                  );
+                  return KeyEventResult.handled;
+                }
+
+                // 'P' o Alt+P: Ir a Punto de Venta (POS)
+                if ((event.logicalKey == LogicalKeyboardKey.keyP && !isModifier) ||
+                    (isAlt && event.logicalKey == LogicalKeyboardKey.keyP)) {
+                  context.go('/pos');
+                  return KeyEventResult.handled;
+                }
+
+                // 'N' o Alt+N / Ctrl+N: Crear nuevo producto
+                if ((event.logicalKey == LogicalKeyboardKey.keyN && !isModifier) ||
+                    (isModifier && event.logicalKey == LogicalKeyboardKey.keyN)) {
+                  _navigateToProductForm();
+                  return KeyEventResult.handled;
+                }
+
+                // 'R' o Alt+R: Forzar recarga del catálogo
+                if ((event.logicalKey == LogicalKeyboardKey.keyR && !isModifier) ||
+                    (isAlt && event.logicalKey == LogicalKeyboardKey.keyR)) {
+                  cubit.refreshProducts(forceRefresh: true);
+                  AppSnackbar.show(
+                    context,
+                    message: 'Sincronizando catálogo...',
+                    type: SnackbarType.info,
+                  );
+                  return KeyEventResult.handled;
+                }
+
+                // 'V' o ⌘V / Ctrl+V / Alt+V: Alternar vista Cuadrícula / Tabla Pro
+                if ((event.logicalKey == LogicalKeyboardKey.keyV && !isModifier) ||
+                    (isModifier && event.logicalKey == LogicalKeyboardKey.keyV)) {
+                  setState(() {
+                    _viewMode = _viewMode == CatalogViewMode.grid
+                        ? CatalogViewMode.table
+                        : CatalogViewMode.grid;
+                  });
+                  return KeyEventResult.handled;
+                }
+
+                // 'T' o ⌘T / Ctrl+T / Alt+T: Alternar modo Producto / Ingrediente
+                if ((event.logicalKey == LogicalKeyboardKey.keyT && !isModifier) ||
+                    (isModifier && event.logicalKey == LogicalKeyboardKey.keyT)) {
+                  cubit.toggleSearchByIngredient(
+                    !cubit.state.searchByIngredient,
+                  );
+                  return KeyEventResult.handled;
                 }
               }
               return KeyEventResult.ignored;

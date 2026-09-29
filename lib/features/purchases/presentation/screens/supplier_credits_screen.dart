@@ -10,6 +10,7 @@ import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_global_stats_bar.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_credit_card.dart';
@@ -491,10 +492,17 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
 
                       // --- 3. CONTENIDO: CARDS O TABLA ---
                       if (isLoading && accounts.isEmpty)
-                        SliverPadding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          sliver:
-                              isDesktop
+                        (isDesktop && _isTableView)
+                            ? const SliverPadding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                sliver: SliverToBoxAdapter(
+                                  child: AppTableShimmer(),
+                                ),
+                              )
+                            : SliverPadding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                sliver:
+                                    isDesktop
                                   ? SliverGrid(
                                     gridDelegate:
                                         const SliverGridDelegateWithMaxCrossAxisExtent(

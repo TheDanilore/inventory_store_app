@@ -96,6 +96,46 @@ class CatalogSideInspector extends StatelessWidget {
     );
   }
 
+  /// Muestra el inspector como un diálogo modal centrado con ancho restringido (maxWidth: 560) en Tablet.
+  static Future<void> showAsDialog(
+    BuildContext context, {
+    required ProductEntity product,
+    required VoidCallback onEdit,
+    required VoidCallback onAddToCart,
+    required Future<void> Function() onToggleActive,
+  }) {
+    return showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560, maxHeight: 720),
+          child: Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            clipBehavior: Clip.antiAlias,
+            elevation: 16,
+            shadowColor: Colors.black.withValues(alpha: 0.2),
+            child: CatalogSideInspector(
+              product: product,
+              onClose: () => Navigator.of(ctx).pop(),
+              onEdit: () {
+                Navigator.of(ctx).pop();
+                onEdit();
+              },
+              onAddToCart: () {
+                Navigator.of(ctx).pop();
+                onAddToCart();
+              },
+              onToggleActive: onToggleActive,
+              isMobileSheet: false,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Color _stockStatusColor(int stock) {
     if (stock <= 5) return AppColors.danger;
     if (stock <= 15) return AppColors.warning;

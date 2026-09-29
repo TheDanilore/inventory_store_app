@@ -71,8 +71,8 @@ class _AdminProductCardState extends State<AdminProductCard> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
@@ -80,8 +80,8 @@ class _AdminProductCardState extends State<AdminProductCard> {
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    blurRadius: 6,
+                    offset: const Offset(0, 1),
                   ),
                 ],
               ),
@@ -89,18 +89,18 @@ class _AdminProductCardState extends State<AdminProductCard> {
                 child: Text(
                   initial,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: AppColors.primary,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             const Text(
               'Sin imagen',
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 9.5,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
                 letterSpacing: 0.2,
@@ -357,7 +357,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                 '${widget.product.totalStock}',
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 11,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -370,7 +370,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
 
                 // ─ Info ───────────────────────────────────────────────────────
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+                  padding: EdgeInsets.fromLTRB(10, widget.isFullPosMode ? 6 : 8, 10, widget.isFullPosMode ? 8 : 4),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -381,7 +381,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                           children: [
                             const Icon(
                               Icons.verified_outlined,
-                              size: 11,
+                              size: 10,
                               color: AppColors.textMuted,
                             ),
                             const SizedBox(width: 3),
@@ -389,7 +389,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                               child: Text(
                                 widget.product.brandName!.trim().toUpperCase(),
                                 style: const TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 9.5,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.textMuted,
                                   letterSpacing: 0.4,
@@ -406,7 +406,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                         widget.product.name,
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
-                          fontSize: 13,
+                          fontSize: widget.isFullPosMode ? 12.5 : 13,
                           color:
                               isDesactivado
                                   ? AppColors.textMuted
@@ -418,15 +418,15 @@ class _AdminProductCardState extends State<AdminProductCard> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (activeIng != null && activeIng.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
+                            horizontal: 6,
+                            vertical: 2,
                           ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFECFDF5),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(5),
                             border: Border.all(color: const Color(0xFF6EE7B7)),
                           ),
                           child: Row(
@@ -434,73 +434,79 @@ class _AdminProductCardState extends State<AdminProductCard> {
                             children: [
                               const Icon(
                                 Icons.science_rounded,
-                                size: 12,
+                                size: 11,
                                 color: Color(0xFF059669),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 3),
                               Flexible(
                                 child: Text(
                                   activeIng,
                                   style: const TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 10,
                                     fontWeight: FontWeight.w700,
                                     color: Color(0xFF065F46),
                                   ),
                                   overflow: TextOverflow.ellipsis,
-                                  maxLines: 2,
+                                  maxLines: 1,
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ],
-                      const SizedBox(height: 3),
-                      Text(
-                        'S/ ${(widget.product.displaySalePrice ?? 0).toStringAsFixed(2)}',
-                        style: TextStyle(
-                          color:
-                              isDesactivado
-                                  ? AppColors.textMuted
-                                  : AppColors.tealDark,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
-                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            'S/ ${(widget.product.displaySalePrice ?? 0).toStringAsFixed(2)}',
+                            style: TextStyle(
+                              color:
+                                  isDesactivado
+                                      ? AppColors.textMuted
+                                      : AppColors.tealDark,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14,
+                            ),
+                          ),
+                          if (widget.isFullPosMode)
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: isAgotado
+                                    ? Colors.grey.shade100
+                                    : AppColors.tealLight.withValues(alpha: 0.6),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                isAgotado
+                                    ? Icons.block_rounded
+                                    : (widget.product.productVariants.length > 1
+                                        ? Icons.tune_rounded
+                                        : Icons.add_rounded),
+                                size: 15,
+                                color: isAgotado
+                                    ? AppColors.textMuted
+                                    : AppColors.tealDark,
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ),
                 ),
 
-                // ─ Acciones ───────────────────────────────────────────────────
-                Container(
-                  margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      if (widget.isFullPosMode)
-                        _PrimaryCardAction(
-                          icon:
-                              isAgotado
-                                  ? Icons.block_rounded
-                                  : Icons.add_shopping_cart_rounded,
-                          label: isAgotado ? 'Agotado' : 'Agregar',
-                          enabled: !isAgotado && !isDesactivado,
-                          color:
-                              isAgotado
-                                  ? AppColors.textMuted
-                                  : Theme.of(context).colorScheme.primary,
-                          onTap:
-                              (!isAgotado && !isDesactivado)
-                                  ? () {
-                                    HapticFeedback.lightImpact();
-                                    widget.onSale();
-                                  }
-                                  : null,
-                          isFullWidth: true,
-                        )
-                      else ...[
+                // ─ Acciones (Solo para catálogo admin tradicional, en POS la tarjeta entera es la acción) ─
+                if (!widget.isFullPosMode)
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
                         _PrimaryCardAction(
                           icon: Icons.edit_rounded,
                           label: 'Editar',
@@ -532,9 +538,8 @@ class _AdminProductCardState extends State<AdminProductCard> {
                           onTap: _isToggling ? null : _handleToggle,
                         ),
                       ],
-                    ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),

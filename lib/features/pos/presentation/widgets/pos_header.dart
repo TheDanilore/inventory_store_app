@@ -58,38 +58,38 @@ class PosHeader extends StatelessWidget {
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
                 Icons.point_of_sale_rounded,
                 color: AppColors.primary,
-                size: 20,
+                size: 18,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             const Text(
               'Caja POS',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
-                letterSpacing: -0.5,
+                letterSpacing: -0.3,
               ),
             ),
             const Spacer(),
 
             // ── Indicador / Control de Turno de Caja ──────────────
             _buildShiftIndicator(context, posState, isShiftOpen),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
 
             // ── Selector de Almacén (Global para POS) ──────────────
             _buildWarehouseSelector(context, posState),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         // ── Barra de Búsqueda ──────────────
         _buildSearchBar(context),
       ],
@@ -255,11 +255,11 @@ class PosHeader extends StatelessWidget {
   ) {
     if (posState.isLoading) {
       return Container(
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: AppColors.background,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppColors.border, width: 1),
         ),
         child: const Row(
@@ -278,7 +278,7 @@ class PosHeader extends StatelessWidget {
             Text(
               'Verificando turno...',
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
               ),
@@ -338,14 +338,14 @@ class PosHeader extends StatelessWidget {
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color:
               isShiftOpen
                   ? AppColors.success.withValues(alpha: 0.1)
                   : const Color(0xFFFEF3C7),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color:
                 isShiftOpen
@@ -387,7 +387,7 @@ class PosHeader extends StatelessWidget {
                     })()
                   : 'Caja Física Cerrada • Abrir Turno',
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color:
                     isShiftOpen
@@ -405,11 +405,11 @@ class PosHeader extends StatelessWidget {
   Widget _buildWarehouseSelector(BuildContext context, PosState posState) {
     if (posState.isLoading) {
       return Container(
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: AppColors.background,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppColors.border, width: 1),
         ),
         child: const Row(
@@ -423,11 +423,11 @@ class PosHeader extends StatelessWidget {
                 color: AppColors.primary,
               ),
             ),
-            SizedBox(width: 10),
+            SizedBox(width: 8),
             Text(
               'Cargando almacén...',
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
               ),
@@ -485,11 +485,11 @@ class PosHeader extends StatelessWidget {
     }
 
     return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.border, width: 1),
       ),
       child: DropdownButtonHideUnderline(
@@ -507,7 +507,7 @@ class PosHeader extends StatelessWidget {
             color: AppColors.textSecondary,
           ),
           style: const TextStyle(
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
           ),
@@ -563,13 +563,13 @@ class PosHeader extends StatelessWidget {
 
     return Row(
       children: [
-        // ── Selector Segmentado de Modo de Búsqueda (Estilo Captura) ───────────
+        // ── Selector Segmentado de Modo de Búsqueda ───────────
         Container(
-          height: 48,
-          padding: const EdgeInsets.all(4),
+          height: 42,
+          padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             color: const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: AppColors.border, width: 1),
           ),
           child: Row(
@@ -583,13 +583,13 @@ class PosHeader extends StatelessWidget {
                     if (searchByIngredient) onToggleIngredientSearch(false);
                   },
                   mouseCursor: SystemMouseCursors.click,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(7),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                     decoration: BoxDecoration(
                       color: !searchByIngredient ? Colors.white : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(7),
                       border: !searchByIngredient
                           ? Border.all(color: AppColors.border.withValues(alpha: 0.6), width: 1)
                           : null,
@@ -605,13 +605,13 @@ class PosHeader extends StatelessWidget {
                     ),
                     child: Icon(
                       Icons.inventory_2_outlined,
-                      size: 20,
+                      size: 18,
                       color: !searchByIngredient ? activeBlue : AppColors.textMuted,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
 
               // 2. Modo Ingrediente Activo (Matraz químico / Tubo)
               Tooltip(
@@ -621,13 +621,13 @@ class PosHeader extends StatelessWidget {
                     if (!searchByIngredient) onToggleIngredientSearch(true);
                   },
                   mouseCursor: SystemMouseCursors.click,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(7),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                     decoration: BoxDecoration(
                       color: searchByIngredient ? Colors.white : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(7),
                       border: searchByIngredient
                           ? Border.all(color: AppColors.border.withValues(alpha: 0.6), width: 1)
                           : null,
@@ -643,7 +643,7 @@ class PosHeader extends StatelessWidget {
                     ),
                     child: Icon(
                       Icons.science_outlined,
-                      size: 20,
+                      size: 18,
                       color: searchByIngredient ? activeBlue : AppColors.textMuted,
                     ),
                   ),
@@ -652,15 +652,15 @@ class PosHeader extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
 
         // ── Campo de Entrada con Borde Activo y Prefijo Dinámico ───────────────
         Expanded(
           child: Container(
-            height: 48,
+            height: 42,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: activeBorderBlue,
                 width: 1.5,
@@ -668,8 +668,8 @@ class PosHeader extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   color: activeBorderBlue.withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  blurRadius: 6,
+                  offset: const Offset(0, 1),
                 ),
               ],
             ),
@@ -683,7 +683,7 @@ class PosHeader extends StatelessWidget {
                       onSearchChanged(val);
                     },
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 14,
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.w500,
                     ),
@@ -693,15 +693,14 @@ class PosHeader extends StatelessWidget {
                           : 'Buscar producto por nombre o SKU...',
                       hintStyle: const TextStyle(
                         color: AppColors.textMuted,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
-                      // Icono dinámico según el modo seleccionado (Captura 3)
                       prefixIcon: Icon(
                         searchByIngredient
                             ? Icons.science_outlined
                             : Icons.inventory_2_outlined,
                         color: activeBlue,
-                        size: 20,
+                        size: 18,
                       ),
                       suffixIcon: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -713,7 +712,7 @@ class PosHeader extends StatelessWidget {
                               return IconButton(
                                 icon: const Icon(
                                   Icons.cancel_rounded,
-                                  size: 18,
+                                  size: 16,
                                   color: AppColors.textMuted,
                                 ),
                                 onPressed: () {
@@ -728,12 +727,12 @@ class PosHeader extends StatelessWidget {
                             Container(
                               margin: const EdgeInsets.only(right: 8),
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
+                                horizontal: 5,
+                                vertical: 1.5,
                               ),
                               decoration: BoxDecoration(
                                 color: AppColors.background,
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(5),
                                 border: Border.all(
                                   color: AppColors.border,
                                   width: 1,
@@ -742,41 +741,44 @@ class PosHeader extends StatelessWidget {
                               child: Text(
                                 AppShortcutLabels.search,
                                 style: const TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 9.5,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.textSecondary,
-                                  letterSpacing: 0.5,
+                                  letterSpacing: 0.4,
                                 ),
                               ),
                             ),
                         ],
                       ),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 9),
                     ),
                   ),
                 ),
 
                 // ── Botón de Buscar Explícito ──────────────────────────────────
                 Padding(
-                  padding: const EdgeInsets.only(right: 4),
+                  padding: const EdgeInsets.only(right: 3),
                   child: FilledButton.icon(
                     onPressed: () {
                       onSearchChanged(searchController.text);
                       searchFocusNode?.unfocus();
                     },
-                    icon: const Icon(Icons.search_rounded, size: 16),
-                    label: Text(isDesktop ? 'Buscar' : ''),
+                    icon: const Icon(Icons.search_rounded, size: 15),
+                    label: Text(
+                      isDesktop ? 'Buscar' : '',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
                     style: FilledButton.styleFrom(
                       backgroundColor: activeBlue,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       padding: EdgeInsets.symmetric(
-                        horizontal: isDesktop ? 14 : 10,
-                        vertical: 10,
+                        horizontal: isDesktop ? 12 : 8,
+                        vertical: 8,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(7),
                       ),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,

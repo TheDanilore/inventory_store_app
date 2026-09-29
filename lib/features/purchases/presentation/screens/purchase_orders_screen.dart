@@ -21,6 +21,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
@@ -827,17 +828,22 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                         switchInCurve: Curves.easeOut,
                         switchOutCurve: Curves.easeIn,
                         child: viewModel.isLoading
-                            ? ListView.separated(
-                                key: const ValueKey('loading'),
-                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                                itemCount: 5,
-                                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                                itemBuilder: (_, _) => const AppShimmer(
-                                  width: double.infinity,
-                                  height: 90,
-                                  borderRadius: 16,
-                                ),
-                              )
+                            ? (_isTableView && isTablet)
+                                ? const Padding(
+                                    padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
+                                    child: AppTableShimmer(),
+                                  )
+                                : ListView.separated(
+                                    key: const ValueKey('loading'),
+                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                                    itemCount: 5,
+                                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                                    itemBuilder: (_, _) => const AppShimmer(
+                                      width: double.infinity,
+                                      height: 90,
+                                      borderRadius: 16,
+                                    ),
+                                  )
                             : filtered.isEmpty
                                 ? const AppEmptyState(
                                     key: ValueKey('empty'),

@@ -24,6 +24,8 @@ class PurchaseOrdersTableView extends StatefulWidget {
 }
 
 class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
+  String? _hoveredId;
+
   void _copyToClipboard(BuildContext context, String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
     AppSnackbar.show(
@@ -103,10 +105,52 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
 
   Widget _buildPaymentBadge(PurchaseOrderModel po) {
     final isCancelled = po.status == 'CANCELLED';
-    final debt = isCancelled
-        ? 0.0
-        : (po.totalAmount - po.amountPaid).clamp(0.0, double.infinity);
-    final isPaid = !isCancelled && (po.paymentStatus == 'PAID' || debt <= 0);
+    if (isCancelled) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppColors.dangerLight,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Text(
+          'Anulado',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: AppColors.danger,
+          ),
+        ),
+      );
+    }
+
+    final isCredit = po.paymentMethod.toUpperCase().contains('CREDIT') ||
+        po.paymentMethod.toUpperCase().contains('CRÉDIT');
+    final debt = (po.totalAmount - po.amountPaid).clamp(0.0, double.infinity);
+    final isPaid = po.paymentStatus.toUpperCase() == 'PAID' ||
+        (!isCredit && po.status == 'RECEIVED') ||
+        (po.amountPaid >= po.totalAmount && po.totalAmount > 0);
+
+    Color bg;
+    Color textColor;
+    String badgeText;
+
+    if (isPaid) {
+      bg = AppColors.successLight;
+      textColor = AppColors.successDark;
+      badgeText = 'Pagado';
+    } else if (isCredit && debt > 0) {
+      bg = AppColors.warningLight;
+      textColor = AppColors.warningDark;
+      badgeText = 'Por Pagar: S/ ${debt.toStringAsFixed(2)}';
+    } else if (po.status == 'PENDING') {
+      bg = const Color(0xFFF1F5F9);
+      textColor = AppColors.textSecondary;
+      badgeText = 'Pendiente';
+    } else {
+      bg = AppColors.warningLight;
+      textColor = AppColors.warningDark;
+      badgeText = debt > 0 ? 'Por Pagar: S/ ${debt.toStringAsFixed(2)}' : 'Pendiente';
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,23 +159,21 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
           decoration: BoxDecoration(
-            color: isPaid ? AppColors.successLight : AppColors.warningLight,
+            color: bg,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
-            isPaid
-                ? 'Pagado'
-                : 'Deuda: S/ ${debt.toStringAsFixed(2)}',
+            badgeText,
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: isPaid ? AppColors.successDark : AppColors.warningDark,
+              color: textColor,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        if (po.paymentMethod.isNotEmpty) ...[
+        if (po.paymentMethod.isNotEmpty && po.paymentMethod != 'POR ACORDAR') ...[
           const SizedBox(height: 2),
           Text(
             po.paymentMethod,
@@ -237,9 +279,9 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
                           ),
                         ),
                         SizedBox(
-                          width: 125,
+                          width: 135,
                           child: Text(
-                            'PAGO / DEUDA',
+                            'PAGO / ESTADO',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -261,7 +303,19 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
                             ),
                           ),
                         ),
-                        SizedBox(width: 40),
+                        SizedBox(
+                          width: 50,
+                          child: Text(
+                            'ACCIONES',
+                            textAlign: TextAlign.end,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -286,18 +340,31 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
                       final date = po.createdAt.toLocal();
                       final dateFormatted = DateFormat('dd MMM, hh:mm a', 'es').format(date);
 
+                      final hasDocument = po.documentType.isNotEmpty &&
+                          po.documentType.toUpperCase() != 'NINGUNO' &&
+                          po.documentType.toUpperCase() != 'SIN DOCUMENTO';
+                      final docSubtitle = hasDocument
+                          ? '${po.documentType} ${po.documentNumber ?? ""}'.trim()
+                          : (po.warehouseName ?? 'Almacén Principal');
+
+                      final isHovered = _hoveredId == po.id;
+
                       return MouseRegion(
                         cursor: SystemMouseCursors.click,
+                        onEnter: (_) => setState(() => _hoveredId = po.id),
+                        onExit: (_) => setState(() => _hoveredId = null),
                         child: InkWell(
                           onTap: () => widget.onSelectOrder(po),
                           hoverColor: Colors.transparent,
                           splashColor: Colors.transparent,
                           highlightColor: Colors.transparent,
-                          child: Container(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 140),
+                            curve: Curves.easeInOut,
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? AppColors.tealLight.withValues(alpha: 0.45)
-                                  : Colors.transparent,
+                                  : (isHovered ? const Color(0xFFF8FAFC) : Colors.transparent),
                               border: Border(
                                 left: BorderSide(
                                   color: isSelected ? AppColors.teal : Colors.transparent,
@@ -376,9 +443,7 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
                                       ),
                                       const SizedBox(height: 1),
                                       Text(
-                                        po.documentType.isNotEmpty
-                                            ? '${po.documentType} ${po.documentNumber ?? ""}'
-                                            : (po.warehouseName ?? 'Almacén Principal'),
+                                        docSubtitle,
                                         style: const TextStyle(
                                           fontSize: 10.5,
                                           color: AppColors.textMuted,
@@ -401,7 +466,7 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
 
                                 // Pago / Deuda
                                 SizedBox(
-                                  width: 125,
+                                  width: 135,
                                   child: _buildPaymentBadge(po),
                                 ),
 
@@ -420,15 +485,15 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
                                   ),
                                 ),
 
-                                // Chevron
-                                const SizedBox(
-                                  width: 40,
+                                // Chevron / Acciones
+                                SizedBox(
+                                  width: 50,
                                   child: Align(
                                     alignment: Alignment.centerRight,
                                     child: Icon(
                                       Icons.chevron_right_rounded,
                                       size: 18,
-                                      color: AppColors.textMuted,
+                                      color: isHovered ? AppColors.tealDark : AppColors.textMuted,
                                     ),
                                   ),
                                 ),

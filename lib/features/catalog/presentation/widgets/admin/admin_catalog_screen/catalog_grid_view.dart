@@ -85,8 +85,12 @@ class CatalogGridScrollView extends StatelessWidget {
         Builder(
           builder: (context) {
             final screenWidth = MediaQuery.of(context).size.width;
-            final double maxExtent = screenWidth < 500 ? 210 : (screenWidth < 900 ? 260 : 300);
-            final double mainExtent = screenWidth < 500 ? 272 : 280;
+            final double maxExtent = isPosMode
+                ? (screenWidth < 500 ? 170 : (screenWidth < 900 ? 190 : 210))
+                : (screenWidth < 500 ? 210 : (screenWidth < 900 ? 260 : 300));
+            final double mainExtent = isPosMode
+                ? (screenWidth < 500 ? 205 : 215)
+                : (screenWidth < 500 ? 272 : 280);
 
             return SliverPadding(
               padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
