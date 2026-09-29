@@ -585,46 +585,40 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Flexible(
-                          child: Tooltip(
-                            message: 'Copiar ID completo (${widget.po.id})',
-                            child: InkWell(
-                              onTap: () {
-                                Clipboard.setData(
-                                  ClipboardData(text: widget.po.id),
-                                );
-                                AppSnackbar.show(
-                                  context,
-                                  message:
-                                      'ID de orden copiado: ${widget.po.id}',
-                                  type: SnackbarType.info,
-                                );
-                              },
-                              borderRadius: BorderRadius.circular(6),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      isNarrow
-                                          ? shortCode
-                                          : 'Detalle de Orden $shortCode',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                        Tooltip(
+                          message: 'Copiar ID completo (${widget.po.id})',
+                          child: InkWell(
+                            onTap: () {
+                              Clipboard.setData(
+                                ClipboardData(text: widget.po.id),
+                              );
+                              AppSnackbar.show(
+                                context,
+                                message:
+                                    'ID de orden copiado: ${widget.po.id}',
+                                type: SnackbarType.info,
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(6),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  shortCode,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                    letterSpacing: -0.2,
                                   ),
-                                  const SizedBox(width: 4),
-                                  const Icon(
-                                    Icons.copy_rounded,
-                                    size: 14,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.copy_rounded,
+                                  size: 14,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -635,7 +629,6 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                         ),
                         const Spacer(),
                         if (isNarrow) ...[
-                          // En móvil (< 600dp): Botones de icono compactos con tooltip (Cero Overflows)
                           IconButton(
                             onPressed:
                                 _isProcessingAction
@@ -656,20 +649,7 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                             tooltip: 'Exportar PDF',
                             visualDensity: VisualDensity.compact,
                           ),
-                          if (_status == 'PENDING' && _amountPaid == 0)
-                            IconButton(
-                              onPressed:
-                                  _isProcessingAction ? null : _handleEditOrder,
-                              icon: const Icon(
-                                Icons.edit_note_rounded,
-                                size: 20,
-                                color: AppColors.primary,
-                              ),
-                              tooltip: 'Editar Orden',
-                              visualDensity: VisualDensity.compact,
-                            ),
                         ] else ...[
-                          // En desktop/tablet (>= 600dp): Botones expandidos con texto
                           Tooltip(
                             message: 'Exportar orden en PDF',
                             child: OutlinedButton.icon(
@@ -714,46 +694,19 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                               ),
                             ),
                           ),
-                          if (_status == 'PENDING' && _amountPaid == 0) ...[
-                            const SizedBox(width: 8),
-                            Tooltip(
-                              message: 'Editar orden de compra completa',
-                              child: OutlinedButton.icon(
-                                onPressed:
-                                    _isProcessingAction
-                                        ? null
-                                        : _handleEditOrder,
-                                icon: const Icon(
-                                  Icons.edit_note_rounded,
-                                  size: 16,
-                                  color: AppColors.primary,
-                                ),
-                                label: const Text(
-                                  'Editar Orden',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  side: BorderSide(
-                                    color: AppColors.primary.withValues(
-                                      alpha: 0.25,
-                                    ),
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                              ),
+                        ],
+                        if (widget.isDialog) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              size: 20,
+                              color: AppColors.textSecondary,
                             ),
-                          ],
+                            tooltip: 'Cerrar',
+                            visualDensity: VisualDensity.compact,
+                          ),
                         ],
                       ],
                     );
@@ -1042,8 +995,13 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                                   ),
                                 ],
                               ),
-                              trailing: ItemPriceTrailing(
-                                text: 'S/ ${item.subtotal.toStringAsFixed(2)}',
+                              trailing: ItemPriceColumnTrailing(
+                                quantityText:
+                                    '${item.quantityOrdered.toInt()} uds.',
+                                unitCostText:
+                                    'S/ ${item.unitCost.toStringAsFixed(2)} c/u',
+                                subtotalText:
+                                    'S/ ${item.subtotal.toStringAsFixed(2)}',
                               ),
                               animationDelay: Duration(
                                 milliseconds: 60 * index,

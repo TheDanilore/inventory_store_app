@@ -16,6 +16,7 @@ import 'package:inventory_store_app/features/purchases/domain/usecases/get_purch
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_state.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_card.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_detail_sheet.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/purchase_orders_table_view.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -41,12 +42,20 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   final _searchFocusNode = FocusNode();
   final _screenFocusNode = FocusNode();
   bool _hasDraft = false;
+  bool _isTableView = true;
   Timer? _debounce;
   PurchaseOrderModel? _selectedOrder;
   String? _pendingTargetOrderId;
   bool _isFetchingTargetOrder = false;
   final Map<String, List<PurchaseOrderItemEntity>> _itemsCache = {};
   static const int _maxCachedOrderItems = 20;
+
+  // --- REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) ---
+  bool get _isInputFieldFocused {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus == null) return false;
+    return primaryFocus.context?.widget is EditableText;
+  }
 
   static const _statusLabels = {
     'Todos': 'Todos',
@@ -179,23 +188,32 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-    // Atajo Ctrl+K o Cmd+K (o '/' en desktop) para enfocar buscador instantáneamente
-    final isControlOrMeta = HardwareKeyboard.instance.isControlPressed ||
-        HardwareKeyboard.instance.isMetaPressed;
-    if ((isControlOrMeta && event.logicalKey == LogicalKeyboardKey.keyK) ||
-        (event.logicalKey == LogicalKeyboardKey.slash && !_searchFocusNode.hasFocus)) {
-      if (!_searchFocusNode.hasFocus) {
-        _searchFocusNode.requestFocus();
-        _searchCtrl.selection = TextSelection(
-          baseOffset: 0,
-          extentOffset: _searchCtrl.text.length,
-        );
+    // Si el usuario escribe en un campo editable (buscador, formulario), aislar atajos
+    if (_isInputFieldFocused) {
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        _searchFocusNode.unfocus();
         return KeyEventResult.handled;
       }
+      return KeyEventResult.ignored;
     }
 
-    // Escape para desenfocar buscador o deseleccionar orden
-    if (event.logicalKey == LogicalKeyboardKey.escape) {
+    final isControlOrMeta = HardwareKeyboard.instance.isControlPressed ||
+        HardwareKeyboard.instance.isMetaPressed;
+    final key = event.logicalKey;
+
+    // Atajo Ctrl+K o Cmd+K (o '/' en desktop) para enfocar buscador instantáneamente
+    if ((isControlOrMeta && key == LogicalKeyboardKey.keyK) ||
+        key == LogicalKeyboardKey.slash) {
+      _searchFocusNode.requestFocus();
+      _searchCtrl.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _searchCtrl.text.length,
+      );
+      return KeyEventResult.handled;
+    }
+
+    // Escape para desenfocar buscador, deseleccionar orden o limpiar búsqueda
+    if (key == LogicalKeyboardKey.escape) {
       if (_searchFocusNode.hasFocus) {
         _searchFocusNode.unfocus();
         return KeyEventResult.handled;
@@ -204,25 +222,86 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         _selectOrder(null, updateUrl: true);
         return KeyEventResult.handled;
       }
+      if (_searchCtrl.text.isNotEmpty) {
+        _searchCtrl.clear();
+        viewModel.setSearchText('');
+        return KeyEventResult.handled;
+      }
+    }
+
+    // Atajo [N] -> Nueva orden de compra o continuar borrador
+    if (key == LogicalKeyboardKey.keyN) {
+      context.go('/purchase-orders/form');
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [R] -> Recargar órdenes de compra
+    if (key == LogicalKeyboardKey.keyR) {
+      _itemsCache.clear();
+      cubit.loadOrders(refresh: true);
+      AppSnackbar.show(
+        context,
+        message: 'Actualizando órdenes de compra...',
+        type: SnackbarType.info,
+      );
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [V] -> Alternar Vista (Tabla Pro vs Tarjetas)
+    if (key == LogicalKeyboardKey.keyV) {
+      setState(() => _isTableView = !_isTableView);
+      return KeyEventResult.handled;
+    }
+
+    // Atajos [1..6] -> Filtros de estado rápidos
+    if (key == LogicalKeyboardKey.digit1 || key == LogicalKeyboardKey.numpad1) {
+      viewModel.setStatusFilter('Todos');
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.digit2 || key == LogicalKeyboardKey.numpad2) {
+      viewModel.setStatusFilter('PENDING');
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.digit3 || key == LogicalKeyboardKey.numpad3) {
+      viewModel.setStatusFilter('SENT');
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.digit4 || key == LogicalKeyboardKey.numpad4) {
+      viewModel.setStatusFilter('PARTIAL');
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.digit5 || key == LogicalKeyboardKey.numpad5) {
+      viewModel.setStatusFilter('RECEIVED');
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.digit6 || key == LogicalKeyboardKey.numpad6) {
+      viewModel.setStatusFilter('CANCELLED');
+      return KeyEventResult.handled;
     }
 
     // Flechas arriba y abajo para navegar órdenes en split-view
     final filtered = viewModel.orders.cast<PurchaseOrderModel>();
-    if (filtered.isNotEmpty && !_searchFocusNode.hasFocus) {
+    final displayOrders =
+        (_selectedOrder != null &&
+                !filtered.any((o) => o.id == _selectedOrder!.id))
+            ? [_selectedOrder!, ...filtered]
+            : filtered;
+
+    if (displayOrders.isNotEmpty) {
       final currentIndex =
           _selectedOrder != null
-              ? filtered.indexWhere((o) => o.id == _selectedOrder!.id)
+              ? displayOrders.indexWhere((o) => o.id == _selectedOrder!.id)
               : -1;
 
-      if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-        final nextIndex = (currentIndex + 1).clamp(0, filtered.length - 1);
-        _selectOrder(filtered[nextIndex], updateUrl: true);
+      if (key == LogicalKeyboardKey.arrowDown) {
+        final nextIndex = (currentIndex + 1).clamp(0, displayOrders.length - 1);
+        _selectOrder(displayOrders[nextIndex], updateUrl: true);
         return KeyEventResult.handled;
       }
 
-      if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-        final prevIndex = (currentIndex - 1).clamp(0, filtered.length - 1);
-        _selectOrder(filtered[prevIndex], updateUrl: true);
+      if (key == LogicalKeyboardKey.arrowUp) {
+        final prevIndex = (currentIndex - 1).clamp(0, displayOrders.length - 1);
+        _selectOrder(displayOrders[prevIndex], updateUrl: true);
         return KeyEventResult.handled;
       }
     }
@@ -485,6 +564,67 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       actions:
           isDesktopOrTablet
               ? [
+                  // Selector de modo Vista: Tabla vs Tarjetas
+                  Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Vista Tabla Pro [V]',
+                          icon: Icon(
+                            Icons.table_rows_rounded,
+                            size: 16,
+                            color:
+                                _isTableView
+                                    ? AppColors.primary
+                                    : AppColors.textMuted,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor:
+                                _isTableView
+                                    ? AppColors.surface
+                                    : Colors.transparent,
+                            padding: const EdgeInsets.all(6),
+                            elevation: _isTableView ? 1 : 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          onPressed: () => setState(() => _isTableView = true),
+                        ),
+                        IconButton(
+                          tooltip: 'Vista Tarjetas [V]',
+                          icon: Icon(
+                            Icons.grid_view_rounded,
+                            size: 16,
+                            color:
+                                !_isTableView
+                                    ? AppColors.primary
+                                    : AppColors.textMuted,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor:
+                                !_isTableView
+                                    ? AppColors.surface
+                                    : Colors.transparent,
+                            padding: const EdgeInsets.all(6),
+                            elevation: !_isTableView ? 1 : 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          onPressed: () => setState(() => _isTableView = false),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   _buildRefreshButton(context),
                   const SizedBox(width: 8),
                   _buildNewOrderButton(context, isHeader: true),
@@ -848,6 +988,21 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   message:
                                       'Sin resultados para los filtros aplicados',
                                 )
+                                : (_isTableView && isTablet)
+                                ? PurchaseOrdersTableView(
+                                  key: ValueKey(
+                                    'table_${viewModel.statusFilter}_${viewModel.currentPage}',
+                                  ),
+                                  orders: displayOrders,
+                                  selectedOrder: _selectedOrder,
+                                  onSelectOrder:
+                                      (po) =>
+                                          _selectOrder(po, updateUrl: true),
+                                  onRefresh: () {
+                                    _itemsCache.clear();
+                                    cubit.loadOrders(refresh: true);
+                                  },
+                                )
                                 : RefreshIndicator(
                                   key: ValueKey(
                                     '${viewModel.statusFilter}_${viewModel.currentPage}',
@@ -902,12 +1057,12 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        flex: 4,
+                        flex: _isTableView ? 5 : 4,
                         child: RepaintBoundary(child: listContent),
                       ),
                       Container(width: 1, color: AppColors.border),
                       Expanded(
-                        flex: 6,
+                        flex: _isTableView ? 5 : 6,
                         child: RepaintBoundary(
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 250),
