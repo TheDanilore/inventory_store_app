@@ -21,8 +21,6 @@ class SupplierCreditsTable extends StatefulWidget {
 }
 
 class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
-  int? _hoveredIndex;
-
   Color _getDebtColor(double pct, bool isMaxedOut, double debt) {
     if (debt <= 0) return AppColors.textMuted;
     if (isMaxedOut || pct >= 0.90) return AppColors.danger;
@@ -158,22 +156,19 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                     ),
                 itemBuilder: (context, index) {
                   final account = widget.accounts[index];
-                  final isHovered = _hoveredIndex == index;
                   final pct = account.usagePercent.clamp(0.0, 1.0);
                   final progressColor = _getProgressColor(pct, account.isMaxedOut);
                   final debtColor = _getDebtColor(pct, account.isMaxedOut, account.currentDebt);
 
                   return MouseRegion(
                     cursor: SystemMouseCursors.click,
-                    onEnter: (_) => setState(() => _hoveredIndex = index),
-                    onExit: (_) => setState(() => _hoveredIndex = null),
                     child: InkWell(
                       onTap: () => widget.onSelectAccount(account),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 140),
-                        color: isHovered
-                            ? const Color(0xFFF8FAFC)
-                            : Colors.transparent,
+                      hoverColor: Colors.transparent,
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
+                      child: Container(
+                        color: Colors.transparent,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 12,

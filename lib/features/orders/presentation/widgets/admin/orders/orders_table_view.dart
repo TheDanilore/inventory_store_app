@@ -28,8 +28,6 @@ class OrdersTableView extends StatefulWidget {
 }
 
 class _OrdersTableViewState extends State<OrdersTableView> {
-  String? _hoveredOrderId;
-
   void _copyToClipboard(BuildContext context, String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
     AppSnackbar.show(
@@ -282,7 +280,6 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                     const Divider(height: 1, thickness: 1, color: AppColors.border),
             itemBuilder: (context, index) {
               final order = widget.orders[index];
-              final isHovered = _hoveredOrderId == order.id;
               final isSelected = widget.selectedOrder?.id == order.id;
 
               final shortId =
@@ -295,18 +292,16 @@ class _OrdersTableViewState extends State<OrdersTableView> {
 
               return MouseRegion(
                 cursor: SystemMouseCursors.click,
-                onEnter: (_) => setState(() => _hoveredOrderId = order.id),
-                onExit: (_) => setState(() => _hoveredOrderId = null),
                 child: InkWell(
                   onTap: () => widget.onSelectOrder(order),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 140),
+                  hoverColor: Colors.transparent,
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  child: Container(
                     decoration: BoxDecoration(
                       color: isSelected
                           ? AppColors.tealLight.withValues(alpha: 0.45)
-                          : (isHovered
-                              ? const Color(0xFFF8FAFC)
-                              : Colors.transparent),
+                          : Colors.transparent,
                       border: Border(
                         left: BorderSide(
                           color: isSelected ? AppColors.teal : Colors.transparent,

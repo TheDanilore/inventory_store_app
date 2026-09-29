@@ -22,8 +22,6 @@ class SuppliersTableView extends StatefulWidget {
 }
 
 class _SuppliersTableViewState extends State<SuppliersTableView> {
-  String? _hoveredSupplierId;
-
   Future<void> _launchUrl(String urlString) async {
     final uri = Uri.tryParse(urlString);
     if (uri != null && await canLaunchUrl(uri)) {
@@ -166,19 +164,16 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                         const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
                 itemBuilder: (context, index) {
                   final supplier = widget.suppliers[index];
-                  final isHovered = _hoveredSupplierId == supplier.id;
 
                   return MouseRegion(
                     cursor: SystemMouseCursors.click,
-                    onEnter: (_) => setState(() => _hoveredSupplierId = supplier.id),
-                    onExit: (_) => setState(() => _hoveredSupplierId = null),
                     child: InkWell(
                       onTap: () => widget.onEdit(supplier),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 140),
-                        color: isHovered
-                            ? const Color(0xFFF8FAFC)
-                            : Colors.transparent,
+                      hoverColor: Colors.transparent,
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
+                      child: Container(
+                        color: Colors.transparent,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 11,

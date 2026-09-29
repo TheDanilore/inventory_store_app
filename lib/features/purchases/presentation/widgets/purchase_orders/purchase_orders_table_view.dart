@@ -24,8 +24,6 @@ class PurchaseOrdersTableView extends StatefulWidget {
 }
 
 class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
-  String? _hoveredOrderId;
-
   void _copyToClipboard(BuildContext context, String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
     AppSnackbar.show(
@@ -280,7 +278,6 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
                     ),
                     itemBuilder: (context, index) {
                       final po = widget.orders[index];
-                      final isHovered = _hoveredOrderId == po.id;
                       final isSelected = widget.selectedOrder?.id == po.id;
 
                       final shortId = po.id.length >= 8
@@ -291,18 +288,16 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
 
                       return MouseRegion(
                         cursor: SystemMouseCursors.click,
-                        onEnter: (_) => setState(() => _hoveredOrderId = po.id),
-                        onExit: (_) => setState(() => _hoveredOrderId = null),
                         child: InkWell(
                           onTap: () => widget.onSelectOrder(po),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 140),
+                          hoverColor: Colors.transparent,
+                          splashColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          child: Container(
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? AppColors.tealLight.withValues(alpha: 0.45)
-                                  : (isHovered
-                                      ? const Color(0xFFF8FAFC)
-                                      : Colors.transparent),
+                                  : Colors.transparent,
                               border: Border(
                                 left: BorderSide(
                                   color: isSelected ? AppColors.teal : Colors.transparent,
