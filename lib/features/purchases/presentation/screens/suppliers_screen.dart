@@ -9,6 +9,7 @@ import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/suppliers/supplier_card.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/suppliers/suppliers_table_view.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/suppliers/supplier_form_modal.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -25,6 +26,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   Timer? _debounce;
+  bool _isTableView = true; // Por defecto en Desktop: Tabla Pro 100%
 
   @override
   void dispose() {
@@ -89,6 +91,12 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       return KeyEventResult.handled;
     }
 
+    // Atajo [V] -> Alternar Vista (Tabla vs Cards)
+    if (key == LogicalKeyboardKey.keyV) {
+      setState(() => _isTableView = !_isTableView);
+      return KeyEventResult.handled;
+    }
+
     // Atajo [Esc] -> Limpiar búsqueda o desenfocar
     if (key == LogicalKeyboardKey.escape) {
       if (_searchCtrl.text.isNotEmpty) {
@@ -109,6 +117,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       value: cubit,
       child: SupplierFormModal(
         supplierToEdit: supplier,
+        isDialog: isDesktop,
         onSaved: () {},
       ),
     );
@@ -120,7 +129,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
+            constraints: const BoxConstraints(maxWidth: 620),
             child: modal,
           ),
         ),
@@ -157,7 +166,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         child: AdminLayout(
           title: 'Directorio de Proveedores',
           showBackButton: true,
-          // En escritorio ocultamos el FAB; se muestra botón en Toolbar
+          // En escritorio ocultamos el FAB; la acción vive en el Toolbar
           floatingActionButton:
               isDesktop
                   ? null
@@ -167,228 +176,265 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                     tooltip: 'Nuevo Proveedor',
                     child: const Icon(Icons.add_business_rounded, color: Colors.white),
                   ),
-          body: Column(
-            children: [
-              // --- TOOLBAR UNIFICADO DE BÚSQUEDA Y ACCIONES ---
-              Container(
-                margin: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
+          body: BlocBuilder<SuppliersCubit, SuppliersState>(
+            builder: (context, state) {
+              final isLoading =
+                  state is SuppliersLoading || state is SuppliersInitial;
+
+              List<SupplierEntity> suppliers = [];
+              String searchQuery = '';
+              int currentPage = 0;
+              int totalPages = 1;
+              int totalCount = 0;
+
+              if (state is SuppliersLoaded) {
+                suppliers = state.suppliers;
+                searchQuery = state.searchQuery;
+                currentPage = state.currentPage;
+                totalPages = state.totalPages;
+                totalCount = state.totalCount;
+              } else if (state is SuppliersLoading) {
+                suppliers = state.currentSuppliers;
+                searchQuery = state.searchQuery;
+                currentPage = state.currentPage;
+                totalPages =
+                    state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                totalCount = state.totalCount;
+              } else if (state is SuppliersError) {
+                suppliers = state.currentSuppliers;
+                searchQuery = state.searchQuery;
+                currentPage = state.currentPage;
+                totalPages =
+                    state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                totalCount = state.totalCount;
+              }
+
+              final activeCount = suppliers.where((s) => s.isActive).length;
+              final withRucCount =
+                  suppliers.where((s) => s.taxId != null && s.taxId!.isNotEmpty).length;
+
+              return Column(
+                children: [
+                  // --- 1. BENTO METRIC RIBBON PARA PROVEEDORES ---
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _SuppliersKpiBar(
+                      totalCount: totalCount > 0 ? totalCount : suppliers.length,
+                      activeCount: activeCount,
+                      withRucCount: withRucCount,
+                      isDesktop: isDesktop,
                     ),
-                  ],
-                ),
-                child: isDesktop
-                    ? Row(
-                        children: [
-                          Expanded(child: _buildSearchField()),
-                          const SizedBox(width: 12),
-                          IconButton(
-                            icon: const Icon(Icons.refresh_rounded, size: 20),
-                            color: AppColors.textSecondary,
-                            tooltip: 'Refrescar [R]',
-                            onPressed: () => context
-                                .read<SuppliersCubit>()
-                                .loadSuppliers(refresh: true),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton.icon(
-                            onPressed: () => _openSupplierModal(context),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.teal,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 14,
-                              ),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: const Icon(Icons.add_business_rounded, size: 18),
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  'Nuevo Proveedor',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                _buildKeyHint('N'),
-                              ],
-                            ),
-                          ),
-                        ],
-                      )
-                    : _buildSearchField(),
-              ),
+                  ),
 
-              // --- LISTADO / GRILLA RESPONSIVA ---
-              Expanded(
-                child: BlocBuilder<SuppliersCubit, SuppliersState>(
-                  builder: (context, state) {
-                    final isLoading =
-                        state is SuppliersLoading || state is SuppliersInitial;
-
-                    List<SupplierEntity> suppliers = [];
-                    String searchQuery = '';
-                    int currentPage = 0;
-                    int totalPages = 1;
-
-                    if (state is SuppliersLoaded) {
-                      suppliers = state.suppliers;
-                      searchQuery = state.searchQuery;
-                      currentPage = state.currentPage;
-                      totalPages = state.totalPages;
-                    } else if (state is SuppliersLoading) {
-                      suppliers = state.currentSuppliers;
-                      searchQuery = state.searchQuery;
-                      currentPage = state.currentPage;
-                      totalPages =
-                          state.totalCount == 0
-                              ? 1
-                              : (state.totalCount / 8).ceil();
-                    } else if (state is SuppliersError) {
-                      suppliers = state.currentSuppliers;
-                      searchQuery = state.searchQuery;
-                      currentPage = state.currentPage;
-                      totalPages =
-                          state.totalCount == 0
-                              ? 1
-                              : (state.totalCount / 8).ceil();
-                    }
-
-                    if (isLoading && suppliers.isEmpty) {
-                      return _buildSkeletons(isDesktop);
-                    }
-
-                    if (suppliers.isEmpty) {
-                      return Center(
-                        child: AppEmptyState(
-                          icon: Icons.storefront_rounded,
-                          title: searchQuery.isNotEmpty
-                              ? 'No se encontraron resultados'
-                              : 'No hay proveedores registrados',
-                          message: searchQuery.isNotEmpty
-                              ? 'Intenta con otro término o limpia el buscador.'
-                              : 'Registra un nuevo proveedor para comenzar.',
-                          action: searchQuery.isNotEmpty
-                              ? OutlinedButton.icon(
-                                  onPressed: () {
-                                    _searchCtrl.clear();
-                                    context
-                                        .read<SuppliersCubit>()
-                                        .setSearchQuery('');
-                                  },
-                                  icon: const Icon(Icons.clear_all_rounded),
-                                  label: const Text('Limpiar búsqueda'),
-                                )
-                              : ElevatedButton.icon(
-                                  onPressed: () => _openSupplierModal(context),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.teal,
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  icon: const Icon(Icons.add_business_rounded),
-                                  label: const Text('Nuevo Proveedor'),
-                                ),
+                  // --- 2. TOOLBAR UNIFICADO DE BÚSQUEDA Y ACCIONES ---
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.border),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
                         ),
-                      );
-                    }
+                      ],
+                    ),
+                    child: isDesktop
+                        ? Row(
+                            children: [
+                              Expanded(child: _buildSearchField()),
+                              const SizedBox(width: 12),
 
-                    return RefreshIndicator(
-                      onRefresh: () async => context
-                          .read<SuppliersCubit>()
-                          .loadSuppliers(refresh: true),
-                      child: CustomScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: [
-                          SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                            sliver: isDesktop
-                                ? SliverGrid(
-                                    gridDelegate:
-                                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                                      maxCrossAxisExtent: 440,
-                                      mainAxisExtent: 180,
-                                      crossAxisSpacing: 16,
-                                      mainAxisSpacing: 16,
-                                    ),
-                                    delegate: SliverChildBuilderDelegate(
-                                      (context, index) {
-                                        final supplier = suppliers[index];
-                                        return SupplierCard(
-                                          supplier: supplier,
-                                          onEdit: () => _openSupplierModal(
-                                            context,
-                                            supplier,
-                                          ),
-                                          onToggleStatus: () => context
-                                              .read<SuppliersCubit>()
-                                              .toggleSupplierStatus(supplier),
-                                        );
-                                      },
-                                      childCount: suppliers.length,
-                                    ),
-                                  )
-                                : SliverList(
-                                    delegate: SliverChildBuilderDelegate(
-                                      (context, index) {
-                                        final supplier = suppliers[index];
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 12,
-                                          ),
-                                          child: SupplierCard(
-                                            supplier: supplier,
-                                            onEdit: () => _openSupplierModal(
-                                              context,
-                                              supplier,
-                                            ),
-                                            onToggleStatus: () => context
-                                                .read<SuppliersCubit>()
-                                                .toggleSupplierStatus(supplier),
-                                          ),
-                                        );
-                                      },
-                                      childCount: suppliers.length,
-                                    ),
+                              // Switch de vista Tabla vs Cards
+                              _buildViewModeToggle(),
+                              const SizedBox(width: 12),
+
+                              IconButton(
+                                icon: const Icon(Icons.refresh_rounded, size: 20),
+                                color: AppColors.textSecondary,
+                                tooltip: 'Refrescar [R]',
+                                onPressed: () => context
+                                    .read<SuppliersCubit>()
+                                    .loadSuppliers(refresh: true),
+                              ),
+                              const SizedBox(width: 8),
+
+                              ElevatedButton.icon(
+                                onPressed: () => _openSupplierModal(context),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.teal,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
                                   ),
-                          ),
-                          if (totalPages > 1)
-                            SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                                child: AdminPageBlocks(
-                                  currentPage: currentPage,
-                                  totalPages: totalPages,
-                                  onPageChanged:
-                                      context.read<SuppliersCubit>().setPage,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.add_business_rounded, size: 18),
+                                label: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text(
+                                      'Nuevo Proveedor',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    _buildKeyHint('N'),
+                                  ],
                                 ),
                               ),
-                            )
-                          else
-                            const SliverToBoxAdapter(
-                              child: SizedBox(height: 24),
+                            ],
+                          )
+                        : _buildSearchField(),
+                  ),
+
+                  // --- 3. LISTADO / TABLA O GRILLA RESPONSIVA ---
+                  Expanded(
+                    child: Builder(
+                      builder: (context) {
+                        if (isLoading && suppliers.isEmpty) {
+                          return _buildSkeletons(isDesktop);
+                        }
+
+                        if (suppliers.isEmpty) {
+                          return Center(
+                            child: AppEmptyState(
+                              icon: Icons.storefront_rounded,
+                              title: searchQuery.isNotEmpty
+                                  ? 'No se encontraron resultados'
+                                  : 'No hay proveedores registrados',
+                              message: searchQuery.isNotEmpty
+                                  ? 'Intenta con otro término o limpia el buscador.'
+                                  : 'Registra un nuevo proveedor para comenzar.',
+                              action: searchQuery.isNotEmpty
+                                  ? OutlinedButton.icon(
+                                      onPressed: () {
+                                        _searchCtrl.clear();
+                                        context
+                                            .read<SuppliersCubit>()
+                                            .setSearchQuery('');
+                                      },
+                                      icon: const Icon(Icons.clear_all_rounded),
+                                      label: const Text('Limpiar búsqueda'),
+                                    )
+                                  : ElevatedButton.icon(
+                                      onPressed: () => _openSupplierModal(context),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.teal,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      icon: const Icon(Icons.add_business_rounded),
+                                      label: const Text('Nuevo Proveedor'),
+                                    ),
                             ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
+                          );
+                        }
+
+                        return RefreshIndicator(
+                          onRefresh: () async => context
+                              .read<SuppliersCubit>()
+                              .loadSuppliers(refresh: true),
+                          child: CustomScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            slivers: [
+                              SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                                sliver: (isDesktop && _isTableView)
+                                    // MODO TABLA PRO DE ALTA DENSIDAD
+                                    ? SliverToBoxAdapter(
+                                        child: SuppliersTableView(
+                                          suppliers: suppliers,
+                                          onEdit: (s) => _openSupplierModal(context, s),
+                                          onToggleStatus: (s) => context
+                                              .read<SuppliersCubit>()
+                                              .toggleSupplierStatus(s),
+                                        ),
+                                      )
+                                    // MODO TARJETAS (RESPONSIVE GRID)
+                                    : (isDesktop
+                                        ? SliverGrid(
+                                            gridDelegate:
+                                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                                              maxCrossAxisExtent: 440,
+                                              mainAxisExtent: 180,
+                                              crossAxisSpacing: 16,
+                                              mainAxisSpacing: 16,
+                                            ),
+                                            delegate: SliverChildBuilderDelegate(
+                                              (context, index) {
+                                                final supplier = suppliers[index];
+                                                return SupplierCard(
+                                                  supplier: supplier,
+                                                  onEdit: () => _openSupplierModal(
+                                                    context,
+                                                    supplier,
+                                                  ),
+                                                  onToggleStatus: () => context
+                                                      .read<SuppliersCubit>()
+                                                      .toggleSupplierStatus(supplier),
+                                                );
+                                              },
+                                              childCount: suppliers.length,
+                                            ),
+                                          )
+                                        : SliverList(
+                                            delegate: SliverChildBuilderDelegate(
+                                              (context, index) {
+                                                final supplier = suppliers[index];
+                                                return Padding(
+                                                  padding: const EdgeInsets.only(
+                                                    bottom: 12,
+                                                  ),
+                                                  child: SupplierCard(
+                                                    supplier: supplier,
+                                                    onEdit: () => _openSupplierModal(
+                                                      context,
+                                                      supplier,
+                                                    ),
+                                                    onToggleStatus: () => context
+                                                        .read<SuppliersCubit>()
+                                                        .toggleSupplierStatus(supplier),
+                                                  ),
+                                                );
+                                              },
+                                              childCount: suppliers.length,
+                                            ),
+                                          )),
+                              ),
+                              if (totalPages > 1)
+                                SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                                    child: AdminPageBlocks(
+                                      currentPage: currentPage,
+                                      totalPages: totalPages,
+                                      onPageChanged:
+                                          context.read<SuppliersCubit>().setPage,
+                                    ),
+                                  ),
+                                )
+                              else
+                                const SliverToBoxAdapter(
+                                  child: SizedBox(height: 24),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -439,6 +485,57 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     );
   }
 
+  Widget _buildViewModeToggle() {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Vista en Tabla Pro [V]',
+            icon: Icon(
+              Icons.table_rows_rounded,
+              size: 18,
+              color: _isTableView ? AppColors.tealDark : AppColors.textMuted,
+            ),
+            style: IconButton.styleFrom(
+              backgroundColor:
+                  _isTableView ? AppColors.surface : Colors.transparent,
+              elevation: _isTableView ? 1 : 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.all(8),
+            ),
+            onPressed: () => setState(() => _isTableView = true),
+          ),
+          IconButton(
+            tooltip: 'Vista en Tarjetas [V]',
+            icon: Icon(
+              Icons.grid_view_rounded,
+              size: 18,
+              color: !_isTableView ? AppColors.tealDark : AppColors.textMuted,
+            ),
+            style: IconButton.styleFrom(
+              backgroundColor:
+                  !_isTableView ? AppColors.surface : Colors.transparent,
+              elevation: !_isTableView ? 1 : 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.all(8),
+            ),
+            onPressed: () => setState(() => _isTableView = false),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildKeyHint(String char) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
@@ -485,6 +582,165 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         width: double.infinity,
         height: 160,
         borderRadius: 16,
+      ),
+    );
+  }
+}
+
+class _SuppliersKpiBar extends StatelessWidget {
+  final int totalCount;
+  final int activeCount;
+  final int withRucCount;
+  final bool isDesktop;
+
+  const _SuppliersKpiBar({
+    required this.totalCount,
+    required this.activeCount,
+    required this.withRucCount,
+    required this.isDesktop,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final activePct =
+        totalCount > 0 ? ((activeCount / totalCount) * 100).toStringAsFixed(0) : '100';
+
+    final cards = [
+      _BentoSupplierKpiCard(
+        title: 'Total Proveedores',
+        value: '$totalCount',
+        subtitle: 'Empresas registradas',
+        icon: Icons.storefront_rounded,
+        iconBgColor: AppColors.primaryLight,
+        iconColor: AppColors.primary,
+      ),
+      _BentoSupplierKpiCard(
+        title: 'Proveedores Activos',
+        value: '$activeCount',
+        subtitle: '$activePct% habilitados',
+        icon: Icons.check_circle_outline_rounded,
+        iconBgColor: AppColors.successLight,
+        iconColor: AppColors.successDark,
+      ),
+      _BentoSupplierKpiCard(
+        title: 'Facturación / RUC',
+        value: '$withRucCount',
+        subtitle: 'Identificaciones cargadas',
+        icon: Icons.receipt_long_rounded,
+        iconBgColor: AppColors.tealLight,
+        iconColor: AppColors.tealDark,
+      ),
+    ];
+
+    if (isDesktop) {
+      return Row(
+        children: [
+          Expanded(child: cards[0]),
+          const SizedBox(width: 12),
+          Expanded(child: cards[1]),
+          const SizedBox(width: 12),
+          Expanded(child: cards[2]),
+        ],
+      );
+    }
+
+    return SizedBox(
+      height: 84,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: cards.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (_, index) => SizedBox(width: 220, child: cards[index]),
+      ),
+    );
+  }
+}
+
+class _BentoSupplierKpiCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final String subtitle;
+  final IconData icon;
+  final Color iconBgColor;
+  final Color iconColor;
+
+  const _BentoSupplierKpiCard({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.icon,
+    required this.iconBgColor,
+    required this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

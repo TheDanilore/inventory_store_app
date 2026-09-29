@@ -3,7 +3,7 @@ import 'package:inventory_store_app/features/purchases/domain/entities/supplier_
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class SupplierCard extends StatelessWidget {
+class SupplierCard extends StatefulWidget {
   final SupplierEntity supplier;
   final VoidCallback onEdit;
   final VoidCallback onToggleStatus;
@@ -15,6 +15,13 @@ class SupplierCard extends StatelessWidget {
     required this.onToggleStatus,
   });
 
+  @override
+  State<SupplierCard> createState() => _SupplierCardState();
+}
+
+class _SupplierCardState extends State<SupplierCard> {
+  bool _isHovered = false;
+
   Future<void> _launchUrl(String urlString) async {
     final uri = Uri.tryParse(urlString);
     if (uri != null && await canLaunchUrl(uri)) {
@@ -23,158 +30,202 @@ class SupplierCard extends StatelessWidget {
   }
 
   void _callPhone() {
-    if (supplier.phone != null && supplier.phone!.isNotEmpty) {
-      _launchUrl('tel:${supplier.phone}');
+    final phone = widget.supplier.phone;
+    if (phone != null && phone.isNotEmpty) {
+      _launchUrl('tel:$phone');
     }
   }
 
   void _openWhatsApp() {
-    if (supplier.phone != null && supplier.phone!.isNotEmpty) {
-      // Remover caracteres no numéricos
-      final cleanPhone = supplier.phone!.replaceAll(RegExp(r'[^\d+]'), '');
+    final phone = widget.supplier.phone;
+    if (phone != null && phone.isNotEmpty) {
+      final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
       _launchUrl('https://wa.me/$cleanPhone');
     }
   }
 
   void _sendEmail() {
-    if (supplier.email != null && supplier.email!.isNotEmpty) {
-      _launchUrl('mailto:${supplier.email}');
+    final email = widget.supplier.email;
+    if (email != null && email.isNotEmpty) {
+      _launchUrl('mailto:$email');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onEdit,
+    final supplier = widget.supplier;
+    final hasRuc = supplier.taxId != null && supplier.taxId!.isNotEmpty;
+    final hasContact = supplier.contactName != null && supplier.contactName!.isNotEmpty;
+    final hasPhone = supplier.phone != null && supplier.phone!.isNotEmpty;
+    final hasEmail = supplier.email != null && supplier.email!.isNotEmpty;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Avatar
-                    CircleAvatar(
-                      radius: 22,
-                      backgroundColor:
-                          supplier.isActive
+          border: Border.all(
+            color: _isHovered
+                ? AppColors.teal.withValues(alpha: 0.35)
+                : AppColors.border,
+            width: _isHovered ? 1.5 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: _isHovered ? 0.06 : 0.025),
+              blurRadius: _isHovered ? 14 : 8,
+              offset: Offset(0, _isHovered ? 4 : 2),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: widget.onEdit,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // --- Encabezado: Avatar + Nombre + RUC + Switch ---
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Avatar
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: supplier.isActive
                               ? AppColors.tealLight
                               : Colors.grey.shade100,
-                      child: Text(
-                        supplier.name.isNotEmpty
-                            ? supplier.name.substring(0, 1).toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          color:
-                              supplier.isActive
-                                  ? AppColors.tealDark
-                                  : Colors.grey.shade400,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          supplier.name.isNotEmpty
+                              ? supplier.name.substring(0, 1).toUpperCase()
+                              : 'P',
+                          style: TextStyle(
+                            color: supplier.isActive
+                                ? AppColors.tealDark
+                                : Colors.grey.shade500,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
+                      const SizedBox(width: 12),
 
-                    // Nombres y RUC
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            supplier.name,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color:
-                                  supplier.isActive
-                                      ? AppColors.textPrimary
-                                      : AppColors.textMuted,
-                              decoration:
-                                  supplier.isActive
-                                      ? null
-                                      : TextDecoration.lineThrough,
-                            ),
-                          ),
-                          if (supplier.taxId != null &&
-                              supplier.taxId!.isNotEmpty) ...[
-                            const SizedBox(height: 2),
+                      // Nombre y RUC (o placeholder de RUC)
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              'RUC / ID: ${supplier.taxId}',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w500,
+                              supplier.name,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: supplier.isActive
+                                    ? AppColors.textPrimary
+                                    : AppColors.textMuted,
+                                decoration: supplier.isActive
+                                    ? null
+                                    : TextDecoration.lineThrough,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
+                            const SizedBox(height: 2),
+                            if (hasRuc)
+                              Text(
+                                'RUC / ID: ${supplier.taxId}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              )
+                            else
+                              const Text(
+                                'Sin RUC registrado',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textMuted,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
                           ],
-                        ],
+                        ),
                       ),
-                    ),
 
-                    // Switch Estado
-                    Tooltip(
-                      message: supplier.isActive ? 'Desactivar' : 'Activar',
-                      child: Switch(
-                        value: supplier.isActive,
-                        onChanged: (_) => onToggleStatus(),
-                        activeThumbColor: AppColors.success,
-                        activeTrackColor: AppColors.successLight,
-                        inactiveThumbColor: Colors.grey.shade400,
-                        inactiveTrackColor: Colors.grey.shade200,
+                      // Switch Estado con Tooltip
+                      Tooltip(
+                        message: supplier.isActive
+                            ? 'Desactivar proveedor'
+                            : 'Activar proveedor',
+                        child: Transform.scale(
+                          scale: 0.85,
+                          child: Switch(
+                            value: supplier.isActive,
+                            onChanged: (_) => widget.onToggleStatus(),
+                            activeThumbColor: AppColors.success,
+                            activeTrackColor: AppColors.successLight,
+                            inactiveThumbColor: Colors.grey.shade400,
+                            inactiveTrackColor: Colors.grey.shade200,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
 
-                // Contacto (Quick Actions)
-                if (supplier.contactName != null ||
-                    supplier.phone != null ||
-                    supplier.email != null) ...[
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      // Nombre de Contacto
-                      if (supplier.contactName != null &&
-                          supplier.contactName!.isNotEmpty)
+                  const SizedBox(height: 12),
+
+                  // --- Pie de Tarjeta: Contacto y Canales Directos ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        // Nombre de Contacto
                         Expanded(
                           child: Row(
                             children: [
                               const Icon(
-                                Icons.person_rounded,
-                                size: 16,
+                                Icons.person_outline_rounded,
+                                size: 15,
                                 color: AppColors.textMuted,
                               ),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  supplier.contactName!,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w600,
+                                  hasContact
+                                      ? supplier.contactName!
+                                      : 'Sin contacto asignado',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: hasContact
+                                        ? AppColors.textPrimary
+                                        : AppColors.textMuted,
+                                    fontWeight: hasContact
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                    fontStyle: hasContact
+                                        ? FontStyle.normal
+                                        : FontStyle.italic,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -182,43 +233,65 @@ class SupplierCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                        )
-                      else
-                        const Spacer(),
+                        ),
 
-                      // Quick Action Buttons
-                      if (supplier.phone != null &&
-                          supplier.phone!.isNotEmpty) ...[
-                        _QuickActionButton(
-                          icon: Icons.phone_rounded,
-                          color: Colors.blue,
-                          tooltip: 'Llamar a ${supplier.phone}',
-                          onTap: _callPhone,
-                        ),
-                        const SizedBox(width: 8),
-                        _QuickActionButton(
-                          icon: Icons.message_rounded,
-                          color: Colors.green,
-                          tooltip: 'WhatsApp',
-                          onTap: _openWhatsApp,
-                        ),
+                        // Botones de Acción Rápida (con colores de AppColors)
+                        if (hasPhone) ...[
+                          _QuickActionButton(
+                            icon: Icons.message_rounded,
+                            color: AppColors.success,
+                            bgColor: AppColors.successLight,
+                            tooltip: 'WhatsApp: ${supplier.phone}',
+                            onTap: _openWhatsApp,
+                          ),
+                          const SizedBox(width: 6),
+                          _QuickActionButton(
+                            icon: Icons.phone_rounded,
+                            color: AppColors.info,
+                            bgColor: AppColors.infoLight,
+                            tooltip: 'Llamar a ${supplier.phone}',
+                            onTap: _callPhone,
+                          ),
+                        ],
+                        if (hasEmail) ...[
+                          if (hasPhone) const SizedBox(width: 6),
+                          _QuickActionButton(
+                            icon: Icons.email_rounded,
+                            color: AppColors.primary,
+                            bgColor: AppColors.primaryLight,
+                            tooltip: 'Correo: ${supplier.email}',
+                            onTap: _sendEmail,
+                          ),
+                        ],
+                        if (!hasPhone && !hasEmail)
+                          TextButton.icon(
+                            onPressed: widget.onEdit,
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            icon: const Icon(
+                              Icons.add_circle_outline_rounded,
+                              size: 13,
+                              color: AppColors.teal,
+                            ),
+                            label: const Text(
+                              'Completar datos',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.teal,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                       ],
-                      if (supplier.email != null &&
-                          supplier.email!.isNotEmpty) ...[
-                        if (supplier.phone != null &&
-                            supplier.phone!.isNotEmpty)
-                          const SizedBox(width: 8),
-                        _QuickActionButton(
-                          icon: Icons.email_rounded,
-                          color: Colors.orange,
-                          tooltip: 'Enviar correo a ${supplier.email}',
-                          onTap: _sendEmail,
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -230,12 +303,14 @@ class SupplierCard extends StatelessWidget {
 class _QuickActionButton extends StatelessWidget {
   final IconData icon;
   final Color color;
+  final Color bgColor;
   final VoidCallback onTap;
   final String tooltip;
 
   const _QuickActionButton({
     required this.icon,
     required this.color,
+    required this.bgColor,
     required this.onTap,
     required this.tooltip,
   });
@@ -245,16 +320,16 @@ class _QuickActionButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: color.withValues(alpha: 0.1),
-        shape: const CircleBorder(),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
-          customBorder: const CircleBorder(),
+          borderRadius: BorderRadius.circular(8),
           child: Container(
-            width: 44, // Excelente touch target
-            height: 44,
+            width: 32,
+            height: 32,
             alignment: Alignment.center,
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 16),
           ),
         ),
       ),
