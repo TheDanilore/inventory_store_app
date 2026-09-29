@@ -181,7 +181,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 140),
                         curve: Curves.easeInOut,
-                        color: isHovered ? const Color(0xFFF8FAFC) : Colors.transparent,
+                        color: isHovered ? const Color(0xFFF8FAFC) : Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 11,

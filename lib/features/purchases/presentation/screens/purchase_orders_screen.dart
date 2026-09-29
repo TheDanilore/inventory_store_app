@@ -852,23 +852,26 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                     message: 'Sin resultados para los filtros aplicados',
                                   )
                                 : (_isTableView && isTablet)
-                                    ? PurchaseOrdersTableView(
-                                        key: ValueKey(
-                                          'table_${viewModel.statusFilter}_${viewModel.currentPage}',
+                                    ? Padding(
+                                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                        child: PurchaseOrdersTableView(
+                                          key: ValueKey(
+                                            'table_${viewModel.statusFilter}_${viewModel.currentPage}',
+                                          ),
+                                          orders: displayOrders,
+                                          selectedOrder: _selectedOrder,
+                                          onSelectOrder: (po) {
+                                            if (isTablet) {
+                                              _openDesktopDetailSheet(po);
+                                            } else {
+                                              _showDetail(context, po);
+                                            }
+                                          },
+                                          onRefresh: () {
+                                            _itemsCache.clear();
+                                            cubit.loadOrders(refresh: true);
+                                          },
                                         ),
-                                        orders: displayOrders,
-                                        selectedOrder: _selectedOrder,
-                                        onSelectOrder: (po) {
-                                          if (isTablet) {
-                                            _openDesktopDetailSheet(po);
-                                          } else {
-                                            _showDetail(context, po);
-                                          }
-                                        },
-                                        onRefresh: () {
-                                          _itemsCache.clear();
-                                          cubit.loadOrders(refresh: true);
-                                        },
                                       )
                                     : RefreshIndicator(
                                         key: ValueKey(

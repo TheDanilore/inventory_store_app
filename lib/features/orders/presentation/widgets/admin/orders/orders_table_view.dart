@@ -5,7 +5,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 
-class OrdersTableView extends StatefulWidget {
+class OrdersTableView extends StatelessWidget {
   final List<OrderEntity> orders;
   final OrderEntity? selectedOrder;
   final Function(OrderEntity) onSelectOrder;
@@ -24,11 +24,195 @@ class OrdersTableView extends StatefulWidget {
   });
 
   @override
-  State<OrdersTableView> createState() => _OrdersTableViewState();
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const minTableWidth = 880.0;
+        final tableWidth = constraints.maxWidth < minTableWidth
+            ? minTableWidth
+            : constraints.maxWidth;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x050F172A),
+                blurRadius: 4,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: SizedBox(
+              width: tableWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // --- Encabezado Fijo de Tabla ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    decoration: const BoxDecoration(
+                      color: AppColors.background,
+                      border: Border(bottom: BorderSide(color: AppColors.border)),
+                    ),
+                    child: const Row(
+                      children: [
+                        SizedBox(
+                          width: 100,
+                          child: Text(
+                            'ID PEDIDO',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 130,
+                          child: Text(
+                            'FECHA / HORA',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 4,
+                          child: Text(
+                            'CLIENTE / DESTINO',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 120,
+                          child: Text(
+                            'ESTADO',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 110,
+                          child: Text(
+                            'PAGO',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 110,
+                          child: Text(
+                            'TOTAL',
+                            textAlign: TextAlign.end,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 120,
+                          child: Text(
+                            'ACCIONES',
+                            textAlign: TextAlign.end,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // --- Lista de Filas ---
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: orders.length,
+                    separatorBuilder: (_, _) => const Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: AppColors.border,
+                    ),
+                    itemBuilder: (context, index) {
+                      final order = orders[index];
+                      final isSelected = selectedOrder?.id == order.id;
+
+                      return _OrderTableRow(
+                        key: ValueKey(order.id),
+                        order: order,
+                        isSelected: isSelected,
+                        onSelect: () => onSelectOrder(order),
+                        onPrintTicket: () => onPrintTicket(order),
+                        onUpdateStatus: (s) => onUpdateStatus(order, s),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
-class _OrdersTableViewState extends State<OrdersTableView> {
-  String? _hoveredId;
+// ─────────────────────────────────────────────────────────────────────────────
+// FILA AISLADA DE PEDIDO CON HOVER SUAVE
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _OrderTableRow extends StatefulWidget {
+  final OrderEntity order;
+  final bool isSelected;
+  final VoidCallback onSelect;
+  final VoidCallback onPrintTicket;
+  final ValueChanged<String> onUpdateStatus;
+
+  const _OrderTableRow({
+    super.key,
+    required this.order,
+    required this.isSelected,
+    required this.onSelect,
+    required this.onPrintTicket,
+    required this.onUpdateStatus,
+  });
+
+  @override
+  State<_OrderTableRow> createState() => _OrderTableRowState();
+}
+
+class _OrderTableRowState extends State<_OrderTableRow> {
+  bool _isHovered = false;
 
   void _copyToClipboard(BuildContext context, String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
@@ -144,353 +328,200 @@ class _OrdersTableViewState extends State<OrdersTableView> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const minTableWidth = 880.0;
-        final tableWidth = constraints.maxWidth < minTableWidth
-            ? minTableWidth
-            : constraints.maxWidth;
+    final order = widget.order;
+    final isSelected = widget.isSelected;
 
-        return Container(
+    final shortId = order.id.length >= 8
+        ? order.id.substring(0, 8).toUpperCase()
+        : order.id.toUpperCase();
+    final date = (order.createdAt ?? DateTime.now()).toLocal();
+    final dateFormatted = DateFormat('dd MMM, hh:mm a', 'es').format(date);
+    final pending = order.totalAmount - order.amountPaid;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: InkWell(
+        onTap: widget.onSelect,
+        hoverColor: Colors.transparent,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeInOut,
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x050F172A),
-                blurRadius: 4,
-                offset: Offset(0, 1),
+            color: isSelected
+                ? AppColors.tealLight.withValues(alpha: 0.45)
+                : (_isHovered ? const Color(0xFFF8FAFC) : Colors.white),
+            border: Border(
+              left: BorderSide(
+                color: isSelected ? AppColors.teal : const Color(0x000D9488),
+                width: 3.5,
               ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: SizedBox(
-              width: tableWidth,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-          // --- Encabezado Fijo de Tabla ---
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            decoration: const BoxDecoration(
-              color: AppColors.background,
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: const Row(
-              children: [
-                SizedBox(
-                  width: 100,
-                  child: Text(
-                    'ID PEDIDO',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 130,
-                  child: Text(
-                    'FECHA / HORA',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 4,
-                  child: Text(
-                    'CLIENTE / DESTINO',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 120,
-                  child: Text(
-                    'ESTADO',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 110,
-                  child: Text(
-                    'PAGO',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 110,
-                  child: Text(
-                    'TOTAL',
-                    textAlign: TextAlign.end,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 120,
-                  child: Text(
-                    'ACCIONES',
-                    textAlign: TextAlign.end,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
-
-          // --- Lista de Filas ---
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: widget.orders.length,
-            separatorBuilder:
-                (_, _) =>
-                    const Divider(height: 1, thickness: 1, color: AppColors.border),
-            itemBuilder: (context, index) {
-              final order = widget.orders[index];
-              final isSelected = widget.selectedOrder?.id == order.id;
-
-              final shortId =
-                  order.id.length >= 8
-                      ? order.id.substring(0, 8).toUpperCase()
-                      : order.id.toUpperCase();
-              final date = (order.createdAt ?? DateTime.now()).toLocal();
-              final dateFormatted = DateFormat('dd MMM, hh:mm a', 'es').format(date);
-              final pending = order.totalAmount - order.amountPaid;
-
-              final isHovered = _hoveredId == order.id;
-
-              return MouseRegion(
-                cursor: SystemMouseCursors.click,
-                onEnter: (_) => setState(() => _hoveredId = order.id),
-                onExit: (_) => setState(() => _hoveredId = null),
-                child: InkWell(
-                  onTap: () => widget.onSelectOrder(order),
-                  hoverColor: Colors.transparent,
-                  splashColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 140),
-                    curve: Curves.easeInOut,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.tealLight.withValues(alpha: 0.45)
-                          : (isHovered ? const Color(0xFFF8FAFC) : Colors.transparent),
-                      border: Border(
-                        left: BorderSide(
-                          color: isSelected ? AppColors.teal : Colors.transparent,
-                          width: 3.5,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 18,
+            vertical: 11,
+          ),
+          child: Row(
+            children: [
+              // 1. ID Pedido
+              SizedBox(
+                width: 100,
+                child: Row(
+                  children: [
+                    InkWell(
+                      onTap: () => _copyToClipboard(context, shortId, 'ID'),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Text(
+                          '#$shortId',
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 11,
-                    ),
-                    child: Row(
-                      children: [
-                        // ID Pedido
-                        SizedBox(
-                          width: 100,
-                          child: Row(
-                            children: [
-                              InkWell(
-                                onTap: () => _copyToClipboard(context, shortId, 'ID'),
-                                borderRadius: BorderRadius.circular(4),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.background,
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: AppColors.border),
-                                  ),
-                                  child: Text(
-                                    '#$shortId',
-                                    style: const TextStyle(
-                                      fontFamily: 'monospace',
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                  ],
+                ),
+              ),
 
-                        // Fecha / Hora
-                        SizedBox(
-                          width: 130,
-                          child: Text(
-                            dateFormatted,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-
-                        // Cliente / Sucursal
-                        Expanded(
-                          flex: 4,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                order.displayCustomerName,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 1),
-                              Text(
-                                (order.warehouseName != null && order.warehouseName!.isNotEmpty)
-                                    ? order.warehouseName!
-                                    : 'Tienda Principal',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textMuted,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Estado
-                        SizedBox(
-                          width: 120,
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: _buildStatusBadge(order.status),
-                          ),
-                        ),
-
-                        // Pago
-                        SizedBox(
-                          width: 110,
-                          child: _buildPaymentBadge(
-                            order.paymentStatus,
-                            order.paymentMethod,
-                            pending,
-                          ),
-                        ),
-
-                        // Total
-                        SizedBox(
-                          width: 110,
-                          child: Text(
-                            'S/ ${order.totalAmount.toStringAsFixed(2)}',
-                            textAlign: TextAlign.end,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.textPrimary,
-                              fontFeatures: [FontFeature.tabularFigures()],
-                            ),
-                          ),
-                        ),
-
-                        // Acciones Rápidas
-                        SizedBox(
-                          width: 120,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.receipt_long_rounded,
-                                  size: 18,
-                                  color: AppColors.textSecondary,
-                                ),
-                                tooltip: 'Imprimir Ticket [P]',
-                                onPressed: () => widget.onPrintTicket(order),
-                              ),
-                              if (order.status == 'DRAFT')
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.payments_rounded,
-                                    size: 18,
-                                    color: AppColors.teal,
-                                  ),
-                                  tooltip: 'Completar / Cobrar',
-                                  onPressed:
-                                      () => widget.onUpdateStatus(
-                                        order,
-                                        'COMPLETED',
-                                      ),
-                                )
-                              else
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.chevron_right_rounded,
-                                    size: 20,
-                                    color: AppColors.textMuted,
-                                  ),
-                                  tooltip: 'Ver detalle',
-                                  onPressed: () => widget.onSelectOrder(order),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+              // 2. Fecha / Hora
+              SizedBox(
+                width: 130,
+                child: Text(
+                  dateFormatted,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              );
-            },
+              ),
+
+              // 3. Cliente / Sucursal
+              Expanded(
+                flex: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      order.displayCustomerName,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      (order.warehouseName != null && order.warehouseName!.isNotEmpty)
+                          ? order.warehouseName!
+                          : 'Tienda Principal',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+
+              // 4. Estado
+              SizedBox(
+                width: 120,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildStatusBadge(order.status),
+                ),
+              ),
+
+              // 5. Pago
+              SizedBox(
+                width: 110,
+                child: _buildPaymentBadge(
+                  order.paymentStatus,
+                  order.paymentMethod,
+                  pending,
+                ),
+              ),
+
+              // 6. Total
+              SizedBox(
+                width: 110,
+                child: Text(
+                  'S/ ${order.totalAmount.toStringAsFixed(2)}',
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+
+              // 7. Acciones Rápidas
+              SizedBox(
+                width: 120,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.receipt_long_rounded,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
+                      tooltip: 'Imprimir Ticket [P]',
+                      onPressed: widget.onPrintTicket,
+                    ),
+                    if (order.status == 'DRAFT')
+                      IconButton(
+                        icon: const Icon(
+                          Icons.payments_rounded,
+                          size: 18,
+                          color: AppColors.teal,
+                        ),
+                        tooltip: 'Completar / Cobrar',
+                        onPressed: () => widget.onUpdateStatus('COMPLETED'),
+                      )
+                    else
+                      IconButton(
+                        icon: Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: _isHovered ? AppColors.tealDark : AppColors.textMuted,
+                        ),
+                        tooltip: 'Ver detalle',
+                        onPressed: widget.onSelect,
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-    ),
-  ),
-);
-      },
     );
   }
 }

@@ -1,49 +1,121 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_item_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
-import 'package:inventory_store_app/features/inventory/domain/usecases/get_exit_items_usecase.dart';
-import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exit_detail_sheet.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
+import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_item_model.dart';
+import 'package:inventory_store_app/features/inventory/data/utils/inventory_exits_pdf_generator.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/usecases/get_exit_items_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits/inventory_exits_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits/inventory_exits_state.dart';
-import 'package:inventory_store_app/features/inventory/data/utils/inventory_exits_pdf_generator.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exit_detail_sheet.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exits_table_view.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_skeleton.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class InventoryExitsScreen extends StatefulWidget {
-  const InventoryExitsScreen({super.key});
+  final String? targetExitId;
+
+  const InventoryExitsScreen({super.key, this.targetExitId});
 
   @override
   State<InventoryExitsScreen> createState() => _InventoryExitsScreenState();
 }
 
 class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
-  InventoryExitsCubit get cubit => context.read<InventoryExitsCubit>();
   final _searchCtrl = TextEditingController();
+  final _searchFocusNode = FocusNode();
+  final _screenFocusNode = FocusNode();
+  Timer? _searchDebounce;
 
   bool _hasDraft = false;
+  bool _isTableView = true;
+  bool _isSideSheetOpen = false;
   InventoryExitEntity? _selectedExit;
+  String? _pendingTargetExitId;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final cubit = context.read<InventoryExitsCubit>();
-      _searchCtrl.text = cubit.state.searchQuery;
-
-      cubit.initLoad();
-    });
+    _pendingTargetExitId = widget.targetExitId;
     _checkDraft();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final cubit = context.read<InventoryExitsCubit>();
+        _searchCtrl.text = cubit.state.searchQuery;
+        cubit.initLoad();
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant InventoryExitsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.targetExitId != oldWidget.targetExitId) {
+      if (widget.targetExitId == null) {
+        if (_selectedExit != null) {
+          setState(() => _selectedExit = null);
+        }
+        return;
+      }
+      if (widget.targetExitId == _selectedExit?.id) {
+        return;
+      }
+      _pendingTargetExitId = widget.targetExitId;
+      final exits = context.read<InventoryExitsCubit>().state.exits;
+      final isTablet = MediaQuery.sizeOf(context).width >= 800;
+      _resolveTargetExit(exits, isTablet);
+    }
+  }
+
+  void _selectExit(InventoryExitEntity? exit, {bool updateUrl = true}) {
+    setState(() => _selectedExit = exit);
+
+    if (updateUrl && mounted) {
+      final isTablet = MediaQuery.sizeOf(context).width >= 800;
+      if (isTablet) {
+        if (exit != null) {
+          context.replace('/inventory-exits?selectedId=${exit.id}');
+        } else {
+          context.replace('/inventory-exits');
+        }
+      }
+    }
+  }
+
+  void _resolveTargetExit(List<InventoryExitEntity> exits, bool isTablet) {
+    final targetId = _pendingTargetExitId;
+    if (targetId == null) return;
+
+    final foundIndex = exits.indexWhere((e) => e.id == targetId);
+    if (foundIndex != -1) {
+      _pendingTargetExitId = null;
+      _selectExit(exits[foundIndex], updateUrl: isTablet);
+      if (!isTablet) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _selectedExit != null) {
+            _showDetailBottomSheet(context, _selectedExit!);
+          }
+        });
+      } else if (_isTableView) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _selectedExit != null) {
+            _openDesktopDetailSheet(_selectedExit!);
+          }
+        });
+      }
+    }
   }
 
   Future<void> _checkDraft() async {
@@ -58,8 +130,166 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchCtrl.dispose();
+    _searchFocusNode.dispose();
+    _screenFocusNode.dispose();
     super.dispose();
+  }
+
+  // --- REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) ---
+  bool get _isInputFieldFocused {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus == null) return false;
+    return primaryFocus.context?.widget is EditableText;
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    // Si el usuario escribe en un campo editable, aislar atajos globales
+    if (_isInputFieldFocused) {
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        _searchFocusNode.unfocus();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    final key = event.logicalKey;
+
+    // Atajo [/] -> Enfocar buscador
+    if (key == LogicalKeyboardKey.slash) {
+      _searchFocusNode.requestFocus();
+      _searchCtrl.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _searchCtrl.text.length,
+      );
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [N] -> Nueva Salida
+    if (key == LogicalKeyboardKey.keyN) {
+      _onNewExit();
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [R] -> Recargar salidas
+    if (key == LogicalKeyboardKey.keyR) {
+      context.read<InventoryExitsCubit>().loadExits(isRefresh: true);
+      AppSnackbar.show(
+        context,
+        message: 'Actualizando historial de salidas...',
+        type: SnackbarType.info,
+      );
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [V] -> Alternar Vista (Tabla Pro vs Tarjetas)
+    if (key == LogicalKeyboardKey.keyV) {
+      setState(() => _isTableView = !_isTableView);
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [Escape] -> Limpiar búsqueda o cerrar detalle
+    if (key == LogicalKeyboardKey.escape) {
+      if (_selectedExit != null) {
+        setState(() => _selectedExit = null);
+        return KeyEventResult.handled;
+      }
+      if (_searchFocusNode.hasFocus) {
+        _searchFocusNode.unfocus();
+        return KeyEventResult.handled;
+      }
+    }
+
+    // Flechas arriba y abajo para navegar salidas en split-view
+    final state = context.read<InventoryExitsCubit>().state;
+    if (state.exits.isNotEmpty && !_isTableView) {
+      final exits = state.exits;
+      final currentIndex =
+          _selectedExit != null
+              ? exits.indexWhere((e) => e.id == _selectedExit!.id)
+              : -1;
+
+      if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+        final nextIndex = (currentIndex + 1).clamp(0, exits.length - 1);
+        _selectExit(exits[nextIndex], updateUrl: true);
+        return KeyEventResult.handled;
+      }
+
+      if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+        final prevIndex = (currentIndex - 1).clamp(0, exits.length - 1);
+        _selectExit(exits[prevIndex], updateUrl: true);
+        return KeyEventResult.handled;
+      }
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void _onNewExit() async {
+    await context.push('/inventory-exits/form');
+    _checkDraft();
+  }
+
+  Future<void> _openDesktopDetailSheet(InventoryExitEntity exit) async {
+    if (!mounted || _isSideSheetOpen) return;
+    _isSideSheetOpen = true;
+    _selectExit(exit, updateUrl: true);
+
+    await showGeneralDialog(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: true,
+      barrierLabel: 'Cerrar detalle',
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      transitionDuration: const Duration(milliseconds: 240),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        final screenWidth = MediaQuery.sizeOf(dialogContext).width;
+        final drawerWidth = screenWidth >= 1440 ? 640.0 : 580.0;
+
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: drawerWidth,
+              height: double.infinity,
+              decoration: const BoxDecoration(
+                color: AppColors.background,
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x26000000),
+                    blurRadius: 24,
+                    offset: Offset(-4, 0),
+                  ),
+                ],
+              ),
+              child: InventoryExitDetailSheet(
+                exitData: exit,
+                isBottomSheet: false,
+                loadItems: () => _loadItems(exit),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, anim, secAnim, child) {
+        final curvedAnim = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOutCubic,
+        );
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(curvedAnim),
+          child: child,
+        );
+      },
+    );
+    _isSideSheetOpen = false;
   }
 
   Future<List<InventoryExitItemModel>> _loadItems(
@@ -120,10 +350,10 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     }).toList();
   }
 
-  Future<void> _loadItemsAndShowDetailMobile(
+  void _showDetailBottomSheet(
     BuildContext context,
     InventoryExitEntity exitData,
-  ) async {
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -139,51 +369,102 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<InventoryExitsCubit, InventoryExitsState>(
+    final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 800;
+
+    return BlocConsumer<InventoryExitsCubit, InventoryExitsState>(
+      listener: (context, state) {
+        if (state.errorMessage != null && !state.isLoading) {
+          AppSnackbar.show(
+            context,
+            message: state.errorMessage!,
+            type: SnackbarType.error,
+          );
+        }
+        if (_pendingTargetExitId != null && state.exits.isNotEmpty) {
+          _resolveTargetExit(state.exits, isDesktopOrTablet);
+        }
+      },
       builder: (context, state) {
         final cubit = context.read<InventoryExitsCubit>();
-        if (cubit.state.errorMessage != null && !cubit.state.isLoading) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            AppSnackbar.show(
-              context,
-              message: cubit.state.errorMessage!,
-              type: SnackbarType.error,
-            );
-          });
-        }
+
+        final double totalCost = state.exits.fold<double>(
+          0,
+          (s, e) => s + e.totalCost,
+        );
 
         return AdminLayout(
           title: 'Salidas de Inventario',
           showBackButton: true,
           onSettingsSelected: (val) {
             if (val != 'pdf') return;
-            if (cubit.state.exits.isNotEmpty) {
-              final startDate = cubit.state.startDate;
-              final endDate = cubit.state.endDate;
+            if (state.exits.isNotEmpty) {
+              final startDate = state.startDate;
+              final endDate = state.endDate;
               final selectedRange =
                   (startDate != null && endDate != null)
                       ? DateTimeRange(start: startDate, end: endDate)
                       : null;
               InventoryExitsPdfGenerator.shareReport(
-                exits: cubit.state.exits,
+                exits: state.exits,
                 dateRange: selectedRange,
               );
             }
           },
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () {
-              context.go('/inventory-exits/form');
-            },
-            icon: const Icon(Icons.remove_circle_outline_rounded),
-            label: const Text(
-              'Nueva Salida',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            backgroundColor: AppColors.danger,
-            foregroundColor: Colors.white,
-          ),
+          actions: [
+            if (isDesktopOrTablet)
+              ElevatedButton.icon(
+                onPressed: _onNewExit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      _hasDraft ? const Color(0xFFF59E0B) : AppColors.danger,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  ),
+                ),
+                icon: Icon(
+                  _hasDraft
+                      ? Icons.edit_note_rounded
+                      : Icons.remove_circle_outline_rounded,
+                  size: 16,
+                ),
+                label: Text(
+                  _hasDraft ? 'Continuar Borrador [N]' : 'Nueva Salida [N]',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+          ],
+          floatingActionButton:
+              !isDesktopOrTablet
+                  ? FloatingActionButton.extended(
+                    onPressed: _onNewExit,
+                    icon: Icon(
+                      _hasDraft
+                          ? Icons.edit_note_rounded
+                          : Icons.remove_circle_outline_rounded,
+                    ),
+                    label: Text(
+                      _hasDraft ? 'Borrador' : 'Nueva Salida',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    backgroundColor:
+                        _hasDraft ? const Color(0xFFF59E0B) : AppColors.danger,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  )
+                  : null,
           bottomNavigationBar:
-              (cubit.state.totalPages > 1 && !cubit.state.isLoading)
+              (state.totalPages > 1 && !state.isLoading)
                   ? Container(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                     decoration: BoxDecoration(
@@ -197,100 +478,309 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                     child: SafeArea(
                       top: false,
                       child: AdminPageBlocks(
-                        currentPage: cubit.state.currentPage,
-                        totalPages: cubit.state.totalPages,
+                        currentPage: state.currentPage,
+                        totalPages: state.totalPages,
                         onPageChanged: cubit.changePage,
                       ),
                     ),
                   )
                   : null,
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              final isTablet = constraints.maxWidth >= 800;
+          body: Focus(
+            focusNode: _screenFocusNode,
+            autofocus: true,
+            onKeyEvent: _handleKeyEvent,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isTablet = constraints.maxWidth >= 800;
 
-              // Si es tablet pero borramos la búsqueda, limpiamos la selección si ya no existe
-              if (isTablet && _selectedExit != null) {
-                final exists = cubit.state.exits.any(
-                  (e) => e.id == _selectedExit!.id,
-                );
-                if (!exists && cubit.state.exits.isNotEmpty) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      setState(() => _selectedExit = null);
-                    }
-                  });
+                // Si es tablet y la salida seleccionada ya no existe en la lista filtrada, deseleccionar
+                if (isTablet && _selectedExit != null && !_isTableView) {
+                  final exists = state.exits.any(
+                    (e) => e.id == _selectedExit!.id,
+                  );
+                  if (!exists && state.exits.isNotEmpty) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() => _selectedExit = null);
+                      }
+                    });
+                  }
                 }
-              }
 
-              return isTablet
-                  ? _buildTabletLayout(context, state, cubit)
-                  : _buildMobileLayout(context, state, cubit);
-            },
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // ── 1. Aviso de Borrador ──────────────────────────────
+                    if (_hasDraft)
+                      Container(
+                        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withValues(alpha: 0.1),
+                          border: Border.all(
+                            color: AppColors.warning.withValues(alpha: 0.3),
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.edit_document,
+                              color: AppColors.warning,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'Tienes un borrador de salida en progreso.',
+                                style: TextStyle(
+                                  color: AppColors.warning,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ),
+                            FilledButton.tonal(
+                              onPressed: _onNewExit,
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                visualDensity: VisualDensity.compact,
+                                backgroundColor: AppColors.warning.withValues(
+                                  alpha: 0.2,
+                                ),
+                                foregroundColor: AppColors.warning,
+                              ),
+                              child: const Text('Continuar'),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // ── 2. Bento KPI Ribbon ───────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _InventoryExitsBentoKpiBar(
+                        count: state.exits.length,
+                        totalCount: state.totalRecords,
+                        totalCost: totalCost,
+                        isDesktop: isTablet,
+                      ),
+                    ),
+
+                    // ── 3. Toolbar Pro Unificado (Buscador, Fecha, Vista, Refresh) ──
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                      child: _InventoryExitsToolbar(
+                        searchCtrl: _searchCtrl,
+                        searchFocusNode: _searchFocusNode,
+                        onSearchChanged: (v) {
+                          _searchDebounce?.cancel();
+                          _searchDebounce = Timer(
+                            const Duration(milliseconds: 300),
+                            () {
+                              if (mounted) {
+                                cubit.updateSearch(v);
+                              }
+                            },
+                          );
+                        },
+                        onClearSearch: () {
+                          _searchDebounce?.cancel();
+                          _searchCtrl.clear();
+                          cubit.updateSearch('');
+                        },
+                        state: state,
+                        isDesktop: isTablet,
+                        isTableView: _isTableView,
+                        onToggleTableView:
+                            (val) => setState(() => _isTableView = val),
+                        onRefresh: () {
+                          cubit.loadExits(isRefresh: true);
+                        },
+                      ),
+                    ),
+
+                    // ── 4. Encabezado de Navegación y Contador ────────────
+                    if (!state.isLoading && state.exits.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${state.exits.length} ${state.exits.length == 1 ? "salida" : "salidas"} en esta página',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (isTablet && !_isTableView) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                child: const Text(
+                                  '↑ ↓ navegar',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFE2E8F0),
+                                ),
+                              ),
+                              child: Text(
+                                'Pág. ${state.currentPage + 1} / ${state.totalPages}',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // ── 5. Contenido Principal: Tabla Pro o Split/Cards ───
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        child:
+                            (state.isLoading && state.exits.isEmpty)
+                                ? (_isTableView && isTablet)
+                                    ? const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                      ),
+                                      child: AppTableShimmer(),
+                                    )
+                                    : const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                      ),
+                                      child: KardexSkeleton(),
+                                    )
+                                : state.exits.isEmpty
+                                ? AppEmptyState(
+                                  key: const ValueKey('empty_state'),
+                                  icon: Icons.inventory_2_outlined,
+                                  title: 'Sin Resultados',
+                                  message:
+                                      state.searchQuery.isEmpty &&
+                                              state.startDate == null &&
+                                              state.endDate == null
+                                          ? 'No hay salidas registradas'
+                                          : 'Sin resultados para los filtros aplicados',
+                                )
+                                : (_isTableView && isTablet)
+                                ? Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  child: InventoryExitsTableView(
+                                    exits: state.exits,
+                                    selectedExit: _selectedExit,
+                                    onSelectExit:
+                                        (e) => _openDesktopDetailSheet(e),
+                                    onRefresh:
+                                        () => cubit.loadExits(isRefresh: true),
+                                  ),
+                                )
+                                : isTablet
+                                ? _buildTabletSplitLayout(context, state, cubit)
+                                : _buildMobileCardsLayout(
+                                  context,
+                                  state,
+                                  cubit,
+                                ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         );
       },
     );
   }
 
-  // LAYOUTS
-
-  Widget _buildMobileLayout(
-    BuildContext context,
-    InventoryExitsState state,
-    InventoryExitsCubit cubit,
-  ) {
-    return _buildListContent(cubit, isTablet: false);
-  }
-
-  Widget _buildTabletLayout(
+  Widget _buildTabletSplitLayout(
     BuildContext context,
     InventoryExitsState state,
     InventoryExitsCubit cubit,
   ) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Panel Izquierdo: Lista
+        // Panel izquierdo: Lista de tarjetas
         Expanded(
           flex: 4,
           child: Container(
-            decoration: BoxDecoration(
-              border: Border(
-                right: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+            decoration: const BoxDecoration(
+              border: Border(right: BorderSide(color: AppColors.border)),
+            ),
+            child: RefreshIndicator(
+              color: AppColors.danger,
+              onRefresh: () => cubit.loadExits(isRefresh: true),
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                itemCount: state.exits.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                itemBuilder: (context, i) {
+                  final exit = state.exits[i];
+                  return _ExitCard(
+                    exitData: exit,
+                    isSelected: _selectedExit?.id == exit.id,
+                    onTap: () => _selectExit(exit, updateUrl: true),
+                  );
+                },
               ),
             ),
-            child: _buildListContent(cubit, isTablet: true),
           ),
         ),
-        // Panel Derecho: Detalles
+        // Panel derecho: Detalle
         Expanded(
           flex: 6,
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
+            duration: const Duration(milliseconds: 200),
             child:
                 _selectedExit == null
-                    ? Container(
-                      key: const ValueKey('empty_detail'),
-                      color: AppColors.background,
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.outbox_rounded,
-                              size: 64,
-                              color: AppColors.border,
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Selecciona una salida para ver sus detalles',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    ? const AppEmptyState(
+                      key: ValueKey('empty_detail'),
+                      icon: Icons.outbox_rounded,
+                      title: 'Ninguna Salida Seleccionada',
+                      message:
+                          'Selecciona una salida del panel izquierdo para ver sus detalles.',
                     )
                     : InventoryExitDetailSheet(
                       key: ValueKey('detail_${_selectedExit!.id}'),
@@ -304,191 +794,145 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     );
   }
 
-  Widget _buildListContent(
-    InventoryExitsCubit cubit, {
-    required bool isTablet,
-  }) {
-    final totalCost = cubit.state.exits.fold<double>(
-      0,
-      (s, e) => s + e.totalCost,
-    );
-
+  Widget _buildMobileCardsLayout(
+    BuildContext context,
+    InventoryExitsState state,
+    InventoryExitsCubit cubit,
+  ) {
     return RefreshIndicator(
       color: AppColors.danger,
       onRefresh: () => cubit.loadExits(isRefresh: true),
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          // ── Borrador ──
-          if (_hasDraft)
-            SliverToBoxAdapter(
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+        itemCount: state.exits.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, i) {
+          final exit = state.exits[i];
+          return _ExitCard(
+            exitData: exit,
+            isSelected: false,
+            onTap: () => _showDetailBottomSheet(context, exit),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BENTO KPI BAR
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _InventoryExitsBentoKpiBar extends StatelessWidget {
+  final int count;
+  final int totalCount;
+  final double totalCost;
+  final bool isDesktop;
+
+  const _InventoryExitsBentoKpiBar({
+    required this.count,
+    required this.totalCount,
+    required this.totalCost,
+    required this.isDesktop,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Wrap(
+        spacing: 20,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.1),
-                  border: Border.all(
-                    color: AppColors.warning.withValues(alpha: 0.3),
-                  ),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.danger.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(7),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.edit_document, color: AppColors.warning),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Borrador en progreso',
-                        style: TextStyle(
-                          color: AppColors.warning,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    FilledButton.tonal(
-                      onPressed: () {
-                        context.go('/inventory-exits/form');
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.warning.withValues(
-                          alpha: 0.2,
-                        ),
-                        foregroundColor: AppColors.warning,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      child: const Text('Continuar'),
-                    ),
-                  ],
+                child: const Icon(
+                  Icons.outbox_rounded,
+                  size: 15,
+                  color: AppColors.dangerDark,
                 ),
               ),
-            ),
-
-          // ── Resumen ──
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _SummaryTile(
-                    label: 'Salidas',
-                    value: '${cubit.state.exits.length}',
-                    icon: Icons.output_rounded,
-                    color: AppColors.danger,
+                  const Text(
+                    'Salidas',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  _SummaryTile(
-                    label: 'Costo Total',
-                    value: 'S/ ${totalCost.toStringAsFixed(2)}',
-                    icon: Icons.money_off_rounded,
-                    color: Colors.orange.shade700,
+                  Text(
+                    totalCount > 0 ? '$count de $totalCount' : '$count',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
-
-          // ── Filtros (Sticky) ──
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _StickyFiltersDelegate(
-              child: Container(
-                color: AppColors.background,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _SearchField(
-                        controller: _searchCtrl,
-                        hint: 'Buscar motivo o notas...',
-                        onChanged: cubit.updateSearch,
-                        onClear: () {
-                          _searchCtrl.clear();
-                          cubit.updateSearch('');
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    DateFilterCalendar(
-                      dateRange:
-                          cubit.state.startDate != null &&
-                                  cubit.state.endDate != null
-                              ? DateTimeRange(
-                                start: cubit.state.startDate!,
-                                end: cubit.state.endDate!,
-                              )
-                              : null,
-                      onDateRangeSelected:
-                          (picked) =>
-                              cubit.updateDateRange(picked.start, picked.end),
-                      onClear: () => cubit.updateDateRange(null, null),
-                    ),
-                  ],
+          Container(width: 1, height: 24, color: const Color(0xFFE2E8F0)),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: const Icon(
+                  Icons.payments_rounded,
+                  size: 15,
+                  color: AppColors.dangerDark,
                 ),
               ),
-            ),
-          ),
-
-          // ── Lista ──
-          if (cubit.state.isLoading && cubit.state.exits.isEmpty)
-            const SliverPadding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverToBoxAdapter(child: KardexSkeleton()),
-            )
-          else if (cubit.state.errorMessage != null &&
-              cubit.state.exits.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(
-                child: Text(
-                  cubit.state.errorMessage!,
-                  style: const TextStyle(color: AppColors.danger),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            )
-          else if (cubit.state.exits.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: AppEmptyState(
-                icon: Icons.inventory_2_outlined,
-                title: 'Sin Resultados',
-                message:
-                    cubit.state.searchQuery.isEmpty &&
-                            cubit.state.startDate == null &&
-                            cubit.state.endDate == null
-                        ? 'No hay salidas registradas'
-                        : 'Sin resultados para los filtros',
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate((context, i) {
-                  final exit = cubit.state.exits[i];
-                  final isSelected = isTablet && _selectedExit?.id == exit.id;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _ExitCard(
-                      exitData: exit,
-                      isSelected: isSelected,
-                      onTap: () {
-                        if (isTablet) {
-                          setState(() => _selectedExit = exit);
-                        } else {
-                          _loadItemsAndShowDetailMobile(context, exit);
-                        }
-                      },
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Costo Total Salidas',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
                     ),
-                  );
-                }, childCount: cubit.state.exits.length),
+                  ),
+                  Text(
+                    'S/ ${totalCost.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dangerDark,
+                    ),
+                  ),
+                ],
               ),
-            ),
+            ],
+          ),
         ],
       ),
     );
@@ -496,37 +940,275 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// DELEGATES
+// TOOLBAR PRO UNIFICADO
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _StickyFiltersDelegate extends SliverPersistentHeaderDelegate {
-  final Widget child;
+class _InventoryExitsToolbar extends StatelessWidget {
+  final TextEditingController searchCtrl;
+  final FocusNode searchFocusNode;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback onClearSearch;
+  final InventoryExitsState state;
+  final bool isDesktop;
+  final bool isTableView;
+  final ValueChanged<bool> onToggleTableView;
+  final VoidCallback onRefresh;
 
-  _StickyFiltersDelegate({required this.child});
+  const _InventoryExitsToolbar({
+    required this.searchCtrl,
+    required this.searchFocusNode,
+    required this.onSearchChanged,
+    required this.onClearSearch,
+    required this.state,
+    required this.isDesktop,
+    required this.isTableView,
+    required this.onToggleTableView,
+    required this.onRefresh,
+  });
 
   @override
-  double get minExtent => 70.0;
-  @override
-  double get maxExtent => 70.0;
+  Widget build(BuildContext context) {
+    final cubit = context.read<InventoryExitsCubit>();
 
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return child;
-  }
+    Widget datePicker = DateFilterCalendar(
+      height: 40,
+      borderRadius: BorderRadius.circular(10),
+      dateRange:
+          state.startDate != null && state.endDate != null
+              ? DateTimeRange(start: state.startDate!, end: state.endDate!)
+              : null,
+      onDateRangeSelected: (picked) {
+        cubit.updateDateRange(picked.start, picked.end);
+      },
+      onClear: () => cubit.updateDateRange(null, null),
+    );
 
-  @override
-  bool shouldRebuild(_StickyFiltersDelegate oldDelegate) {
-    return oldDelegate.child != child;
+    Widget viewToggle = Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Vista en Tabla Pro [V]',
+            icon: Icon(
+              Icons.table_rows_rounded,
+              size: 18,
+              color: isTableView ? AppColors.dangerDark : AppColors.textMuted,
+            ),
+            style: IconButton.styleFrom(
+              backgroundColor:
+                  isTableView ? AppColors.surface : Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.all(6),
+              fixedSize: const Size(32, 32),
+            ),
+            onPressed: () => onToggleTableView(true),
+          ),
+          IconButton(
+            tooltip: 'Vista en Tarjetas [V]',
+            icon: Icon(
+              Icons.grid_view_rounded,
+              size: 18,
+              color: !isTableView ? AppColors.dangerDark : AppColors.textMuted,
+            ),
+            style: IconButton.styleFrom(
+              backgroundColor:
+                  !isTableView ? AppColors.surface : Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.all(6),
+              fixedSize: const Size(32, 32),
+            ),
+            onPressed: () => onToggleTableView(false),
+          ),
+        ],
+      ),
+    );
+
+    if (isDesktop) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _SearchField(
+                controller: searchCtrl,
+                focusNode: searchFocusNode,
+                hint: 'Buscar motivo o notas... [/]',
+                onChanged: onSearchChanged,
+                onSubmitted: onSearchChanged,
+                onClear: onClearSearch,
+              ),
+            ),
+            const SizedBox(width: 8),
+            datePicker,
+            const SizedBox(width: 10),
+            viewToggle,
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+              color: AppColors.textSecondary,
+              tooltip: 'Refrescar salidas [R]',
+              onPressed: onRefresh,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Móvil
+    return Column(
+      children: [
+        _SearchField(
+          controller: searchCtrl,
+          focusNode: searchFocusNode,
+          hint: 'Buscar motivo o notas...',
+          onChanged: onSearchChanged,
+          onSubmitted: onSearchChanged,
+          onClear: onClearSearch,
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: datePicker),
+            const SizedBox(width: 8),
+            IconButton.filledTonal(
+              onPressed: onRefresh,
+              style: IconButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// WIDGETS AUXILIARES
+// AUXILIAR WIDGETS
 // ══════════════════════════════════════════════════════════════════════════════
+
+class _SearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final String hint;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final VoidCallback onClear;
+
+  const _SearchField({
+    required this.controller,
+    required this.focusNode,
+    required this.hint,
+    required this.onChanged,
+    this.onSubmitted,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        onChanged: onChanged,
+        onSubmitted: onSubmitted,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+        ),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 12.5,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.textMuted,
+            size: 19,
+          ),
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, val, _) {
+              if (val.text.isNotEmpty) {
+                return IconButton(
+                  icon: const Icon(
+                    Icons.cancel_rounded,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                  onPressed: onClear,
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: const Text(
+                        '/',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          filled: true,
+          fillColor: const Color(0xFFF8FAFC),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _ExitCard extends StatelessWidget {
   final InventoryExitEntity exitData;
@@ -557,9 +1239,16 @@ class _ExitCard extends StatelessWidget {
             color:
                 isSelected
                     ? AppColors.danger.withValues(alpha: 0.5)
-                    : Colors.grey.shade200,
+                    : const Color(0xFFE2E8F0),
             width: isSelected ? 1.5 : 1,
           ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x050F172A),
+              blurRadius: 4,
+              offset: Offset(0, 1),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -569,7 +1258,7 @@ class _ExitCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    exitData.reason ?? 'Sin motivo',
+                    exitData.reason ?? 'Sin motivo especificado',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
@@ -582,7 +1271,7 @@ class _ExitCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 _Pill(
                   icon: Icons.warehouse_rounded,
-                  label: exitData.warehouseName ?? 'Almacén Desconocido',
+                  label: exitData.warehouseName ?? 'Almacén Central',
                   color: AppColors.textSecondary,
                 ),
               ],
@@ -595,7 +1284,7 @@ class _ExitCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${exitData.itemCount} productos',
+                      '${exitData.itemCount} ${exitData.itemCount == 1 ? "producto" : "productos"}',
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,
@@ -621,10 +1310,10 @@ class _ExitCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     const Text(
-                      'COSTO DE SALIDA',
+                      'COSTO TOTAL',
                       style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                        color: AppColors.textMuted,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
@@ -634,7 +1323,7 @@ class _ExitCard extends StatelessWidget {
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 16,
-                        color: AppColors.danger,
+                        color: AppColors.dangerDark,
                       ),
                     ),
                   ],
@@ -648,116 +1337,11 @@ class _ExitCard extends StatelessWidget {
   }
 }
 
-// ─── COMPONENTES COMPARTIDOS ──────────────────────────────────────────────────
-
-class _SummaryTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-  const _SummaryTile({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: 0.15),
-            color.withValues(alpha: 0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 15,
-              color: color,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: color.withValues(alpha: 0.8),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-class _SearchField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
-  const _SearchField({
-    required this.controller,
-    required this.hint,
-    required this.onChanged,
-    required this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) => TextField(
-    controller: controller,
-    onChanged: onChanged,
-    decoration: InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-      prefixIcon: const Icon(Icons.search_rounded, size: 20),
-      suffixIcon:
-          controller.text.isNotEmpty
-              ? IconButton(
-                icon: const Icon(Icons.clear_rounded, size: 18),
-                onPressed: onClear,
-              )
-              : null,
-      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.border),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.border),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.primary),
-      ),
-      filled: true,
-      fillColor: AppColors.surface,
-    ),
-  );
-}
-
 class _Pill extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color? color;
+
   const _Pill({required this.icon, required this.label, this.color});
 
   @override
