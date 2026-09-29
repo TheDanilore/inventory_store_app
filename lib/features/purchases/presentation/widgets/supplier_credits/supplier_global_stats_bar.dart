@@ -83,7 +83,7 @@ class SupplierGlobalStatsBar extends StatelessWidget {
     // Móvil / Tablet: Scroll horizontal sutil o columna compacta
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-      height: 96,
+      height: 84,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
@@ -136,31 +136,26 @@ class _BentoMetricCardState extends State<_BentoMetricCard> {
             color: _isHovered ? widget.iconColor.withValues(alpha: 0.45) : const Color(0xFFE2E8F0),
             width: 1,
           ),
-          boxShadow: [
-            const BoxShadow(
-              color: Color(0x080F172A),
-              blurRadius: 3,
-              offset: Offset(0, 1),
-            ),
+          boxShadow: const [
             BoxShadow(
-              color: const Color(0x0D0F172A),
-              blurRadius: _isHovered ? 16 : 12,
-              offset: Offset(0, _isHovered ? 4 : 3),
+              color: Color(0x050F172A),
+              blurRadius: 4,
+              offset: Offset(0, 1),
             ),
           ],
         ),
         child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: widget.iconBgColor,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(widget.icon, color: widget.iconColor, size: 22),
+              child: Icon(widget.icon, color: widget.iconColor, size: 20),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

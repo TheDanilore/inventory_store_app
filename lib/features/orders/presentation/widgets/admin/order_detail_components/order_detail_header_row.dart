@@ -10,6 +10,7 @@ class OrderDetailHeaderRow extends StatelessWidget {
   final bool canToggleEdit;
   final VoidCallback onToggleEditing;
   final VoidCallback onShare;
+  final VoidCallback? onClose;
 
   const OrderDetailHeaderRow({
     super.key,
@@ -19,6 +20,7 @@ class OrderDetailHeaderRow extends StatelessWidget {
     this.canToggleEdit = true,
     required this.onToggleEditing,
     required this.onShare,
+    this.onClose,
   });
 
   void _copyOrderId(BuildContext context) {
@@ -169,6 +171,36 @@ class OrderDetailHeaderRow extends StatelessWidget {
                     ),
                   ),
                 ),
+              ),
+            ],
+            if (onClose != null) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const Text(
+                  'ESC',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(
+                  Icons.close_rounded,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
+                tooltip: 'Cerrar detalle (Esc)',
+                visualDensity: VisualDensity.compact,
+                onPressed: onClose,
               ),
             ],
           ],

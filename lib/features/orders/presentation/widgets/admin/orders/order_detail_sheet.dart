@@ -639,22 +639,26 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
         // We use widget.order as fallback for the initial render, before state.order is populated.
         final displayOrder = rootState.order ?? widget.order;
 
+        final isDesktopOrDialog = MediaQuery.sizeOf(context).width >= 800;
+
         Widget child = Container(
           height:
               widget.isEmbedded
                   ? null
-                  : MediaQuery.of(context).size.height * 0.9,
+                  : (isDesktopOrDialog
+                      ? double.infinity
+                      : MediaQuery.of(context).size.height * 0.9),
           decoration: BoxDecoration(
-            color: widget.isEmbedded ? const Color(0xFFF8FAFC) : const Color(0xFFF8FAFC),
+            color: const Color(0xFFF8FAFC),
             borderRadius:
-                widget.isEmbedded
+                widget.isEmbedded || isDesktopOrDialog
                     ? BorderRadius.zero
                     : const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: SafeArea(
             child: Column(
               children: [
-                if (!widget.isEmbedded)
+                if (!widget.isEmbedded && !isDesktopOrDialog)
                   Center(
                     child: Container(
                       margin: const EdgeInsets.only(top: 10, bottom: 6),
@@ -697,7 +701,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                             controller: _scrollController,
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                             children: [
-                              // HEADER (solo en modal/bottom sheet móvil, no duplicar en slide-over drawer desktop)
+                              // HEADER
                               if (!widget.isEmbedded) ...[
                                 BlocBuilder<OrderDetailCubit, OrderDetailState>(
                                   buildWhen:
@@ -712,6 +716,9 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                       isEditing: _isEditing,
                                       canToggleEdit: state.canToggleEdit,
                                       onToggleEditing: () => _toggleEditing(state),
+                                      onClose: Navigator.of(context).canPop()
+                                          ? () => _handlePop(false)
+                                          : null,
                                       onShare:
                                           () => OrderPdfGenerator.shareTicket(
                                             state.order!,

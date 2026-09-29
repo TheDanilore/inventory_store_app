@@ -525,19 +525,13 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
         color: AppColors.background,
         borderRadius:
             widget.isDialog
-                ? BorderRadius.circular(20)
+                ? BorderRadius.zero
                 : const BorderRadius.vertical(top: Radius.circular(28)),
-        child: Container(
+        child: SizedBox(
           height:
               widget.isDialog
-                  ? null
+                  ? double.infinity
                   : MediaQuery.of(context).size.height * 0.85,
-          constraints:
-              widget.isDialog
-                  ? BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.85,
-                  )
-                  : null,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -561,11 +555,21 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                   color: AppColors.primary,
                   backgroundColor: AppColors.border,
                 ),
-              Padding(
+              Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
-                  vertical: 8,
+                  vertical: 12,
                 ),
+                decoration: widget.isDialog
+                    ? const BoxDecoration(
+                        color: Colors.white,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Color(0xFFE2E8F0),
+                          ),
+                        ),
+                      )
+                    : null,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final isNarrow = constraints.maxWidth < 600;
@@ -697,6 +701,28 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                         ],
                         if (widget.isDialog) ...[
                           const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            child: const Text(
+                              'ESC',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
                           IconButton(
                             onPressed: () => Navigator.of(context).pop(),
                             icon: const Icon(
@@ -704,7 +730,7 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                               size: 20,
                               color: AppColors.textSecondary,
                             ),
-                            tooltip: 'Cerrar',
+                            tooltip: 'Cerrar detalle (Esc)',
                             visualDensity: VisualDensity.compact,
                           ),
                         ],

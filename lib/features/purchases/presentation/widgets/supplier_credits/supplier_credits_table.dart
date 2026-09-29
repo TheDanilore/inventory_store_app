@@ -548,14 +548,9 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
             border: Border.all(color: const Color(0xFFE2E8F0)),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x080F172A),
-                blurRadius: 3,
+                color: Color(0x050F172A),
+                blurRadius: 4,
                 offset: Offset(0, 1),
-              ),
-              BoxShadow(
-                color: Color(0x0D0F172A),
-                blurRadius: 16,
-                offset: Offset(0, 4),
               ),
             ],
           ),

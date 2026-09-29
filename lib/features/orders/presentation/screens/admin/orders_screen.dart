@@ -101,14 +101,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final foundIndex = orders.indexWhere((o) => o.id == targetId);
     if (foundIndex != -1) {
       _pendingTargetOrderId = null;
-      _selectOrder(orders[foundIndex], updateUrl: isWide);
-      if (!isWide) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _selectedOrder != null) {
-            _showOrderDetails(_selectedOrder!, false);
-          }
-        });
-      }
+      final targetOrder = orders[foundIndex];
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showOrderDetails(targetOrder, isWide);
+        }
+      });
     } else {
       _pendingTargetOrderId = null;
       _fetchAndSelectOrder(targetId, isWide);
@@ -130,14 +128,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
           );
         },
         (order) {
-          _selectOrder(order, updateUrl: isWide);
-          if (!isWide) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && _selectedOrder != null) {
-                _showOrderDetails(_selectedOrder!, false);
-              }
-            });
-          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _showOrderDetails(order, isWide);
+            }
+          });
         },
       );
     } catch (e, st) {
@@ -366,9 +361,90 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
+  bool _isSideSheetOpen = false;
+
+  Future<void> _openDesktopDetailSheet(OrderEntity order) async {
+    if (!mounted || _isSideSheetOpen) return;
+    _isSideSheetOpen = true;
+    _selectOrder(order, updateUrl: true);
+
+    final cubit = context.read<OrdersCubit>();
+    final configCubit = context.read<AppConfigCubit>();
+
+    await showGeneralDialog(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: true,
+      barrierLabel: 'Cerrar detalle',
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      transitionDuration: const Duration(milliseconds: 240),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        final screenWidth = MediaQuery.sizeOf(dialogContext).width;
+        final drawerWidth = screenWidth >= 1440 ? 640.0 : 580.0;
+
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: drawerWidth,
+              height: double.infinity,
+              decoration: const BoxDecoration(
+                color: AppColors.background,
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x26000000),
+                    blurRadius: 24,
+                    offset: Offset(-4, 0),
+                  ),
+                ],
+              ),
+              child: MultiBlocProvider(
+                providers: [
+                  BlocProvider.value(value: cubit),
+                  BlocProvider.value(value: configCubit),
+                ],
+                child: OrderDetailSheet(
+                  key: ValueKey(order.id),
+                  order: order,
+                  isEmbedded: false,
+                  onOrderUpdated: (updated) {
+                    if (mounted) {
+                      cubit.updateOrderInList(updated);
+                      cubit.loadOrders(background: true);
+                    }
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            ),
+          ),
+          child: child,
+        );
+      },
+    );
+
+    _isSideSheetOpen = false;
+    if (mounted) {
+      _selectOrder(null, updateUrl: true);
+    }
+  }
+
   Future<void> _showOrderDetails(OrderEntity order, bool isWide) async {
     if (isWide) {
-      _selectOrder(order, updateUrl: true);
+      await _openDesktopDetailSheet(order);
       return;
     }
 
@@ -396,75 +472,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (result == true && mounted) {
       context.read<OrdersCubit>().loadOrders(background: true);
     }
-  }
-
-  Widget _buildDrawerStatusBadge(String status) {
-    Color bg;
-    Color text;
-    String label;
-    IconData icon;
-
-    switch (status.toUpperCase()) {
-      case 'COMPLETED':
-        bg = AppColors.successLight;
-        text = AppColors.successDark;
-        label = 'Completado';
-        icon = Icons.check_circle_rounded;
-        break;
-      case 'DRAFT':
-        bg = AppColors.warningLight;
-        text = AppColors.warningDark;
-        label = 'Borrador';
-        icon = Icons.hourglass_top_rounded;
-        break;
-      case 'CANCELLED':
-        bg = AppColors.dangerLight;
-        text = AppColors.danger;
-        label = 'Cancelado';
-        icon = Icons.cancel_rounded;
-        break;
-      case 'RETURNED':
-        bg = Colors.purple.shade50;
-        text = Colors.purple.shade700;
-        label = 'Devuelto';
-        icon = Icons.assignment_return_rounded;
-        break;
-      default:
-        bg = Colors.grey.shade100;
-        text = AppColors.textSecondary;
-        label = status;
-        icon = Icons.info_outline_rounded;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: text),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: text,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _onOrderEmbeddedPop(bool wasModified) {
-    if (wasModified && mounted) {
-      context.read<OrdersCubit>().loadOrders(background: true);
-    }
-    _selectOrder(null, updateUrl: true);
   }
 
   @override
@@ -616,206 +623,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     _buildPagination(state, cubit, isWide: isWide),
                   ],
                 );
-
-                // --- ESTRATEGIA ADAPTATIVA DESKTOP: TABLA 100% + SLIDE-OVER DRAWER CON BACKDROP ---
-                if (isWide) {
-                  final activeOrder = currentSelectedOrder;
-                  final drawerWidth = constraints.maxWidth >= 1440 ? 640.0 : 580.0;
-
-                  return Stack(
-                    children: [
-                      // Contenido principal 100% full-width
-                      Positioned.fill(
-                        child: Container(
-                          color: AppColors.background,
-                          child: mainListContent,
-                        ),
-                      ),
-
-                      // SLIDE-OVER DRAWER LATERAL (Inspector retráctil como en pos_sales_view.dart)
-                      if (activeOrder != null) ...[
-                        // Backdrop con dismiss al tocar fuera
-                        Positioned.fill(
-                          child: GestureDetector(
-                            onTap: () => _selectOrder(null, updateUrl: true),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              color: Colors.black.withValues(alpha: 0.28),
-                            ),
-                          ),
-                        ),
-
-                        // Panel lateral deslizante
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: RepaintBoundary(
-                            child: Container(
-                              width: drawerWidth,
-                              height: double.infinity,
-                              decoration: BoxDecoration(
-                                color: AppColors.background,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.18),
-                                    blurRadius: 28,
-                                    spreadRadius: 4,
-                                    offset: const Offset(-8, 0),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                children: [
-                                  // Cabecera unificada del Slide-Over Drawer
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 18,
-                                      vertical: 12,
-                                    ),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      border: Border(
-                                        bottom: BorderSide(
-                                          color: Color(0xFFE2E8F0),
-                                        ),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        // ID con copia rápida en 1-click
-                                        InkWell(
-                                          onTap: () {
-                                            Clipboard.setData(
-                                              ClipboardData(text: activeOrder.id),
-                                            );
-                                            AppSnackbar.show(
-                                              context,
-                                              message: 'ID copiado al portapapeles',
-                                              type: SnackbarType.success,
-                                            );
-                                          },
-                                          borderRadius: BorderRadius.circular(6),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF1F5F9),
-                                              borderRadius: BorderRadius.circular(6),
-                                              border: Border.all(
-                                                color: const Color(0xFFE2E8F0),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(
-                                                  Icons.receipt_rounded,
-                                                  size: 13,
-                                                  color: AppColors.teal,
-                                                ),
-                                                const SizedBox(width: 5),
-                                                Text(
-                                                  '#${activeOrder.id.length >= 8 ? activeOrder.id.substring(0, 8).toUpperCase() : activeOrder.id.toUpperCase()}',
-                                                  style: const TextStyle(
-                                                    fontFamily: 'monospace',
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w800,
-                                                    color: AppColors.textPrimary,
-                                                    letterSpacing: 0.4,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                const Icon(
-                                                  Icons.copy_rounded,
-                                                  size: 11,
-                                                  color: AppColors.textMuted,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        _buildDrawerStatusBadge(activeOrder.status),
-                                        const Spacer(),
-                                        // Botón Imprimir Ticket
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.print_rounded,
-                                            size: 19,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                          tooltip: 'Imprimir Ticket [P]',
-                                          onPressed: () => _printOrderTicket(activeOrder),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        // Badge de atajo [ESC]
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.background,
-                                            borderRadius: BorderRadius.circular(4),
-                                            border: Border.all(
-                                              color: const Color(0xFFE2E8F0),
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            'ESC',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.textMuted,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.close_rounded,
-                                            size: 20,
-                                          ),
-                                          tooltip: 'Cerrar detalle (Esc)',
-                                          onPressed: () => _selectOrder(null, updateUrl: true),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // Contenido del detalle con soporte completo
-                                  Expanded(
-                                    child: AnimatedSwitcher(
-                                      duration: const Duration(milliseconds: 250),
-                                      child: OrderDetailSheet(
-                                        key: ValueKey(activeOrder.id),
-                                        order: activeOrder,
-                                        isEmbedded: true,
-                                        onPop: _onOrderEmbeddedPop,
-                                        onOrderUpdated: (updated) {
-                                          if (mounted) {
-                                            context
-                                                .read<OrdersCubit>()
-                                                .updateOrderInList(updated);
-                                            _selectOrder(updated, updateUrl: true);
-                                            context
-                                                .read<OrdersCubit>()
-                                                .loadOrders(background: true);
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  );
-                }
 
                 return mainListContent;
               },
@@ -1106,14 +913,9 @@ class _BentoOrderKpiCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x080F172A),
-            blurRadius: 3,
+            color: Color(0x050F172A),
+            blurRadius: 4,
             offset: Offset(0, 1),
-          ),
-          BoxShadow(
-            color: Color(0x0D0F172A),
-            blurRadius: 12,
-            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -1611,14 +1413,9 @@ class _OrdersToolbar extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x080F172A),
-            blurRadius: 3,
+            color: Color(0x050F172A),
+            blurRadius: 4,
             offset: Offset(0, 1),
-          ),
-          BoxShadow(
-            color: Color(0x0D0F172A),
-            blurRadius: 12,
-            offset: Offset(0, 3),
           ),
         ],
       ),
