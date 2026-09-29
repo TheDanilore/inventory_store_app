@@ -24,7 +24,7 @@ class _SupplierCreditCardState extends State<SupplierCreditCard> {
   bool _isHovered = false;
 
   Color _getDebtColor(double pct, bool isMaxedOut, double debt) {
-    if (debt == 0) return AppColors.success;
+    if (debt <= 0) return AppColors.textMuted;
     if (isMaxedOut || pct >= 0.90) return AppColors.danger;
     if (pct >= 0.75) return AppColors.warning;
     return AppColors.textPrimary;

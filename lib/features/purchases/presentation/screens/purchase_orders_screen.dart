@@ -30,6 +30,15 @@ class PurchaseOrdersScreen extends StatefulWidget {
 
   const PurchaseOrdersScreen({super.key, this.targetOrderId});
 
+  static const _statusLabels = {
+    'Todos': 'Todos',
+    'PENDING': 'Pendiente',
+    'SENT': 'Enviado',
+    'PARTIAL': 'Parcial',
+    'RECEIVED': 'Recibido',
+    'CANCELLED': 'Cancelado',
+  };
+
   @override
   State<PurchaseOrdersScreen> createState() => _PurchaseOrdersScreenState();
 }
@@ -55,32 +64,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     final primaryFocus = FocusManager.instance.primaryFocus;
     if (primaryFocus == null) return false;
     return primaryFocus.context?.widget is EditableText;
-  }
-
-  static const _statusLabels = {
-    'Todos': 'Todos',
-    'PENDING': 'Pendiente',
-    'SENT': 'Enviado',
-    'PARTIAL': 'Parcial',
-    'RECEIVED': 'Recibido',
-    'CANCELLED': 'Cancelado',
-  };
-
-  static Color? _statusColorForFilter(String key) {
-    switch (key) {
-      case 'PENDING':
-        return AppColors.warning;
-      case 'SENT':
-        return const Color(0xFF3B82F6);
-      case 'PARTIAL':
-        return Colors.amber.shade800;
-      case 'RECEIVED':
-        return AppColors.teal;
-      case 'CANCELLED':
-        return AppColors.error;
-      default:
-        return null;
-    }
   }
 
   @override
@@ -309,73 +292,71 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     return KeyEventResult.ignored;
   }
 
-  Widget _buildRefreshButton(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: () {
-        _itemsCache.clear();
-        context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
-      },
-      icon: const Icon(
-        Icons.refresh_rounded,
-        size: 16,
-        color: AppColors.textSecondary,
-      ),
-      label: const Text(
-        'Actualizar',
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 13,
-          color: AppColors.textSecondary,
-        ),
-      ),
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: AppColors.border),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-    );
-  }
+  Widget _buildStatusBadge(String status) {
+    Color bg;
+    Color text;
+    String label;
+    IconData icon;
 
-  Widget _buildNewOrderButton(BuildContext context, {bool isHeader = false}) {
-    if (isHeader) {
-      return FilledButton.icon(
-        onPressed: () {
-          context.go('/purchase-orders/form');
-        },
-        icon: Icon(
-          _hasDraft ? Icons.edit_note_rounded : Icons.add_rounded,
-          size: 18,
-        ),
-        label: Text(
-          _hasDraft ? 'Continuar Borrador' : 'Nueva orden',
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-        ),
-        style: FilledButton.styleFrom(
-          backgroundColor:
-              _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+    switch (status.toUpperCase()) {
+      case 'RECEIVED':
+        bg = AppColors.successLight;
+        text = AppColors.successDark;
+        label = 'Recibido';
+        icon = Icons.task_alt_rounded;
+        break;
+      case 'SENT':
+        bg = const Color(0xFFEFF6FF);
+        text = const Color(0xFF1D4ED8);
+        label = 'Enviado';
+        icon = Icons.local_shipping_rounded;
+        break;
+      case 'PARTIAL':
+        bg = const Color(0xFFFEF3C7);
+        text = const Color(0xFFB45309);
+        label = 'Parcial';
+        icon = Icons.pie_chart_outline_rounded;
+        break;
+      case 'PENDING':
+        bg = AppColors.warningLight;
+        text = AppColors.warningDark;
+        label = 'Pendiente';
+        icon = Icons.schedule_rounded;
+        break;
+      case 'CANCELLED':
+        bg = AppColors.dangerLight;
+        text = AppColors.danger;
+        label = 'Cancelado';
+        icon = Icons.cancel_rounded;
+        break;
+      default:
+        bg = Colors.grey.shade100;
+        text = AppColors.textSecondary;
+        label = status;
+        icon = Icons.info_outline_rounded;
     }
 
-    return FloatingActionButton.extended(
-      onPressed: () {
-        context.go('/purchase-orders/form');
-      },
-      icon: Icon(_hasDraft ? Icons.edit_note_rounded : Icons.add_rounded),
-      label: Text(
-        _hasDraft ? 'Continuar Borrador' : 'Nueva orden',
-        style: const TextStyle(fontWeight: FontWeight.bold),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
       ),
-      backgroundColor:
-          _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-      foregroundColor: Colors.white,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: text),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: text,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -561,113 +542,46 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     return AdminLayout(
       title: 'Órdenes de Compra',
       showBackButton: true,
-      actions:
-          isDesktopOrTablet
-              ? [
-                  // Selector de modo Vista: Tabla vs Tarjetas
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
+      actions: isDesktopOrTablet
+          ? null
+          : [
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                tooltip: 'Actualizar órdenes',
+                onPressed: () {
+                  _itemsCache.clear();
+                  context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilledButton.icon(
+                  onPressed: () {
+                    context.push('/purchase-orders/form');
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 0,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: 'Vista Tabla Pro [V]',
-                          icon: Icon(
-                            Icons.table_rows_rounded,
-                            size: 16,
-                            color:
-                                _isTableView
-                                    ? AppColors.primary
-                                    : AppColors.textMuted,
-                          ),
-                          style: IconButton.styleFrom(
-                            backgroundColor:
-                                _isTableView
-                                    ? AppColors.surface
-                                    : Colors.transparent,
-                            padding: const EdgeInsets.all(6),
-                            elevation: _isTableView ? 1 : 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                          onPressed: () => setState(() => _isTableView = true),
-                        ),
-                        IconButton(
-                          tooltip: 'Vista Tarjetas [V]',
-                          icon: Icon(
-                            Icons.grid_view_rounded,
-                            size: 16,
-                            color:
-                                !_isTableView
-                                    ? AppColors.primary
-                                    : AppColors.textMuted,
-                          ),
-                          style: IconButton.styleFrom(
-                            backgroundColor:
-                                !_isTableView
-                                    ? AppColors.surface
-                                    : Colors.transparent,
-                            padding: const EdgeInsets.all(6),
-                            elevation: !_isTableView ? 1 : 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                          onPressed: () => setState(() => _isTableView = false),
-                        ),
-                      ],
+                    visualDensity: VisualDensity.compact,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  _buildRefreshButton(context),
-                  const SizedBox(width: 8),
-                  _buildNewOrderButton(context, isHeader: true),
-                ]
-              : [
-                  IconButton(
-                    icon: const Icon(Icons.refresh_rounded),
-                    tooltip: 'Actualizar órdenes',
-                    onPressed: () {
-                      context
-                          .read<PurchaseOrdersCubit>()
-                          .loadOrders(refresh: true);
-                    },
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilledButton.icon(
-                      onPressed: () {
-                        context.push('/purchase-orders/form');
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 0,
-                        ),
-                        visualDensity: VisualDensity.compact,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      icon: const Icon(Icons.add_rounded, size: 16),
-                      label: const Text(
-                        'Nueva',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                  icon: const Icon(Icons.add_rounded, size: 16),
+                  label: const Text(
+                    'Nueva',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ],
+                ),
+              ),
+            ],
       floatingActionButton: null,
       body: Focus(
         focusNode: _screenFocusNode,
@@ -718,13 +632,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                         _selectedOrder = filtered[index];
                       }
                       // Si no está en filtered (es foránea o filtrada), SE PRESERVA intacta en _selectedOrder!
-                    } else if (isTablet) {
-                      _selectedOrder = filtered.first;
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted && _selectedOrder != null) {
-                          _selectOrder(_selectedOrder, updateUrl: true);
-                        }
-                      });
                     }
                   } else {
                     _selectedOrder = null;
@@ -796,103 +703,43 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                         ),
                       ),
 
-                    // ── Ribbon Compacto de KPIs (42dp) ──────────────────────────
+                    // ── 1. BENTO KPI BAR PARA COMPRAS ─────────────────────────
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                      child: _CompactKpiRibbon(
-                        orderCount: filtered.length,
+                      child: _PurchaseOrdersBentoKpiBar(
+                        orderCount: viewModel.orders.length,
                         totalAmount: totalAmount,
                         pendingCount: pendingCount,
+                        isDesktop: isTablet,
                       ),
                     ),
 
-                    // ── Filtros y Búsqueda ────────────────────────────────────
+                    // ── 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh, Nueva Orden) ─
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _SearchField(
-                                  controller: _searchCtrl,
-                                  focusNode: _searchFocusNode,
-                                  hint:
-                                      isTablet
-                                          ? 'Buscar proveedor, doc... (Ctrl K)'
-                                          : 'Buscar proveedor o documento...',
-                                  onChanged: (v) {
-                                    _debounce?.cancel();
-                                    _debounce = Timer(
-                                      const Duration(milliseconds: 300),
-                                      () => viewModel.setSearchText(v),
-                                    );
-                                  },
-                                  onSubmitted: (v) {
-                                    _debounce?.cancel();
-                                    viewModel.setSearchText(v);
-                                  },
-                                  onClear: () {
-                                    _debounce?.cancel();
-                                    _searchCtrl.clear();
-                                    viewModel.setSearchText('');
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              DateFilterCalendar(
-                                height: 40,
-                                borderRadius: BorderRadius.circular(10),
-                                dateRange: viewModel.dateRange,
-                                onDateRangeSelected:
-                                    (range) => cubit.setDateRange(
-                                      range.start,
-                                      range.end,
-                                    ),
-                                onClear: () => cubit.setDateRange(null, null),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              final chips =
-                                  _statusLabels.entries.map((e) {
-                                    final sel = viewModel.statusFilter == e.key;
-                                    final color = _statusColorForFilter(e.key);
-                                    return Padding(
-                                      padding: const EdgeInsets.only(
-                                        right: 8,
-                                        bottom: 6,
-                                      ),
-                                      child: _POFilterPill(
-                                        label: e.value,
-                                        isSelected: sel,
-                                        activeColor: color,
-                                        onTap:
-                                            () => viewModel.setStatusFilter(
-                                              e.key,
-                                            ),
-                                      ),
-                                    );
-                                  }).toList();
-
-                              if (constraints.maxWidth > 600) {
-                                return Wrap(children: chips);
-                              }
-
-                              return SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                physics: const BouncingScrollPhysics(),
-                                child: Row(children: chips),
-                              );
-                            },
-                          ),
-                        ],
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                      child: _PurchaseOrdersToolbar(
+                        searchCtrl: _searchCtrl,
+                        searchFocusNode: _searchFocusNode,
+                        onSearchChanged: (v) {
+                          _debounce?.cancel();
+                          _debounce = Timer(
+                            const Duration(milliseconds: 300),
+                            () => viewModel.setSearchText(v),
+                          );
+                        },
+                        viewModel: viewModel,
+                        cubit: cubit,
+                        isDesktop: isTablet,
+                        isTableView: _isTableView,
+                        hasDraft: _hasDraft,
+                        onToggleTableView: (val) => setState(() => _isTableView = val),
+                        onRefresh: () {
+                          _itemsCache.clear();
+                          cubit.loadOrders(refresh: true);
+                        },
+                        onNewOrder: () => context.go('/purchase-orders/form'),
                       ),
                     ),
-                    const SizedBox(height: 6),
 
                     // ── Encabezado de Navegación y Contador (Estilo Pedidos) ────
                     if (!viewModel.isLoading && filtered.isNotEmpty)
@@ -918,7 +765,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                 decoration: BoxDecoration(
                                   color: AppColors.surface,
                                   borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: AppColors.border),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
                                 ),
                                 child: const Text(
                                   '↑ ↓ navegar',
@@ -939,7 +786,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: AppColors.border),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
                               ),
                               child: Text(
                                 'Pág. ${viewModel.currentPage + 1} / ${viewModel.totalPages}',
@@ -954,95 +801,75 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                         ),
                       ),
 
-                    // ── Lista de Órdenes ──────────────────────────────────────
+                    // ── Lista / Tabla de Órdenes ──────────────────────────────
                     Expanded(
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 220),
                         switchInCurve: Curves.easeOut,
                         switchOutCurve: Curves.easeIn,
-                        child:
-                            viewModel.isLoading
-                                ? ListView.separated(
-                                  key: const ValueKey('loading'),
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    0,
-                                    16,
-                                    0,
-                                  ),
-                                  itemCount: 5,
-                                  separatorBuilder:
-                                      (_, _) => const SizedBox(height: 10),
-                                  itemBuilder:
-                                      (_, _) => AppShimmer(
-                                        width: double.infinity,
-                                        height: 90,
-                                        borderRadius: 16,
-                                      ),
-                                )
-                                : filtered.isEmpty
-                                ? AppEmptyState(
-                                  key: const ValueKey('empty'),
-                                  icon: Icons.shopping_cart_outlined,
-                                  title: 'Sin Resultados',
-                                  message:
-                                      'Sin resultados para los filtros aplicados',
-                                )
-                                : (_isTableView && isTablet)
-                                ? PurchaseOrdersTableView(
-                                  key: ValueKey(
-                                    'table_${viewModel.statusFilter}_${viewModel.currentPage}',
-                                  ),
-                                  orders: displayOrders,
-                                  selectedOrder: _selectedOrder,
-                                  onSelectOrder:
-                                      (po) =>
-                                          _selectOrder(po, updateUrl: true),
-                                  onRefresh: () {
-                                    _itemsCache.clear();
-                                    cubit.loadOrders(refresh: true);
-                                  },
-                                )
-                                : RefreshIndicator(
-                                  key: ValueKey(
-                                    '${viewModel.statusFilter}_${viewModel.currentPage}',
-                                  ),
-                                  color: AppColors.primary,
-                                  onRefresh: () {
-                                    _itemsCache.clear();
-                                    return cubit.loadOrders(refresh: true);
-                                  },
-                                  child: ListView.separated(
-                                    physics:
-                                        const AlwaysScrollableScrollPhysics(),
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      0,
-                                      16,
-                                      16,
-                                    ),
-                                    itemCount: displayOrders.length,
-                                    separatorBuilder:
-                                        (_, _) => const SizedBox(height: 10),
-                                    itemBuilder: (context, index) {
-                                      final po = displayOrders[index];
-                                      final isSel =
-                                          isTablet &&
-                                          _selectedOrder?.id == po.id;
-                                      return POCard(
-                                        po: po,
-                                        isSelected: isSel,
-                                        onTap: () {
-                                          if (isTablet) {
-                                            _selectOrder(po, updateUrl: true);
-                                          } else {
-                                            _showDetail(context, po);
-                                          }
-                                        },
-                                      );
-                                    },
-                                  ),
+                        child: viewModel.isLoading
+                            ? ListView.separated(
+                                key: const ValueKey('loading'),
+                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                                itemCount: 5,
+                                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                                itemBuilder: (_, _) => const AppShimmer(
+                                  width: double.infinity,
+                                  height: 90,
+                                  borderRadius: 16,
                                 ),
+                              )
+                            : filtered.isEmpty
+                                ? const AppEmptyState(
+                                    key: ValueKey('empty'),
+                                    icon: Icons.shopping_cart_outlined,
+                                    title: 'Sin Resultados',
+                                    message: 'Sin resultados para los filtros aplicados',
+                                  )
+                                : (_isTableView && isTablet)
+                                    ? PurchaseOrdersTableView(
+                                        key: ValueKey(
+                                          'table_${viewModel.statusFilter}_${viewModel.currentPage}',
+                                        ),
+                                        orders: displayOrders,
+                                        selectedOrder: _selectedOrder,
+                                        onSelectOrder: (po) => _selectOrder(po, updateUrl: true),
+                                        onRefresh: () {
+                                          _itemsCache.clear();
+                                          cubit.loadOrders(refresh: true);
+                                        },
+                                      )
+                                    : RefreshIndicator(
+                                        key: ValueKey(
+                                          '${viewModel.statusFilter}_${viewModel.currentPage}',
+                                        ),
+                                        color: AppColors.primary,
+                                        onRefresh: () {
+                                          _itemsCache.clear();
+                                          return cubit.loadOrders(refresh: true);
+                                        },
+                                        child: ListView.separated(
+                                          physics: const AlwaysScrollableScrollPhysics(),
+                                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                          itemCount: displayOrders.length,
+                                          separatorBuilder: (_, _) => const SizedBox(height: 10),
+                                          itemBuilder: (context, index) {
+                                            final po = displayOrders[index];
+                                            final isSel = isTablet && _selectedOrder?.id == po.id;
+                                            return POCard(
+                                              po: po,
+                                              isSelected: isSel,
+                                              onTap: () {
+                                                if (isTablet) {
+                                                  _selectOrder(po, updateUrl: true);
+                                                } else {
+                                                  _showDetail(context, po);
+                                                }
+                                              },
+                                            );
+                                          },
+                                        ),
+                                      ),
                       ),
                     ),
 
@@ -1051,68 +878,197 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   ],
                 );
 
-                // ── ESTRUCTURA DOS PANELES (SPLIT VIEW ERP) ──────────────────
+                // ── ESTRUCTURA ADAPTATIVA DESKTOP: TABLA 100% + SLIDE-OVER DRAWER CON BACKDROP ──
                 if (isTablet) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  final activeOrder = _selectedOrder;
+                  final drawerWidth = constraints.maxWidth >= 1440 ? 640.0 : 580.0;
+
+                  return Stack(
                     children: [
-                      Expanded(
-                        flex: _isTableView ? 5 : 4,
-                        child: RepaintBoundary(child: listContent),
+                      // 1. Contenido principal 100% full-width
+                      Positioned.fill(
+                        child: Container(
+                          color: AppColors.background,
+                          child: listContent,
+                        ),
                       ),
-                      Container(width: 1, color: AppColors.border),
-                      Expanded(
-                        flex: _isTableView ? 5 : 6,
-                        child: RepaintBoundary(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 250),
-                            child:
-                                _selectedOrder == null
-                                    ? const AppEmptyState(
-                                      key: ValueKey('empty_detail'),
-                                      icon: Icons.receipt_long_rounded,
-                                      title: 'Ninguna Orden Seleccionada',
-                                      message:
-                                          'Selecciona una orden del panel izquierdo o navega con las flechas ↑/↓.',
-                                    )
-                                    : Padding(
-                                      key: ValueKey(_selectedOrder!.id),
-                                      padding: const EdgeInsets.all(16.0),
+
+                      // 2. Slide-Over Side Sheet Inspector con Backdrop (como pos_sales_view.dart)
+                      if (activeOrder != null) ...[
+                        // Backdrop con dismiss al hacer clic fuera
+                        Positioned.fill(
+                          child: GestureDetector(
+                            onTap: () => _selectOrder(null, updateUrl: true),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              color: Colors.black.withValues(alpha: 0.28),
+                            ),
+                          ),
+                        ),
+
+                        // Panel lateral deslizante
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: RepaintBoundary(
+                            child: Container(
+                              width: drawerWidth,
+                              height: double.infinity,
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.18),
+                                    blurRadius: 28,
+                                    spreadRadius: 4,
+                                    offset: const Offset(-8, 0),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                children: [
+                                  // Cabecera unificada del Slide-Over Drawer
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 12,
+                                    ),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Color(0xFFE2E8F0),
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        // ID con copia rápida en 1-click
+                                        InkWell(
+                                          onTap: () {
+                                            Clipboard.setData(
+                                              ClipboardData(text: activeOrder.id),
+                                            );
+                                            AppSnackbar.show(
+                                              context,
+                                              message: 'ID copiado al portapapeles',
+                                              type: SnackbarType.success,
+                                            );
+                                          },
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF1F5F9),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color: const Color(0xFFE2E8F0),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.receipt_rounded,
+                                                  size: 13,
+                                                  color: AppColors.teal,
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  '#${activeOrder.id.length >= 8 ? activeOrder.id.substring(0, 8).toUpperCase() : activeOrder.id.toUpperCase()}',
+                                                  style: const TextStyle(
+                                                    fontFamily: 'monospace',
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: AppColors.textPrimary,
+                                                    letterSpacing: 0.4,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Icon(
+                                                  Icons.copy_rounded,
+                                                  size: 11,
+                                                  color: AppColors.textMuted,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildStatusBadge(activeOrder.status),
+                                        const Spacer(),
+                                        // Badge atajo [ESC]
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.background,
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(
+                                              color: const Color(0xFFE2E8F0),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'ESC',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.close_rounded,
+                                            size: 20,
+                                          ),
+                                          tooltip: 'Cerrar detalle (Esc)',
+                                          onPressed: () => _selectOrder(null, updateUrl: true),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  // Contenido del detalle con PODetailSheet
+                                  Expanded(
+                                    child: AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 250),
                                       child: PODetailSheet(
-                                        po: _selectedOrder!,
+                                        key: ValueKey(activeOrder.id),
+                                        po: activeOrder,
                                         isDialog: true,
                                         onPaymentSuccess: () {
-                                          _itemsCache.remove(_selectedOrder?.id);
+                                          _itemsCache.remove(activeOrder.id);
                                           if (context.mounted) {
                                             context
                                                 .read<PurchaseOrdersCubit>()
                                                 .loadOrders(refresh: true);
                                           }
                                         },
-                                        loadItems: () =>
-                                            _loadOrderItems(_selectedOrder!.id),
-                                        onReceive:
-                                            () => _handleReceiveOrder(
-                                              context,
-                                              _selectedOrder!,
-                                            ),
+                                        loadItems: () => _loadOrderItems(activeOrder.id),
+                                        onReceive: () => _handleReceiveOrder(context, activeOrder),
                                         onUpdateStatus: (status) async {
-                                          await viewModel.updateOrderStatus(
-                                            _selectedOrder!.id,
-                                            status,
-                                          );
+                                          await viewModel.updateOrderStatus(activeOrder.id, status);
                                           if (mounted && _selectedOrder != null) {
                                             setState(() {
-                                              _selectedOrder = _selectedOrder!
-                                                  .copyWith(status: status);
+                                              _selectedOrder = _selectedOrder!.copyWith(status: status);
                                             });
                                           }
                                         },
                                       ),
                                     ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   );
                 }
@@ -1128,283 +1084,600 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Ribbon Compacto de KPIs (Estilo Stripe / Linear, altura fija 42dp)
+// Bento KPI Bar para Órdenes de Compra (Estilo Stripe / Linear)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _CompactKpiRibbon extends StatelessWidget {
+class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
   final int orderCount;
   final double totalAmount;
   final int pendingCount;
+  final bool isDesktop;
 
-  const _CompactKpiRibbon({
+  const _PurchaseOrdersBentoKpiBar({
     required this.orderCount,
     required this.totalAmount,
     required this.pendingCount,
+    required this.isDesktop,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = [
+      _BentoPOKpiCard(
+        title: 'Total Órdenes',
+        value: '$orderCount',
+        subtitle: 'Registradas en el sistema',
+        icon: Icons.receipt_long_rounded,
+        iconColor: AppColors.primary,
+        iconBgColor: AppColors.primary.withValues(alpha: 0.1),
+      ),
+      _BentoPOKpiCard(
+        title: 'Monto Compras',
+        value: 'S/ ${totalAmount.toStringAsFixed(2)}',
+        subtitle: 'Volumen total compras',
+        icon: Icons.payments_rounded,
+        iconColor: AppColors.teal,
+        iconBgColor: AppColors.teal.withValues(alpha: 0.1),
+      ),
+      _BentoPOKpiCard(
+        title: 'Por Recibir / Pendientes',
+        value: '$pendingCount',
+        subtitle: pendingCount > 0 ? 'Requieren atención' : 'Todo al día',
+        icon: Icons.pending_actions_rounded,
+        iconColor: pendingCount > 0 ? AppColors.warning : AppColors.success,
+        iconBgColor: (pendingCount > 0 ? AppColors.warning : AppColors.success)
+            .withValues(alpha: 0.1),
+      ),
+    ];
+
+    if (isDesktop) {
+      return Row(
+        children: [
+          Expanded(child: cards[0]),
+          const SizedBox(width: 12),
+          Expanded(child: cards[1]),
+          const SizedBox(width: 12),
+          Expanded(child: cards[2]),
+        ],
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          SizedBox(width: 210, child: cards[0]),
+          const SizedBox(width: 10),
+          SizedBox(width: 210, child: cards[1]),
+          const SizedBox(width: 10),
+          SizedBox(width: 210, child: cards[2]),
+        ],
+      ),
+    );
+  }
+}
+
+class _BentoPOKpiCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final String subtitle;
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBgColor;
+
+  const _BentoPOKpiCard({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.icon,
+    required this.iconColor,
+    required this.iconBgColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      height: 42,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x080F172A),
+            blurRadius: 3,
+            offset: Offset(0, 1),
+          ),
+          BoxShadow(
+            color: Color(0x0D0F172A),
+            blurRadius: 12,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Toolbar Unificado de Compras (Buscador, Dropdown Estado, Calendario, Vista, Refresh, CTA)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PurchaseOrdersToolbar extends StatelessWidget {
+  final TextEditingController searchCtrl;
+  final FocusNode searchFocusNode;
+  final ValueChanged<String> onSearchChanged;
+  final _PurchaseOrdersViewModel viewModel;
+  final PurchaseOrdersCubit cubit;
+  final bool isDesktop;
+  final bool isTableView;
+  final bool hasDraft;
+  final ValueChanged<bool> onToggleTableView;
+  final VoidCallback onRefresh;
+  final VoidCallback onNewOrder;
+
+  const _PurchaseOrdersToolbar({
+    required this.searchCtrl,
+    required this.searchFocusNode,
+    required this.onSearchChanged,
+    required this.viewModel,
+    required this.cubit,
+    required this.isDesktop,
+    required this.isTableView,
+    required this.hasDraft,
+    required this.onToggleTableView,
+    required this.onRefresh,
+    required this.onNewOrder,
+  });
+
+  String _getStatusLabel(String status) {
+    return PurchaseOrdersScreen._statusLabels[status] ?? status;
+  }
+
+  Widget _buildKeyHint(String key) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Text(
+        key,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textMuted,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        controller: searchCtrl,
+        focusNode: searchFocusNode,
+        onChanged: onSearchChanged,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Buscar por proveedor, documento o ID...',
+          hintStyle: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 12.5,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.teal,
+            size: 19,
+          ),
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: searchCtrl,
+            builder: (context, value, _) {
+              if (value.text.isNotEmpty) {
+                return IconButton(
+                  icon: const Icon(
+                    Icons.cancel_rounded,
+                    color: AppColors.textMuted,
+                    size: 16,
+                  ),
+                  onPressed: () {
+                    searchCtrl.clear();
+                    viewModel.setSearchText('');
+                  },
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildKeyHint('/'),
+                  ],
+                ),
+              );
+            },
+          ),
+          filled: true,
+          fillColor: const Color(0xFFF8FAFC),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusDropdown(BuildContext context) {
+    final isFiltered = viewModel.statusFilter != 'Todos';
+
+    return PopupMenuButton<String>(
+      initialValue: viewModel.statusFilter,
+      offset: const Offset(0, 44),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      onSelected: (val) => viewModel.setStatusFilter(val),
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'Todos',
+          child: Row(
+            children: [
+              Icon(Icons.list_alt_rounded, size: 16, color: AppColors.textSecondary),
+              SizedBox(width: 8),
+              Text('Todos los estados', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'PENDING',
+          child: Row(
+            children: [
+              Icon(Icons.hourglass_top_rounded, size: 16, color: AppColors.warning),
+              SizedBox(width: 8),
+              Text('Pendientes', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.warningDark)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'SENT',
+          child: Row(
+            children: [
+              Icon(Icons.send_rounded, size: 16, color: Color(0xFF3B82F6)),
+              SizedBox(width: 8),
+              Text('Enviados', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1D4ED8))),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'PARTIAL',
+          child: Row(
+            children: [
+              Icon(Icons.pie_chart_rounded, size: 16, color: Colors.amber.shade800),
+              const SizedBox(width: 8),
+              Text('Parciales', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.amber.shade900)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'RECEIVED',
+          child: Row(
+            children: [
+              Icon(Icons.check_circle_rounded, size: 16, color: AppColors.teal),
+              SizedBox(width: 8),
+              Text('Recibidos', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.tealDark)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'CANCELLED',
+          child: Row(
+            children: [
+              Icon(Icons.cancel_rounded, size: 16, color: AppColors.error),
+              SizedBox(width: 8),
+              Text('Cancelados', style: TextStyle(fontSize: 13, color: AppColors.error)),
+            ],
+          ),
+        ),
+      ],
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: isFiltered ? AppColors.teal.withValues(alpha: 0.1) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isFiltered ? AppColors.teal : const Color(0xFFE2E8F0),
+            width: isFiltered ? 1.5 : 1,
+          ),
+        ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.receipt_long_rounded,
-              size: 16,
-              color: AppColors.primary,
-            ),
-            const SizedBox(width: 6),
-            const Text(
-              'Órdenes: ',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              '$orderCount',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Container(width: 1, height: 16, color: AppColors.border),
-            const SizedBox(width: 14),
-
-            const Icon(Icons.payments_rounded, size: 16, color: AppColors.teal),
-            const SizedBox(width: 6),
-            const Text(
-              'Total Pág: ',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              'S/ ${totalAmount.toStringAsFixed(2)}',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: AppColors.teal,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Container(width: 1, height: 16, color: AppColors.border),
-            const SizedBox(width: 14),
-
             Icon(
-              Icons.pending_actions_rounded,
-              size: 16,
-              color: pendingCount > 0 ? AppColors.warning : AppColors.success,
+              Icons.filter_list_rounded,
+              size: 15,
+              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
             ),
             const SizedBox(width: 6),
-            const Text(
-              'Pendientes: ',
+            Text(
+              'Estado: ${_getStatusLabel(viewModel.statusFilter)}',
               style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
+                fontSize: 12.5,
+                fontWeight: isFiltered ? FontWeight.w800 : FontWeight.w600,
+                color: isFiltered ? AppColors.tealDark : AppColors.textPrimary,
               ),
             ),
-            Text(
-              '$pendingCount',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color:
-                    pendingCount > 0 ? AppColors.warning : AppColors.success,
-              ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
             ),
           ],
         ),
       ),
     );
   }
-}
 
-class _SearchField extends StatelessWidget {
-  final TextEditingController controller;
-  final FocusNode? focusNode;
-  final String hint;
-  final ValueChanged<String>? onChanged;
-  final ValueChanged<String> onSubmitted;
-  final VoidCallback onClear;
-
-  const _SearchField({
-    required this.controller,
-    this.focusNode,
-    required this.hint,
-    required this.onSubmitted,
-    required this.onClear,
-    this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildViewToggle() {
     return Container(
-      height: 40,
+      padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        onChanged: onChanged,
-        onSubmitted: onSubmitted,
-        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-        textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 13,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Vista Tabla Pro [V]',
+            icon: Icon(
+              Icons.table_rows_rounded,
+              size: 16,
+              color: isTableView ? AppColors.tealDark : AppColors.textMuted,
+            ),
+            style: IconButton.styleFrom(
+              backgroundColor: isTableView ? AppColors.surface : Colors.transparent,
+              padding: const EdgeInsets.all(6),
+              elevation: isTableView ? 1 : 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => onToggleTableView(true),
           ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: AppColors.textMuted,
-            size: 18,
+          IconButton(
+            tooltip: 'Vista Tarjetas [V]',
+            icon: Icon(
+              Icons.grid_view_rounded,
+              size: 16,
+              color: !isTableView ? AppColors.tealDark : AppColors.textMuted,
+            ),
+            style: IconButton.styleFrom(
+              backgroundColor: !isTableView ? AppColors.surface : Colors.transparent,
+              padding: const EdgeInsets.all(6),
+              elevation: !isTableView ? 1 : 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => onToggleTableView(false),
           ),
-          prefixIconConstraints: const BoxConstraints(
-            minWidth: 36,
-            minHeight: 40,
-          ),
-          suffixIcon: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: controller,
-            builder: (context, value, _) {
-              final hasText = value.text.isNotEmpty;
-              final isDesktop = MediaQuery.sizeOf(context).width >= 800;
+        ],
+      ),
+    );
+  }
 
-              if (hasText) {
-                return IconButton(
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
-                  onPressed: onClear,
-                  tooltip: 'Limpiar búsqueda',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 28,
-                    minHeight: 28,
-                  ),
-                );
-              }
-
-              if (isDesktop) {
-                return Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.slateLight.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: const Text(
-                    'Ctrl K',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                );
-              }
-
-              return const SizedBox.shrink();
-            },
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.teal.withValues(alpha: 0.1) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.teal : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.5 : 1,
           ),
-          border: InputBorder.none,
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 11,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            color: isSelected ? AppColors.tealDark : AppColors.textSecondary,
           ),
         ),
       ),
     );
   }
-}
-
-class _POFilterPill extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final Color? activeColor;
-
-  const _POFilterPill({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-    this.activeColor,
-  });
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = activeColor ?? AppColors.primary;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? effectiveColor.withValues(alpha: 0.12)
-                : AppColors.surface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected ? effectiveColor : AppColors.border,
-              width: isSelected ? 1.4 : 1.0,
-            ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x080F172A),
+            blurRadius: 3,
+            offset: Offset(0, 1),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isSelected && activeColor != null) ...[
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: effectiveColor,
-                    shape: BoxShape.circle,
+          BoxShadow(
+            color: Color(0x0D0F172A),
+            blurRadius: 12,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: isDesktop
+          ? Row(
+              children: [
+                Expanded(child: _buildSearchField()),
+                const SizedBox(width: 10),
+                _buildStatusDropdown(context),
+                const SizedBox(width: 8),
+                DateFilterCalendar(
+                  height: 40,
+                  borderRadius: BorderRadius.circular(10),
+                  dateRange: viewModel.dateRange,
+                  onDateRangeSelected: (picked) {
+                    viewModel.setDateRange(picked);
+                  },
+                  onClear: () {
+                    viewModel.setDateRange(null);
+                  },
+                ),
+                const SizedBox(width: 10),
+                _buildViewToggle(),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded, size: 20),
+                  color: AppColors.textSecondary,
+                  tooltip: 'Refrescar órdenes [R]',
+                  onPressed: onRefresh,
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: onNewOrder,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+                    minimumSize: const Size(0, 40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  icon: const Icon(Icons.add_rounded, size: 17),
+                  label: const Text(
+                    'Nueva Orden [N]',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 6),
               ],
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? effectiveColor : AppColors.textSecondary,
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSearchField(),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      ...PurchaseOrdersScreen._statusLabels.entries.map((entry) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: _buildFilterChip(
+                            label: entry.value,
+                            isSelected: viewModel.statusFilter == entry.key,
+                            onTap: () => viewModel.setStatusFilter(entry.key),
+                          ),
+                        );
+                      }),
+                      const SizedBox(width: 4),
+                      DateFilterCalendar(
+                        height: 36,
+                        borderRadius: BorderRadius.circular(10),
+                        dateRange: viewModel.dateRange,
+                        onDateRangeSelected: (picked) {
+                          viewModel.setDateRange(picked);
+                        },
+                        onClear: () {
+                          viewModel.setDateRange(null);
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
+              ],
+            ),
     );
   }
 }

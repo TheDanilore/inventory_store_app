@@ -24,9 +24,9 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
   int? _hoveredIndex;
 
   Color _getDebtColor(double pct, bool isMaxedOut, double debt) {
-    if (debt == 0) return AppColors.success;
+    if (debt <= 0) return AppColors.textMuted;
     if (isMaxedOut || pct >= 0.90) return AppColors.danger;
-    if (pct >= 0.75) return AppColors.warning;
+    if (pct >= 0.75) return AppColors.warningDark;
     return AppColors.textPrimary;
   }
 
@@ -154,7 +154,7 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                     (_, _) => const Divider(
                       height: 1,
                       thickness: 1,
-                      color: Color(0xFFF1F5F9),
+                      color: Color(0xFFE2E8F0),
                     ),
                 itemBuilder: (context, index) {
                   final account = widget.accounts[index];
@@ -266,15 +266,51 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                             // Deuda Actual
                             Expanded(
                               flex: 3,
-                              child: Text(
-                                'S/ ${account.currentDebt.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: debtColor,
-                                  fontFeatures: const [FontFeature.tabularFigures()],
-                                ),
-                              ),
+                              child: account.currentDebt == 0
+                                  ? Row(
+                                      children: [
+                                        const Text(
+                                          'S/ 0.00',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.textMuted,
+                                            fontFeatures: [FontFeature.tabularFigures()],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 5,
+                                            vertical: 1.5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF1F5F9),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(
+                                              color: const Color(0xFFE2E8F0),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Al día',
+                                            style: TextStyle(
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : Text(
+                                      'S/ ${account.currentDebt.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        color: debtColor,
+                                        fontFeatures: const [FontFeature.tabularFigures()],
+                                      ),
+                                    ),
                             ),
 
                             // Disponible
@@ -379,38 +415,117 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                               ),
                             ),
 
-                            // Acciones
+                            // Acciones (Botón Abonar Estilizado + Menú)
                             SizedBox(
                               width: 140,
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.payments_outlined,
-                                      size: 18,
-                                      color: AppColors.teal,
+                                  Tooltip(
+                                    message: 'Registrar abono a cuenta',
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => widget.onPay(account),
+                                      icon: const Icon(
+                                        Icons.payments_outlined,
+                                        size: 13,
+                                      ),
+                                      label: const Text(
+                                        'Abonar',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.tealDark,
+                                        side: BorderSide(
+                                          color: AppColors.teal.withValues(alpha: 0.3),
+                                        ),
+                                        backgroundColor: AppColors.teal.withValues(alpha: 0.05),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 9,
+                                          vertical: 5,
+                                        ),
+                                        visualDensity: VisualDensity.compact,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                      ),
                                     ),
-                                    tooltip: 'Registrar abono',
-                                    onPressed: () => widget.onPay(account),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.history_rounded,
-                                      size: 18,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    tooltip: 'Ver movimientos',
-                                    onPressed: () => widget.onViewHistory(account),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.more_horiz_rounded,
-                                      size: 18,
-                                      color: AppColors.textMuted,
-                                    ),
+                                  const SizedBox(width: 4),
+                                  PopupMenuButton<String>(
                                     tooltip: 'Más opciones',
-                                    onPressed: () => widget.onSelectAccount(account),
+                                    offset: const Offset(0, 36),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      side: const BorderSide(color: Color(0xFFE2E8F0)),
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    icon: Container(
+                                      width: 26,
+                                      height: 26,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: const Icon(
+                                        Icons.more_vert_rounded,
+                                        size: 14,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                    onSelected: (val) {
+                                      if (val == 'pay') widget.onPay(account);
+                                      if (val == 'history') widget.onViewHistory(account);
+                                      if (val == 'manage') widget.onSelectAccount(account);
+                                    },
+                                    itemBuilder: (context) => [
+                                      const PopupMenuItem(
+                                        value: 'pay',
+                                        height: 36,
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.payments_outlined, size: 15, color: AppColors.tealDark),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Registrar abono',
+                                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'history',
+                                        height: 36,
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.history_rounded, size: 15, color: AppColors.textSecondary),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Ver movimientos',
+                                              style: TextStyle(fontSize: 12.5),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'manage',
+                                        height: 36,
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.tune_rounded, size: 15, color: AppColors.textSecondary),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Ajustar línea / Opciones',
+                                              style: TextStyle(fontSize: 12.5),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),

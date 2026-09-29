@@ -498,7 +498,8 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

@@ -745,36 +745,18 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            tooltip: 'Vista en Tarjetas [V]',
-            icon: Icon(
-              Icons.grid_view_rounded,
-              size: 18,
-              color:
-                  !_isTableView ? AppColors.textPrimary : AppColors.textMuted,
-            ),
-            style: IconButton.styleFrom(
-              backgroundColor:
-                  !_isTableView ? AppColors.surface : Colors.transparent,
-              elevation: !_isTableView ? 1 : 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.all(8),
-            ),
-            onPressed: () => setState(() => _isTableView = false),
-          ),
-          IconButton(
-            tooltip: 'Vista en Tabla [V]',
+            tooltip: 'Vista en Tabla Pro [V]',
             icon: Icon(
               Icons.table_rows_rounded,
               size: 18,
-              color: _isTableView ? AppColors.textPrimary : AppColors.textMuted,
+              color: _isTableView ? AppColors.tealDark : AppColors.textMuted,
             ),
             style: IconButton.styleFrom(
               backgroundColor:
@@ -786,6 +768,24 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
               padding: const EdgeInsets.all(8),
             ),
             onPressed: () => setState(() => _isTableView = true),
+          ),
+          IconButton(
+            tooltip: 'Vista en Tarjetas [V]',
+            icon: Icon(
+              Icons.grid_view_rounded,
+              size: 18,
+              color: !_isTableView ? AppColors.tealDark : AppColors.textMuted,
+            ),
+            style: IconButton.styleFrom(
+              backgroundColor:
+                  !_isTableView ? AppColors.surface : Colors.transparent,
+              elevation: !_isTableView ? 1 : 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.all(8),
+            ),
+            onPressed: () => setState(() => _isTableView = false),
           ),
         ],
       ),

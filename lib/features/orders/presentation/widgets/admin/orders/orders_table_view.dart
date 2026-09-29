@@ -155,12 +155,17 @@ class _OrdersTableViewState extends State<OrdersTableView> {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-            boxShadow: [
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: const [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Color(0x080F172A),
+                blurRadius: 3,
+                offset: Offset(0, 1),
+              ),
+              BoxShadow(
+                color: Color(0x0D0F172A),
+                blurRadius: 12,
+                offset: Offset(0, 3),
               ),
             ],
           ),

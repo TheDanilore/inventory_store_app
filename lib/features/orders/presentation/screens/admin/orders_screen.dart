@@ -10,6 +10,7 @@ import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
@@ -23,7 +24,6 @@ import 'package:inventory_store_app/features/orders/presentation/widgets/admin/o
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_detail_sheet.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_confirm_dialog.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/payment_method_sheet.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/orders_filters_header_delegate.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/orders_table_view.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -467,36 +467,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     _selectOrder(null, updateUrl: true);
   }
 
-  Widget _buildFilterChip({
-    required String label,
-    required bool isSelected,
-    required Function(bool) onSelected,
-  }) {
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: onSelected,
-      showCheckmark: false,
-      backgroundColor: AppColors.surface,
-      selectedColor: AppColors.primary.withValues(alpha: 0.1),
-      labelStyle: TextStyle(
-        color: isSelected ? AppColors.primary : AppColors.textSecondary,
-        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-        fontSize: 13,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: BorderSide(
-          color:
-              isSelected
-                  ? AppColors.primary.withValues(alpha: 0.3)
-                  : AppColors.border,
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     try {
@@ -524,86 +494,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
         title: widget.customTitle ?? 'Gestión de Pedidos',
         showBackButton: true,
         actions: isWide
-            ? [
-                // Selector de modo Vista: Tabla vs Tarjetas
-                Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: 'Vista Tabla Pro [V]',
-                        icon: Icon(
-                          Icons.table_rows_rounded,
-                          size: 16,
-                          color: _isTableView ? AppColors.tealDark : AppColors.textMuted,
-                        ),
-                        style: IconButton.styleFrom(
-                          backgroundColor:
-                              _isTableView ? AppColors.surface : Colors.transparent,
-                          padding: const EdgeInsets.all(6),
-                          elevation: _isTableView ? 1 : 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                        onPressed: () => setState(() => _isTableView = true),
-                      ),
-                      IconButton(
-                        tooltip: 'Vista Tarjetas [V]',
-                        icon: Icon(
-                          Icons.grid_view_rounded,
-                          size: 16,
-                          color: !_isTableView ? AppColors.tealDark : AppColors.textMuted,
-                        ),
-                        style: IconButton.styleFrom(
-                          backgroundColor:
-                              !_isTableView ? AppColors.surface : Colors.transparent,
-                          padding: const EdgeInsets.all(6),
-                          elevation: !_isTableView ? 1 : 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                        onPressed: () => setState(() => _isTableView = false),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                OutlinedButton.icon(
-                  onPressed: () {
-                    context.read<OrdersCubit>().loadOrders(reset: true);
-                  },
-                  icon: const Icon(
-                    Icons.refresh_rounded,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  label: const Text(
-                    'Actualizar',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.border),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ]
+            ? null
             : [
                 IconButton(
                   icon: const Icon(Icons.refresh_rounded),
@@ -661,265 +552,263 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ? [currentSelectedOrder, ...state.orders]
                     : state.orders;
 
-                final scrollContent = CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
+                final mainListContent = Column(
+                  children: [
                     if (state.isBackgroundLoading)
-                      const SliverToBoxAdapter(
-                        child: LinearProgressIndicator(
-                          color: AppColors.teal,
-                          minHeight: 2,
-                        ),
+                      const LinearProgressIndicator(
+                        color: AppColors.teal,
+                        minHeight: 2,
                       ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                        child: _OrdersKpiRibbon(
-                          pageOrdersCount: state.orders.length,
-                          totalRecords: state.totalRecords,
-                          pageTotalAmount: state.totalAmountCurrentPage,
-                          pendingCount: state.pendingCountCurrentPage,
-                          pendingDebt: state.pendingDebtCurrentPage,
-                        ),
+
+                    // --- 1. BENTO KPI BAR ---
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _OrdersBentoKpiBar(
+                        pageOrdersCount: state.orders.length,
+                        totalRecords: state.totalRecords,
+                        pageTotalAmount: state.totalAmountCurrentPage,
+                        pendingCount: state.pendingCountCurrentPage,
+                        pendingDebt: state.pendingDebtCurrentPage,
+                        isWide: isWide,
                       ),
                     ),
-                    SliverPersistentHeader(
-                      pinned: true,
-                      floating: true,
-                      delegate: OrdersFiltersHeaderDelegate(
+
+                    // --- 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh) ---
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                      child: _OrdersToolbar(
                         searchCtrl: _searchCtrl,
                         searchFocusNode: _searchFocusNode,
                         onSearchChanged: _onSearchChanged,
                         cubit: cubit,
                         state: state,
-                        buildFilterChip: _buildFilterChip,
+                        isWide: isWide,
+                        isTableView: _isTableView,
+                        onToggleTableView: (val) => setState(() => _isTableView = val),
                       ),
                     ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      sliver: _buildListOrTableSliver(
-                        state,
-                        cubit,
-                        isWide,
-                        isLoyaltyEnabled,
-                        currentSelectedOrder,
-                        displayOrders,
-                      ),
-                    ),
-                  ],
-                );
 
-                final mainListContent = Column(
-                  children: [
+                    // --- 3. LISTADO O TABLA PRO ---
                     Expanded(
                       child: RefreshIndicator(
                         color: AppColors.primary,
                         onRefresh: () async => cubit.loadOrders(reset: true),
-                        child: scrollContent,
+                        child: CustomScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          slivers: [
+                            SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                              sliver: _buildListOrTableSliver(
+                                state,
+                                cubit,
+                                isWide,
+                                isLoyaltyEnabled,
+                                currentSelectedOrder,
+                                displayOrders,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
+
+                    // --- 4. PAGINACIÓN FIJA AL PIE ---
                     _buildPagination(state, cubit, isWide: isWide),
                   ],
                 );
 
-                // --- ESTRATEGIA ADAPTATIVA DESKTOP: TABLA 100% + SLIDE-OVER DRAWER ---
+                // --- ESTRATEGIA ADAPTATIVA DESKTOP: TABLA 100% + SLIDE-OVER DRAWER CON BACKDROP ---
                 if (isWide) {
                   final activeOrder = currentSelectedOrder;
-                  final drawerWidth = width >= 1440
-                      ? 520.0
-                      : width >= 1100
-                          ? 480.0
-                          : (width * 0.48).clamp(380.0, 460.0);
+                  final drawerWidth = constraints.maxWidth >= 1440 ? 640.0 : 580.0;
 
                   return Stack(
                     children: [
-                      // Contenido principal de la izquierda
+                      // Contenido principal 100% full-width
                       Positioned.fill(
-                        right: activeOrder != null ? drawerWidth : 0,
                         child: Container(
                           color: AppColors.background,
                           child: mainListContent,
                         ),
                       ),
 
-                      // SLIDE-OVER DRAWER LATERAL (Panel retráctil a la derecha)
+                      // SLIDE-OVER DRAWER LATERAL (Inspector retráctil como en pos_sales_view.dart)
                       if (activeOrder != null) ...[
-                        Positioned(
-                          top: 0,
-                          bottom: 0,
-                          right: 0,
-                          width: drawerWidth,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              border: const Border(
-                                left: BorderSide(color: AppColors.border),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 20,
-                                  offset: const Offset(-4, 0),
-                                ),
-                              ],
+                        // Backdrop con dismiss al tocar fuera
+                        Positioned.fill(
+                          child: GestureDetector(
+                            onTap: () => _selectOrder(null, updateUrl: true),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              color: Colors.black.withValues(alpha: 0.28),
                             ),
-                            child: Column(
-                              children: [
-                                // Cabecera Unificada del Slide-Over Drawer
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 11,
+                          ),
+                        ),
+
+                        // Panel lateral deslizante
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: RepaintBoundary(
+                            child: Container(
+                              width: drawerWidth,
+                              height: double.infinity,
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.18),
+                                    blurRadius: 28,
+                                    spreadRadius: 4,
+                                    offset: const Offset(-8, 0),
                                   ),
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.surface,
-                                    border: Border(
-                                      bottom: BorderSide(color: AppColors.border),
+                                ],
+                              ),
+                              child: Column(
+                                children: [
+                                  // Cabecera unificada del Slide-Over Drawer
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 12,
                                     ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      // ID con copia rápida en 1-click
-                                      InkWell(
-                                        onTap: () {
-                                          Clipboard.setData(
-                                            ClipboardData(
-                                              text: activeOrder.id,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Color(0xFFE2E8F0),
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        // ID con copia rápida en 1-click
+                                        InkWell(
+                                          onTap: () {
+                                            Clipboard.setData(
+                                              ClipboardData(text: activeOrder.id),
+                                            );
+                                            AppSnackbar.show(
+                                              context,
+                                              message: 'ID copiado al portapapeles',
+                                              type: SnackbarType.success,
+                                            );
+                                          },
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
                                             ),
-                                          );
-                                          AppSnackbar.show(
-                                            context,
-                                            message:
-                                                'ID copiado al portapapeles',
-                                            type: SnackbarType.success,
-                                          );
-                                        },
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: Container(
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF1F5F9),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color: const Color(0xFFE2E8F0),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.receipt_rounded,
+                                                  size: 13,
+                                                  color: AppColors.teal,
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  '#${activeOrder.id.length >= 8 ? activeOrder.id.substring(0, 8).toUpperCase() : activeOrder.id.toUpperCase()}',
+                                                  style: const TextStyle(
+                                                    fontFamily: 'monospace',
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: AppColors.textPrimary,
+                                                    letterSpacing: 0.4,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Icon(
+                                                  Icons.copy_rounded,
+                                                  size: 11,
+                                                  color: AppColors.textMuted,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildDrawerStatusBadge(activeOrder.status),
+                                        const Spacer(),
+                                        // Botón Imprimir Ticket
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.print_rounded,
+                                            size: 19,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                          tooltip: 'Imprimir Ticket [P]',
+                                          onPressed: () => _printOrderTicket(activeOrder),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        // Badge de atajo [ESC]
+                                        Container(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
+                                            horizontal: 6,
+                                            vertical: 2,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFFF1F5F9),
-                                            borderRadius:
-                                                BorderRadius.circular(6),
+                                            color: AppColors.background,
+                                            borderRadius: BorderRadius.circular(4),
                                             border: Border.all(
-                                              color: AppColors.border,
+                                              color: const Color(0xFFE2E8F0),
                                             ),
                                           ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                Icons.receipt_rounded,
-                                                size: 13,
-                                                color: AppColors.teal,
-                                              ),
-                                              const SizedBox(width: 5),
-                                              Text(
-                                                '#${activeOrder.id.length >= 8 ? activeOrder.id.substring(0, 8).toUpperCase() : activeOrder.id.toUpperCase()}',
-                                                style: const TextStyle(
-                                                  fontFamily: 'monospace',
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: AppColors.textPrimary,
-                                                  letterSpacing: 0.4,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 4),
-                                              const Icon(
-                                                Icons.copy_rounded,
-                                                size: 11,
-                                                color: AppColors.textMuted,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildDrawerStatusBadge(
-                                        activeOrder.status,
-                                      ),
-                                      const Spacer(),
-                                      // Botón Imprimir Ticket
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.print_rounded,
-                                          size: 19,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                        tooltip: 'Imprimir Ticket [P]',
-                                        onPressed:
-                                            () => _printOrderTicket(
-                                              activeOrder,
+                                          child: const Text(
+                                            'ESC',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.textMuted,
                                             ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      // Badge de atajo [ESC]
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.background,
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                          border: Border.all(
-                                            color: AppColors.border,
                                           ),
                                         ),
-                                        child: const Text(
-                                          'ESC',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.textMuted,
+                                        const SizedBox(width: 4),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.close_rounded,
+                                            size: 20,
                                           ),
+                                          tooltip: 'Cerrar detalle (Esc)',
+                                          onPressed: () => _selectOrder(null, updateUrl: true),
                                         ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.close_rounded,
-                                          size: 20,
-                                        ),
-                                        tooltip: 'Cerrar panel (Esc)',
-                                        onPressed:
-                                            () => _selectOrder(
-                                              null,
-                                              updateUrl: true,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                // Contenido del detalle con soporte completo
-                                Expanded(
-                                  child: AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 250),
-                                    child: OrderDetailSheet(
-                                      key: ValueKey(activeOrder.id),
-                                      order: activeOrder,
-                                      isEmbedded: true,
-                                      onPop: _onOrderEmbeddedPop,
-                                      onOrderUpdated: (updated) {
-                                        if (mounted) {
-                                          context
-                                              .read<OrdersCubit>()
-                                              .updateOrderInList(updated);
-                                          _selectOrder(updated, updateUrl: true);
-                                          context
-                                              .read<OrdersCubit>()
-                                              .loadOrders(background: true);
-                                        }
-                                      },
+                                      ],
                                     ),
                                   ),
-                                ),
-                              ],
+
+                                  // Contenido del detalle con soporte completo
+                                  Expanded(
+                                    child: AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 250),
+                                      child: OrderDetailSheet(
+                                        key: ValueKey(activeOrder.id),
+                                        order: activeOrder,
+                                        isEmbedded: true,
+                                        onPop: _onOrderEmbeddedPop,
+                                        onOrderUpdated: (updated) {
+                                          if (mounted) {
+                                            context
+                                                .read<OrdersCubit>()
+                                                .updateOrderInList(updated);
+                                            _selectOrder(updated, updateUrl: true);
+                                            context
+                                                .read<OrdersCubit>()
+                                                .loadOrders(background: true);
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -1113,176 +1002,719 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 }
 
-class _OrdersKpiRibbon extends StatelessWidget {
+class _OrdersBentoKpiBar extends StatelessWidget {
   final int pageOrdersCount;
   final int totalRecords;
   final double pageTotalAmount;
   final int pendingCount;
   final double pendingDebt;
+  final bool isWide;
 
-  const _OrdersKpiRibbon({
+  const _OrdersBentoKpiBar({
     required this.pageOrdersCount,
     required this.totalRecords,
     required this.pageTotalAmount,
     required this.pendingCount,
     required this.pendingDebt,
+    required this.isWide,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = [
+      _BentoOrderKpiCard(
+        title: 'Total Pedidos',
+        value: '$pageOrdersCount de $totalRecords',
+        subtitle: 'Pedidos en página',
+        icon: Icons.receipt_long_rounded,
+        iconBgColor: AppColors.tealLight,
+        iconColor: AppColors.tealDark,
+      ),
+      _BentoOrderKpiCard(
+        title: 'Total Facturado',
+        value: 'S/ ${pageTotalAmount.toStringAsFixed(2)}',
+        subtitle: 'Monto en esta página',
+        icon: Icons.payments_rounded,
+        iconBgColor: AppColors.successLight,
+        iconColor: AppColors.successDark,
+      ),
+      _BentoOrderKpiCard(
+        title: pendingDebt > 0 ? 'Por Cobrar' : 'Pedidos Pendientes',
+        value: pendingDebt > 0
+            ? 'S/ ${pendingDebt.toStringAsFixed(2)}'
+            : '$pendingCount',
+        subtitle: pendingDebt > 0
+            ? 'Créditos pendientes'
+            : 'Borradores por completar',
+        icon: pendingDebt > 0
+            ? Icons.credit_card_rounded
+            : Icons.pending_actions_rounded,
+        iconBgColor: AppColors.warningLight,
+        iconColor: AppColors.warningDark,
+      ),
+    ];
+
+    if (isWide) {
+      return Row(
+        children: [
+          Expanded(child: cards[0]),
+          const SizedBox(width: 12),
+          Expanded(child: cards[1]),
+          const SizedBox(width: 12),
+          Expanded(child: cards[2]),
+        ],
+      );
+    }
+
+    return SizedBox(
+      height: 84,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: cards.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (_, index) => SizedBox(width: 220, child: cards[index]),
+      ),
+    );
+  }
+}
+
+class _BentoOrderKpiCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final String subtitle;
+  final IconData icon;
+  final Color iconBgColor;
+  final Color iconColor;
+
+  const _BentoOrderKpiCard({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.icon,
+    required this.iconBgColor,
+    required this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: Color(0x080F172A),
+            blurRadius: 3,
+            offset: Offset(0, 1),
+          ),
+          BoxShadow(
+            color: Color(0x0D0F172A),
+            blurRadius: 12,
+            offset: Offset(0, 3),
           ),
         ],
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: AppColors.tealLight,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.receipt_long_rounded,
-                size: 16,
-                color: AppColors.tealDark,
-              ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(width: 8),
-            const Text(
-              'Pedidos: ',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-            Text(
-              '$pageOrdersCount de $totalRecords',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-            const SizedBox(width: 14),
-            Container(width: 1, height: 18, color: AppColors.border),
-            const SizedBox(width: 14),
-            Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: AppColors.successLight,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.payments_rounded,
-                size: 16,
-                color: AppColors.successDark,
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Total Pág: ',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            Text(
-              'S/ ${pageTotalAmount.toStringAsFixed(2)}',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                color: AppColors.successDark,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-            if (pendingDebt > 0) ...[
-              const SizedBox(width: 14),
-              Container(width: 1, height: 18, color: AppColors.border),
-              const SizedBox(width: 14),
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: AppColors.warningLight,
-                  borderRadius: BorderRadius.circular(8),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OrdersToolbar extends StatelessWidget {
+  final TextEditingController searchCtrl;
+  final FocusNode searchFocusNode;
+  final ValueChanged<String> onSearchChanged;
+  final OrdersCubit cubit;
+  final OrdersState state;
+  final bool isWide;
+  final bool isTableView;
+  final ValueChanged<bool> onToggleTableView;
+
+  const _OrdersToolbar({
+    required this.searchCtrl,
+    required this.searchFocusNode,
+    required this.onSearchChanged,
+    required this.cubit,
+    required this.state,
+    required this.isWide,
+    required this.isTableView,
+    required this.onToggleTableView,
+  });
+
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'PENDING':
+        return 'Borradores';
+      case 'COMPLETED':
+        return 'Completados';
+      case 'CANCELLED':
+        return 'Cancelados';
+      case 'RETURNED':
+        return 'Devueltos';
+      default:
+        return 'Todos';
+    }
+  }
+
+  String _getPaymentStatusLabel(String status) {
+    switch (status) {
+      case 'CREDIT':
+        return 'A Crédito';
+      case 'PAID':
+        return 'Pagados';
+      case 'PENDING':
+        return 'Por cobrar';
+      case 'PARTIAL':
+        return 'Parciales';
+      default:
+        return 'Cobros: Todos';
+    }
+  }
+
+  Widget _buildKeyHint(String key) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Text(
+        key,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textMuted,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        controller: searchCtrl,
+        focusNode: searchFocusNode,
+        onChanged: onSearchChanged,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Buscar por cliente o ID de pedido...',
+          hintStyle: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 12.5,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.teal,
+            size: 19,
+          ),
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: searchCtrl,
+            builder: (context, value, _) {
+              if (value.text.isNotEmpty) {
+                return IconButton(
+                  icon: const Icon(
+                    Icons.cancel_rounded,
+                    color: AppColors.textMuted,
+                    size: 16,
+                  ),
+                  onPressed: () {
+                    searchCtrl.clear();
+                    cubit.setSearchQuery('');
+                  },
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildKeyHint('/'),
+                  ],
                 ),
-                child: const Icon(
-                  Icons.credit_card_rounded,
-                  size: 16,
-                  color: AppColors.warningDark,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Por Cobrar: ',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                'S/ ${pendingDebt.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.warningDark,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
-              ),
-            ] else if (pendingCount > 0) ...[
-              const SizedBox(width: 14),
-              Container(width: 1, height: 18, color: AppColors.border),
-              const SizedBox(width: 14),
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: AppColors.warningLight,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.pending_actions_rounded,
-                  size: 16,
-                  color: AppColors.warningDark,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Borradores: ',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                '$pendingCount',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.warningDark,
-                ),
-              ),
+              );
+            },
+          ),
+          filled: true,
+          fillColor: const Color(0xFFF8FAFC),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusDropdown(BuildContext context) {
+    final isFiltered = state.statusFilter != 'ALL';
+
+    return PopupMenuButton<String>(
+      initialValue: state.statusFilter,
+      offset: const Offset(0, 44),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      onSelected: (val) => cubit.setStatusFilter(val),
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'ALL',
+          child: Row(
+            children: [
+              Icon(Icons.list_alt_rounded, size: 16, color: AppColors.textSecondary),
+              SizedBox(width: 8),
+              Text('Todos los estados', style: TextStyle(fontSize: 13)),
             ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'PENDING',
+          child: Row(
+            children: [
+              Icon(Icons.hourglass_top_rounded, size: 16, color: AppColors.warning),
+              SizedBox(width: 8),
+              Text('Borradores', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.warningDark)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'COMPLETED',
+          child: Row(
+            children: [
+              Icon(Icons.check_circle_rounded, size: 16, color: AppColors.teal),
+              SizedBox(width: 8),
+              Text('Completados', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.tealDark)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'CANCELLED',
+          child: Row(
+            children: [
+              Icon(Icons.cancel_rounded, size: 16, color: AppColors.danger),
+              SizedBox(width: 8),
+              Text('Cancelados', style: TextStyle(fontSize: 13, color: AppColors.danger)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'RETURNED',
+          child: Row(
+            children: [
+              Icon(Icons.assignment_return_rounded, size: 16, color: Colors.purple),
+              SizedBox(width: 8),
+              Text('Devueltos', style: TextStyle(fontSize: 13, color: Colors.purple)),
+            ],
+          ),
+        ),
+      ],
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: isFiltered ? AppColors.teal.withValues(alpha: 0.1) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isFiltered ? AppColors.teal : const Color(0xFFE2E8F0),
+            width: isFiltered ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.filter_list_rounded,
+              size: 15,
+              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Estado: ${_getStatusLabel(state.statusFilter)}',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isFiltered ? FontWeight.w800 : FontWeight.w600,
+                color: isFiltered ? AppColors.tealDark : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPaymentDropdown(BuildContext context) {
+    final bool isPaymentFiltered = state.paymentStatusFilter != 'ALL';
+    final bool isCreditFiltered = state.paymentStatusFilter == 'CREDIT';
+    final Color activePaymentColor = isCreditFiltered ? AppColors.warning : AppColors.teal;
+
+    return PopupMenuButton<String>(
+      initialValue: state.paymentStatusFilter,
+      offset: const Offset(0, 44),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      onSelected: (val) => cubit.setPaymentStatusFilter(val),
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'ALL',
+          child: Row(
+            children: [
+              Icon(Icons.payments_rounded, size: 16, color: AppColors.textMuted),
+              SizedBox(width: 8),
+              Text('Cobros: Todos', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'CREDIT',
+          child: Row(
+            children: [
+              Icon(Icons.credit_card_rounded, size: 16, color: AppColors.warning),
+              SizedBox(width: 8),
+              Text('Solo a crédito', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.warning)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'PAID',
+          child: Row(
+            children: [
+              Icon(Icons.check_circle_rounded, size: 16, color: AppColors.teal),
+              SizedBox(width: 8),
+              Text('Pagados', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'PENDING',
+          child: Row(
+            children: [
+              Icon(Icons.pending_actions_rounded, size: 16, color: AppColors.warning),
+              SizedBox(width: 8),
+              Text('Por cobrar', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'PARTIAL',
+          child: Row(
+            children: [
+              Icon(Icons.pie_chart_rounded, size: 16, color: AppColors.primary),
+              SizedBox(width: 8),
+              Text('Parciales', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+      ],
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: isPaymentFiltered ? activePaymentColor.withValues(alpha: 0.1) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isPaymentFiltered ? activePaymentColor : const Color(0xFFE2E8F0),
+            width: isPaymentFiltered ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isCreditFiltered ? Icons.credit_card_rounded : Icons.payments_rounded,
+              size: 15,
+              color: isPaymentFiltered ? activePaymentColor : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _getPaymentStatusLabel(state.paymentStatusFilter),
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isPaymentFiltered ? FontWeight.w800 : FontWeight.w600,
+                color: isPaymentFiltered ? activePaymentColor : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: isPaymentFiltered ? activePaymentColor : AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildViewToggle() {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Vista Tabla Pro [V]',
+            icon: Icon(
+              Icons.table_rows_rounded,
+              size: 16,
+              color: isTableView ? AppColors.tealDark : AppColors.textMuted,
+            ),
+            style: IconButton.styleFrom(
+              backgroundColor: isTableView ? AppColors.surface : Colors.transparent,
+              padding: const EdgeInsets.all(6),
+              elevation: isTableView ? 1 : 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => onToggleTableView(true),
+          ),
+          IconButton(
+            tooltip: 'Vista Tarjetas [V]',
+            icon: Icon(
+              Icons.grid_view_rounded,
+              size: 16,
+              color: !isTableView ? AppColors.tealDark : AppColors.textMuted,
+            ),
+            style: IconButton.styleFrom(
+              backgroundColor: !isTableView ? AppColors.surface : Colors.transparent,
+              padding: const EdgeInsets.all(6),
+              elevation: !isTableView ? 1 : 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => onToggleTableView(false),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.teal.withValues(alpha: 0.1) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.teal : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            color: isSelected ? AppColors.tealDark : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x080F172A),
+            blurRadius: 3,
+            offset: Offset(0, 1),
+          ),
+          BoxShadow(
+            color: Color(0x0D0F172A),
+            blurRadius: 12,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: isWide
+          ? Row(
+              children: [
+                Expanded(child: _buildSearchField()),
+                const SizedBox(width: 10),
+                _buildStatusDropdown(context),
+                const SizedBox(width: 8),
+                _buildPaymentDropdown(context),
+                const SizedBox(width: 8),
+                DateFilterCalendar(
+                  height: 40,
+                  borderRadius: BorderRadius.circular(10),
+                  dateRange: state.startDate != null && state.endDate != null
+                      ? DateTimeRange(start: state.startDate!, end: state.endDate!)
+                      : null,
+                  onDateRangeSelected: (picked) {
+                    cubit.setDateRange(picked.start, picked.end);
+                  },
+                  onClear: () {
+                    cubit.setDateRange(null, null);
+                  },
+                ),
+                const SizedBox(width: 10),
+                _buildViewToggle(),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded, size: 20),
+                  color: AppColors.textSecondary,
+                  tooltip: 'Refrescar pedidos [R]',
+                  onPressed: () => cubit.loadOrders(reset: true),
+                ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSearchField(),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      _buildFilterChip(
+                        label: 'Todos',
+                        isSelected: state.statusFilter == 'ALL',
+                        onTap: () => cubit.setStatusFilter('ALL'),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildFilterChip(
+                        label: 'Borradores',
+                        isSelected: state.statusFilter == 'PENDING',
+                        onTap: () => cubit.setStatusFilter('PENDING'),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildFilterChip(
+                        label: 'Completados',
+                        isSelected: state.statusFilter == 'COMPLETED',
+                        onTap: () => cubit.setStatusFilter('COMPLETED'),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildFilterChip(
+                        label: 'Cancelados',
+                        isSelected: state.statusFilter == 'CANCELLED',
+                        onTap: () => cubit.setStatusFilter('CANCELLED'),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildFilterChip(
+                        label: 'Devueltos',
+                        isSelected: state.statusFilter == 'RETURNED',
+                        onTap: () => cubit.setStatusFilter('RETURNED'),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildPaymentDropdown(context),
+                      const SizedBox(width: 6),
+                      DateFilterCalendar(
+                        height: 36,
+                        borderRadius: BorderRadius.circular(10),
+                        dateRange: state.startDate != null && state.endDate != null
+                            ? DateTimeRange(start: state.startDate!, end: state.endDate!)
+                            : null,
+                        onDateRangeSelected: (picked) {
+                          cubit.setDateRange(picked.start, picked.end);
+                        },
+                        onClear: () {
+                          cubit.setDateRange(null, null);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
