@@ -31,7 +31,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   late final TabController _tabCtrl;
-  bool _isTableView = false; // Desktop: toggle entre cards y tabla de alta densidad
+  bool _isTableView = true; // Desktop: por defecto vista tabla Pro de alta densidad
 
   @override
   void initState() {
@@ -405,17 +405,25 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                       // --- 2. TOOLBAR UNIFICADO DE BÚSQUEDA Y ACCIONES ---
                       SliverToBoxAdapter(
                         child: Container(
-                          margin: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.border),
-                            boxShadow: [
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            boxShadow: const [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.02),
-                                blurRadius: 10,
-                                offset: const Offset(0, 3),
+                                color: Color(0x080F172A),
+                                blurRadius: 3,
+                                offset: Offset(0, 1),
+                              ),
+                              BoxShadow(
+                                color: Color(0x0D0F172A),
+                                blurRadius: 12,
+                                offset: Offset(0, 3),
                               ),
                             ],
                           ),

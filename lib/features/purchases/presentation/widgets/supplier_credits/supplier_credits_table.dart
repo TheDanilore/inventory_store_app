@@ -38,360 +38,421 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          // --- Encabezado de Tabla ---
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            decoration: const BoxDecoration(
-              color: AppColors.background,
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: const Row(
-              children: [
-                Expanded(
-                  flex: 4,
-                  child: Text(
-                    'PROVEEDOR',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'LÍNEA DE CRÉDITO',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'DEUDA ACTUAL',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'DISPONIBLE',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'USO DE LÍNEA',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'ESTADO',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 140,
-                  child: Text(
-                    'ACCIONES',
-                    textAlign: TextAlign.end,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const minTableWidth = 860.0;
+        final needsScroll = constraints.maxWidth < minTableWidth;
 
-          // --- Filas de Datos ---
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: widget.accounts.length,
-            separatorBuilder:
-                (_, _) =>
-                    const Divider(height: 1, thickness: 1, color: AppColors.border),
-            itemBuilder: (context, index) {
-              final account = widget.accounts[index];
-              final isHovered = _hoveredIndex == index;
-              final pct = account.usagePercent.clamp(0.0, 1.0);
-              final progressColor = _getProgressColor(pct, account.isMaxedOut);
-              final debtColor = _getDebtColor(pct, account.isMaxedOut, account.currentDebt);
-
-              return MouseRegion(
-                cursor: SystemMouseCursors.click,
-                onEnter: (_) => setState(() => _hoveredIndex = index),
-                onExit: (_) => setState(() => _hoveredIndex = null),
-                child: InkWell(
-                  onTap: () => widget.onSelectAccount(account),
-                  child: Container(
-                    color: isHovered
-                        ? const Color(0xFFF8FAFC)
-                        : Colors.transparent,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
+        final tableContent = SizedBox(
+          width: needsScroll ? minTableWidth : constraints.maxWidth,
+          child: Column(
+            children: [
+              // --- Encabezado Fijo de Tabla ---
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF8FAFC),
+                  border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+                ),
+                child: const Row(
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: Text(
+                        'PROVEEDOR',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        // Proveedor (Avatar + Nombre + RUC)
-                        Expanded(
-                          flex: 4,
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  color: account.isActive
-                                      ? AppColors.tealLight
-                                      : Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  account.supplierName.isNotEmpty
-                                      ? account.supplierName.substring(0, 1).toUpperCase()
-                                      : 'P',
-                                  style: TextStyle(
-                                    color: account.isActive
-                                        ? AppColors.tealDark
-                                        : Colors.grey.shade600,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      account.supplierName,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        'LÍNEA DE CRÉDITO',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        'DEUDA ACTUAL',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        'DISPONIBLE',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        'USO DE LÍNEA',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        'ESTADO',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 140,
+                      child: Text(
+                        'ACCIONES',
+                        textAlign: TextAlign.end,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // --- Filas de Datos ---
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: widget.accounts.length,
+                separatorBuilder:
+                    (_, _) => const Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Color(0xFFF1F5F9),
+                    ),
+                itemBuilder: (context, index) {
+                  final account = widget.accounts[index];
+                  final isHovered = _hoveredIndex == index;
+                  final pct = account.usagePercent.clamp(0.0, 1.0);
+                  final progressColor = _getProgressColor(pct, account.isMaxedOut);
+                  final debtColor = _getDebtColor(pct, account.isMaxedOut, account.currentDebt);
+
+                  return MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    onEnter: (_) => setState(() => _hoveredIndex = index),
+                    onExit: (_) => setState(() => _hoveredIndex = null),
+                    child: InkWell(
+                      onTap: () => widget.onSelectAccount(account),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 140),
+                        color: isHovered
+                            ? const Color(0xFFF8FAFC)
+                            : Colors.transparent,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            // Proveedor (Avatar + Nombre + RUC)
+                            Expanded(
+                              flex: 4,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 34,
+                                    height: 34,
+                                    decoration: BoxDecoration(
+                                      color: account.isActive
+                                          ? AppColors.tealLight
+                                          : Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
-                                    if (account.supplierTaxId != null &&
-                                        account.supplierTaxId!.isNotEmpty)
-                                      Text(
-                                        'RUC ${account.supplierTaxId}',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          color: AppColors.textMuted,
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      account.supplierName.isNotEmpty
+                                          ? account.supplierName.substring(0, 1).toUpperCase()
+                                          : 'P',
+                                      style: TextStyle(
+                                        color: account.isActive
+                                            ? AppColors.tealDark
+                                            : Colors.grey.shade600,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          account.supplierName,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Línea Total
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            'S/ ${account.creditLimit.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-
-                        // Deuda Actual
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            'S/ ${account.currentDebt.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: debtColor,
-                            ),
-                          ),
-                        ),
-
-                        // Disponible
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            'S/ ${account.availableCredit.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: account.isActive
-                                  ? AppColors.tealDark
-                                  : AppColors.textMuted,
-                            ),
-                          ),
-                        ),
-
-                        // Uso de Línea (Barra + %)
-                        Expanded(
-                          flex: 3,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: LinearProgressIndicator(
-                                    value: pct,
-                                    minHeight: 6,
-                                    backgroundColor: AppColors.background,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      progressColor,
+                                        const SizedBox(height: 2),
+                                        if (account.supplierTaxId != null &&
+                                            account.supplierTaxId!.isNotEmpty)
+                                          Text(
+                                            'RUC ${account.supplierTaxId}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          )
+                                        else
+                                          const Text(
+                                            '—',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              SizedBox(
-                                width: 44,
-                                child: Text(
-                                  '${(pct * 100).toStringAsFixed(1)}%',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: progressColor,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                            ),
 
-                        // Estado
-                        Expanded(
-                          flex: 2,
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: account.isActive
-                                    ? AppColors.successLight
-                                    : Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
+                            // Línea Total
+                            Expanded(
+                              flex: 3,
                               child: Text(
-                                account.isActive ? 'Activo' : 'Suspendido',
+                                'S/ ${account.creditLimit.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                  fontFeatures: [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ),
+
+                            // Deuda Actual
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                'S/ ${account.currentDebt.toStringAsFixed(2)}',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: debtColor,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ),
+
+                            // Disponible
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                'S/ ${account.availableCredit.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                   color: account.isActive
-                                      ? AppColors.successDark
-                                      : Colors.grey.shade600,
+                                      ? AppColors.tealDark
+                                      : AppColors.textMuted,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
                                 ),
                               ),
                             ),
-                          ),
-                        ),
 
-                        // Acciones
-                        SizedBox(
-                          width: 140,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.payments_outlined,
-                                  size: 18,
-                                  color: AppColors.teal,
-                                ),
-                                tooltip: 'Registrar abono',
-                                onPressed: () => widget.onPay(account),
+                            // Uso de Línea (Barra + %)
+                            Expanded(
+                              flex: 3,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: pct,
+                                        minHeight: 6,
+                                        backgroundColor: const Color(0xFFE2E8F0),
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                          progressColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  SizedBox(
+                                    width: 44,
+                                    child: Text(
+                                      '${(pct * 100).toStringAsFixed(1)}%',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: progressColor,
+                                        fontFeatures: const [FontFeature.tabularFigures()],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.history_rounded,
-                                  size: 18,
-                                  color: AppColors.textSecondary,
+                            ),
+
+                            // Estado
+                            Expanded(
+                              flex: 2,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: account.isActive
+                                        ? AppColors.successLight
+                                        : const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: account.isActive
+                                          ? AppColors.success.withValues(alpha: 0.3)
+                                          : const Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 6,
+                                        height: 6,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: account.isActive
+                                              ? AppColors.success
+                                              : AppColors.textMuted,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        account.isActive ? 'Activo' : 'Suspendido',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: account.isActive
+                                              ? AppColors.successDark
+                                              : Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                tooltip: 'Ver movimientos',
-                                onPressed: () => widget.onViewHistory(account),
                               ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.more_horiz_rounded,
-                                  size: 18,
-                                  color: AppColors.textMuted,
-                                ),
-                                tooltip: 'Más opciones',
-                                onPressed: () => widget.onSelectAccount(account),
+                            ),
+
+                            // Acciones
+                            SizedBox(
+                              width: 140,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.payments_outlined,
+                                      size: 18,
+                                      color: AppColors.teal,
+                                    ),
+                                    tooltip: 'Registrar abono',
+                                    onPressed: () => widget.onPay(account),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.history_rounded,
+                                      size: 18,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    tooltip: 'Ver movimientos',
+                                    onPressed: () => widget.onViewHistory(account),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.more_horiz_rounded,
+                                      size: 18,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    tooltip: 'Más opciones',
+                                    onPressed: () => widget.onSelectAccount(account),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              );
-            },
+                  );
+                },
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x080F172A),
+                blurRadius: 3,
+                offset: Offset(0, 1),
+              ),
+              BoxShadow(
+                color: Color(0x0D0F172A),
+                blurRadius: 16,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: needsScroll
+              ? SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: tableContent,
+                )
+              : tableContent,
+        );
+      },
     );
   }
 }

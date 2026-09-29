@@ -131,16 +131,21 @@ class _BentoMetricCardState extends State<_BentoMetricCard> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: _isHovered ? widget.iconColor.withValues(alpha: 0.35) : AppColors.border,
-            width: _isHovered ? 1.5 : 1,
+            color: _isHovered ? widget.iconColor.withValues(alpha: 0.45) : const Color(0xFFE2E8F0),
+            width: 1,
           ),
           boxShadow: [
+            const BoxShadow(
+              color: Color(0x080F172A),
+              blurRadius: 3,
+              offset: Offset(0, 1),
+            ),
             BoxShadow(
-              color: Colors.black.withValues(alpha: _isHovered ? 0.05 : 0.02),
-              blurRadius: _isHovered ? 12 : 6,
-              offset: Offset(0, _isHovered ? 3 : 2),
+              color: const Color(0x0D0F172A),
+              blurRadius: _isHovered ? 16 : 12,
+              offset: Offset(0, _isHovered ? 4 : 3),
             ),
           ],
         ),

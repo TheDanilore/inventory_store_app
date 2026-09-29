@@ -228,17 +228,25 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
 
                   // --- 2. TOOLBAR UNIFICADO DE BÚSQUEDA Y ACCIONES ---
                   Container(
-                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.border),
-                      boxShadow: [
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      boxShadow: const [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+                          color: Color(0x080F172A),
+                          blurRadius: 3,
+                          offset: Offset(0, 1),
+                        ),
+                        BoxShadow(
+                          color: Color(0x0D0F172A),
+                          blurRadius: 12,
+                          offset: Offset(0, 3),
                         ),
                       ],
                     ),
@@ -680,13 +688,18 @@ class _BentoSupplierKpiCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Color(0x080F172A),
+            blurRadius: 3,
+            offset: Offset(0, 1),
+          ),
+          BoxShadow(
+            color: Color(0x0D0F172A),
+            blurRadius: 12,
+            offset: Offset(0, 3),
           ),
         ],
       ),

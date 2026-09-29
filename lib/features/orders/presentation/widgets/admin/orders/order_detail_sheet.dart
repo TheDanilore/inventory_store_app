@@ -439,12 +439,17 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: Color(0x080F172A),
+            blurRadius: 3,
+            offset: Offset(0, 1),
+          ),
+          BoxShadow(
+            color: Color(0x0A0F172A),
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -820,77 +825,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                 },
                               ),
 
-                              // PAYMENT STATUS
-                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                buildWhen:
-                                    (p, c) =>
-                                        p.order != c.order ||
-                                        p.paymentMethod != c.paymentMethod ||
-                                        p.accounts != c.accounts ||
-                                        p.selectedCustomerId !=
-                                            c.selectedCustomerId ||
-                                        p.pointsEarned != c.pointsEarned ||
-                                        p.creditInfo != c.creditInfo,
-                                builder: (context, state) {
-                                  final order = state.order ?? displayOrder;
-                                  if (order.paymentStatus ==
-                                      _paymentStatusPaid) {
-                                    return const SizedBox.shrink();
-                                  }
-
-                                  return PaymentStatusSection(
-                                    orderId: order.id,
-                                    paymentStatus: order.paymentStatus,
-                                    totalAmount: order.totalAmount,
-                                    amountPaid: order.amountPaid,
-                                    paymentMethod: state.paymentMethod,
-                                    creditInfo: state.creditInfo,
-                                    accounts: state.accounts,
-                                    customerId: state.selectedCustomerId,
-                                    pointsEarned: state.pointsEarned,
-                                    onPaymentRegistered: () async {
-                                      final cubit =
-                                          context.read<OrderDetailCubit>();
-                                      cubit.setWasModified();
-                                      await cubit.fetchData(widget.order.id);
-                                      final updated = cubit.state.order;
-                                      if (updated != null) {
-                                        widget.onOrderUpdated?.call(updated);
-                                      }
-                                    },
-                                    isLoyaltyEnabled:
-                                        config.loyaltyGlobalEnabled,
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 16),
-
-                              // CREDIT SECTION
-                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                buildWhen:
-                                    (p, c) =>
-                                        p.selectedCustomerId !=
-                                            c.selectedCustomerId ||
-                                        p.creditInfo != c.creditInfo,
-                                builder: (context, state) {
-                                  if (state.selectedCustomerId != null &&
-                                      state.selectedCustomerId!.isNotEmpty &&
-                                      state.creditInfo != null) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(
-                                        bottom: 16,
-                                      ),
-                                      child: OrderDetailCreditSection(
-                                        creditInfo: state.creditInfo!,
-                                        customerId: state.selectedCustomerId!,
-                                      ),
-                                    );
-                                  }
-                                  return const SizedBox.shrink();
-                                },
-                              ),
-
-                              // ITEMS SECTION
+                              // 1. ITEMS SECTION (Productos del pedido - Primer plano visual)
                               BlocSelector<
                                 OrderDetailCubit,
                                 OrderDetailState,
@@ -966,9 +901,103 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                   );
                                 },
                               ),
-                              const SizedBox(height: 16),
 
-                              // POINTS SECTION
+                              // 2. TOTAL SUMMARY SECTION (Desglose financiero)
+                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                buildWhen:
+                                    (p, c) =>
+                                        p.order != c.order ||
+                                        p.items != c.items ||
+                                        p.pointsUsed != c.pointsUsed ||
+                                        p.pointsEarned != c.pointsEarned ||
+                                        p.isCompleted != c.isCompleted,
+                                builder: (context, state) {
+                                  final subtotal = state.items.fold(
+                                    0.0,
+                                    (sum, i) => sum + i.subtotal,
+                                  );
+                                  final order = state.order ?? displayOrder;
+                                  return OrderDetailTotalSummarySection(
+                                    subtotal: subtotal,
+                                    pointsUsed: state.pointsUsed,
+                                    pointsEarned: state.pointsEarned,
+                                    pointsToSolesRatio: pointsToSolesRatio,
+                                    discountAmount: order.discountAmount,
+                                    isCompleted:
+                                        state.isCompleted &&
+                                        order.paymentStatus ==
+                                            _paymentStatusPaid,
+                                    isLoyaltyEnabled:
+                                        config.loyaltyGlobalEnabled,
+                                  );
+                                },
+                              ),
+
+                              // 3. PAYMENT STATUS (Formulario de cobro y abonos si está pendiente)
+                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                buildWhen:
+                                    (p, c) =>
+                                        p.order != c.order ||
+                                        p.paymentMethod != c.paymentMethod ||
+                                        p.accounts != c.accounts ||
+                                        p.selectedCustomerId !=
+                                            c.selectedCustomerId ||
+                                        p.pointsEarned != c.pointsEarned ||
+                                        p.creditInfo != c.creditInfo,
+                                builder: (context, state) {
+                                  final order = state.order ?? displayOrder;
+                                  if (order.paymentStatus ==
+                                      _paymentStatusPaid) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  return PaymentStatusSection(
+                                    orderId: order.id,
+                                    paymentStatus: order.paymentStatus,
+                                    totalAmount: order.totalAmount,
+                                    amountPaid: order.amountPaid,
+                                    paymentMethod: state.paymentMethod,
+                                    creditInfo: state.creditInfo,
+                                    accounts: state.accounts,
+                                    customerId: state.selectedCustomerId,
+                                    pointsEarned: state.pointsEarned,
+                                    onPaymentRegistered: () async {
+                                      final cubit =
+                                          context.read<OrderDetailCubit>();
+                                      cubit.setWasModified();
+                                      await cubit.fetchData(widget.order.id);
+                                      final updated = cubit.state.order;
+                                      if (updated != null) {
+                                        widget.onOrderUpdated?.call(updated);
+                                      }
+                                    },
+                                    isLoyaltyEnabled:
+                                        config.loyaltyGlobalEnabled,
+                                  );
+                                },
+                              ),
+
+                              // 4. CREDIT SECTION (Línea de crédito si aplica)
+                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                buildWhen:
+                                    (p, c) =>
+                                        p.selectedCustomerId !=
+                                            c.selectedCustomerId ||
+                                        p.creditInfo != c.creditInfo,
+                                builder: (context, state) {
+                                  if (state.selectedCustomerId != null &&
+                                      state.selectedCustomerId!.isNotEmpty &&
+                                      state.creditInfo != null) {
+                                    return OrderDetailCreditSection(
+                                      creditInfo: state.creditInfo!,
+                                      customerId: state.selectedCustomerId!,
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                },
+                              ),
+
+                              // 5. POINTS SECTION (Programa de fidelización)
                               BlocBuilder<OrderDetailCubit, OrderDetailState>(
                                 buildWhen:
                                     (p, c) =>
@@ -1003,34 +1032,29 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                       state.selectedCustomerId != null &&
                                       state.selectedCustomerId!.isNotEmpty &&
                                       !isCreditMethod) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(
-                                        bottom: 16,
-                                      ),
-                                      child: OrderDetailPointsSection(
-                                        isEditing: _isEditing,
-                                        pointsUsed: state.pointsUsed,
-                                        pointsUsedCtrl: _pointsUsedCtrl,
-                                        maxPointsAvailable: maxPtsUser,
-                                        pointsToSolesRatio: pointsToSolesRatio,
-                                        onPointsChanged: (val) {
-                                          final pts = int.tryParse(val) ?? 0;
-                                          context
-                                              .read<OrderDetailCubit>()
-                                              .updatePointsUsed(
-                                                pts,
-                                                pointsToSolesRatio,
-                                                earningRate,
-                                              );
-                                        },
-                                      ),
+                                    return OrderDetailPointsSection(
+                                      isEditing: _isEditing,
+                                      pointsUsed: state.pointsUsed,
+                                      pointsUsedCtrl: _pointsUsedCtrl,
+                                      maxPointsAvailable: maxPtsUser,
+                                      pointsToSolesRatio: pointsToSolesRatio,
+                                      onPointsChanged: (val) {
+                                        final pts = int.tryParse(val) ?? 0;
+                                        context
+                                            .read<OrderDetailCubit>()
+                                            .updatePointsUsed(
+                                              pts,
+                                              pointsToSolesRatio,
+                                              earningRate,
+                                            );
+                                      },
                                     );
                                   }
                                   return const SizedBox.shrink();
                                 },
                               ),
 
-                              // AUDIT SECTION
+                              // 6. AUDIT SECTION (Trazabilidad y autoría)
                               BlocBuilder<OrderDetailCubit, OrderDetailState>(
                                 buildWhen:
                                     (p, c) =>
@@ -1040,38 +1064,6 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                   return OrderDetailAuditSection(
                                     order: state.order ?? displayOrder,
                                     updaterName: state.updaterName,
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 16),
-
-                              // TOTAL SUMMARY SECTION
-                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                buildWhen:
-                                    (p, c) =>
-                                        p.order != c.order ||
-                                        p.items != c.items ||
-                                        p.pointsUsed != c.pointsUsed ||
-                                        p.pointsEarned != c.pointsEarned ||
-                                        p.isCompleted != c.isCompleted,
-                                builder: (context, state) {
-                                  final subtotal = state.items.fold(
-                                    0.0,
-                                    (sum, i) => sum + i.subtotal,
-                                  );
-                                  final order = state.order ?? displayOrder;
-                                  return OrderDetailTotalSummarySection(
-                                    subtotal: subtotal,
-                                    pointsUsed: state.pointsUsed,
-                                    pointsEarned: state.pointsEarned,
-                                    pointsToSolesRatio: pointsToSolesRatio,
-                                    discountAmount: order.discountAmount,
-                                    isCompleted:
-                                        state.isCompleted &&
-                                        order.paymentStatus ==
-                                            _paymentStatusPaid,
-                                    isLoyaltyEnabled:
-                                        config.loyaltyGlobalEnabled,
                                   );
                                 },
                               ),
@@ -1112,8 +1104,15 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                         decoration: const BoxDecoration(
                           color: Colors.white,
                           border: Border(
-                            top: BorderSide(color: AppColors.border),
+                            top: BorderSide(color: Color(0xFFE2E8F0)),
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x060F172A),
+                              blurRadius: 8,
+                              offset: Offset(0, -3),
+                            ),
+                          ],
                         ),
                         child: Row(
                           children: [
@@ -1245,6 +1244,111 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                             ),
                                     label: const Text(
                                       'Devolución',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else if (order.paymentStatus != _paymentStatusPaid)
+                              Expanded(
+                                flex: 5,
+                                child: Row(
+                                  children: [
+                                    if (state.canToggleEdit) ...[
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          size: 18,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                        tooltip: 'Editar datos del pedido',
+                                        style: IconButton.styleFrom(
+                                          side: const BorderSide(
+                                            color: Color(0xFFE2E8F0),
+                                          ),
+                                          padding: const EdgeInsets.all(8),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                        ),
+                                        onPressed: () => _toggleEditing(state),
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    Expanded(
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: ElevatedButton.icon(
+                                          onPressed: () {
+                                            if (_scrollController.hasClients) {
+                                              _scrollController.animateTo(
+                                                _scrollController
+                                                    .position.maxScrollExtent,
+                                                duration: const Duration(
+                                                  milliseconds: 320,
+                                                ),
+                                                curve: Curves.easeOutCubic,
+                                              );
+                                            }
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.teal,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 13,
+                                            ),
+                                            elevation: 0,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          icon: const Icon(
+                                            Icons.payments_rounded,
+                                            size: 17,
+                                          ),
+                                          label: const Text(
+                                            'Registrar Pago',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else if (state.canToggleEdit)
+                              Expanded(
+                                flex: 5,
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => _toggleEditing(state),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.tealDark,
+                                      side: const BorderSide(
+                                        color: Color(0xFFCBD5E1),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 13,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.edit_note_rounded,
+                                      size: 18,
+                                    ),
+                                    label: const Text(
+                                      'Editar Pedido',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 13,
