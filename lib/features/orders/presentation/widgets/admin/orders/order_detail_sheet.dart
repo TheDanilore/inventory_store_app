@@ -322,6 +322,302 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
     return manualName.isNotEmpty ? manualName : 'Cliente mostrador';
   }
 
+  void _toggleEditing(OrderDetailState state) {
+    if (_isEditing) {
+      context.read<OrderDetailCubit>().resetEditState();
+      _pointsUsedCtrl.text = state.pointsUsed.toString();
+      _manualNameCtrl.text = (state.order ?? widget.order).customerName.trim();
+    }
+    setState(() {
+      _isEditing = !_isEditing;
+    });
+  }
+
+  Widget _buildEditingBanner(OrderDetailState state) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.tealLight.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.teal.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.edit_note_rounded, size: 18, color: AppColors.tealDark),
+          const SizedBox(width: 8),
+          const Text(
+            'Modo Edición',
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.tealDark,
+            ),
+          ),
+          const Spacer(),
+          TextButton(
+            onPressed: () => _toggleEditing(state),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.danger,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactMetadataStrip(
+    OrderDetailState state,
+    OrderEntity displayOrder,
+  ) {
+    final selectedCustomerLabel = _getCustomerLabel(
+      state.selectedCustomerId,
+      state.profiles,
+      state.order,
+    );
+    final isRegistered =
+        state.selectedCustomerId != null && state.selectedCustomerId!.isNotEmpty;
+    final cleanName = selectedCustomerLabel.trim().isNotEmpty
+        ? selectedCustomerLabel.trim()
+        : 'Cliente mostrador';
+    final parts = cleanName.split(' ').where((p) => p.isNotEmpty).toList();
+    final initials = parts.isNotEmpty
+        ? parts.take(2).map((p) => p[0]).join().toUpperCase()
+        : '?';
+
+    final order = state.order ?? displayOrder;
+    final safePaymentMethod =
+        state.paymentMethod.isNotEmpty ? state.paymentMethod : 'POR ACORDAR';
+    final isPaid = order.paymentStatus.toUpperCase() == 'PAID';
+    final pending = order.totalAmount - order.amountPaid;
+
+    IconData paymentIcon;
+    Color paymentColor;
+    if (state.accounts.any((a) => a['name'] == safePaymentMethod)) {
+      final accType = state.accounts.firstWhere(
+        (a) => a['name'] == safePaymentMethod,
+        orElse: () => {'type': 'OTRO'},
+      )['type'] as String;
+      switch (accType) {
+        case 'CAJA':
+          paymentIcon = Icons.point_of_sale_rounded;
+          paymentColor = const Color(0xFFF59E0B);
+          break;
+        case 'BANCO':
+          paymentIcon = Icons.account_balance_rounded;
+          paymentColor = const Color(0xFF2563EB);
+          break;
+        case 'DIGITAL':
+          paymentIcon = Icons.smartphone_rounded;
+          paymentColor = const Color(0xFF7C3AED);
+          break;
+        default:
+          paymentIcon = Icons.wallet_rounded;
+          paymentColor = const Color(0xFF6B7280);
+      }
+    } else {
+      paymentIcon = safePaymentMethod == 'CRÉDITO'
+          ? Icons.handshake_rounded
+          : Icons.payment_rounded;
+      paymentColor =
+          safePaymentMethod == 'CRÉDITO' ? AppColors.teal : AppColors.textMuted;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // --- COLUMNA 1: CLIENTE ---
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: isRegistered
+                        ? AppColors.teal.withValues(alpha: 0.12)
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      initials,
+                      style: TextStyle(
+                        color: isRegistered
+                            ? AppColors.tealDark
+                            : AppColors.textSecondary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        cleanName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isRegistered ? 'Cliente registrado' : 'Cliente mostrador',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w500,
+                          color: isRegistered
+                              ? AppColors.tealDark
+                              : AppColors.textMuted,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Divisor vertical
+          Container(
+            width: 1,
+            height: 32,
+            color: AppColors.border,
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+          ),
+
+          // --- COLUMNA 2: PAGO ---
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: paymentColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    paymentIcon,
+                    size: 17,
+                    color: paymentColor,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        safePaymentMethod,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isPaid
+                                  ? AppColors.successDark
+                                  : AppColors.warningDark,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              isPaid
+                                  ? 'Pagado'
+                                  : (pending > 0
+                                      ? 'Por Cobrar: S/ ${pending.toStringAsFixed(2)}'
+                                      : 'Pendiente'),
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: isPaid
+                                    ? AppColors.successDark
+                                    : AppColors.warningDark,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // --- BOTÓN EDITAR SI ESTÁ PERMITIDO ---
+          if (state.canToggleEdit) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.teal),
+              tooltip: 'Editar datos del pedido',
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.tealLight.withValues(alpha: 0.5),
+                padding: const EdgeInsets.all(6),
+                minimumSize: const Size(30, 30),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              onPressed: () => _toggleEditing(state),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final config = context.watch<AppConfigCubit>();
@@ -396,145 +692,133 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                             controller: _scrollController,
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                             children: [
-                              // HEADER
-                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                buildWhen:
-                                    (p, c) =>
-                                        p.canToggleEdit != c.canToggleEdit ||
-                                        p.isCompleted != c.isCompleted ||
-                                        p.pointsUsed != c.pointsUsed,
-                                builder: (context, state) {
-                                  return OrderDetailHeaderRow(
-                                    orderId: state.order!.id,
-                                    isCompleted: state.isCompleted,
-                                    isEditing: _isEditing,
-                                    canToggleEdit: state.canToggleEdit,
-                                    onToggleEditing: () {
-                                      if (_isEditing) {
-                                        context
-                                            .read<OrderDetailCubit>()
-                                            .resetEditState();
-                                        _pointsUsedCtrl.text =
-                                            state.pointsUsed.toString();
-                                        _manualNameCtrl.text =
-                                            state.order!.customerName.trim();
-                                      }
-                                      setState(() {
-                                        _isEditing = !_isEditing;
-                                      });
-                                    },
-                                    onShare:
-                                        () => OrderPdfGenerator.shareTicket(
-                                          state.order!,
-                                          items: state.items,
-                                          businessName: config.businessName,
-                                          taxId: config.businessTaxId,
-                                          address: config.businessAddress,
-                                          phone: config.businessPhone,
-                                        ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 16),
+                              // HEADER (solo en modal/bottom sheet móvil, no duplicar en slide-over drawer desktop)
+                              if (!widget.isEmbedded) ...[
+                                BlocBuilder<OrderDetailCubit, OrderDetailState>(
+                                  buildWhen:
+                                      (p, c) =>
+                                          p.canToggleEdit != c.canToggleEdit ||
+                                          p.isCompleted != c.isCompleted ||
+                                          p.pointsUsed != c.pointsUsed,
+                                  builder: (context, state) {
+                                    return OrderDetailHeaderRow(
+                                      orderId: state.order!.id,
+                                      isCompleted: state.isCompleted,
+                                      isEditing: _isEditing,
+                                      canToggleEdit: state.canToggleEdit,
+                                      onToggleEditing: () => _toggleEditing(state),
+                                      onShare:
+                                          () => OrderPdfGenerator.shareTicket(
+                                            state.order!,
+                                            items: state.items,
+                                            businessName: config.businessName,
+                                            taxId: config.businessTaxId,
+                                            address: config.businessAddress,
+                                            phone: config.businessPhone,
+                                          ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                              ],
 
-                              // STATUS
+                              // RESUMEN COMPACTO (Lectura rápida) O FORMULARIO COMPLETO (Edición)
                               BlocBuilder<OrderDetailCubit, OrderDetailState>(
                                 buildWhen:
                                     (p, c) =>
                                         p.currentStatus != c.currentStatus ||
-                                        p.order != c.order,
-                                builder: (context, state) {
-                                  return OrderDetailStatusSection(
-                                    originalStatus:
-                                        state.order?.status ??
-                                        displayOrder.status,
-                                    currentStatus: state.currentStatus,
-                                    isEditing: _isEditing,
-                                    onChanged: (val) {
-                                      if (val != null) {
-                                        context
-                                            .read<OrderDetailCubit>()
-                                            .updateStatus(val);
-                                      }
-                                    },
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 16),
-
-                              // CUSTOMER
-                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                buildWhen:
-                                    (p, c) =>
+                                        p.order != c.order ||
                                         p.selectedCustomerId !=
                                             c.selectedCustomerId ||
                                         p.profiles != c.profiles ||
-                                        p.isCompleted != c.isCompleted,
-                                builder: (context, state) {
-                                  return OrderDetailCustomerSection(
-                                    isEditing: _isEditing,
-                                    isCompleted: state.isCompleted,
-                                    hasManualName:
-                                        _manualNameCtrl.text.isNotEmpty,
-                                    manualNameController: _manualNameCtrl,
-                                    profiles: state.profiles,
-                                    selectedCustomerLabel: _getCustomerLabel(
-                                      state.selectedCustomerId,
-                                      state.profiles,
-                                      state.order,
-                                    ),
-                                    selectedCustomerId:
-                                        state.selectedCustomerId,
-                                    onSelectCustomer: (id) {
-                                      context
-                                          .read<OrderDetailCubit>()
-                                          .selectCustomer(
-                                            id,
-                                            pointsToSolesRatio,
-                                            earningRate,
-                                          );
-                                    },
-                                    onClearCustomer: () {
-                                      context
-                                          .read<OrderDetailCubit>()
-                                          .selectCustomer(
-                                            null,
-                                            pointsToSolesRatio,
-                                            earningRate,
-                                          );
-                                      _manualNameCtrl.text = '';
-                                    },
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 16),
-
-                              // PAYMENT METHOD
-                              BlocBuilder<OrderDetailCubit, OrderDetailState>(
-                                buildWhen:
-                                    (p, c) =>
                                         p.paymentMethod != c.paymentMethod ||
                                         p.accounts != c.accounts ||
-                                        p.isCompleted != c.isCompleted,
+                                        p.canToggleEdit != c.canToggleEdit,
                                 builder: (context, state) {
-                                  return OrderDetailPaymentSection(
-                                    isEditing: _isEditing,
-                                    isCompleted: state.isCompleted,
-                                    accounts: state.accounts,
-                                    currentPaymentMethod: state.paymentMethod,
-                                    onChanged: (val) {
-                                      if (val != null) {
-                                        _validateAndSetPaymentMethod(
-                                          val,
-                                          pointsToSolesRatio,
-                                          earningRate,
-                                        );
-                                      }
-                                    },
+                                  if (!_isEditing) {
+                                    return _buildCompactMetadataStrip(
+                                      state,
+                                      displayOrder,
+                                    );
+                                  }
+
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      if (widget.isEmbedded)
+                                        _buildEditingBanner(state),
+                                      OrderDetailStatusSection(
+                                        originalStatus:
+                                            state.order?.status ??
+                                            displayOrder.status,
+                                        currentStatus: state.currentStatus,
+                                        isEditing: _isEditing,
+                                        onChanged: (val) {
+                                          if (val != null) {
+                                            context
+                                                .read<OrderDetailCubit>()
+                                                .updateStatus(val);
+                                          }
+                                        },
+                                      ),
+                                      const SizedBox(height: 14),
+                                      OrderDetailCustomerSection(
+                                        isEditing: _isEditing,
+                                        isCompleted: state.isCompleted,
+                                        hasManualName:
+                                            _manualNameCtrl.text.isNotEmpty,
+                                        manualNameController: _manualNameCtrl,
+                                        profiles: state.profiles,
+                                        selectedCustomerLabel: _getCustomerLabel(
+                                          state.selectedCustomerId,
+                                          state.profiles,
+                                          state.order,
+                                        ),
+                                        selectedCustomerId:
+                                            state.selectedCustomerId,
+                                        onSelectCustomer: (id) {
+                                          context
+                                              .read<OrderDetailCubit>()
+                                              .selectCustomer(
+                                                id,
+                                                pointsToSolesRatio,
+                                                earningRate,
+                                              );
+                                        },
+                                        onClearCustomer: () {
+                                          context
+                                              .read<OrderDetailCubit>()
+                                              .selectCustomer(
+                                                null,
+                                                pointsToSolesRatio,
+                                                earningRate,
+                                              );
+                                          _manualNameCtrl.text = '';
+                                        },
+                                      ),
+                                      const SizedBox(height: 14),
+                                      OrderDetailPaymentSection(
+                                        isEditing: _isEditing,
+                                        isCompleted: state.isCompleted,
+                                        accounts: state.accounts,
+                                        currentPaymentMethod:
+                                            state.paymentMethod,
+                                        onChanged: (val) {
+                                          if (val != null) {
+                                            _validateAndSetPaymentMethod(
+                                              val,
+                                              pointsToSolesRatio,
+                                              earningRate,
+                                            );
+                                          }
+                                        },
+                                      ),
+                                      const SizedBox(height: 14),
+                                    ],
                                   );
                                 },
                               ),
-                              const SizedBox(height: 16),
 
                               // PAYMENT STATUS
                               BlocBuilder<OrderDetailCubit, OrderDetailState>(

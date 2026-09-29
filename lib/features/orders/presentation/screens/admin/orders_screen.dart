@@ -398,6 +398,68 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
+  Widget _buildDrawerStatusBadge(String status) {
+    Color bg;
+    Color text;
+    String label;
+    IconData icon;
+
+    switch (status.toUpperCase()) {
+      case 'COMPLETED':
+        bg = AppColors.successLight;
+        text = AppColors.successDark;
+        label = 'Completado';
+        icon = Icons.check_circle_rounded;
+        break;
+      case 'DRAFT':
+        bg = AppColors.warningLight;
+        text = AppColors.warningDark;
+        label = 'Borrador';
+        icon = Icons.hourglass_top_rounded;
+        break;
+      case 'CANCELLED':
+        bg = AppColors.dangerLight;
+        text = AppColors.danger;
+        label = 'Cancelado';
+        icon = Icons.cancel_rounded;
+        break;
+      case 'RETURNED':
+        bg = Colors.purple.shade50;
+        text = Colors.purple.shade700;
+        label = 'Devuelto';
+        icon = Icons.assignment_return_rounded;
+        break;
+      default:
+        bg = Colors.grey.shade100;
+        text = AppColors.textSecondary;
+        label = status;
+        icon = Icons.info_outline_rounded;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: text),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: text,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _onOrderEmbeddedPop(bool wasModified) {
     if (wasModified && mounted) {
       context.read<OrdersCubit>().loadOrders(background: true);
@@ -662,11 +724,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
                 // --- ESTRATEGIA ADAPTATIVA DESKTOP: TABLA 100% + SLIDE-OVER DRAWER ---
                 if (isWide) {
+                  final activeOrder = currentSelectedOrder;
+                  final drawerWidth = width >= 1440
+                      ? 520.0
+                      : width >= 1100
+                          ? 480.0
+                          : (width * 0.48).clamp(380.0, 460.0);
+
                   return Stack(
                     children: [
                       // Contenido principal de la izquierda
                       Positioned.fill(
-                        right: currentSelectedOrder != null ? 500 : 0,
+                        right: activeOrder != null ? drawerWidth : 0,
                         child: Container(
                           color: AppColors.background,
                           child: mainListContent,
@@ -674,12 +743,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       ),
 
                       // SLIDE-OVER DRAWER LATERAL (Panel retráctil a la derecha)
-                      if (currentSelectedOrder != null) ...[
+                      if (activeOrder != null) ...[
                         Positioned(
                           top: 0,
                           bottom: 0,
                           right: 0,
-                          width: 500,
+                          width: drawerWidth,
                           child: Container(
                             decoration: BoxDecoration(
                               color: const Color(0xFFF8FAFC),
@@ -696,11 +765,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             ),
                             child: Column(
                               children: [
-                                // Cabecera del Slide-Over Drawer
+                                // Cabecera Unificada del Slide-Over Drawer
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
-                                    vertical: 12,
+                                    vertical: 11,
                                   ),
                                   decoration: const BoxDecoration(
                                     color: AppColors.surface,
@@ -710,21 +779,83 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                   ),
                                   child: Row(
                                     children: [
-                                      const Icon(
-                                        Icons.receipt_long_rounded,
-                                        size: 20,
-                                        color: AppColors.teal,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Text(
-                                        'Detalle del Pedido',
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.textPrimary,
+                                      // ID con copia rápida en 1-click
+                                      InkWell(
+                                        onTap: () {
+                                          Clipboard.setData(
+                                            ClipboardData(
+                                              text: activeOrder.id,
+                                            ),
+                                          );
+                                          AppSnackbar.show(
+                                            context,
+                                            message:
+                                                'ID copiado al portapapeles',
+                                            type: SnackbarType.success,
+                                          );
+                                        },
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF1F5F9),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                            border: Border.all(
+                                              color: AppColors.border,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.receipt_rounded,
+                                                size: 13,
+                                                color: AppColors.teal,
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                '#${activeOrder.id.length >= 8 ? activeOrder.id.substring(0, 8).toUpperCase() : activeOrder.id.toUpperCase()}',
+                                                style: const TextStyle(
+                                                  fontFamily: 'monospace',
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: AppColors.textPrimary,
+                                                  letterSpacing: 0.4,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              const Icon(
+                                                Icons.copy_rounded,
+                                                size: 11,
+                                                color: AppColors.textMuted,
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
+                                      const SizedBox(width: 8),
+                                      _buildDrawerStatusBadge(
+                                        activeOrder.status,
+                                      ),
                                       const Spacer(),
+                                      // Botón Imprimir Ticket
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.print_rounded,
+                                          size: 19,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                        tooltip: 'Imprimir Ticket [P]',
+                                        onPressed:
+                                            () => _printOrderTicket(
+                                              activeOrder,
+                                            ),
+                                      ),
+                                      const SizedBox(width: 4),
                                       // Badge de atajo [ESC]
                                       Container(
                                         padding: const EdgeInsets.symmetric(
@@ -733,7 +864,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: AppColors.background,
-                                          borderRadius: BorderRadius.circular(4),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
                                           border: Border.all(
                                             color: AppColors.border,
                                           ),
@@ -747,17 +879,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: 4),
                                       IconButton(
                                         icon: const Icon(
                                           Icons.close_rounded,
                                           size: 20,
                                         ),
-                                        tooltip: 'Cerrar detalle (Esc)',
-                                        onPressed: () => _selectOrder(
-                                          null,
-                                          updateUrl: true,
-                                        ),
+                                        tooltip: 'Cerrar panel (Esc)',
+                                        onPressed:
+                                            () => _selectOrder(
+                                              null,
+                                              updateUrl: true,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -768,8 +901,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                   child: AnimatedSwitcher(
                                     duration: const Duration(milliseconds: 250),
                                     child: OrderDetailSheet(
-                                      key: ValueKey(currentSelectedOrder.id),
-                                      order: currentSelectedOrder,
+                                      key: ValueKey(activeOrder.id),
+                                      order: activeOrder,
                                       isEmbedded: true,
                                       onPop: _onOrderEmbeddedPop,
                                       onOrderUpdated: (updated) {
