@@ -391,6 +391,10 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
           0,
           (s, e) => s + e.totalCost,
         );
+        final int totalUnits = state.exits.fold<int>(
+          0,
+          (s, e) => s + e.itemCount,
+        );
 
         return AdminLayout(
           title: 'Salidas de Inventario',
@@ -410,38 +414,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
               );
             }
           },
-          actions: [
-            if (isDesktopOrTablet)
-              ElevatedButton.icon(
-                onPressed: _onNewExit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      _hasDraft ? const Color(0xFFF59E0B) : AppColors.danger,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                  ),
-                ),
-                icon: Icon(
-                  _hasDraft
-                      ? Icons.edit_note_rounded
-                      : Icons.remove_circle_outline_rounded,
-                  size: 16,
-                ),
-                label: Text(
-                  _hasDraft ? 'Continuar Borrador [N]' : 'Nueva Salida [N]',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-          ],
+          actions: const [],
           floatingActionButton:
               !isDesktopOrTablet
                   ? FloatingActionButton.extended(
@@ -569,11 +542,12 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                         count: state.exits.length,
                         totalCount: state.totalRecords,
                         totalCost: totalCost,
+                        totalUnits: totalUnits,
                         isDesktop: isTablet,
                       ),
                     ),
 
-                    // ── 3. Toolbar Pro Unificado (Buscador, Fecha, Vista, Refresh) ──
+                    // ── 3. Toolbar Pro Unificado (Buscador, Fecha, Vista, Refresh, CTA) ──
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
                       child: _InventoryExitsToolbar(
@@ -603,6 +577,8 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                         onRefresh: () {
                           cubit.loadExits(isRefresh: true);
                         },
+                        hasDraft: _hasDraft,
+                        onNewExit: _onNewExit,
                       ),
                     ),
 
@@ -827,111 +803,156 @@ class _InventoryExitsBentoKpiBar extends StatelessWidget {
   final int count;
   final int totalCount;
   final double totalCost;
+  final int totalUnits;
   final bool isDesktop;
 
   const _InventoryExitsBentoKpiBar({
     required this.count,
     required this.totalCount,
     required this.totalCost,
+    required this.totalUnits,
     required this.isDesktop,
   });
 
   @override
   Widget build(BuildContext context) {
+    final cards = [
+      _BentoExitKpiCard(
+        title: 'Total Salidas',
+        value: totalCount > 0 ? '$count de $totalCount' : '$count',
+        subtitle: totalCount > 0 ? '$totalCount registradas' : 'En esta página',
+        icon: Icons.outbox_rounded,
+        iconBgColor: AppColors.primaryLight,
+        iconColor: AppColors.primary,
+      ),
+      _BentoExitKpiCard(
+        title: 'Costo Total Salidas',
+        value: 'S/ ${totalCost.toStringAsFixed(2)}',
+        subtitle: 'Costo acumulado',
+        icon: Icons.payments_rounded,
+        iconBgColor: const Color(0xFFFEF2F2),
+        iconColor: AppColors.dangerDark,
+        valueColor: AppColors.dangerDark,
+      ),
+      _BentoExitKpiCard(
+        title: 'Unidades Despachadas',
+        value: '$totalUnits uds.',
+        subtitle: 'Productos descargados',
+        icon: Icons.inventory_2_rounded,
+        iconBgColor: AppColors.tealLight,
+        iconColor: AppColors.tealDark,
+      ),
+    ];
+
+    if (isDesktop) {
+      return Row(
+        children: [
+          Expanded(child: cards[0]),
+          const SizedBox(width: 12),
+          Expanded(child: cards[1]),
+          const SizedBox(width: 12),
+          Expanded(child: cards[2]),
+        ],
+      );
+    }
+
+    return SizedBox(
+      height: 84,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: cards.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (_, index) => SizedBox(width: 220, child: cards[index]),
+      ),
+    );
+  }
+}
+
+class _BentoExitKpiCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final String subtitle;
+  final IconData icon;
+  final Color iconBgColor;
+  final Color iconColor;
+  final Color? valueColor;
+
+  const _BentoExitKpiCard({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.icon,
+    required this.iconBgColor,
+    required this.iconColor,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Wrap(
-        spacing: 20,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: AppColors.danger.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                child: const Icon(
-                  Icons.outbox_rounded,
-                  size: 15,
-                  color: AppColors.dangerDark,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Salidas',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  Text(
-                    totalCount > 0 ? '$count de $totalCount' : '$count',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x050F172A),
+            blurRadius: 4,
+            offset: Offset(0, 1),
           ),
-          Container(width: 1, height: 24, color: const Color(0xFFE2E8F0)),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF2F2),
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                child: const Icon(
-                  Icons.payments_rounded,
-                  size: 15,
-                  color: AppColors.dangerDark,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Costo Total Salidas',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
-                    ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
                   ),
-                  Text(
-                    'S/ ${totalCost.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.dangerDark,
-                    ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: valueColor ?? AppColors.textPrimary,
+                    letterSpacing: -0.3,
                   ),
-                ],
-              ),
-            ],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -953,6 +974,8 @@ class _InventoryExitsToolbar extends StatelessWidget {
   final bool isTableView;
   final ValueChanged<bool> onToggleTableView;
   final VoidCallback onRefresh;
+  final bool hasDraft;
+  final VoidCallback onNewExit;
 
   const _InventoryExitsToolbar({
     required this.searchCtrl,
@@ -964,6 +987,8 @@ class _InventoryExitsToolbar extends StatelessWidget {
     required this.isTableView,
     required this.onToggleTableView,
     required this.onRefresh,
+    required this.hasDraft,
+    required this.onNewExit,
   });
 
   @override
@@ -1040,6 +1065,13 @@ class _InventoryExitsToolbar extends StatelessWidget {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x050F172A),
+              blurRadius: 4,
+              offset: Offset(0, 1),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -1058,11 +1090,78 @@ class _InventoryExitsToolbar extends StatelessWidget {
             const SizedBox(width: 10),
             viewToggle,
             const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded, size: 20),
-              color: AppColors.textSecondary,
-              tooltip: 'Refrescar salidas [R]',
-              onPressed: onRefresh,
+            SizedBox(
+              height: 40,
+              width: 40,
+              child: IconButton(
+                icon: const Icon(Icons.refresh_rounded, size: 20),
+                color: AppColors.textSecondary,
+                tooltip: 'Refrescar salidas [R]',
+                style: IconButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                  ),
+                ),
+                onPressed: onRefresh,
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              height: 40,
+              child: FilledButton.icon(
+                onPressed: onNewExit,
+                style: FilledButton.styleFrom(
+                  backgroundColor:
+                      hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: Icon(
+                  hasDraft
+                      ? Icons.edit_note_rounded
+                      : Icons.remove_circle_outline_rounded,
+                  size: 18,
+                ),
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      hasDraft ? 'Continuar Borrador' : 'Nueva Salida',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: const Text(
+                        'N',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

@@ -133,7 +133,7 @@ class PurchaseOrdersTableView extends StatelessWidget {
                           ),
                         ),
                         SizedBox(
-                          width: 100,
+                          width: 120,
                           child: Text(
                             'ACCIONES',
                             textAlign: TextAlign.end,
@@ -514,7 +514,7 @@ class _PurchaseOrderTableRowState extends State<_PurchaseOrderTableRow> {
                   'S/ ${po.totalAmount.toStringAsFixed(2)}',
                   textAlign: TextAlign.end,
                   style: const TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 14,
                     fontWeight: FontWeight.w900,
                     color: AppColors.textPrimary,
                     fontFeatures: [FontFeature.tabularFigures()],
@@ -524,7 +524,7 @@ class _PurchaseOrderTableRowState extends State<_PurchaseOrderTableRow> {
 
               // 7. Acciones
               SizedBox(
-                width: 100,
+                width: 120,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [

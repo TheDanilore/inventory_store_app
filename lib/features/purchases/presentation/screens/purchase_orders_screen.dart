@@ -728,6 +728,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                       child: _PurchaseOrdersBentoKpiBar(
                         orderCount: viewModel.orders.length,
+                        totalRecords: viewModel.totalCount,
                         totalAmount: totalAmount,
                         pendingCount: pendingCount,
                         isDesktop: isTablet,
@@ -928,12 +929,14 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
 class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
   final int orderCount;
+  final int totalRecords;
   final double totalAmount;
   final int pendingCount;
   final bool isDesktop;
 
   const _PurchaseOrdersBentoKpiBar({
     required this.orderCount,
+    required this.totalRecords,
     required this.totalAmount,
     required this.pendingCount,
     required this.isDesktop,
@@ -941,31 +944,31 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final countLabel = totalRecords > 0 ? '$orderCount de $totalRecords' : '$orderCount';
     final cards = [
       _BentoPOKpiCard(
         title: 'Total Órdenes',
-        value: '$orderCount',
-        subtitle: 'Registradas en el sistema',
+        value: countLabel,
+        subtitle: 'Órdenes en página',
         icon: Icons.receipt_long_rounded,
-        iconColor: AppColors.primary,
-        iconBgColor: AppColors.primary.withValues(alpha: 0.1),
+        iconColor: AppColors.tealDark,
+        iconBgColor: AppColors.tealLight,
       ),
       _BentoPOKpiCard(
         title: 'Monto Compras',
         value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-        subtitle: 'Volumen total compras',
+        subtitle: 'Monto en esta página',
         icon: Icons.payments_rounded,
-        iconColor: AppColors.teal,
-        iconBgColor: AppColors.teal.withValues(alpha: 0.1),
+        iconColor: AppColors.successDark,
+        iconBgColor: AppColors.successLight,
       ),
       _BentoPOKpiCard(
         title: 'Por Recibir / Pendientes',
         value: '$pendingCount',
         subtitle: pendingCount > 0 ? 'Requieren atención' : 'Todo al día',
-        icon: Icons.pending_actions_rounded,
-        iconColor: pendingCount > 0 ? AppColors.warning : AppColors.success,
-        iconBgColor: (pendingCount > 0 ? AppColors.warning : AppColors.success)
-            .withValues(alpha: 0.1),
+        icon: pendingCount > 0 ? Icons.pending_actions_rounded : Icons.check_circle_outline_rounded,
+        iconColor: pendingCount > 0 ? AppColors.warningDark : AppColors.successDark,
+        iconBgColor: pendingCount > 0 ? AppColors.warningLight : AppColors.successLight,
       ),
     ];
 
@@ -1370,36 +1373,6 @@ class _PurchaseOrdersToolbar extends StatelessWidget {
     );
   }
 
-  Widget _buildFilterChip({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.teal.withValues(alpha: 0.1) : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? AppColors.teal : const Color(0xFFE2E8F0),
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-            color: isSelected ? AppColors.tealDark : AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1477,17 +1450,8 @@ class _PurchaseOrdersToolbar extends StatelessWidget {
                   physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: [
-                      ...PurchaseOrdersScreen._statusLabels.entries.map((entry) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: _buildFilterChip(
-                            label: entry.value,
-                            isSelected: viewModel.statusFilter == entry.key,
-                            onTap: () => viewModel.setStatusFilter(entry.key),
-                          ),
-                        );
-                      }),
-                      const SizedBox(width: 4),
+                      _buildStatusDropdown(context),
+                      const SizedBox(width: 8),
                       DateFilterCalendar(
                         height: 36,
                         borderRadius: BorderRadius.circular(10),
@@ -1498,6 +1462,15 @@ class _PurchaseOrdersToolbar extends StatelessWidget {
                         onClear: () {
                           viewModel.setDateRange(null);
                         },
+                      ),
+                      const SizedBox(width: 8),
+                      _buildViewToggle(),
+                      const SizedBox(width: 6),
+                      IconButton(
+                        icon: const Icon(Icons.refresh_rounded, size: 20),
+                        color: AppColors.textSecondary,
+                        tooltip: 'Refrescar órdenes',
+                        onPressed: onRefresh,
                       ),
                     ],
                   ),
@@ -1536,6 +1509,16 @@ class _PurchaseOrdersViewModel {
       return (state as PurchaseOrdersError).currentOrders;
     }
     return [];
+  }
+
+  int get totalCount {
+    if (state is PurchaseOrdersLoaded) {
+      return (state as PurchaseOrdersLoaded).totalCount;
+    }
+    if (state is PurchaseOrdersLoading) {
+      return (state as PurchaseOrdersLoading).totalCount;
+    }
+    return orders.length;
   }
 
   String get searchText {

@@ -63,7 +63,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const minTableWidth = 840.0;
+        const minTableWidth = 880.0;
         final needsScroll = constraints.maxWidth < minTableWidth;
 
         final tableContent = SizedBox(
@@ -72,9 +72,9 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
             children: [
               // --- Encabezado Fijo de Tabla ---
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                 decoration: const BoxDecoration(
-                  color: Color(0xFFF8FAFC),
+                  color: AppColors.background,
                   border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
                 ),
                 child: const Row(
@@ -87,7 +87,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
@@ -99,7 +99,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
@@ -111,7 +111,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
@@ -123,7 +123,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
@@ -135,7 +135,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
@@ -148,7 +148,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
@@ -181,9 +181,17 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 140),
                         curve: Curves.easeInOut,
-                        color: isHovered ? const Color(0xFFF8FAFC) : Colors.white,
+                        decoration: BoxDecoration(
+                          color: isHovered ? const Color(0xFFF8FAFC) : Colors.white,
+                          border: Border(
+                            left: BorderSide(
+                              color: isHovered ? AppColors.teal.withValues(alpha: 0.6) : Colors.transparent,
+                              width: 3.5,
+                            ),
+                          ),
+                        ),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
+                          horizontal: 18,
                           vertical: 11,
                         ),
                         child: Row(

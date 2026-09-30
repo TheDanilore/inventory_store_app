@@ -75,12 +75,16 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
         children: [
           Icon(icon, size: 11, color: text),
           const SizedBox(width: 4),
-          Text(
-            reason,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-              color: text,
+          Flexible(
+            child: Text(
+              reason,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: text,
+              ),
             ),
           ),
         ],
@@ -94,361 +98,383 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const minTableWidth = 880.0;
-        final needsScroll = constraints.maxWidth < minTableWidth;
+        const minTableWidth = 920.0;
+        final tableWidth =
+            constraints.maxWidth < minTableWidth
+                ? minTableWidth
+                : constraints.maxWidth;
 
-        final tableContent = SizedBox(
-          width: needsScroll ? minTableWidth : constraints.maxWidth,
-          child: Column(
-            children: [
-              // --- Encabezado Fijo de Tabla ---
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF8FAFC),
-                  border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
-                ),
-                child: const Row(
-                  children: [
-                    Expanded(
-                      flex: 4,
-                      child: Text(
-                        'CÓDIGO / SALIDA',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        'MOTIVO',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        'ALMACÉN ORIGEN',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        'PRODUCTOS',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        'COSTO DE SALIDA',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        'FECHA Y HORA',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 100,
-                      child: Text(
-                        'ACCIONES',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x050F172A),
+                blurRadius: 4,
+                offset: Offset(0, 1),
               ),
-
-              // --- Filas de Datos ---
-              Expanded(
-                child: ListView.separated(
-                  itemCount: widget.exits.length,
-                  separatorBuilder:
-                      (_, _) => const Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Color(0xFFE2E8F0),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: SizedBox(
+              width: tableWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // --- Encabezado Fijo de Tabla ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: AppColors.background,
+                      border: Border(
+                        bottom: BorderSide(color: Color(0xFFE2E8F0)),
                       ),
-                  itemBuilder: (context, index) {
-                    final exit = widget.exits[index];
-                    final isHovered = _hoveredId == exit.id;
-                    final isSelected = widget.selectedExit?.id == exit.id;
-
-                    final shortId =
-                        exit.id.length >= 8
-                            ? exit.id.substring(0, 8).toUpperCase()
-                            : exit.id.toUpperCase();
-
-                    final formattedDate =
-                        exit.createdAt != null
-                            ? dateFormat.format(exit.createdAt!)
-                            : '—';
-
-                    return MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      onEnter: (_) => setState(() => _hoveredId = exit.id),
-                      onExit: (_) => setState(() => _hoveredId = null),
-                      child: InkWell(
-                        onTap: () => widget.onSelectExit(exit),
-                        hoverColor: Colors.transparent,
-                        splashColor: Colors.transparent,
-                        highlightColor: Colors.transparent,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 140),
-                          curve: Curves.easeInOut,
-                          decoration: BoxDecoration(
-                            color:
-                                isSelected
-                                    ? AppColors.teal.withValues(alpha: 0.06)
-                                    : (isHovered
-                                        ? const Color(0xFFF8FAFC)
-                                        : Colors.white),
-                            border: Border(
-                              left: BorderSide(
-                                color:
-                                    isSelected
-                                        ? AppColors.teal
-                                        : Colors.transparent,
-                                width: 3.5,
-                              ),
+                    ),
+                    child: const Row(
+                      children: [
+                        SizedBox(
+                          width: 120,
+                          child: Text(
+                            'CÓDIGO',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
                             ),
                           ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
+                        ),
+                        SizedBox(
+                          width: 130,
+                          child: Text(
+                            'FECHA / HORA',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
                           ),
-                          child: Row(
-                            children: [
-                              // 1. Código / Salida
-                              Expanded(
-                                flex: 4,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 28,
-                                      height: 28,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.background,
-                                        borderRadius:
-                                            BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: const Color(0xFFE2E8F0),
-                                        ),
-                                      ),
-                                      child: const Center(
-                                        child: Icon(
-                                          Icons.outbox_rounded,
-                                          size: 15,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '#$shortId',
-                                      style: const TextStyle(
-                                        fontFamily: 'monospace',
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 13,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    InkWell(
-                                      onTap:
-                                          () => _copyToClipboard(
-                                            context,
-                                            exit.id,
-                                            'Código de salida',
+                        ),
+                        Expanded(
+                          flex: 4,
+                          child: Text(
+                            'MOTIVO',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 130,
+                          child: Text(
+                            'ALMACÉN ORIGEN',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 100,
+                          child: Text(
+                            'PRODUCTOS',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 110,
+                          child: Text(
+                            'COSTO TOTAL',
+                            textAlign: TextAlign.end,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 110,
+                          child: Text(
+                            'ACCIONES',
+                            textAlign: TextAlign.end,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // --- Filas de Datos ---
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: widget.exits.length,
+                      separatorBuilder:
+                          (_, _) => const Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: Color(0xFFE2E8F0),
+                          ),
+                      itemBuilder: (context, index) {
+                        final exit = widget.exits[index];
+                        final isHovered = _hoveredId == exit.id;
+                        final isSelected = widget.selectedExit?.id == exit.id;
+
+                        final shortId =
+                            exit.id.length >= 8
+                                ? exit.id.substring(0, 8).toUpperCase()
+                                : exit.id.toUpperCase();
+
+                        final formattedDate =
+                            exit.createdAt != null
+                                ? dateFormat.format(exit.createdAt!)
+                                : '—';
+
+                        return MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          onEnter: (_) => setState(() => _hoveredId = exit.id),
+                          onExit: (_) => setState(() => _hoveredId = null),
+                          child: InkWell(
+                            onTap: () => widget.onSelectExit(exit),
+                            hoverColor: Colors.transparent,
+                            splashColor: Colors.transparent,
+                            highlightColor: Colors.transparent,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 140),
+                              curve: Curves.easeInOut,
+                              decoration: BoxDecoration(
+                                color:
+                                    isSelected
+                                        ? AppColors.teal.withValues(alpha: 0.06)
+                                        : (isHovered
+                                            ? const Color(0xFFF8FAFC)
+                                            : Colors.white),
+                                border: Border(
+                                  left: BorderSide(
+                                    color:
+                                        isSelected
+                                            ? AppColors.teal
+                                            : Colors.transparent,
+                                    width: 3.5,
+                                  ),
+                                ),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 11,
+                              ),
+                              child: Row(
+                                children: [
+                                  // 1. Código
+                                  SizedBox(
+                                    width: 120,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 28,
+                                          height: 28,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.background,
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                            border: Border.all(
+                                              color: const Color(0xFFE2E8F0),
+                                            ),
                                           ),
-                                      borderRadius: BorderRadius.circular(4),
-                                      child: const Padding(
-                                        padding: EdgeInsets.all(2),
-                                        child: Icon(
-                                          Icons.copy_rounded,
-                                          size: 13,
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.outbox_rounded,
+                                              size: 15,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '#$shortId',
+                                          style: const TextStyle(
+                                            fontFamily: 'monospace',
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 13,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        InkWell(
+                                          onTap:
+                                              () => _copyToClipboard(
+                                                context,
+                                                exit.id,
+                                                'Código de salida',
+                                              ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(2),
+                                            child: Icon(
+                                              Icons.copy_rounded,
+                                              size: 13,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  // 2. Fecha / Hora
+                                  SizedBox(
+                                    width: 130,
+                                    child: Text(
+                                      formattedDate,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+
+                                  // 3. Motivo
+                                  Expanded(
+                                    flex: 4,
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: _buildReasonBadge(exit.reason),
+                                    ),
+                                  ),
+
+                                  // 4. Almacén Origen
+                                  SizedBox(
+                                    width: 130,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.storefront_rounded,
+                                          size: 14,
                                           color: AppColors.textMuted,
                                         ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // 2. Motivo
-                              Expanded(
-                                flex: 3,
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: _buildReasonBadge(exit.reason),
-                                ),
-                              ),
-
-                              // 3. Almacén Origen
-                              Expanded(
-                                flex: 3,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.storefront_rounded,
-                                      size: 14,
-                                      color: AppColors.textMuted,
-                                    ),
-                                    const SizedBox(width: 5),
-                                    Flexible(
-                                      child: Text(
-                                        exit.warehouseName ?? 'Almacén general',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.textSecondary,
+                                        const SizedBox(width: 5),
+                                        Flexible(
+                                          child: Text(
+                                            exit.warehouseName ??
+                                                'Almacén general',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ),
-
-                              // 4. Productos
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  '${exit.itemCount} prod.',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
                                   ),
-                                ),
-                              ),
 
-                              // 5. Costo Total
-                              Expanded(
-                                flex: 3,
-                                child: Text(
-                                  'S/ ${exit.totalCost.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.dangerDark,
-                                  ),
-                                ),
-                              ),
-
-                              // 6. Fecha y Hora
-                              Expanded(
-                                flex: 3,
-                                child: Text(
-                                  formattedDate,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-
-                              // 7. Acciones
-                              SizedBox(
-                                width: 100,
-                                child: Center(
-                                  child: OutlinedButton.icon(
-                                    onPressed: () => widget.onSelectExit(exit),
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      side: const BorderSide(
-                                        color: Color(0xFFE2E8F0),
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(8),
-                                      ),
-                                      backgroundColor: Colors.white,
-                                    ),
-                                    icon: const Icon(
-                                      Icons.visibility_rounded,
-                                      size: 14,
-                                      color: AppColors.tealDark,
-                                    ),
-                                    label: const Text(
-                                      'Detalle',
-                                      style: TextStyle(
-                                        fontSize: 11,
+                                  // 5. Productos
+                                  SizedBox(
+                                    width: 100,
+                                    child: Text(
+                                      '${exit.itemCount} prod.',
+                                      style: const TextStyle(
+                                        fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                         color: AppColors.textPrimary,
                                       ),
                                     ),
                                   ),
-                                ),
+
+                                  // 6. Costo Total
+                                  SizedBox(
+                                    width: 110,
+                                    child: Text(
+                                      'S/ ${exit.totalCost.toStringAsFixed(2)}',
+                                      textAlign: TextAlign.end,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w900,
+                                        color: AppColors.dangerDark,
+                                        fontFeatures: [
+                                          FontFeature.tabularFigures(),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+
+                                  // 7. Acciones
+                                  SizedBox(
+                                    width: 110,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.visibility_outlined,
+                                            size: 18,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                          tooltip: 'Ver detalle',
+                                          onPressed:
+                                              () => widget.onSelectExit(exit),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(
+                                            Icons.chevron_right_rounded,
+                                            size: 18,
+                                            color:
+                                                isSelected
+                                                    ? AppColors.teal
+                                                    : AppColors.textMuted,
+                                          ),
+                                          tooltip: 'Seleccionar',
+                                          onPressed:
+                                              () => widget.onSelectExit(exit),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
-
-        if (needsScroll) {
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: tableContent,
-          );
-        }
-
-        return tableContent;
       },
     );
   }

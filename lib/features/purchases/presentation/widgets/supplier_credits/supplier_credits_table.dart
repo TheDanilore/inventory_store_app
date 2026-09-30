@@ -40,7 +40,7 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const minTableWidth = 860.0;
+        const minTableWidth = 960.0;
         final needsScroll = constraints.maxWidth < minTableWidth;
 
         final tableContent = SizedBox(
@@ -49,9 +49,9 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
             children: [
               // --- Encabezado Fijo de Tabla ---
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                 decoration: const BoxDecoration(
-                  color: Color(0xFFF8FAFC),
+                  color: AppColors.background,
                   border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
                 ),
                 child: const Row(
@@ -64,72 +64,72 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
-                    Expanded(
-                      flex: 3,
+                    SizedBox(
+                      width: 115,
                       child: Text(
-                        'LÍNEA DE CRÉDITO',
+                        'LÍNEA CRÉDITO',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
-                    Expanded(
-                      flex: 3,
+                    SizedBox(
+                      width: 115,
                       child: Text(
                         'DEUDA ACTUAL',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
-                    Expanded(
-                      flex: 3,
+                    SizedBox(
+                      width: 115,
                       child: Text(
                         'DISPONIBLE',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
-                    Expanded(
-                      flex: 3,
+                    SizedBox(
+                      width: 130,
                       child: Text(
                         'USO DE LÍNEA',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
-                    Expanded(
-                      flex: 2,
+                    SizedBox(
+                      width: 100,
                       child: Text(
                         'ESTADO',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
                     SizedBox(
-                      width: 140,
+                      width: 130,
                       child: Text(
                         'ACCIONES',
                         textAlign: TextAlign.end,
@@ -137,7 +137,7 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
@@ -176,10 +176,18 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 140),
                         curve: Curves.easeInOut,
-                        color: isHovered ? const Color(0xFFF8FAFC) : Colors.white,
+                        decoration: BoxDecoration(
+                          color: isHovered ? const Color(0xFFF8FAFC) : Colors.white,
+                          border: Border(
+                            left: BorderSide(
+                              color: isHovered ? AppColors.teal.withValues(alpha: 0.6) : Colors.transparent,
+                              width: 3.5,
+                            ),
+                          ),
+                        ),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
+                          horizontal: 18,
+                          vertical: 11,
                         ),
                         child: Row(
                           children: [
@@ -253,8 +261,8 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                             ),
 
                             // Línea Total
-                            Expanded(
-                              flex: 3,
+                            SizedBox(
+                              width: 115,
                               child: Text(
                                 'S/ ${account.creditLimit.toStringAsFixed(2)}',
                                 style: const TextStyle(
@@ -267,8 +275,8 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                             ),
 
                             // Deuda Actual
-                            Expanded(
-                              flex: 3,
+                            SizedBox(
+                              width: 115,
                               child: account.currentDebt == 0
                                   ? Row(
                                       children: [
@@ -317,8 +325,8 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                             ),
 
                             // Disponible
-                            Expanded(
-                              flex: 3,
+                            SizedBox(
+                              width: 115,
                               child: Text(
                                 'S/ ${account.availableCredit.toStringAsFixed(2)}',
                                 style: TextStyle(
@@ -333,8 +341,8 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                             ),
 
                             // Uso de Línea (Barra + %)
-                            Expanded(
-                              flex: 3,
+                            SizedBox(
+                              width: 130,
                               child: Row(
                                 children: [
                                   Expanded(
@@ -368,8 +376,8 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                             ),
 
                             // Estado
-                            Expanded(
-                              flex: 2,
+                            SizedBox(
+                              width: 100,
                               child: Align(
                                 alignment: Alignment.centerLeft,
                                 child: Container(
@@ -420,7 +428,7 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
 
                             // Acciones (Botón Abonar Estilizado + Menú)
                             SizedBox(
-                              width: 140,
+                              width: 130,
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [

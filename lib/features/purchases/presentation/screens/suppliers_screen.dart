@@ -267,51 +267,63 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                                 _buildViewModeToggle(),
                                 const SizedBox(width: 12),
 
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.refresh_rounded,
-                                    size: 20,
-                                  ),
-                                  color: AppColors.textSecondary,
-                                  tooltip: 'Refrescar [R]',
-                                  onPressed:
-                                      () => context
-                                          .read<SuppliersCubit>()
-                                          .loadSuppliers(refresh: true),
-                                ),
-                                const SizedBox(width: 8),
-
-                                ElevatedButton.icon(
-                                  onPressed: () => _openSupplierModal(context),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.teal,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 14,
+                                SizedBox(
+                                  height: 40,
+                                  width: 40,
+                                  child: IconButton(
+                                    icon: const Icon(
+                                      Icons.refresh_rounded,
+                                      size: 20,
                                     ),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  icon: const Icon(
-                                    Icons.add_business_rounded,
-                                    size: 18,
-                                  ),
-                                  label: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text(
-                                        'Nuevo Proveedor',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
-                                        ),
+                                    color: AppColors.textSecondary,
+                                    tooltip: 'Refrescar [R]',
+                                    style: IconButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        side: const BorderSide(color: Color(0xFFE2E8F0)),
                                       ),
-                                      const SizedBox(width: 6),
-                                      _buildKeyHint('N'),
-                                    ],
+                                    ),
+                                    onPressed:
+                                        () => context
+                                            .read<SuppliersCubit>()
+                                            .loadSuppliers(refresh: true),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+
+                                SizedBox(
+                                  height: 40,
+                                  child: FilledButton.icon(
+                                    onPressed: () => _openSupplierModal(context),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                      ),
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.add_business_rounded,
+                                      size: 18,
+                                    ),
+                                    label: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Text(
+                                          'Nuevo Proveedor',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12.5,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        _buildButtonKeyHint('N'),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
@@ -507,97 +519,106 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   }
 
   Widget _buildSearchField() {
-    return TextField(
-      controller: _searchCtrl,
-      focusNode: _searchFocusNode,
-      onChanged: _onSearchChanged,
-      decoration: InputDecoration(
-        hintText: 'Buscar por nombre, RUC o contacto...',
-        hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-        prefixIcon: const Icon(
-          Icons.search_rounded,
-          color: AppColors.textSecondary,
-          size: 20,
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        controller: _searchCtrl,
+        focusNode: _searchFocusNode,
+        onChanged: _onSearchChanged,
+        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+        textAlignVertical: TextAlignVertical.center,
+        decoration: InputDecoration(
+          hintText: 'Buscar por nombre, RUC o contacto...',
+          hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.textSecondary,
+            size: 20,
+          ),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_searchCtrl.text.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.clear_rounded, size: 18),
+                  color: AppColors.textMuted,
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    context.read<SuppliersCubit>().setSearchQuery('');
+                  },
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: _buildKeyHint('/'),
+                ),
+            ],
+          ),
+          filled: true,
+          fillColor: AppColors.background,
+          isDense: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         ),
-        suffixIcon: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_searchCtrl.text.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.clear_rounded, size: 18),
-                color: AppColors.textMuted,
-                onPressed: () {
-                  _searchCtrl.clear();
-                  context.read<SuppliersCubit>().setSearchQuery('');
-                },
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: _buildKeyHint('/'),
-              ),
-          ],
-        ),
-        filled: true,
-        fillColor: AppColors.background,
-        isDense: true,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 12),
       ),
     );
   }
 
   Widget _buildViewModeToggle() {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: 'Vista en Tabla Pro [V]',
-            icon: Icon(
-              Icons.table_rows_rounded,
-              size: 18,
-              color: _isTableView ? AppColors.tealDark : AppColors.textMuted,
-            ),
-            style: IconButton.styleFrom(
-              backgroundColor:
-                  _isTableView ? AppColors.surface : Colors.transparent,
-              elevation: _isTableView ? 1 : 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+    return SizedBox(
+      height: 40,
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            IconButton(
+              tooltip: 'Vista en Tabla Pro [V]',
+              icon: Icon(
+                Icons.table_rows_rounded,
+                size: 18,
+                color: _isTableView ? AppColors.tealDark : AppColors.textMuted,
               ),
-              padding: const EdgeInsets.all(8),
-            ),
-            onPressed: () => setState(() => _isTableView = true),
-          ),
-          IconButton(
-            tooltip: 'Vista en Tarjetas [V]',
-            icon: Icon(
-              Icons.grid_view_rounded,
-              size: 18,
-              color: !_isTableView ? AppColors.tealDark : AppColors.textMuted,
-            ),
-            style: IconButton.styleFrom(
-              backgroundColor:
-                  !_isTableView ? AppColors.surface : Colors.transparent,
-              elevation: !_isTableView ? 1 : 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+              style: IconButton.styleFrom(
+                backgroundColor:
+                    _isTableView ? AppColors.surface : Colors.transparent,
+                elevation: _isTableView ? 1 : 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.all(6),
               ),
-              padding: const EdgeInsets.all(8),
+              onPressed: () => setState(() => _isTableView = true),
             ),
-            onPressed: () => setState(() => _isTableView = false),
-          ),
-        ],
+            IconButton(
+              tooltip: 'Vista en Tarjetas [V]',
+              icon: Icon(
+                Icons.grid_view_rounded,
+                size: 18,
+                color: !_isTableView ? AppColors.tealDark : AppColors.textMuted,
+              ),
+              style: IconButton.styleFrom(
+                backgroundColor:
+                    !_isTableView ? AppColors.surface : Colors.transparent,
+                elevation: !_isTableView ? 1 : 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.all(6),
+              ),
+              onPressed: () => setState(() => _isTableView = false),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -616,6 +637,25 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
           fontSize: 10,
           fontWeight: FontWeight.bold,
           color: AppColors.textSecondary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildButtonKeyHint(String char) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        char,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
         ),
       ),
     );

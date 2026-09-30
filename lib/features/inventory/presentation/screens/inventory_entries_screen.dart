@@ -534,38 +534,17 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         return AdminLayout(
           title: 'Historial de Entradas',
           showBackButton: true,
-          actions: [
-            if (isDesktopOrTablet)
-              ElevatedButton.icon(
-                onPressed: _onNewEntry,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
+          actions: isDesktopOrTablet
+              ? null
+              : [
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded),
+                    tooltip: 'Actualizar entradas',
+                    onPressed: () {
+                      context.read<InventoryEntriesCubit>().loadEntries(page: 0);
+                    },
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                  ),
-                ),
-                icon: Icon(
-                  _hasDraft ? Icons.edit_note_rounded : Icons.add_rounded,
-                  size: 16,
-                ),
-                label: Text(
-                  _hasDraft
-                      ? 'Continuar Borrador [N]'
-                      : 'Nueva Entrada [N]',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-          ],
+                ],
           floatingActionButton:
               !isDesktopOrTablet
                   ? FloatingActionButton.extended(
@@ -654,11 +633,12 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                         count: currentState.entries.length,
                         totalCount: currentState.totalCount,
                         totalAmount: totalAmount,
+                        warehouseName: currentState.warehouseFilter,
                         isDesktop: isTablet,
                       ),
                     ),
 
-                    // ── 3. Toolbar Pro Unificado (Buscador, Almacén, Fecha, Vista, Refresh) ──
+                    // ── 3. Toolbar Pro Unificado (Buscador, Almacén, Fecha, Vista, Refresh, Nueva Entrada) ──
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
                       child: _InventoryEntriesToolbar(
@@ -687,6 +667,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                         state: currentState,
                         isDesktop: isTablet,
                         isTableView: _isTableView,
+                        hasDraft: _hasDraft,
                         onToggleTableView:
                             (val) => setState(() => _isTableView = val),
                         onRefresh: () {
@@ -694,6 +675,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                             page: 0,
                           );
                         },
+                        onNewEntry: _onNewEntry,
                       ),
                     ),
 
@@ -960,111 +942,154 @@ class _InventoryEntriesBentoKpiBar extends StatelessWidget {
   final int count;
   final int totalCount;
   final double totalAmount;
+  final String warehouseName;
   final bool isDesktop;
 
   const _InventoryEntriesBentoKpiBar({
     required this.count,
     required this.totalCount,
     required this.totalAmount,
+    required this.warehouseName,
     required this.isDesktop,
   });
 
   @override
   Widget build(BuildContext context) {
+    final countLabel = totalCount > 0 ? '$count de $totalCount' : '$count';
+    final cards = [
+      _BentoEntryKpiCard(
+        title: 'Total Entradas',
+        value: countLabel,
+        subtitle: 'Entradas en página',
+        icon: Icons.move_to_inbox_rounded,
+        iconBgColor: AppColors.tealLight,
+        iconColor: AppColors.tealDark,
+      ),
+      _BentoEntryKpiCard(
+        title: 'Inversión Total',
+        value: 'S/ ${totalAmount.toStringAsFixed(2)}',
+        subtitle: 'Monto en esta página',
+        icon: Icons.payments_rounded,
+        iconBgColor: AppColors.successLight,
+        iconColor: AppColors.successDark,
+      ),
+      _BentoEntryKpiCard(
+        title: 'Almacén Destino',
+        value: warehouseName == 'TODOS' ? 'Todos los Almacenes' : warehouseName,
+        subtitle: 'Filtro aplicado',
+        icon: Icons.storefront_rounded,
+        iconBgColor: AppColors.warningLight,
+        iconColor: AppColors.warningDark,
+      ),
+    ];
+
+    if (isDesktop) {
+      return Row(
+        children: [
+          Expanded(child: cards[0]),
+          const SizedBox(width: 12),
+          Expanded(child: cards[1]),
+          const SizedBox(width: 12),
+          Expanded(child: cards[2]),
+        ],
+      );
+    }
+
+    return SizedBox(
+      height: 84,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: cards.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (_, index) => SizedBox(width: 220, child: cards[index]),
+      ),
+    );
+  }
+}
+
+class _BentoEntryKpiCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final String subtitle;
+  final IconData icon;
+  final Color iconBgColor;
+  final Color iconColor;
+
+  const _BentoEntryKpiCard({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.icon,
+    required this.iconBgColor,
+    required this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Wrap(
-        spacing: 20,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: AppColors.teal.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                child: const Icon(
-                  Icons.move_to_inbox_rounded,
-                  size: 15,
-                  color: AppColors.tealDark,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Entradas',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  Text(
-                    '$count de $totalCount',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x050F172A),
+            blurRadius: 4,
+            offset: Offset(0, 1),
           ),
-          Container(width: 1, height: 24, color: const Color(0xFFE2E8F0)),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: AppColors.successLight,
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                child: const Icon(
-                  Icons.payments_rounded,
-                  size: 15,
-                  color: AppColors.successDark,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Inversión en Página',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
-                    ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
                   ),
-                  Text(
-                    'S/ ${totalAmount.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.successDark,
-                    ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.3,
                   ),
-                ],
-              ),
-            ],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1084,8 +1109,10 @@ class _InventoryEntriesToolbar extends StatelessWidget {
   final InventoryEntriesLoaded state;
   final bool isDesktop;
   final bool isTableView;
+  final bool hasDraft;
   final ValueChanged<bool> onToggleTableView;
   final VoidCallback onRefresh;
+  final VoidCallback onNewEntry;
 
   const _InventoryEntriesToolbar({
     required this.searchCtrl,
@@ -1095,68 +1122,167 @@ class _InventoryEntriesToolbar extends StatelessWidget {
     required this.state,
     required this.isDesktop,
     required this.isTableView,
+    required this.hasDraft,
     required this.onToggleTableView,
     required this.onRefresh,
+    required this.onNewEntry,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    final cubit = context.read<InventoryEntriesCubit>();
-
-    Widget warehouseDropdown = Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+  Widget _buildKeyHint(String key) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(10),
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: state.warehouseFilter,
-          icon: const Icon(Icons.arrow_drop_down_rounded, size: 20),
-          style: const TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-          onChanged: (val) {
-            if (val != null) cubit.setWarehouseFilter(val);
-          },
-          items:
-              state.availableWarehouses.map((w) {
-                return DropdownMenuItem<String>(
-                  value: w,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.storefront_rounded,
-                        size: 14,
-                        color: AppColors.textMuted,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(w),
-                    ],
-                  ),
-                );
-              }).toList(),
+      child: Text(
+        key,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textMuted,
         ),
       ),
     );
+  }
 
-    Widget datePicker = DateFilterCalendar(
+  Widget _buildSearchField() {
+    return SizedBox(
       height: 40,
-      borderRadius: BorderRadius.circular(10),
-      dateRange: state.dateRange,
-      onDateRangeSelected: cubit.setDateRange,
-      onClear: () => cubit.setDateRange(null),
+      child: TextField(
+        controller: searchCtrl,
+        focusNode: searchFocusNode,
+        onChanged: onSearchChanged,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Buscar proveedor o comprobante...',
+          hintStyle: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 12.5,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.teal,
+            size: 19,
+          ),
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: searchCtrl,
+            builder: (context, value, _) {
+              if (value.text.isNotEmpty) {
+                return IconButton(
+                  icon: const Icon(
+                    Icons.cancel_rounded,
+                    color: AppColors.textMuted,
+                    size: 16,
+                  ),
+                  onPressed: onClearSearch,
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildKeyHint('/'),
+                  ],
+                ),
+              );
+            },
+          ),
+          filled: true,
+          fillColor: const Color(0xFFF8FAFC),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+        ),
+      ),
     );
+  }
 
-    Widget viewToggle = Container(
-      padding: const EdgeInsets.all(3),
+  Widget _buildWarehouseDropdown(BuildContext context) {
+    final cubit = context.read<InventoryEntriesCubit>();
+    final isFiltered = state.warehouseFilter != 'TODOS';
+
+    return PopupMenuButton<String>(
+      initialValue: state.warehouseFilter,
+      offset: const Offset(0, 44),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      onSelected: (val) => cubit.setWarehouseFilter(val),
+      itemBuilder: (context) => state.availableWarehouses.map((w) {
+        return PopupMenuItem<String>(
+          value: w,
+          child: Row(
+            children: [
+              const Icon(Icons.storefront_rounded, size: 16, color: AppColors.textSecondary),
+              const SizedBox(width: 8),
+              Text(w == 'TODOS' ? 'Todos los Almacenes' : w, style: const TextStyle(fontSize: 13)),
+            ],
+          ),
+        );
+      }).toList(),
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: isFiltered ? AppColors.teal.withValues(alpha: 0.1) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isFiltered ? AppColors.teal : const Color(0xFFE2E8F0),
+            width: isFiltered ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.storefront_rounded,
+              size: 15,
+              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              state.warehouseFilter == 'TODOS' ? 'Almacén: Todos' : state.warehouseFilter,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isFiltered ? FontWeight.w800 : FontWeight.w600,
+                color: isFiltered ? AppColors.tealDark : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildViewToggle() {
+    return Container(
+      padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
@@ -1164,103 +1290,142 @@ class _InventoryEntriesToolbar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            tooltip: 'Vista en Tabla Pro [V]',
+            tooltip: 'Vista Tabla Pro [V]',
             icon: Icon(
               Icons.table_rows_rounded,
-              size: 18,
+              size: 16,
               color: isTableView ? AppColors.tealDark : AppColors.textMuted,
             ),
             style: IconButton.styleFrom(
-              backgroundColor:
-                  isTableView ? AppColors.surface : Colors.transparent,
+              backgroundColor: isTableView ? AppColors.surface : Colors.transparent,
+              padding: const EdgeInsets.all(6),
+              elevation: isTableView ? 1 : 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              padding: const EdgeInsets.all(6),
-              fixedSize: const Size(32, 32),
             ),
             onPressed: () => onToggleTableView(true),
           ),
           IconButton(
-            tooltip: 'Vista en Tarjetas [V]',
+            tooltip: 'Vista Tarjetas [V]',
             icon: Icon(
               Icons.grid_view_rounded,
-              size: 18,
+              size: 16,
               color: !isTableView ? AppColors.tealDark : AppColors.textMuted,
             ),
             style: IconButton.styleFrom(
-              backgroundColor:
-                  !isTableView ? AppColors.surface : Colors.transparent,
+              backgroundColor: !isTableView ? AppColors.surface : Colors.transparent,
+              padding: const EdgeInsets.all(6),
+              elevation: !isTableView ? 1 : 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              padding: const EdgeInsets.all(6),
-              fixedSize: const Size(32, 32),
             ),
             onPressed: () => onToggleTableView(false),
           ),
         ],
       ),
     );
+  }
 
-    if (isDesktop) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _SearchField(
-                controller: searchCtrl,
-                focusNode: searchFocusNode,
-                hint: 'Buscar proveedor, comprobante... [/]',
-                onChanged: onSearchChanged,
-                onSubmitted: onSearchChanged,
-                onClear: onClearSearch,
-              ),
-            ),
-            const SizedBox(width: 10),
-            warehouseDropdown,
-            const SizedBox(width: 8),
-            datePicker,
-            const SizedBox(width: 10),
-            viewToggle,
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded, size: 20),
-              color: AppColors.textSecondary,
-              tooltip: 'Refrescar entradas [R]',
-              onPressed: onRefresh,
-            ),
-          ],
-        ),
-      );
-    }
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<InventoryEntriesCubit>();
 
-    // Móvil
-    return Column(
-      children: [
-        _SearchField(
-          controller: searchCtrl,
-          focusNode: searchFocusNode,
-          hint: 'Buscar proveedor o comprobante...',
-          onChanged: onSearchChanged,
-          onSubmitted: onSearchChanged,
-          onClear: onClearSearch,
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: warehouseDropdown),
-            const SizedBox(width: 8),
-            datePicker,
-          ],
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x050F172A),
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: isDesktop
+          ? Row(
+              children: [
+                Expanded(child: _buildSearchField()),
+                const SizedBox(width: 10),
+                _buildWarehouseDropdown(context),
+                const SizedBox(width: 8),
+                DateFilterCalendar(
+                  height: 40,
+                  borderRadius: BorderRadius.circular(10),
+                  dateRange: state.dateRange,
+                  onDateRangeSelected: cubit.setDateRange,
+                  onClear: () => cubit.setDateRange(null),
+                ),
+                const SizedBox(width: 10),
+                _buildViewToggle(),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded, size: 20),
+                  color: AppColors.textSecondary,
+                  tooltip: 'Refrescar entradas [R]',
+                  onPressed: onRefresh,
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: onNewEntry,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+                    minimumSize: const Size(0, 40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  icon: Icon(hasDraft ? Icons.edit_note_rounded : Icons.add_rounded, size: 17),
+                  label: Text(
+                    hasDraft ? 'Continuar Borrador [N]' : 'Nueva Entrada [N]',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSearchField(),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      _buildWarehouseDropdown(context),
+                      const SizedBox(width: 8),
+                      DateFilterCalendar(
+                        height: 36,
+                        borderRadius: BorderRadius.circular(10),
+                        dateRange: state.dateRange,
+                        onDateRangeSelected: cubit.setDateRange,
+                        onClear: () => cubit.setDateRange(null),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildViewToggle(),
+                      const SizedBox(width: 6),
+                      IconButton(
+                        icon: const Icon(Icons.refresh_rounded, size: 20),
+                        color: AppColors.textSecondary,
+                        tooltip: 'Refrescar entradas',
+                        onPressed: onRefresh,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
@@ -1447,112 +1612,6 @@ class _EntryCard extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchField extends StatelessWidget {
-  final TextEditingController controller;
-  final FocusNode? focusNode;
-  final String hint;
-  final ValueChanged<String>? onChanged;
-  final ValueChanged<String> onSubmitted;
-  final VoidCallback onClear;
-
-  const _SearchField({
-    required this.controller,
-    this.focusNode,
-    required this.hint,
-    required this.onSubmitted,
-    required this.onClear,
-    this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 40,
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        onChanged: onChanged,
-        onSubmitted: onSubmitted,
-        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-        textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: AppColors.textMuted,
-            size: 18,
-          ),
-          prefixIconConstraints: const BoxConstraints(
-            minWidth: 36,
-            minHeight: 40,
-          ),
-          suffixIcon: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: controller,
-            builder: (context, value, _) {
-              final hasText = value.text.isNotEmpty;
-              final isDesktop = MediaQuery.sizeOf(context).width >= 800;
-
-              if (hasText) {
-                return IconButton(
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
-                  onPressed: onClear,
-                  tooltip: 'Limpiar búsqueda',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 28,
-                    minHeight: 28,
-                  ),
-                );
-              }
-
-              if (isDesktop) {
-                return Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.slateLight.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: const Text(
-                    'Ctrl K',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                );
-              }
-
-              return const SizedBox.shrink();
-            },
-          ),
-          border: InputBorder.none,
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 11,
           ),
         ),
       ),
