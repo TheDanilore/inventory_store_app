@@ -944,12 +944,11 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final countLabel = totalRecords > 0 ? '$orderCount de $totalRecords' : '$orderCount';
     final cards = [
       _BentoPOKpiCard(
         title: 'Total Órdenes',
-        value: countLabel,
-        subtitle: 'Órdenes en página',
+        value: totalRecords > 0 ? '$totalRecords' : '$orderCount',
+        subtitle: 'Órdenes registradas',
         icon: Icons.receipt_long_rounded,
         iconColor: AppColors.tealDark,
         iconBgColor: AppColors.tealLight,
@@ -957,7 +956,7 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
       _BentoPOKpiCard(
         title: 'Monto Compras',
         value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-        subtitle: 'Monto en esta página',
+        subtitle: 'Total de compras',
         icon: Icons.payments_rounded,
         iconColor: AppColors.successDark,
         iconBgColor: AppColors.successLight,

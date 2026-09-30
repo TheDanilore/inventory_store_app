@@ -837,8 +837,8 @@ class _OrdersBentoKpiBar extends StatelessWidget {
     final cards = [
       _BentoOrderKpiCard(
         title: 'Total Pedidos',
-        value: '$pageOrdersCount de $totalRecords',
-        subtitle: 'Pedidos en página',
+        value: '$totalRecords',
+        subtitle: 'Pedidos registrados',
         icon: Icons.receipt_long_rounded,
         iconBgColor: AppColors.tealLight,
         iconColor: AppColors.tealDark,
@@ -846,7 +846,7 @@ class _OrdersBentoKpiBar extends StatelessWidget {
       _BentoOrderKpiCard(
         title: 'Total Facturado',
         value: 'S/ ${pageTotalAmount.toStringAsFixed(2)}',
-        subtitle: 'Monto en esta página',
+        subtitle: 'Total facturado',
         icon: Icons.payments_rounded,
         iconBgColor: AppColors.successLight,
         iconColor: AppColors.successDark,

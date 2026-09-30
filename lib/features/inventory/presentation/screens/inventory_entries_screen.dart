@@ -955,12 +955,11 @@ class _InventoryEntriesBentoKpiBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final countLabel = totalCount > 0 ? '$count de $totalCount' : '$count';
     final cards = [
       _BentoEntryKpiCard(
         title: 'Total Entradas',
-        value: countLabel,
-        subtitle: 'Entradas en página',
+        value: totalCount > 0 ? '$totalCount' : '$count',
+        subtitle: 'Entradas registradas',
         icon: Icons.move_to_inbox_rounded,
         iconBgColor: AppColors.tealLight,
         iconColor: AppColors.tealDark,
@@ -968,7 +967,7 @@ class _InventoryEntriesBentoKpiBar extends StatelessWidget {
       _BentoEntryKpiCard(
         title: 'Inversión Total',
         value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-        subtitle: 'Monto en esta página',
+        subtitle: 'Inversión acumulada',
         icon: Icons.payments_rounded,
         iconBgColor: AppColors.successLight,
         iconColor: AppColors.successDark,

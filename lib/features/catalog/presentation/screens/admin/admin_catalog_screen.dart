@@ -630,19 +630,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               _handleMenuSelection(value, cubit, cubit.state, context),
           showAppBar: true,
           actions: [
-            if (isMobile)
-              Tooltip(
-                message: 'Punto de Venta (POS)',
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.point_of_sale_rounded,
-                    color: AppColors.tealDark,
-                    size: 22,
-                  ),
-                  onPressed: () => context.go('/pos'),
-                ),
-              )
-            else
+            if (!isMobile)
               ElevatedButton.icon(
                 onPressed: () => context.go('/pos'),
                 style: ElevatedButton.styleFrom(

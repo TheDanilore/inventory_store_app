@@ -819,8 +819,8 @@ class _InventoryExitsBentoKpiBar extends StatelessWidget {
     final cards = [
       _BentoExitKpiCard(
         title: 'Total Salidas',
-        value: totalCount > 0 ? '$count de $totalCount' : '$count',
-        subtitle: totalCount > 0 ? '$totalCount registradas' : 'En esta página',
+        value: totalCount > 0 ? '$totalCount' : '$count',
+        subtitle: 'Salidas registradas',
         icon: Icons.outbox_rounded,
         iconBgColor: AppColors.primaryLight,
         iconColor: AppColors.primary,
@@ -828,7 +828,7 @@ class _InventoryExitsBentoKpiBar extends StatelessWidget {
       _BentoExitKpiCard(
         title: 'Costo Total Salidas',
         value: 'S/ ${totalCost.toStringAsFixed(2)}',
-        subtitle: 'Costo acumulado',
+        subtitle: 'Costo total de salidas',
         icon: Icons.payments_rounded,
         iconBgColor: const Color(0xFFFEF2F2),
         iconColor: AppColors.dangerDark,
