@@ -104,7 +104,8 @@ class CatalogDialogs {
 
                       _ExportRadioOption(
                         title: 'Selección personalizada',
-                        subtitle: 'Elige de forma manual los productos',
+                        subtitle:
+                            'Elige manualmente entre los ${max50Products.length} productos cargados',
                         value: 2,
                         groupValue: selectedMode,
                         onChanged:

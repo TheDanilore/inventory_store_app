@@ -97,6 +97,9 @@ class _CatalogHeaderState extends State<CatalogHeader> {
 
   void _selectHistoryItem(String term) {
     widget.searchController.text = term;
+    widget.searchController.selection = TextSelection.collapsed(
+      offset: term.length,
+    );
     _executeSearch(term);
   }
 

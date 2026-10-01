@@ -102,8 +102,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
           forCustomer
               ? 'product_variants(id, product_id, sku, sale_price, is_active)'
               : 'product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active)';
+      final bool isInStockFilter = stockFilter == CatalogStockFilter.inStock;
+      final String batchesJoin = isInStockFilter
+          ? 'warehouse_stock_batches!inner(available_quantity)'
+          : 'warehouse_stock_batches(available_quantity)';
+
       String selectString =
-          'id, name, is_active, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), brands(id, name, logo_url), warehouse_stock_batches(available_quantity), $variantSelect';
+          'id, name, is_active, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), brands(id, name, logo_url), $batchesJoin, $variantSelect';
 
       if (searchByIngredient &&
           searchQuery != null &&
@@ -137,27 +142,21 @@ class ProductsRepositoryImpl implements ProductsRepository {
         }
       }
 
-      if (stockFilter != null && stockFilter != CatalogStockFilter.all) {
-        var stockQuery = _supabase
+      if (isInStockFilter) {
+        // Filtrado nativo relacional en PostgreSQL vía PostgREST inner join
+        query = query.gt('warehouse_stock_batches.available_quantity', 0);
+      } else if (stockFilter == CatalogStockFilter.outOfStock) {
+        final summaryRes = await _supabase
             .from('product_stock_summary')
-            .select('product_id');
+            .select('product_id')
+            .eq('total_stock', 0)
+            .limit(200);
 
-        if (stockFilter == CatalogStockFilter.inStock) {
-          stockQuery = stockQuery.gt('total_stock', 0);
-        } else if (stockFilter == CatalogStockFilter.outOfStock) {
-          stockQuery = stockQuery.eq('total_stock', 0);
-        }
-
-        // Limitamos a un conjunto seguro de hasta 150 IDs únicos de productos
-        // para prevenir desbordamiento de URL (HTTP 414 / 431) y asegurar que las
-        // múltiples variantes de un producto no reduzcan el número de ítems devueltos.
-        final summaryRes = await stockQuery.limit(400);
         final matchingIds = <String>{};
         for (final row in List<Map<String, dynamic>>.from(summaryRes)) {
           final pid = row['product_id'] as String?;
           if (pid != null && pid.isNotEmpty) {
             matchingIds.add(pid);
-            if (matchingIds.length >= 150) break;
           }
         }
         if (matchingIds.isEmpty) {
@@ -172,6 +171,18 @@ class ProductsRepositoryImpl implements ProductsRepository {
         transformQuery = transformQuery.order('created_at', ascending: false);
       } else if (sortOption == CatalogSortOption.nameAsc) {
         transformQuery = transformQuery.order('name', ascending: true);
+      } else if (sortOption == CatalogSortOption.priceAsc) {
+        transformQuery = transformQuery.order(
+          'sale_price',
+          referencedTable: 'product_variants',
+          ascending: true,
+        );
+      } else if (sortOption == CatalogSortOption.priceDesc) {
+        transformQuery = transformQuery.order(
+          'sale_price',
+          referencedTable: 'product_variants',
+          ascending: false,
+        );
       } else {
         transformQuery = transformQuery.order('created_at', ascending: false);
       }

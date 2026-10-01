@@ -253,13 +253,15 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
       ),
     );
 
-    await cubit.exportCatalogPdf(
-      optionsMode: options.mode,
-      selectedIds: options.selectedIds.toList(),
-    );
-
-    if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
+    try {
+      await cubit.exportCatalogPdf(
+        optionsMode: options.mode,
+        selectedIds: options.selectedIds.toList(),
+      );
+    } finally {
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
     }
   }
 

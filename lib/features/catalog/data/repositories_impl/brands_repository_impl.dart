@@ -1,4 +1,4 @@
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,7 +14,12 @@ class BrandsRepositoryImpl implements BrandsRepository {
   BrandsRepositoryImpl(this._supabase);
 
   Either<Failure, T> _handleError<T>(Object e, [StackTrace? st]) {
-    developer.log('BrandsRepositoryImpl Error', error: e, stackTrace: st);
+    LoggerService.e(
+      'Error en BrandsRepositoryImpl',
+      tag: 'BRANDS_REPO',
+      error: e,
+      stackTrace: st,
+    );
     if (e is PostgrestException) {
       if (e.code == '23503') {
         return left(

@@ -1,4 +1,4 @@
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,7 +14,12 @@ class CategoriesRepositoryImpl implements CategoriesRepository {
   CategoriesRepositoryImpl(this._supabase);
 
   Either<Failure, T> _handleError<T>(Object e, [StackTrace? st]) {
-    developer.log('CategoriesRepositoryImpl Error', error: e, stackTrace: st);
+    LoggerService.e(
+      'Error en CategoriesRepositoryImpl',
+      tag: 'CATEGORIES_REPO',
+      error: e,
+      stackTrace: st,
+    );
     if (e is PostgrestException) {
       if (e.code == '23503') {
         return left(
@@ -49,8 +54,8 @@ class CategoriesRepositoryImpl implements CategoriesRepository {
               .single();
       final model = CategoryModel.fromJson(response);
       return right(model.toEntity());
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -73,8 +78,8 @@ class CategoriesRepositoryImpl implements CategoriesRepository {
           })
           .eq('id', id);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -107,8 +112,8 @@ class CategoriesRepositoryImpl implements CategoriesRepository {
             response,
           ).map(CategoryModel.fromJson).toList();
       return right(models.map((m) => m.toEntity()).toList());
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 }

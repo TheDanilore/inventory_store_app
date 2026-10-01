@@ -99,47 +99,84 @@ class CatalogProTableView extends StatelessWidget {
           ),
         ),
 
-        // ── Contenedor de la Tabla ──────────────────────────────────────────
+        // ── Contenedor Virtualizado de la Tabla Pro ─────────────────────────
         SliverPadding(
           padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPadding + 16),
-          sliver: SliverToBoxAdapter(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-                boxShadow: AppColors.cardShadow(opacity: 0.03),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  // Cabecera Fija de la Tabla
-                  _buildTableHeader(),
-                  const Divider(height: 1, color: AppColors.border),
-
-                  // Filas de Productos
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: products.length,
-                    separatorBuilder: (_, _) =>
-                        const Divider(height: 1, color: AppColors.border),
-                    itemBuilder: (context, index) {
-                      final product = products[index];
-                      final isSelected = selectedProduct?.id == product.id;
-                      return _ProductTableRow(
-                        product: product,
-                        isSelected: isSelected,
-                        onTap: () => onProductSelected(product),
-                        onEdit: () => onEdit(product),
-                        onToggleActive: () => onToggleActive(product),
-                        onSale: () => onSale(product),
-                      );
-                    },
+          sliver: SliverMainAxisGroup(
+            slivers: [
+              // Cabecera Fija con borde superior redondeado
+              SliverToBoxAdapter(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                    border: Border(
+                      top: BorderSide(color: AppColors.border),
+                      left: BorderSide(color: AppColors.border),
+                      right: BorderSide(color: AppColors.border),
+                    ),
                   ),
-                ],
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      _buildTableHeader(),
+                      const Divider(height: 1, color: AppColors.border),
+                    ],
+                  ),
+                ),
               ),
-            ),
+
+              // Filas de Productos con Virtualización Real (SliverList.separated)
+              SliverList.separated(
+                itemCount: products.length,
+                separatorBuilder: (_, _) => Container(
+                  color: Colors.white,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        left: BorderSide(color: AppColors.border),
+                        right: BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                    child: const Divider(height: 1, color: AppColors.border),
+                  ),
+                ),
+                itemBuilder: (context, index) {
+                  final product = products[index];
+                  final isSelected = selectedProduct?.id == product.id;
+                  final isLast = index == products.length - 1;
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: isLast
+                          ? const BorderRadius.vertical(
+                              bottom: Radius.circular(16),
+                            )
+                          : null,
+                      border: Border(
+                        left: const BorderSide(color: AppColors.border),
+                        right: const BorderSide(color: AppColors.border),
+                        bottom: isLast
+                            ? const BorderSide(color: AppColors.border)
+                            : BorderSide.none,
+                      ),
+                    ),
+                    clipBehavior: isLast ? Clip.antiAlias : Clip.none,
+                    child: _ProductTableRow(
+                      product: product,
+                      isSelected: isSelected,
+                      onTap: () => onProductSelected(product),
+                      onEdit: () => onEdit(product),
+                      onToggleActive: () => onToggleActive(product),
+                      onSale: () => onSale(product),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ],
