@@ -28,7 +28,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
     with AutomaticKeepAliveClientMixin {
   late final TextEditingController _searchCtrl;
   final _searchFocusNode = FocusNode();
+  final _tabFocusNode = FocusNode();
   Timer? _debounce;
+  InventoryStockItem? _selectedItem;
 
   @override
   bool get wantKeepAlive => true;
@@ -39,12 +41,18 @@ class _InventoryStockTabState extends State<InventoryStockTab>
     _searchCtrl = TextEditingController(
       text: widget.initialSearch?.trim() ?? '',
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _tabFocusNode.requestFocus();
+      }
+    });
   }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
+    _tabFocusNode.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -116,12 +124,14 @@ class _InventoryStockTabState extends State<InventoryStockTab>
         final currentState = loadedState;
 
         return Focus(
+          focusNode: _tabFocusNode,
           autofocus: true,
           onKeyEvent: (node, event) {
             if (event is KeyDownEvent) {
               if (_isInputFieldFocused) {
                 if (event.logicalKey == LogicalKeyboardKey.escape) {
                   _searchFocusNode.unfocus();
+                  _tabFocusNode.requestFocus();
                   return KeyEventResult.handled;
                 }
                 return KeyEventResult.ignored;
@@ -154,10 +164,54 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                 return KeyEventResult.handled;
               }
 
+              // [Esc] limpia búsqueda, deselecciona o reenfoca
               if (event.logicalKey == LogicalKeyboardKey.escape) {
+                if (_selectedItem != null) {
+                  setState(() => _selectedItem = null);
+                  _tabFocusNode.requestFocus();
+                  return KeyEventResult.handled;
+                }
                 if (_searchCtrl.text.isNotEmpty) {
                   _searchCtrl.clear();
                   context.read<InventoryCubit>().setStockSearch('');
+                  _tabFocusNode.requestFocus();
+                  return KeyEventResult.handled;
+                }
+                _searchFocusNode.unfocus();
+                _tabFocusNode.requestFocus();
+                return KeyEventResult.handled;
+              }
+
+              // Flechas arriba y abajo para navegar productos/variantes
+              final stockItems = currentState.stockItems;
+              if (stockItems.isNotEmpty) {
+                final currentIndex = _selectedItem != null
+                    ? stockItems.indexWhere((it) =>
+                        (it.variantId.isNotEmpty &&
+                            it.variantId == _selectedItem!.variantId) ||
+                        (it.productId == _selectedItem!.productId &&
+                            it.variantId == _selectedItem!.variantId))
+                    : -1;
+
+                if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                  final nextIndex =
+                      (currentIndex + 1).clamp(0, stockItems.length - 1);
+                  setState(() => _selectedItem = stockItems[nextIndex]);
+                  return KeyEventResult.handled;
+                }
+
+                if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                  final prevIndex =
+                      (currentIndex - 1).clamp(0, stockItems.length - 1);
+                  setState(() => _selectedItem = stockItems[prevIndex]);
+                  return KeyEventResult.handled;
+                }
+
+                // [Enter] o [NumpadEnter] abre la vista rápida / ficha de inspección
+                if (event.logicalKey == LogicalKeyboardKey.enter ||
+                    event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+                  final item = _selectedItem ?? stockItems.first;
+                  _showQuickView(item, currentState);
                   return KeyEventResult.handled;
                 }
               }
@@ -176,7 +230,11 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                 );
               }
 
-              return _buildListContent(currentState, state is InventoryLoading);
+              return _buildListContent(
+                currentState,
+                state is InventoryLoading,
+                constraints: constraints,
+              );
             },
           ),
         );
@@ -549,6 +607,11 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                               ),
                                           itemBuilder: (context, index) {
                                             final item = state.stockItems[index];
+                                            final isItemSelected = _selectedItem != null &&
+                                                ((_selectedItem!.variantId.isNotEmpty &&
+                                                        _selectedItem!.variantId == item.variantId) ||
+                                                    (_selectedItem!.productId == item.productId &&
+                                                        _selectedItem!.variantId == item.variantId));
                                             return _InventoryStockTableRow(
                                               key: ValueKey(
                                                 item.variantId.isNotEmpty
@@ -556,17 +619,18 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                                     : item.productId,
                                               ),
                                               item: item,
-                                              onQuickView:
-                                                  () => _showQuickView(
-                                                    item,
-                                                    state,
-                                                  ),
-                                              onOpenDetail:
-                                                  () => _openProductDetail(item),
-                                              onKardex:
-                                                  () => context.push(
-                                                    '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
-                                                  ),
+                                              isSelected: isItemSelected,
+                                              onQuickView: () {
+                                                setState(() => _selectedItem = item);
+                                                _showQuickView(item, state);
+                                              },
+                                              onOpenDetail: () {
+                                                setState(() => _selectedItem = item);
+                                                _openProductDetail(item);
+                                              },
+                                              onKardex: () => context.push(
+                                                '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
+                                              ),
                                             );
                                           },
                                         ),
@@ -658,8 +722,15 @@ class _InventoryStockTabState extends State<InventoryStockTab>
     );
   }
 
-  Widget _buildListContent(InventoryLoaded state, bool isLoading) {
+  Widget _buildListContent(
+    InventoryLoaded state,
+    bool isLoading, {
+    BoxConstraints? constraints,
+  }) {
     final cubit = context.read<InventoryCubit>();
+    final isTablet = constraints != null &&
+        constraints.maxWidth >= 600 &&
+        constraints.maxWidth < 900;
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -743,7 +814,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                         children:
                             state.categories.map((cat) {
                               final isSelected =
-                                  cat == state.stockCategoryFilter;
+                                 cat == state.stockCategoryFilter;
                               return Padding(
                                 padding: const EdgeInsets.only(right: 8),
                                 child: _CategoryPill(
@@ -818,6 +889,39 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               message: 'No hay productos con stock disponible',
             ),
           )
+        else if (isTablet)
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              0,
+              16,
+              state.totalStockPages > 1 ? 90 : 16,
+            ),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 440,
+                mainAxisExtent: 220,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+              ),
+              delegate: SliverChildBuilderDelegate((context, i) {
+                final item = state.stockItems[i];
+                final isItemSelected = _selectedItem != null &&
+                    ((_selectedItem!.variantId.isNotEmpty &&
+                            _selectedItem!.variantId == item.variantId) ||
+                        (_selectedItem!.productId == item.productId &&
+                            _selectedItem!.variantId == item.variantId));
+                return InventoryStockCard(
+                  item: item,
+                  isSelected: isItemSelected,
+                  onTap: () {
+                    setState(() => _selectedItem = item);
+                    _showQuickView(item, state);
+                  },
+                );
+              }, childCount: state.stockItems.length),
+            ),
+          )
         else
           SliverPadding(
             padding: EdgeInsets.fromLTRB(
@@ -829,11 +933,20 @@ class _InventoryStockTabState extends State<InventoryStockTab>
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, i) {
                 final item = state.stockItems[i];
+                final isItemSelected = _selectedItem != null &&
+                    ((_selectedItem!.variantId.isNotEmpty &&
+                            _selectedItem!.variantId == item.variantId) ||
+                        (_selectedItem!.productId == item.productId &&
+                            _selectedItem!.variantId == item.variantId));
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: InventoryStockCard(
                     item: item,
-                    onTap: () => _showQuickView(item, state),
+                    isSelected: isItemSelected,
+                    onTap: () {
+                      setState(() => _selectedItem = item);
+                      _showQuickView(item, state);
+                    },
                   ),
                 );
               }, childCount: state.stockItems.length),
@@ -1202,6 +1315,7 @@ class _InventoryStockSkeleton extends StatelessWidget {
 
 class _InventoryStockTableRow extends StatefulWidget {
   final InventoryStockItem item;
+  final bool isSelected;
   final VoidCallback onQuickView;
   final VoidCallback onOpenDetail;
   final VoidCallback onKardex;
@@ -1209,6 +1323,7 @@ class _InventoryStockTableRow extends StatefulWidget {
   const _InventoryStockTableRow({
     super.key,
     required this.item,
+    this.isSelected = false,
     required this.onQuickView,
     required this.onOpenDetail,
     required this.onKardex,
@@ -1273,13 +1388,16 @@ class _InventoryStockTableRowState extends State<_InventoryStockTableRow> {
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeInOut,
           decoration: BoxDecoration(
-            color: _isHovered ? const Color(0xFFF8FAFC) : Colors.white,
+            color: widget.isSelected
+                ? AppColors.teal.withValues(alpha: 0.08)
+                : (_isHovered ? const Color(0xFFF8FAFC) : Colors.white),
             border: Border(
               left: BorderSide(
-                color:
-                    _isHovered
+                color: widget.isSelected
+                    ? AppColors.teal
+                    : (_isHovered
                         ? AppColors.teal.withValues(alpha: 0.6)
-                        : Colors.transparent,
+                        : Colors.transparent),
                 width: 3.5,
               ),
             ),

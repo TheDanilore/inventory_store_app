@@ -362,6 +362,35 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                     tooltip: 'Nueva Línea',
                     child: const Icon(Icons.add_rounded, color: Colors.white),
                   ),
+          bottomNavigationBar: BlocBuilder<SupplierCreditsCubit, SupplierCreditsState>(
+            builder: (context, state) {
+              int pg = 0, tp = 0, tc = 0;
+              if (state is SupplierCreditsLoaded) {
+                pg = state.currentPage;
+                tp = state.totalPages;
+                tc = state.totalCount;
+              } else if (state is SupplierCreditsLoading) {
+                pg = state.currentPage;
+                tc = state.totalCount;
+                tp = tc == 0 ? 0 : (tc / SupplierCreditsCubit.pageSize).ceil();
+              } else if (state is SupplierCreditsError) {
+                pg = state.currentPage;
+                tc = state.totalCount;
+                tp = tc == 0 ? 0 : (tc / SupplierCreditsCubit.pageSize).ceil();
+              } else if (state is SupplierCreditSaving) {
+                pg = state.currentPage;
+                tc = state.totalCount;
+                tp = tc == 0 ? 0 : (tc / SupplierCreditsCubit.pageSize).ceil();
+              }
+              return _buildPagination(
+                currentPage: pg,
+                totalPages: tp,
+                totalItems: tc,
+                isLoading: state is SupplierCreditsLoading,
+                isDesktop: true,
+              );
+            },
+          ),
           body: BlocBuilder<SupplierCreditsCubit, SupplierCreditsState>(
             builder: (context, state) {
               final isLoading =
@@ -373,7 +402,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
               bool withDebtOnly = false;
               int currentPage = 0;
               int totalPages = 1;
-              int totalCount = 0;
               Map<String, dynamic> stats = {};
               String? errorMessage;
 
@@ -382,7 +410,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 withDebtOnly = state.withDebtOnly;
                 currentPage = state.currentPage;
                 totalPages = state.totalPages;
-                totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditsLoading) {
                 accounts = state.currentAccounts;
@@ -393,7 +420,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                         ? 1
                         : (state.totalCount / SupplierCreditsCubit.pageSize)
                             .ceil();
-                totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditsError) {
                 accounts = state.currentAccounts;
@@ -404,7 +430,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                         ? 1
                         : (state.totalCount / SupplierCreditsCubit.pageSize)
                             .ceil();
-                totalCount = state.totalCount;
                 stats = state.stats;
                 errorMessage = state.message;
               } else if (state is SupplierCreditSaving) {
@@ -416,7 +441,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                         ? 1
                         : (state.totalCount / SupplierCreditsCubit.pageSize)
                             .ceil();
-                totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditSaveSuccess) {
                 accounts = state.currentAccounts;
@@ -427,7 +451,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                         ? 1
                         : (state.totalCount / SupplierCreditsCubit.pageSize)
                             .ceil();
-                totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditSaveError) {
                 accounts = state.currentAccounts;
@@ -438,7 +461,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                         ? 1
                         : (state.totalCount / SupplierCreditsCubit.pageSize)
                             .ceil();
-                totalCount = state.totalCount;
                 stats = state.stats;
                 errorMessage = state.message;
               }
@@ -813,14 +835,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                     ),
                   ),
 
-                  // --- 4. PAGINACIÓN FIJA AL PIE (ESTILO PEDIDOS / STRIPE) ---
-                  _buildPagination(
-                    currentPage: currentPage,
-                    totalPages: totalPages,
-                    totalItems: totalCount,
-                    isLoading: isLoading,
-                    isDesktop: isDesktop,
-                  ),
                 ],
               );
             },

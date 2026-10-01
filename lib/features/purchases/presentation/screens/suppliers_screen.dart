@@ -240,6 +240,31 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                       color: Colors.white,
                     ),
                   ),
+          bottomNavigationBar: BlocBuilder<SuppliersCubit, SuppliersState>(
+            builder: (context, state) {
+              int pg = 0, tp = 0, tc = 0;
+              if (state is SuppliersLoaded) {
+                pg = state.currentPage;
+                tp = state.totalPages;
+                tc = state.totalCount;
+              } else if (state is SuppliersLoading) {
+                pg = state.currentPage;
+                tc = state.totalCount;
+                tp = tc == 0 ? 0 : (tc / SuppliersCubit.pageSize).ceil();
+              } else if (state is SuppliersError) {
+                pg = state.currentPage;
+                tc = state.totalCount;
+                tp = tc == 0 ? 0 : (tc / SuppliersCubit.pageSize).ceil();
+              }
+              return _buildPagination(
+                currentPage: pg,
+                totalPages: tp,
+                totalItems: tc,
+                isLoading: state is SuppliersLoading,
+                isDesktop: true,
+              );
+            },
+          ),
           body: BlocBuilder<SuppliersCubit, SuppliersState>(
             builder: (context, state) {
               final isLoading =
@@ -609,14 +634,6 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                     ),
                   ),
 
-                  // --- 4. PAGINACIÓN FIJA AL PIE (ESTILO PEDIDOS / STRIPE) ---
-                  _buildPagination(
-                    currentPage: currentPage,
-                    totalPages: totalPages,
-                    totalItems: totalCount,
-                    isLoading: isLoading,
-                    isDesktop: isDesktop,
-                  ),
                 ],
               );
             },

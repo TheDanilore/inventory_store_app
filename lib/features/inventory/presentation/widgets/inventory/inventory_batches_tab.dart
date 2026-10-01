@@ -23,6 +23,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
     with AutomaticKeepAliveClientMixin {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
+  final _tabFocusNode = FocusNode();
   Timer? _debounce;
   InventoryBatchItem? _selectedBatch;
 
@@ -30,9 +31,20 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
   bool get wantKeepAlive => true;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _tabFocusNode.requestFocus();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
+    _tabFocusNode.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -199,19 +211,96 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
         state.countProximo +
         state.countNormal;
 
+    final activeBatch =
+        (_selectedBatch != null &&
+                state.batchItems.any(
+                  (b) => b.id == _selectedBatch!.id,
+                ))
+            ? _selectedBatch
+            : (state.batchItems.isNotEmpty
+                ? state.batchItems.first
+                : null);
+
     return Focus(
+      focusNode: _tabFocusNode,
       autofocus: true,
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.slash &&
-              !_searchFocusNode.hasFocus) {
+          final isInputFocused = _searchFocusNode.hasFocus;
+          if (isInputFocused) {
+            if (event.logicalKey == LogicalKeyboardKey.escape) {
+              _searchFocusNode.unfocus();
+              _tabFocusNode.requestFocus();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          }
+
+          final isAlt = HardwareKeyboard.instance.isAltPressed;
+          final isControl = HardwareKeyboard.instance.isControlPressed;
+          final isMeta = HardwareKeyboard.instance.isMetaPressed;
+          final isModifier = isAlt || isControl || isMeta;
+
+          // ⌘K / Ctrl+K / Alt+K o '/' enfoca el buscador y selecciona el texto
+          if ((isModifier && event.logicalKey == LogicalKeyboardKey.keyK) ||
+              event.logicalKey == LogicalKeyboardKey.slash) {
             _searchFocusNode.requestFocus();
+            _searchCtrl.selection = TextSelection(
+              baseOffset: 0,
+              extentOffset: _searchCtrl.text.length,
+            );
             return KeyEventResult.handled;
           }
+
+          // [R] refresca los lotes
+          if (event.logicalKey == LogicalKeyboardKey.keyR) {
+            cubit.initBatchesTab();
+            return KeyEventResult.handled;
+          }
+
+          // [Esc] limpia búsqueda, deselecciona o reenfoca
           if (event.logicalKey == LogicalKeyboardKey.escape) {
+            if (_selectedBatch != null) {
+              setState(() => _selectedBatch = null);
+              _tabFocusNode.requestFocus();
+              return KeyEventResult.handled;
+            }
             if (_searchCtrl.text.isNotEmpty) {
               _searchCtrl.clear();
               cubit.setBatchSearch('');
+              _tabFocusNode.requestFocus();
+              return KeyEventResult.handled;
+            }
+            _searchFocusNode.unfocus();
+            _tabFocusNode.requestFocus();
+            return KeyEventResult.handled;
+          }
+
+          // Flechas ↑ y ↓ para navegar la lista de lotes
+          if (state.batchItems.isNotEmpty) {
+            final currentIndex = activeBatch != null
+                ? state.batchItems.indexWhere((b) => b.id == activeBatch.id)
+                : -1;
+
+            if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+              final nextIndex =
+                  (currentIndex + 1).clamp(0, state.batchItems.length - 1);
+              setState(() => _selectedBatch = state.batchItems[nextIndex]);
+              return KeyEventResult.handled;
+            }
+
+            if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+              final prevIndex =
+                  (currentIndex - 1).clamp(0, state.batchItems.length - 1);
+              setState(() => _selectedBatch = state.batchItems[prevIndex]);
+              return KeyEventResult.handled;
+            }
+
+            // [Enter] abre el detalle del lote (bottom sheet en móvil o foco en tablet)
+            if (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+              final target = activeBatch ?? state.batchItems.first;
+              _selectBatch(target, isTablet: isTablet);
               return KeyEventResult.handled;
             }
           }
@@ -334,13 +423,37 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Lotes Encontrados (${state.batchItems.length})',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          'Lotes Encontrados (${state.batchItems.length})',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: const Text(
+                            '↑ ↓ navegar',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     Text(
                       'Página ${state.currentBatchPage + 1} de ${state.totalBatchPages}',
@@ -382,7 +495,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate((context, i) {
                   final batch = state.batchItems[i];
-                  final isSelected = isTablet && activeBatchId == batch.id;
+                  final isSelected = activeBatchId == batch.id;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: InventoryBatchCard(

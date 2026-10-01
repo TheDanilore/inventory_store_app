@@ -59,6 +59,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   bool _isFetchingTargetOrder = false;
   final Map<String, List<PurchaseOrderItemEntity>> _itemsCache = {};
   static const int _maxCachedOrderItems = 20;
+  late final ScrollController _listScrollController;
+  bool _fabExtended = true;
 
   // --- REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) ---
   bool get _isInputFieldFocused {
@@ -70,6 +72,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   @override
   void initState() {
     super.initState();
+    _listScrollController = ScrollController();
+    _listScrollController.addListener(_onListScrolled);
     _pendingTargetOrderId = widget.targetOrderId;
     _checkDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -79,6 +83,14 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         cubit.loadOrders(refresh: true);
       }
     });
+  }
+
+  void _onListScrolled() {
+    if (!_listScrollController.hasClients) return;
+    final shouldExtend = _listScrollController.offset <= 60;
+    if (shouldExtend != _fabExtended) {
+      setState(() => _fabExtended = shouldExtend);
+    }
   }
 
   @override
@@ -164,6 +176,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _listScrollController.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     _screenFocusNode.dispose();
@@ -695,36 +708,76 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
                 },
               ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: FilledButton.icon(
-                  onPressed: () {
-                    context.push('/purchase-orders/form');
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 0,
-                    ),
-                    visualDensity: VisualDensity.compact,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  icon: const Icon(Icons.add_rounded, size: 16),
-                  label: const Text(
-                    'Nueva',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
+            ],
+      floatingActionButton: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        transitionBuilder: (child, animation) => ScaleTransition(
+          scale: animation,
+          child: child,
+        ),
+        child: _fabExtended
+            ? FloatingActionButton.extended(
+                key: const ValueKey('fab_ext'),
+                heroTag: 'po_new_fab',
+                onPressed: () => context.go('/purchase-orders/form'),
+                backgroundColor:
+                    _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                icon: Icon(
+                  _hasDraft
+                      ? Icons.edit_note_rounded
+                      : Icons.add_shopping_cart_rounded,
+                ),
+                label: Text(
+                  _hasDraft ? 'Borrador' : 'Nueva Orden',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
                   ),
                 ),
+              )
+            : FloatingActionButton(
+                key: const ValueKey('fab_compact'),
+                heroTag: 'po_new_fab',
+                onPressed: () => context.go('/purchase-orders/form'),
+                backgroundColor:
+                    _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  _hasDraft
+                      ? Icons.edit_note_rounded
+                      : Icons.add_shopping_cart_rounded,
+                ),
               ),
-            ],
-      floatingActionButton: null,
+      ),
+      bottomNavigationBar: BlocBuilder<PurchaseOrdersCubit, PurchaseOrdersState>(
+        buildWhen: (prev, curr) {
+          if (prev is PurchaseOrdersLoaded && curr is PurchaseOrdersLoaded) {
+            return prev.currentPage != curr.currentPage ||
+                prev.totalPages != curr.totalPages ||
+                prev.orders.isEmpty != curr.orders.isEmpty;
+          }
+          return prev.runtimeType != curr.runtimeType;
+        },
+        builder: (context, state) {
+          if (state is! PurchaseOrdersLoaded ||
+              state.orders.isEmpty ||
+              state.totalPages < 1) {
+            return const SizedBox.shrink();
+          }
+          final vm = _PurchaseOrdersViewModel(
+            context.read<PurchaseOrdersCubit>(),
+            state,
+          );
+          return _buildPagination(vm, isTablet: true);
+        },
+      ),
       body: Focus(
         focusNode: _screenFocusNode,
         autofocus: true,
@@ -793,6 +846,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   children: [
                     Expanded(
                       child: CustomScrollView(
+                        controller: _listScrollController,
                         slivers: [
                           // ── Borrador ──────────────────────────────────────────────
                           if (_hasDraft)
@@ -970,9 +1024,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                         ],
                       ),
                     ),
-
-                    // ── Paginación Fija al Pie (AdminPageBlocks) ─────────────────
-                    _buildPagination(viewModel, isTablet: isTablet),
                   ],
                 );
 

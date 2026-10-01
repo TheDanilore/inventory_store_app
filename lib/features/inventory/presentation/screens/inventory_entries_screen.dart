@@ -584,6 +584,15 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                     foregroundColor: Colors.white,
                   )
                   : null,
+          bottomNavigationBar:
+              currentState.entries.isEmpty || currentState.totalPages < 1
+                  ? null
+                  : _buildPagination(
+                      context,
+                      currentState,
+                      isLoading,
+                      isTablet: true,
+                    ),
           body: Focus(
             focusNode: _screenFocusNode,
             autofocus: true,
@@ -825,13 +834,6 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                       ),
                     ),
 
-                    // ── 6. Paginación Inferior ────────────────────────────
-                    _buildPagination(
-                      context,
-                      currentState,
-                      isLoading,
-                      isTablet: isTablet,
-                    ),
                   ],
                 );
               },

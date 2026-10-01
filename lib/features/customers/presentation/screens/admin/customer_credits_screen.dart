@@ -266,6 +266,15 @@ class _CustomerCreditsScreenContentState
                       tooltip: 'Nueva Línea',
                       child: const Icon(Icons.add_rounded, color: Colors.white),
                     ),
+            bottomNavigationBar: state.totalAccounts == 0 || state.totalPages < 1
+                ? null
+                : _buildPagination(
+                    currentPage: state.currentPage,
+                    totalPages: state.totalPages,
+                    totalItems: state.totalAccounts,
+                    isLoading: state.isLoading,
+                    isDesktop: true,
+                  ),
             body: Column(
               children: [
                 Expanded(
@@ -672,15 +681,6 @@ class _CustomerCreditsScreenContentState
                       ],
                     ),
                   ),
-                ),
-
-                // --- 4. PAGINACIÓN FIJA AL PIE (ESTILO PEDIDOS / STRIPE) ---
-                _buildPagination(
-                  currentPage: state.currentPage,
-                  totalPages: state.totalPages,
-                  totalItems: state.totalAccounts,
-                  isLoading: state.isLoading,
-                  isDesktop: isDesktop,
                 ),
               ],
             ),

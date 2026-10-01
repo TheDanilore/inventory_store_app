@@ -452,6 +452,10 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                   )
                   : null,
 
+          bottomNavigationBar: state.exits.isEmpty || state.totalPages < 1
+              ? null
+              : _buildPagination(context, state, cubit, isTablet: true),
+
           body: Focus(
             focusNode: _screenFocusNode,
             autofocus: true,
@@ -696,12 +700,6 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                     ),
 
                     // ── 6. Paginación Inferior Fija (AdminPageBlocks) ────────
-                    _buildPagination(
-                      context,
-                      state,
-                      cubit,
-                      isTablet: isTablet,
-                    ),
                   ],
                 );
               },

@@ -26,12 +26,18 @@ class InventoryScreen extends StatefulWidget {
 class _InventoryScreenState extends State<InventoryScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  final _screenFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_handleTabSelection);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _screenFocusNode.requestFocus();
+      }
+    });
   }
 
   void _handleTabSelection() {
@@ -58,6 +64,7 @@ class _InventoryScreenState extends State<InventoryScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _screenFocusNode.dispose();
     super.dispose();
   }
 
@@ -101,7 +108,7 @@ class _InventoryScreenState extends State<InventoryScreen>
                   final isDesktop = constraints.maxWidth >= 760;
 
                   final tabBarWidget = Container(
-                    constraints: const BoxConstraints(maxWidth: 420),
+                    constraints: BoxConstraints(maxWidth: isDesktop ? 440 : 420),
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: AppColors.background,
@@ -129,14 +136,38 @@ class _InventoryScreenState extends State<InventoryScreen>
                         fontSize: 13,
                       ),
                       tabs: [
-                        const Tab(
+                        Tab(
                           height: 36,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.inventory_2_rounded, size: 16),
-                              SizedBox(width: 8),
-                              Text('Stock General'),
+                              const Icon(Icons.inventory_2_rounded, size: 16),
+                              const SizedBox(width: 8),
+                              const Text('Stock General'),
+                              if (isDesktop) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 1.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: const Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    '1',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -169,6 +200,30 @@ class _InventoryScreenState extends State<InventoryScreen>
                                   ),
                                 ),
                               ],
+                              if (isDesktop) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 1.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: const Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    '2',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -189,16 +244,12 @@ class _InventoryScreenState extends State<InventoryScreen>
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Un solo TabBar (tabBarWidget) en ancho completo.
-                        // No instanciar un segundo TabBar — el mismo controller
-                        // no debe tener dos listeners simultáneos.
                         SizedBox(width: double.infinity, child: tabBarWidget),
                         const SizedBox(height: 8),
                         Row(
                           children: [
                             Expanded(child: warehouseSelector),
                             const SizedBox(width: 8),
-                            // En mobile: solo ícono para no saturar la fila
                             _ExportHeaderButton(
                               onPressed: () => _openExportModal(loadedState),
                               isCompact: true,
@@ -236,9 +287,32 @@ class _InventoryScreenState extends State<InventoryScreen>
         );
 
         final focusableContent = Focus(
+          focusNode: _screenFocusNode,
           autofocus: true,
           onKeyEvent: (node, event) {
             if (event is KeyDownEvent) {
+              final primaryFocus = FocusManager.instance.primaryFocus;
+              final isInputFieldFocused =
+                  primaryFocus?.context?.widget is EditableText;
+
+              if (!isInputFieldFocused) {
+                // Atajos 1 y 2 para conmutar pestañas estilo Linear/Superhuman
+                if (event.logicalKey == LogicalKeyboardKey.digit1 ||
+                    event.logicalKey == LogicalKeyboardKey.numpad1) {
+                  if (_tabController.index != 0) {
+                    _tabController.animateTo(0);
+                    return KeyEventResult.handled;
+                  }
+                }
+                if (event.logicalKey == LogicalKeyboardKey.digit2 ||
+                    event.logicalKey == LogicalKeyboardKey.numpad2) {
+                  if (_tabController.index != 1) {
+                    _tabController.animateTo(1);
+                    return KeyEventResult.handled;
+                  }
+                }
+              }
+
               final isCtrlOrCmd =
                   HardwareKeyboard.instance.isControlPressed ||
                   HardwareKeyboard.instance.isMetaPressed;
@@ -427,6 +501,26 @@ class _ExportHeaderButtonState extends State<_ExportHeaderButton> {
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 1.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Text(
+                      'Ctrl+E',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ),
                 ],
