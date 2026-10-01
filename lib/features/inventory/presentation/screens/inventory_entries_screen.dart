@@ -40,7 +40,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   bool _hasDraft = false;
   bool _isTableView = true;
   bool _isSideSheetOpen = false;
-  InventoryEntryEntity? _selectedEntry; // State for Master-Detail / Table selection
+  InventoryEntryEntity?
+  _selectedEntry; // State for Master-Detail / Table selection
   String? _pendingTargetEntryId;
   bool _isFetchingTargetEntry = false;
   InventoryEntriesLoaded? _lastLoadedState;
@@ -264,13 +265,19 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
               : -1;
 
       if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-        final nextIndex = currentIndex == -1 ? 0 : (currentIndex + 1).clamp(0, entries.length - 1);
+        final nextIndex =
+            currentIndex == -1
+                ? 0
+                : (currentIndex + 1).clamp(0, entries.length - 1);
         _selectEntry(entries[nextIndex], updateUrl: true);
         return KeyEventResult.handled;
       }
 
       if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-        final prevIndex = currentIndex == -1 ? 0 : (currentIndex - 1).clamp(0, entries.length - 1);
+        final prevIndex =
+            currentIndex == -1
+                ? 0
+                : (currentIndex - 1).clamp(0, entries.length - 1);
         _selectEntry(entries[prevIndex], updateUrl: true);
         return KeyEventResult.handled;
       }
@@ -555,17 +562,20 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         return AdminLayout(
           title: 'Historial de Entradas',
           showBackButton: true,
-          actions: isDesktopOrTablet
-              ? null
-              : [
-                  IconButton(
-                    icon: const Icon(Icons.refresh_rounded),
-                    tooltip: 'Actualizar entradas',
-                    onPressed: () {
-                      context.read<InventoryEntriesCubit>().loadEntries(page: 0);
-                    },
-                  ),
-                ],
+          actions:
+              isDesktopOrTablet
+                  ? null
+                  : [
+                    IconButton(
+                      icon: const Icon(Icons.refresh_rounded),
+                      tooltip: 'Actualizar entradas',
+                      onPressed: () {
+                        context.read<InventoryEntriesCubit>().loadEntries(
+                          page: 0,
+                        );
+                      },
+                    ),
+                  ],
           floatingActionButton:
               !isDesktopOrTablet
                   ? FloatingActionButton.extended(
@@ -578,9 +588,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     backgroundColor:
-                        _hasDraft
-                            ? const Color(0xFFF59E0B)
-                            : AppColors.primary,
+                        _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
                     foregroundColor: Colors.white,
                   )
                   : null,
@@ -588,11 +596,11 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
               currentState.entries.isEmpty || currentState.totalPages < 1
                   ? null
                   : _buildPagination(
-                      context,
-                      currentState,
-                      isLoading,
-                      isTablet: true,
-                    ),
+                    context,
+                    currentState,
+                    isLoading,
+                    isTablet: true,
+                  ),
           body: Focus(
             focusNode: _screenFocusNode,
             autofocus: true,
@@ -833,7 +841,6 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                                 ),
                       ),
                     ),
-
                   ],
                 );
               },
@@ -1190,9 +1197,7 @@ class _InventoryEntriesToolbar extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 8),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildKeyHint('/'),
-                  ],
+                  children: [_buildKeyHint('/')],
                 ),
               );
             },
@@ -1211,7 +1216,10 @@ class _InventoryEntriesToolbar extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 0,
+          ),
         ),
       ),
     );
@@ -1229,23 +1237,35 @@ class _InventoryEntriesToolbar extends StatelessWidget {
         side: const BorderSide(color: Color(0xFFE2E8F0)),
       ),
       onSelected: (val) => cubit.setWarehouseFilter(val),
-      itemBuilder: (context) => state.availableWarehouses.map((w) {
-        return PopupMenuItem<String>(
-          value: w,
-          child: Row(
-            children: [
-              const Icon(Icons.storefront_rounded, size: 16, color: AppColors.textSecondary),
-              const SizedBox(width: 8),
-              Text(w == 'TODOS' ? 'Todos los Almacenes' : w, style: const TextStyle(fontSize: 13)),
-            ],
-          ),
-        );
-      }).toList(),
+      itemBuilder:
+          (context) =>
+              state.availableWarehouses.map((w) {
+                return PopupMenuItem<String>(
+                  value: w,
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.storefront_rounded,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        w == 'TODOS' ? 'Todos los Almacenes' : w,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
       child: Container(
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: isFiltered ? AppColors.teal.withValues(alpha: 0.1) : const Color(0xFFF8FAFC),
+          color:
+              isFiltered
+                  ? AppColors.teal.withValues(alpha: 0.1)
+                  : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isFiltered ? AppColors.teal : const Color(0xFFE2E8F0),
@@ -1262,7 +1282,9 @@ class _InventoryEntriesToolbar extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              state.warehouseFilter == 'TODOS' ? 'Almacén: Todos' : state.warehouseFilter,
+              state.warehouseFilter == 'TODOS'
+                  ? 'Almacén: Todos'
+                  : state.warehouseFilter,
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: isFiltered ? FontWeight.w800 : FontWeight.w600,
@@ -1296,11 +1318,12 @@ class _InventoryEntriesToolbar extends StatelessWidget {
             tooltip: 'Vista Tabla Pro [V]',
             icon: Icon(
               Icons.table_rows_rounded,
-              size: 16,
+              size: 18,
               color: isTableView ? AppColors.tealDark : AppColors.textMuted,
             ),
             style: IconButton.styleFrom(
-              backgroundColor: isTableView ? AppColors.surface : Colors.transparent,
+              backgroundColor:
+                  isTableView ? AppColors.surface : Colors.transparent,
               padding: const EdgeInsets.all(6),
               elevation: isTableView ? 1 : 0,
               shape: RoundedRectangleBorder(
@@ -1313,11 +1336,12 @@ class _InventoryEntriesToolbar extends StatelessWidget {
             tooltip: 'Vista Tarjetas [V]',
             icon: Icon(
               Icons.grid_view_rounded,
-              size: 16,
+              size: 18,
               color: !isTableView ? AppColors.tealDark : AppColors.textMuted,
             ),
             style: IconButton.styleFrom(
-              backgroundColor: !isTableView ? AppColors.surface : Colors.transparent,
+              backgroundColor:
+                  !isTableView ? AppColors.surface : Colors.transparent,
               padding: const EdgeInsets.all(6),
               elevation: !isTableView ? 1 : 0,
               shape: RoundedRectangleBorder(
@@ -1336,6 +1360,7 @@ class _InventoryEntriesToolbar extends StatelessWidget {
     final cubit = context.read<InventoryEntriesCubit>();
 
     return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -1349,100 +1374,104 @@ class _InventoryEntriesToolbar extends StatelessWidget {
           ),
         ],
       ),
-      child: isDesktop
-          ? Row(
-              children: [
-                Expanded(child: _buildSearchField()),
-                const SizedBox(width: 10),
-                _buildWarehouseDropdown(context),
-                const SizedBox(width: 8),
-                DateFilterCalendar(
-                  height: 40,
-                  borderRadius: BorderRadius.circular(10),
-                  dateRange: state.dateRange,
-                  onDateRangeSelected: cubit.setDateRange,
-                  onClear: () => cubit.setDateRange(null),
-                ),
-                const SizedBox(width: 10),
-                _buildViewToggle(),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.refresh_rounded, size: 20),
-                  color: AppColors.textSecondary,
-                  tooltip: 'Refrescar entradas [R]',
-                  onPressed: onRefresh,
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  height: 40,
-                  child: FilledButton.icon(
-                    onPressed: onNewEntry,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    icon: Icon(
-                      hasDraft ? Icons.edit_note_rounded : Icons.add_box_rounded,
-                      size: 18,
-                    ),
-                    label: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          hasDraft ? 'Continuar Borrador' : 'Nueva Entrada',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12.5,
-                          ),
+      child:
+          isDesktop
+              ? Row(
+                children: [
+                  Expanded(child: _buildSearchField()),
+                  const SizedBox(width: 10),
+                  _buildWarehouseDropdown(context),
+                  const SizedBox(width: 8),
+                  DateFilterCalendar(
+                    height: 40,
+                    borderRadius: BorderRadius.circular(10),
+                    dateRange: state.dateRange,
+                    onDateRangeSelected: cubit.setDateRange,
+                    onClear: () => cubit.setDateRange(null),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildViewToggle(),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded, size: 20),
+                    color: AppColors.textSecondary,
+                    tooltip: 'Refrescar entradas [R]',
+                    onPressed: onRefresh,
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 40,
+                    child: FilledButton.icon(
+                      onPressed: onNewEntry,
+                      style: FilledButton.styleFrom(
+                        backgroundColor:
+                            hasDraft
+                                ? const Color(0xFFF59E0B)
+                                : AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
+                      ),
+                      icon: Icon(
+                        hasDraft
+                            ? Icons.edit_note_rounded
+                            : Icons.add_box_rounded,
+                        size: 18,
+                      ),
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            hasDraft ? 'Continuar Borrador' : 'Nueva Entrada',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          _buildButtonKeyHint('N'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              )
+              : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSearchField(),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: [
+                        _buildWarehouseDropdown(context),
+                        const SizedBox(width: 8),
+                        DateFilterCalendar(
+                          height: 36,
+                          borderRadius: BorderRadius.circular(10),
+                          dateRange: state.dateRange,
+                          onDateRangeSelected: cubit.setDateRange,
+                          onClear: () => cubit.setDateRange(null),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildViewToggle(),
                         const SizedBox(width: 6),
-                        _buildButtonKeyHint('N'),
+                        IconButton(
+                          icon: const Icon(Icons.refresh_rounded, size: 20),
+                          color: AppColors.textSecondary,
+                          tooltip: 'Refrescar entradas',
+                          onPressed: onRefresh,
+                        ),
                       ],
                     ),
                   ),
-                ),
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSearchField(),
-                const SizedBox(height: 8),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: [
-                      _buildWarehouseDropdown(context),
-                      const SizedBox(width: 8),
-                      DateFilterCalendar(
-                        height: 36,
-                        borderRadius: BorderRadius.circular(10),
-                        dateRange: state.dateRange,
-                        onDateRangeSelected: cubit.setDateRange,
-                        onClear: () => cubit.setDateRange(null),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildViewToggle(),
-                      const SizedBox(width: 6),
-                      IconButton(
-                        icon: const Icon(Icons.refresh_rounded, size: 20),
-                        color: AppColors.textSecondary,
-                        tooltip: 'Refrescar entradas',
-                        onPressed: onRefresh,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
     );
   }
 }
@@ -1451,7 +1480,7 @@ class _InventoryEntriesToolbar extends StatelessWidget {
 // ENTRY CARD
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _EntryCard extends StatelessWidget {
+class _EntryCard extends StatefulWidget {
   final InventoryEntryEntity entry;
   final VoidCallback onTap;
   final bool isSelected;
@@ -1463,8 +1492,16 @@ class _EntryCard extends StatelessWidget {
   });
 
   @override
+  State<_EntryCard> createState() => _EntryCardState();
+}
+
+class _EntryCardState extends State<_EntryCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final fmt = DateFormat('dd/MM/yyyy HH:mm');
+    final entry = widget.entry;
     final hasDoc =
         entry.documentType != 'NINGUNO' &&
         entry.documentNumber != null &&
@@ -1472,163 +1509,176 @@ class _EntryCard extends StatelessWidget {
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          decoration: BoxDecoration(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
+        decoration: BoxDecoration(
+          color:
+              widget.isSelected
+                  ? AppColors.teal.withValues(alpha: 0.04)
+                  : AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
             color:
-                isSelected
-                    ? AppColors.teal.withValues(alpha: 0.04)
-                    : AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isSelected ? AppColors.teal : const Color(0xFFE2E8F0),
-              width: isSelected ? 1.5 : 1.0,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(
-                  alpha: isSelected ? 0.04 : 0.015,
-                ),
-                blurRadius: isSelected ? 8 : 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+                widget.isSelected
+                    ? AppColors.teal
+                    : _isHovered
+                    ? AppColors.teal.withValues(alpha: 0.35)
+                    : const Color(0xFFE2E8F0),
+            width: (widget.isSelected || _isHovered) ? 1.5 : 1.0,
           ),
-          child: Stack(
-            children: [
-              if (isSelected)
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 3.5,
-                    decoration: const BoxDecoration(
-                      color: AppColors.teal,
-                      borderRadius: BorderRadius.horizontal(
-                        left: Radius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: widget.isSelected ? 0.08 : (_isHovered ? 0.06 : 0.025),
+              ),
+              blurRadius: (widget.isSelected || _isHovered) ? 14 : 8,
+              offset: Offset(0, (widget.isSelected || _isHovered) ? 4 : 2),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              children: [
+                if (widget.isSelected)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 3.5,
+                      decoration: const BoxDecoration(
+                        color: AppColors.teal,
+                        borderRadius: BorderRadius.horizontal(
+                          left: Radius.circular(14),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: AppColors.teal.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: AppColors.teal.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.move_to_inbox_rounded,
+                              color: AppColors.tealDark,
+                              size: 20,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.move_to_inbox_rounded,
-                            color: AppColors.tealDark,
-                            size: 20,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  entry.supplierName ?? 'Sin proveedor',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  entry.createdAt != null
+                                      ? fmt.format(entry.createdAt!)
+                                      : '—',
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                entry.supplierName ?? 'Sin proveedor',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                'S/ ${entry.totalAmount.toStringAsFixed(2)}',
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14.5,
                                   color: AppColors.textPrimary,
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                entry.createdAt != null
-                                    ? fmt.format(entry.createdAt!)
-                                    : '—',
+                                '${entry.itemCount} prod. (${entry.totalQuantity.toInt()} uds.)',
                                 style: const TextStyle(
-                                  fontSize: 11.5,
-                                  color: AppColors.textMuted,
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              'S/ ${entry.totalAmount.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14.5,
-                                color: AppColors.textPrimary,
-                              ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          if (entry.warehouseName != null)
+                            _Pill(
+                              icon: Icons.storefront_rounded,
+                              label: entry.warehouseName!,
+                              color: AppColors.textSecondary,
+                              bgColor: AppColors.background,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${entry.itemCount} prod. (${entry.totalQuantity.toInt()} uds.)',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary,
-                              ),
+                          _Pill(
+                            icon: Icons.payments_rounded,
+                            label: entry.paymentMode ?? 'Contado',
+                            color: AppColors.successDark,
+                            bgColor: AppColors.successLight,
+                          ),
+                          if (hasDoc)
+                            _Pill(
+                              icon: Icons.receipt_rounded,
+                              label:
+                                  '${entry.documentType}: ${entry.documentNumber}',
+                              color: AppColors.textSecondary,
+                              bgColor: AppColors.background,
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        if (entry.warehouseName != null)
-                          _Pill(
-                            icon: Icons.storefront_rounded,
-                            label: entry.warehouseName!,
-                            color: AppColors.textSecondary,
-                            bgColor: AppColors.background,
-                          ),
-                        _Pill(
-                          icon: Icons.payments_rounded,
-                          label: entry.paymentMode ?? 'Contado',
-                          color: AppColors.successDark,
-                          bgColor: AppColors.successLight,
-                        ),
-                        if (hasDoc)
-                          _Pill(
-                            icon: Icons.receipt_rounded,
-                            label:
-                                '${entry.documentType}: ${entry.documentNumber}',
-                            color: AppColors.textSecondary,
-                            bgColor: AppColors.background,
-                          ),
-                        if (entry.purchaseOrderId != null)
-                          _Pill(
-                            icon: Icons.link_rounded,
-                            label:
-                                'Orden #${entry.purchaseOrderId!.length >= 8 ? entry.purchaseOrderId!.substring(0, 8).toUpperCase() : entry.purchaseOrderId!.toUpperCase()}',
-                            color: const Color(0xFF7E22CE),
-                            bgColor: const Color(0xFFFAF5FF),
-                          ),
-                      ],
-                    ),
-                  ],
+                          if (entry.purchaseOrderId != null)
+                            _Pill(
+                              icon: Icons.link_rounded,
+                              label:
+                                  'Orden #${entry.purchaseOrderId!.length >= 8 ? entry.purchaseOrderId!.substring(0, 8).toUpperCase() : entry.purchaseOrderId!.toUpperCase()}',
+                              color: const Color(0xFF7E22CE),
+                              bgColor: const Color(0xFFFAF5FF),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

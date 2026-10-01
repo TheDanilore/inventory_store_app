@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/purchases/data/models/purchase_order_model.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-class POCard extends StatelessWidget {
+class POCard extends StatefulWidget {
   final PurchaseOrderModel po;
   final VoidCallback onTap;
   final bool isSelected;
@@ -14,6 +14,13 @@ class POCard extends StatelessWidget {
     required this.onTap,
     this.isSelected = false,
   });
+
+  @override
+  State<POCard> createState() => _POCardState();
+}
+
+class _POCardState extends State<POCard> {
+  bool _isHovered = false;
 
   Color _statusColor(String status) {
     switch (status) {
@@ -68,6 +75,7 @@ class POCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final po = widget.po;
     final statusColor = _statusColor(po.status);
     final isCancelled = po.status == 'CANCELLED';
     final debt =
@@ -80,34 +88,46 @@ class POCard extends StatelessWidget {
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color:
-                isSelected
-                    ? AppColors.primary.withValues(alpha: 0.04)
-                    : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.border,
-              width: isSelected ? 1.5 : 1.0,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color:
-                    isSelected
-                        ? AppColors.primary.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.02),
-                blurRadius: isSelected ? 12 : 6,
-                offset: const Offset(0, 3),
-              ),
-            ],
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
+        decoration: BoxDecoration(
+          color: widget.isSelected
+              ? AppColors.primary.withValues(alpha: 0.04)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: widget.isSelected
+                ? AppColors.primary
+                : _isHovered
+                    ? AppColors.primary.withValues(alpha: 0.35)
+                    : AppColors.border,
+            width: (widget.isSelected || _isHovered) ? 1.5 : 1.0,
           ),
-          child: Column(
+          boxShadow: [
+            BoxShadow(
+              color: widget.isSelected
+                  ? AppColors.primary.withValues(alpha: 0.08)
+                  : Colors.black.withValues(
+                      alpha: _isHovered ? 0.06 : 0.02,
+                    ),
+              blurRadius: (widget.isSelected || _isHovered) ? 14 : 6,
+              offset: Offset(0, (widget.isSelected || _isHovered) ? 4 : 3),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header: Proveedor + Status Pill
@@ -296,8 +316,10 @@ class POCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 }
 
 class _Pill extends StatelessWidget {

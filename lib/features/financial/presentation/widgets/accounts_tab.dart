@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
@@ -12,7 +13,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 
 class AccountsTab extends StatefulWidget {
-  const AccountsTab({super.key});
+  final bool showFab;
+  final String? selectedAccountId;
+  final ValueChanged<FinancialAccountEntity>? onSelectAccount;
+
+  const AccountsTab({
+    super.key,
+    this.showFab = true,
+    this.selectedAccountId,
+    this.onSelectAccount,
+  });
 
   @override
   State<AccountsTab> createState() => _AccountsTabState();
@@ -123,6 +133,22 @@ class _AccountsTabState extends State<AccountsTab> {
                                               ),
                                               child: _AccountCard(
                                                 account: entry.value,
+                                                isSelected:
+                                                    widget.selectedAccountId ==
+                                                    entry.value.id,
+                                                onTap: () {
+                                                  if (widget.onSelectAccount !=
+                                                      null) {
+                                                    widget.onSelectAccount!(
+                                                      entry.value,
+                                                    );
+                                                  } else {
+                                                    AccountFormSheet.show(
+                                                      context,
+                                                      account: entry.value,
+                                                    );
+                                                  }
+                                                },
                                                 onEdit:
                                                     () => AccountFormSheet.show(
                                                       context,
@@ -170,6 +196,22 @@ class _AccountsTabState extends State<AccountsTab> {
                                               ),
                                               child: _AccountCard(
                                                 account: entry.value,
+                                                isSelected:
+                                                    widget.selectedAccountId ==
+                                                    entry.value.id,
+                                                onTap: () {
+                                                  if (widget.onSelectAccount !=
+                                                      null) {
+                                                    widget.onSelectAccount!(
+                                                      entry.value,
+                                                    );
+                                                  } else {
+                                                    AccountFormSheet.show(
+                                                      context,
+                                                      account: entry.value,
+                                                    );
+                                                  }
+                                                },
                                                 onEdit:
                                                     () => AccountFormSheet.show(
                                                       context,
@@ -189,43 +231,43 @@ class _AccountsTabState extends State<AccountsTab> {
                 ),
               ],
             ),
-            Positioned(
-              bottom: 16,
-              right: 16,
-              child: FloatingActionButton.extended(
-                heroTag: 'fab_accounts',
-                onPressed:
-                    isLoading
-                        ? null
-                        : () {
-                          // Solo vibrar si no es web para evitar MissingPluginException
-                          if (!kIsWeb) {
-                            Vibration.vibrate(duration: 50, amplitude: 128);
-                          }
-                          AccountFormSheet.show(context);
-                        },
-                backgroundColor: AppColors.primary,
-                icon: const Icon(Icons.add_rounded, color: Colors.white),
-                label: ValueListenableBuilder<bool>(
-                  valueListenable: _isFabExtended,
-                  builder: (context, isExtended, _) {
-                    return AnimatedSize(
-                      duration: const Duration(milliseconds: 200),
-                      child:
-                          isExtended
-                              ? const Text(
-                                'Nueva Cuenta',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              )
-                              : const SizedBox.shrink(),
-                    );
-                  },
+            if (widget.showFab)
+              Positioned(
+                bottom: 16,
+                right: 16,
+                child: FloatingActionButton.extended(
+                  heroTag: 'fab_accounts',
+                  onPressed:
+                      isLoading
+                          ? null
+                          : () {
+                            if (!kIsWeb) {
+                              Vibration.vibrate(duration: 50, amplitude: 128);
+                            }
+                            AccountFormSheet.show(context);
+                          },
+                  backgroundColor: AppColors.primary,
+                  icon: const Icon(Icons.add_rounded, color: Colors.white),
+                  label: ValueListenableBuilder<bool>(
+                    valueListenable: _isFabExtended,
+                    builder: (context, isExtended, _) {
+                      return AnimatedSize(
+                        duration: const Duration(milliseconds: 200),
+                        child:
+                            isExtended
+                                ? const Text(
+                                  'Nueva Cuenta',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                )
+                                : const SizedBox.shrink(),
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
           ],
         );
       },
@@ -237,63 +279,95 @@ class _AccountsTabState extends State<AccountsTab> {
       0.0,
       (sum, a) => sum + a.balance,
     );
+    final currencyFmt = NumberFormat.currency(locale: 'es_PE', symbol: 'S/ ');
 
     return Container(
-      margin: const EdgeInsets.only(top: 16, bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      margin: const EdgeInsets.only(top: 12, bottom: 8),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AppColors.primary, Color(0xFF6C63FF)],
+          colors: [Color(0xFF0F766E), Color(0xFF134E4A)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 10,
+            color: const Color(0xFF0F766E).withValues(alpha: 0.25),
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
+      child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
+          Positioned(
+            right: -10,
+            bottom: -20,
+            child: Icon(
               Icons.account_balance_wallet_rounded,
-              color: Colors.white,
-              size: 28,
+              size: 110,
+              color: Colors.white.withValues(alpha: 0.06),
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Balance global (Activas)',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.shield_outlined,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                   ),
-                ),
-                Text(
-                  'S/ ${totalBalance.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
+                  const SizedBox(width: 8),
+                  Text(
+                    'Balance Global Disponible',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${activeAccounts.length} activas',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                currencyFmt.format(totalBalance),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
@@ -301,14 +375,30 @@ class _AccountsTabState extends State<AccountsTab> {
   }
 }
 
-class _AccountCard extends StatelessWidget {
+class _AccountCard extends StatefulWidget {
   final FinancialAccountEntity account;
+  final bool isSelected;
+  final VoidCallback onTap;
   final VoidCallback onEdit;
 
-  const _AccountCard({required this.account, required this.onEdit});
+  const _AccountCard({
+    required this.account,
+    this.isSelected = false,
+    required this.onTap,
+    required this.onEdit,
+  });
+
+  @override
+  State<_AccountCard> createState() => _AccountCardState();
+}
+
+class _AccountCardState extends State<_AccountCard> {
+  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
+    final account = widget.account;
+    final isSelected = widget.isSelected;
     final isBank = account.type == 'BANCO';
     final isDigital = account.type == 'DIGITAL';
     final iconColor =
@@ -317,118 +407,201 @@ class _AccountCard extends StatelessWidget {
                 ? const Color(0xFF0288D1)
                 : isDigital
                 ? const Color(0xFF8E24AA)
-                : AppColors.success)
+                : AppColors.teal)
             : AppColors.textSecondary;
+    final currencyFmt = NumberFormat.currency(locale: 'es_PE', symbol: 'S/ ');
 
-    return Container(
-      decoration: BoxDecoration(
-        color: account.isActive ? Colors.white : AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: account.isActive ? Colors.transparent : AppColors.border,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? const Color(0xFFF0FDFA)
+                  : (account.isActive ? Colors.white : AppColors.surface),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color:
+                isSelected
+                    ? AppColors.teal
+                    : _isHovered
+                    ? AppColors.teal.withValues(alpha: 0.35)
+                    : (account.isActive
+                        ? const Color(0xFFE2E8F0)
+                        : AppColors.border),
+            width: (isSelected || _isHovered) ? 1.5 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color:
+                  isSelected
+                      ? AppColors.teal.withValues(alpha: 0.1)
+                      : Colors.black.withValues(
+                        alpha: _isHovered ? 0.06 : 0.025,
+                      ),
+              blurRadius: (isSelected || _isHovered) ? 14 : 6,
+              offset: Offset(0, (isSelected || _isHovered) ? 4 : 2),
+            ),
+          ],
         ),
-        boxShadow:
-            account.isActive
-                ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 15,
-                    spreadRadius: -2,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-                : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onEdit,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color:
-                        account.isActive
-                            ? iconColor.withValues(alpha: 0.1)
-                            : AppColors.surfaceDark,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _getIcon(account.type),
-                    color: iconColor,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        account.name,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color:
-                              account.isActive
-                                  ? AppColors.textPrimary
-                                  : AppColors.textSecondary,
+                if (isSelected)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 3.5,
+                      decoration: const BoxDecoration(
+                        color: AppColors.teal,
+                        borderRadius: BorderRadius.horizontal(
+                          left: Radius.circular(14),
                         ),
                       ),
-                      const SizedBox(height: 2),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppColors.border,
-                          borderRadius: BorderRadius.circular(4),
+                          color:
+                              account.isActive
+                                  ? iconColor.withValues(alpha: 0.1)
+                                  : AppColors.surfaceDark,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Text(
-                          account.type,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textSecondary,
+                        child: Icon(
+                          _getIcon(account.type),
+                          color: iconColor,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              account.name,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                color:
+                                    account.isActive
+                                        ? AppColors.textPrimary
+                                        : AppColors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 1.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: const Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    account.type,
+                                    style: const TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                                if (isSelected) ...[
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    '• Filtrando',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.tealDark,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            currencyFmt.format(account.balance),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14.5,
+                              color:
+                                  account.isActive
+                                      ? AppColors.textPrimary
+                                      : AppColors.textSecondary,
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 2),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                account.isActive ? 'Activa' : 'Inactiva',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      account.isActive
+                                          ? AppColors.teal
+                                          : AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit_outlined,
+                                  size: 14,
+                                  color: AppColors.textMuted,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                  minWidth: 24,
+                                  minHeight: 24,
+                                ),
+                                tooltip: 'Editar cuenta',
+                                onPressed: widget.onEdit,
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'S/ ${account.balance.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        color:
-                            account.isActive
-                                ? AppColors.textPrimary
-                                : AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      account.isActive ? 'Activa' : 'Inactiva',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color:
-                            account.isActive
-                                ? AppColors.success
-                                : AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),

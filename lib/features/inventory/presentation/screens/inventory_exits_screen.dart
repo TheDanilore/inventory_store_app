@@ -1307,7 +1307,7 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-class _ExitCard extends StatelessWidget {
+class _ExitCard extends StatefulWidget {
   final InventoryExitEntity exitData;
   final VoidCallback onTap;
   final bool isSelected;
@@ -1319,115 +1319,139 @@ class _ExitCard extends StatelessWidget {
   });
 
   @override
+  State<_ExitCard> createState() => _ExitCardState();
+}
+
+class _ExitCardState extends State<_ExitCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+    final exitData = widget.exitData;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
         decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? AppColors.danger.withValues(alpha: 0.05)
-                  : AppColors.surface,
+          color: widget.isSelected
+              ? AppColors.danger.withValues(alpha: 0.05)
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color:
-                isSelected
-                    ? AppColors.danger.withValues(alpha: 0.5)
+            color: widget.isSelected
+                ? AppColors.danger.withValues(alpha: 0.5)
+                : _isHovered
+                    ? AppColors.teal.withValues(alpha: 0.35)
                     : const Color(0xFFE2E8F0),
-            width: isSelected ? 1.5 : 1,
+            width: (widget.isSelected || _isHovered) ? 1.5 : 1.0,
           ),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Color(0x050F172A),
-              blurRadius: 4,
-              offset: Offset(0, 1),
+              color: Colors.black.withValues(
+                alpha: widget.isSelected ? 0.08 : (_isHovered ? 0.06 : 0.025),
+              ),
+              blurRadius: (widget.isSelected || _isHovered) ? 14 : 8,
+              offset: Offset(0, (widget.isSelected || _isHovered) ? 4 : 2),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    exitData.reason ?? 'Sin motivo especificado',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      color: AppColors.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _Pill(
-                  icon: Icons.warehouse_rounded,
-                  label: exitData.warehouseName ?? 'Almacén Central',
-                  color: AppColors.textSecondary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${exitData.itemCount} ${exitData.itemCount == 1 ? "producto" : "productos"}',
-                      style: const TextStyle(
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          exitData.reason ?? 'Sin motivo especificado',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _Pill(
+                        icon: Icons.warehouse_rounded,
+                        label: exitData.warehouseName ?? 'Almacén Central',
                         color: AppColors.textSecondary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      exitData.createdAt != null
-                          ? DateFormat(
-                            'dd MMM yyyy - HH:mm',
-                            'es',
-                          ).format(exitData.createdAt!.toLocal())
-                          : '—',
-                      style: const TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 12,
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${exitData.itemCount} ${exitData.itemCount == 1 ? "producto" : "productos"}',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            exitData.createdAt != null
+                                ? DateFormat(
+                                  'dd MMM yyyy - HH:mm',
+                                  'es',
+                                ).format(exitData.createdAt!.toLocal())
+                                : '—',
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text(
-                      'COSTO TOTAL',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textMuted,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'COSTO TOTAL',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          Text(
+                            'S/ ${exitData.totalCost.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              color: AppColors.dangerDark,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    Text(
-                      'S/ ${exitData.totalCost.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        color: AppColors.dangerDark,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );

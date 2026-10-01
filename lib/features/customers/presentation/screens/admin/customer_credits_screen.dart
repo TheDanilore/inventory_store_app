@@ -251,7 +251,9 @@ class _CustomerCreditsScreenContentState
       child: BlocBuilder<CustomerCreditListCubit, CustomerCreditListState>(
         builder: (context, state) {
           final int accountsWithDebtCount =
-              state.accounts.where((a) => a.currentDebt > 0 && a.isActive).length;
+              state.accounts
+                  .where((a) => a.currentDebt > 0 && a.isActive)
+                  .length;
 
           return AdminLayout(
             title: 'Cuentas por Cobrar',
@@ -266,15 +268,16 @@ class _CustomerCreditsScreenContentState
                       tooltip: 'Nueva Línea',
                       child: const Icon(Icons.add_rounded, color: Colors.white),
                     ),
-            bottomNavigationBar: state.totalAccounts == 0 || state.totalPages < 1
-                ? null
-                : _buildPagination(
-                    currentPage: state.currentPage,
-                    totalPages: state.totalPages,
-                    totalItems: state.totalAccounts,
-                    isLoading: state.isLoading,
-                    isDesktop: true,
-                  ),
+            bottomNavigationBar:
+                state.totalAccounts == 0 || state.totalPages < 1
+                    ? null
+                    : _buildPagination(
+                      currentPage: state.currentPage,
+                      totalPages: state.totalPages,
+                      totalItems: state.totalAccounts,
+                      isLoading: state.isLoading,
+                      isDesktop: true,
+                    ),
             body: Column(
               children: [
                 Expanded(
@@ -350,9 +353,12 @@ class _CustomerCreditsScreenContentState
                                           color: AppColors.textSecondary,
                                           tooltip: 'Refrescar créditos [R]',
                                           onPressed:
-                                              () => context
-                                                  .read<CustomerCreditListCubit>()
-                                                  .loadData(),
+                                              () =>
+                                                  context
+                                                      .read<
+                                                        CustomerCreditListCubit
+                                                      >()
+                                                      .loadData(),
                                         ),
                                         const SizedBox(width: 8),
 
@@ -482,57 +488,51 @@ class _CustomerCreditsScreenContentState
                         if (state.isLoading && state.accounts.isEmpty)
                           (isDesktop && _isTableView)
                               ? const SliverPadding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16),
-                                  sliver: SliverToBoxAdapter(
-                                    child: AppTableShimmer(),
-                                  ),
-                                )
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                sliver: SliverToBoxAdapter(
+                                  child: AppTableShimmer(),
+                                ),
+                              )
                               : SliverPadding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                  ),
-                                  sliver:
-                                      isDesktop
-                                          ? SliverGrid(
-                                            gridDelegate:
-                                                const SliverGridDelegateWithMaxCrossAxisExtent(
-                                                  maxCrossAxisExtent: 420,
-                                                  mainAxisExtent: 220,
-                                                  crossAxisSpacing: 16,
-                                                  mainAxisSpacing: 16,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                sliver:
+                                    isDesktop
+                                        ? SliverGrid(
+                                          gridDelegate:
+                                              const SliverGridDelegateWithMaxCrossAxisExtent(
+                                                maxCrossAxisExtent: 420,
+                                                mainAxisExtent: 220,
+                                                crossAxisSpacing: 16,
+                                                mainAxisSpacing: 16,
+                                              ),
+                                          delegate: SliverChildBuilderDelegate(
+                                            (context, index) =>
+                                                const AppShimmer(
+                                                  width: double.infinity,
+                                                  height: double.infinity,
+                                                  borderRadius: 16,
                                                 ),
-                                            delegate:
-                                                SliverChildBuilderDelegate(
-                                                  (context, index) =>
-                                                      const AppShimmer(
-                                                        width: double.infinity,
-                                                        height:
-                                                            double.infinity,
-                                                        borderRadius: 16,
-                                                      ),
-                                                  childCount: 6,
-                                                ),
-                                          )
-                                          : SliverList(
-                                            delegate:
-                                                SliverChildBuilderDelegate(
-                                                  (context, index) =>
-                                                      const Padding(
-                                                        padding:
-                                                            EdgeInsets.only(
-                                                              bottom: 12,
-                                                            ),
-                                                        child: AppShimmer(
-                                                          width:
-                                                              double.infinity,
-                                                          height: 180,
-                                                          borderRadius: 16,
-                                                        ),
-                                                      ),
-                                                  childCount: 4,
-                                                ),
+                                            childCount: 6,
                                           ),
-                                )
+                                        )
+                                        : SliverList(
+                                          delegate: SliverChildBuilderDelegate(
+                                            (context, index) => const Padding(
+                                              padding: EdgeInsets.only(
+                                                bottom: 12,
+                                              ),
+                                              child: AppShimmer(
+                                                width: double.infinity,
+                                                height: 180,
+                                                borderRadius: 16,
+                                              ),
+                                            ),
+                                            childCount: 4,
+                                          ),
+                                        ),
+                              )
                         else if (state.errorMessage.isNotEmpty &&
                             state.accounts.isEmpty)
                           SliverFillRemaining(
@@ -544,9 +544,10 @@ class _CustomerCreditsScreenContentState
                               message: state.errorMessage,
                               action: FilledButton.icon(
                                 onPressed:
-                                    () => context
-                                        .read<CustomerCreditListCubit>()
-                                        .loadData(),
+                                    () =>
+                                        context
+                                            .read<CustomerCreditListCubit>()
+                                            .loadData(),
                                 icon: const Icon(Icons.refresh_rounded),
                                 label: const Text('Reintentar'),
                               ),
@@ -768,9 +769,7 @@ class _CustomerCreditsScreenContentState
                 padding: const EdgeInsets.only(right: 8),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildKeyHint('/'),
-                  ],
+                  children: [_buildKeyHint('/')],
                 ),
               );
             },
@@ -853,7 +852,7 @@ class _CustomerCreditsScreenContentState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             IconButton(
-              tooltip: 'Vista en Tabla Pro [V]',
+              tooltip: 'Vista Tabla Pro [V]',
               icon: Icon(
                 Icons.table_rows_rounded,
                 size: 18,
@@ -871,12 +870,11 @@ class _CustomerCreditsScreenContentState
               onPressed: () => setState(() => _isTableView = true),
             ),
             IconButton(
-              tooltip: 'Vista en Tarjetas [V]',
+              tooltip: 'Vista Tarjetas [V]',
               icon: Icon(
                 Icons.grid_view_rounded,
                 size: 18,
-                color:
-                    !_isTableView ? AppColors.tealDark : AppColors.textMuted,
+                color: !_isTableView ? AppColors.tealDark : AppColors.textMuted,
               ),
               style: IconButton.styleFrom(
                 backgroundColor:
@@ -1461,11 +1459,7 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
           enabled: account.isActive && account.currentDebt > 0,
           child: Row(
             children: const [
-              Icon(
-                Icons.payments_rounded,
-                size: 18,
-                color: Color(0xFF16A34A),
-              ),
+              Icon(Icons.payments_rounded, size: 18, color: Color(0xFF16A34A)),
               SizedBox(width: 10),
               Text('Registrar Pago / Abono'),
             ],
@@ -1485,7 +1479,11 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
           value: 'edit',
           child: Row(
             children: const [
-              Icon(Icons.edit_rounded, size: 18, color: AppColors.textSecondary),
+              Icon(
+                Icons.edit_rounded,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
               SizedBox(width: 10),
               Text('Editar límite de crédito'),
             ],
@@ -1978,5 +1976,3 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
     );
   }
 }
-
-

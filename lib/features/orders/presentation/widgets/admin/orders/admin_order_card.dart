@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-class AdminOrderCard extends StatelessWidget {
+class AdminOrderCard extends StatefulWidget {
   final OrderEntity order;
   final bool isProcessing;
   final bool isGeneratingPDF;
@@ -26,7 +26,22 @@ class AdminOrderCard extends StatelessWidget {
   });
 
   @override
+  State<AdminOrderCard> createState() => _AdminOrderCardState();
+}
+
+class _AdminOrderCardState extends State<AdminOrderCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
+    final order = widget.order;
+    final isProcessing = widget.isProcessing;
+    final isGeneratingPDF = widget.isGeneratingPDF;
+    final isSelected = widget.isSelected;
+    final isLoyaltyEnabled = widget.isLoyaltyEnabled;
+    final onTap = widget.onTap;
+    final onUpdateStatus = widget.onUpdateStatus;
+    final onPrint = widget.onPrint;
     final status = order.status;
     final date = (order.createdAt ?? DateTime.now()).toLocal();
     final dateString = DateFormat('dd MMM yyyy, hh:mm a', 'es').format(date);
@@ -58,26 +73,41 @@ class AdminOrderCard extends StatelessWidget {
     return MouseRegion(
       cursor:
           isProcessing ? SystemMouseCursors.basic : SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFFFAFCFF) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? AppColors.teal : AppColors.border,
-            width: isSelected ? 1.5 : 1.0,
+            color: isSelected
+                ? AppColors.teal
+                : _isHovered
+                    ? AppColors.teal.withValues(alpha: 0.35)
+                    : AppColors.border,
+            width: (isSelected || _isHovered) ? 1.5 : 1.0,
           ),
-          boxShadow:
-              isSelected
-                  ? [
-                    BoxShadow(
-                      color: AppColors.teal.withValues(alpha: 0.12),
-                      blurRadius: 18,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                  : AppColors.cardShadow(opacity: 0.03),
+          boxShadow: isSelected
+              ? [
+                BoxShadow(
+                  color: AppColors.teal.withValues(alpha: 0.12),
+                  blurRadius: 18,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+              : [
+                BoxShadow(
+                  color: Colors.black.withValues(
+                    alpha: _isHovered ? 0.06 : 0.03,
+                  ),
+                  blurRadius: _isHovered ? 14 : 8,
+                  offset: Offset(0, _isHovered ? 4 : 2),
+                ),
+              ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(15),

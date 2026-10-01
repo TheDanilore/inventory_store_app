@@ -20,7 +20,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 
 class MovementsTab extends StatefulWidget {
-  const MovementsTab({super.key});
+  final bool showFab;
+  final VoidCallback? onClearAccountFilter;
+
+  const MovementsTab({
+    super.key,
+    this.showFab = true,
+    this.onClearAccountFilter,
+  });
 
   @override
   State<MovementsTab> createState() => _MovementsTabState();
@@ -426,7 +433,76 @@ class _MovementsTabState extends State<MovementsTab> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                if (filters.filterAccountId != 'Todas')
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.teal.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.teal.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.filter_list_rounded,
+                            size: 14,
+                            color: AppColors.tealDark,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Filtrando por: ${accounts.where((a) => a.id == filters.filterAccountId).firstOrNull?.name ?? "Cuenta seleccionada"}',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.tealDark,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () {
+                              movCubit.setFilterAccount('Todas');
+                              widget.onClearAccountFilter?.call();
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Quitar',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.tealDark,
+                                    ),
+                                  ),
+                                  SizedBox(width: 2),
+                                  Icon(
+                                    Icons.close_rounded,
+                                    size: 13,
+                                    color: AppColors.tealDark,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
                 Expanded(
                   child:
                       isLoading && movements.isEmpty
@@ -507,43 +583,43 @@ class _MovementsTabState extends State<MovementsTab> {
                   ),
               ],
             ),
-            Positioned(
-              bottom: 16,
-              right: 16,
-              child: FloatingActionButton.extended(
-                heroTag: 'fab_movements',
-                onPressed:
-                    isLoading
-                        ? null
-                        : () {
-                          // Solo vibrar si no es web para evitar MissingPluginException
-                          if (!kIsWeb) {
-                            Vibration.vibrate(duration: 50, amplitude: 128);
-                          }
-                          MovementFormSheet.show(context);
-                        },
-                backgroundColor: AppColors.primary,
-                icon: const Icon(Icons.add_rounded, color: Colors.white),
-                label: ValueListenableBuilder<bool>(
-                  valueListenable: _isFabExtended,
-                  builder: (context, isExtended, _) {
-                    return AnimatedSize(
-                      duration: const Duration(milliseconds: 200),
-                      child:
-                          isExtended
-                              ? const Text(
-                                'Registrar',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              )
-                              : const SizedBox.shrink(),
-                    );
-                  },
+            if (widget.showFab)
+              Positioned(
+                bottom: 16,
+                right: 16,
+                child: FloatingActionButton.extended(
+                  heroTag: 'fab_movements',
+                  onPressed:
+                      isLoading
+                          ? null
+                          : () {
+                            if (!kIsWeb) {
+                              Vibration.vibrate(duration: 50, amplitude: 128);
+                            }
+                            MovementFormSheet.show(context);
+                          },
+                  backgroundColor: AppColors.primary,
+                  icon: const Icon(Icons.add_rounded, color: Colors.white),
+                  label: ValueListenableBuilder<bool>(
+                    valueListenable: _isFabExtended,
+                    builder: (context, isExtended, _) {
+                      return AnimatedSize(
+                        duration: const Duration(milliseconds: 200),
+                        child:
+                            isExtended
+                                ? const Text(
+                                  'Registrar',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                )
+                                : const SizedBox.shrink(),
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
           ],
         );
       },
@@ -564,17 +640,17 @@ class _DashboardSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final balance = totalIncome - totalExpense;
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Color(0x050F172A),
+            blurRadius: 6,
+            offset: Offset(0, 1),
           ),
         ],
       ),
@@ -590,7 +666,7 @@ class _DashboardSummary extends StatelessWidget {
                   icon: Icons.arrow_upward_rounded,
                 ),
               ),
-              Container(width: 1, height: 40, color: AppColors.border),
+              Container(width: 1, height: 36, color: const Color(0xFFE2E8F0)),
               Expanded(
                 child: _DashItem(
                   title: 'Egresos',
@@ -599,33 +675,32 @@ class _DashboardSummary extends StatelessWidget {
                   icon: Icons.arrow_downward_rounded,
                 ),
               ),
-              Container(width: 1, height: 40, color: AppColors.border),
+              Container(width: 1, height: 36, color: const Color(0xFFE2E8F0)),
               Expanded(
                 child: _DashItem(
                   title: 'Flujo Neto',
                   amount: balance,
-                  color: balance >= 0 ? AppColors.primary : AppColors.danger,
+                  color: balance >= 0 ? AppColors.teal : AppColors.danger,
                   icon: Icons.account_balance_wallet_rounded,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          // Simple visual bar
           if (totalIncome > 0 || totalExpense > 0)
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(6),
               child: Row(
                 children: [
                   if (totalIncome > 0)
                     Expanded(
                       flex: (totalIncome * 100).toInt(),
-                      child: Container(height: 6, color: AppColors.success),
+                      child: Container(height: 4, color: AppColors.success),
                     ),
                   if (totalExpense > 0)
                     Expanded(
                       flex: (totalExpense * 100).toInt(),
-                      child: Container(height: 6, color: AppColors.danger),
+                      child: Container(height: 4, color: AppColors.danger),
                     ),
                 ],
               ),
@@ -656,25 +731,33 @@ class _DashItem extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 12, color: color),
+            ),
+            const SizedBox(width: 6),
             Text(
               title,
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: 11.5,
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 5),
         Text(
           'S/ ${amount.abs().toStringAsFixed(2)}',
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            fontSize: 14,
+            fontSize: 14.5,
             color: color,
+            letterSpacing: -0.2,
           ),
           textAlign: TextAlign.center,
         ),
@@ -683,32 +766,54 @@ class _DashItem extends StatelessWidget {
   }
 }
 
-class _MovementCard extends StatelessWidget {
+class _MovementCard extends StatefulWidget {
   final AccountMovementEntity movement;
 
   const _MovementCard({required this.movement});
 
   @override
+  State<_MovementCard> createState() => _MovementCardState();
+}
+
+class _MovementCardState extends State<_MovementCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
+    final movement = widget.movement;
     final isIncome = movement.movementType == 'INCOME';
     final color = isIncome ? AppColors.success : AppColors.danger;
     final icon =
         isIncome ? Icons.add_circle_rounded : Icons.remove_circle_rounded;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.transparent),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 15,
-            spreadRadius: -2,
-            offset: const Offset(0, 4),
+    return MouseRegion(
+      cursor: SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color:
+                _isHovered
+                    ? AppColors.teal.withValues(alpha: 0.35)
+                    : const Color(0xFFE2E8F0),
+            width: _isHovered ? 1.5 : 1.0,
           ),
-        ],
-      ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: _isHovered ? 0.06 : 0.025,
+              ),
+              blurRadius: _isHovered ? 14 : 6,
+              offset: Offset(0, _isHovered ? 4 : 2),
+            ),
+          ],
+        ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -803,8 +908,9 @@ class _MovementCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _MovementsSkeleton extends StatelessWidget {

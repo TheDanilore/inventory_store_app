@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-class CreditAccountCard extends StatelessWidget {
+class CreditAccountCard extends StatefulWidget {
   final CustomerCreditEntity account;
   final VoidCallback onTap;
   final VoidCallback? onPayTap;
@@ -16,6 +16,13 @@ class CreditAccountCard extends StatelessWidget {
     this.onHistoryTap,
   });
 
+  @override
+  State<CreditAccountCard> createState() => _CreditAccountCardState();
+}
+
+class _CreditAccountCardState extends State<CreditAccountCard> {
+  bool _isHovered = false;
+
   String _getInitials(String? name) {
     if (name == null || name.trim().isEmpty) return 'CL';
     final parts = name.trim().split(RegExp(r'\s+'));
@@ -27,6 +34,10 @@ class CreditAccountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final account = widget.account;
+    final onTap = widget.onTap;
+    final onPayTap = widget.onPayTap;
+    final onHistoryTap = widget.onHistoryTap;
     final double pct =
         account.creditLimit > 0
             ? (account.currentDebt / account.creditLimit)
@@ -46,25 +57,35 @@ class CreditAccountCard extends StatelessWidget {
                         ? const Color(0xFFD97706)
                         : AppColors.success)));
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color:
-              isMaxedOut
-                  ? AppColors.danger.withValues(alpha: 0.35)
-                  : AppColors.border,
-          width: isMaxedOut ? 1.5 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isMaxedOut
+                ? AppColors.danger.withValues(alpha: 0.5)
+                : _isHovered
+                    ? AppColors.primary.withValues(alpha: 0.35)
+                    : AppColors.border,
+            width: (isMaxedOut || _isHovered) ? 1.5 : 1.0,
           ),
-        ],
-      ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: _isHovered ? 0.06 : 0.03,
+              ),
+              blurRadius: _isHovered ? 14 : 10,
+              offset: Offset(0, _isHovered ? 4 : 3),
+            ),
+          ],
+        ),
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
@@ -296,11 +317,12 @@ class CreditAccountCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStatusBadge(bool isMaxedOut, bool isRisk) {
-    if (!account.isActive) {
+    if (!widget.account.isActive) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
@@ -354,7 +376,7 @@ class CreditAccountCard extends StatelessWidget {
         ),
       );
     }
-    if (account.currentDebt > 0) {
+    if (widget.account.currentDebt > 0) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
