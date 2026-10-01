@@ -128,11 +128,11 @@ class ProductsDesktopCommandBar extends StatelessWidget {
                               border: Border.all(color: AppColors.border),
                             ),
                             child: const Text(
-                              'Ctrl+K',
+                              '/',
                               style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textSecondary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.slate,
                               ),
                             ),
                           ),
@@ -274,24 +274,27 @@ class ProductsDesktopCommandBar extends StatelessWidget {
               const SizedBox(width: 10),
 
               // Botón Actualizar
-              OutlinedButton.icon(
-                onPressed: () => cubit.refreshProducts(),
-                icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text(
-                  'Actualizar',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  side: const BorderSide(color: AppColors.border),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
+              Tooltip(
+                message: 'Recargar catálogo [R]',
+                child: OutlinedButton.icon(
+                  onPressed: () => cubit.refreshProducts(),
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text(
+                    'Actualizar',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    side: const BorderSide(color: AppColors.border),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                    ),
+                    backgroundColor: AppColors.background,
                   ),
-                  backgroundColor: AppColors.background,
                 ),
               ),
             ],

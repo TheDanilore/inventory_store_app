@@ -64,9 +64,14 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
   // --- REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) ---
   bool get _isInputFieldFocused {
+    if (_searchFocusNode.hasFocus) return true;
     final primaryFocus = FocusManager.instance.primaryFocus;
     if (primaryFocus == null) return false;
-    return primaryFocus.context?.widget is EditableText;
+    final context = primaryFocus.context;
+    if (context == null) return false;
+    return context.widget is EditableText ||
+        context.findAncestorWidgetOfExactType<EditableText>() != null ||
+        context.findAncestorStateOfType<EditableTextState>() != null;
   }
 
   @override

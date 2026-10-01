@@ -105,6 +105,17 @@ class ProductsDesktopTable extends StatelessWidget {
                   ),
                 ),
                 const DataColumn(
+                  label: Text(
+                    'PRECIO VENTA',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                const DataColumn(
                   label: Tooltip(
                     message: 'Disponibilidad consolidada en todos los almacenes',
                     child: Row(
@@ -337,6 +348,43 @@ class ProductsDesktopTable extends StatelessWidget {
                         // Tipo
                         DataCell(ProductTypeBadge(type: product.productType)),
 
+                        // Precio Venta
+                        DataCell(
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (product.productVariants.length > 1 &&
+                                  product.minSalePrice != null)
+                                Text(
+                                  'Desde S/ ${product.minSalePrice!.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                )
+                              else if (product.displaySalePrice != null)
+                                Text(
+                                  'S/ ${product.displaySalePrice!.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                )
+                              else
+                                const Text(
+                                  '—',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+
                         // Stock Total
                         DataCell(ProductStockBadge(stock: product.totalStock)),
 
@@ -348,7 +396,7 @@ class ProductsDesktopTable extends StatelessWidget {
                           ),
                         ),
 
-                        // Acciones
+                        // Acciones Refinadas con Menú Seguro
                         DataCell(
                           Row(
                             mainAxisSize: MainAxisSize.min,
@@ -356,38 +404,88 @@ class ProductsDesktopTable extends StatelessWidget {
                               IconButton(
                                 icon: const Icon(
                                   Icons.visibility_outlined,
-                                  size: 18,
+                                  size: 16,
                                   color: AppColors.textSecondary,
                                 ),
-                                hoverColor: AppColors.primary.withValues(
-                                  alpha: 0.08,
-                                ),
-                                tooltip: 'Ver Detalle y Variantes',
+                                splashRadius: 16,
+                                tooltip: 'Vista Rápida',
                                 onPressed: () => onRowTap(product),
                               ),
                               IconButton(
                                 icon: const Icon(
                                   Icons.edit_outlined,
-                                  size: 18,
+                                  size: 16,
                                   color: AppColors.textSecondary,
                                 ),
-                                hoverColor: AppColors.primary.withValues(
-                                  alpha: 0.08,
-                                ),
+                                splashRadius: 16,
                                 tooltip: 'Editar Producto',
                                 onPressed: () => onEdit(product),
                               ),
-                              IconButton(
+                              PopupMenuButton<String>(
                                 icon: const Icon(
-                                  Icons.delete_outline_rounded,
+                                  Icons.more_horiz_rounded,
                                   size: 18,
-                                  color: AppColors.error,
+                                  color: AppColors.slate,
                                 ),
-                                hoverColor: AppColors.error.withValues(
-                                  alpha: 0.08,
+                                tooltip: 'Más acciones',
+                                splashRadius: 16,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                tooltip: 'Eliminar Producto',
-                                onPressed: () => onDelete(product),
+                                onSelected: (val) {
+                                  if (val == 'toggle') {
+                                    onToggleActive(product);
+                                  } else if (val == 'delete') {
+                                    onDelete(product);
+                                  }
+                                },
+                                itemBuilder: (ctx) => [
+                                  PopupMenuItem(
+                                    value: 'toggle',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          product.isActive
+                                              ? Icons.pause_circle_outline_rounded
+                                              : Icons.play_circle_outline_rounded,
+                                          size: 16,
+                                          color: product.isActive
+                                              ? AppColors.warningDark
+                                              : AppColors.successDark,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          product.isActive
+                                              ? 'Desactivar producto'
+                                              : 'Activar producto',
+                                          style: const TextStyle(fontSize: 12.5),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuDivider(height: 1),
+                                  PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: const [
+                                        Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 16,
+                                          color: AppColors.error,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Eliminar producto',
+                                          style: TextStyle(
+                                            fontSize: 12.5,
+                                            color: AppColors.error,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),

@@ -139,7 +139,7 @@ class ProductStockBadge extends StatelessWidget {
   }
 }
 
-/// Badge del tipo de producto (Medicamento, Servicio, Estándar, etc.).
+/// Badge del tipo de producto (Físico, Digital, Medicamento, etc.).
 class ProductTypeBadge extends StatelessWidget {
   final String type;
 
@@ -147,19 +147,34 @@ class ProductTypeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMedicine = type.toLowerCase() == 'medicamento';
-    final isService = type.toLowerCase() == 'servicio';
+    final lower = type.toLowerCase();
+    final isGood = lower == 'good' || lower == 'fisico' || lower == 'físico';
+    final isService = lower == 'servicio' || lower == 'digital';
+    final isMedicine = lower == 'medicamento';
 
+    final String label;
+    final IconData icon;
     final Color textColor;
     final Color bgColor;
 
-    if (isMedicine) {
-      textColor = const Color(0xFF0284C7);
-      bgColor = const Color(0xFFE0F2FE);
+    if (isGood) {
+      label = 'Físico';
+      icon = Icons.inventory_2_outlined;
+      textColor = AppColors.slate;
+      bgColor = AppColors.slateLight.withValues(alpha: 0.55);
     } else if (isService) {
+      label = 'Digital';
+      icon = Icons.cloud_outlined;
       textColor = const Color(0xFF7C3AED);
       bgColor = const Color(0xFFEDE9FE);
+    } else if (isMedicine) {
+      label = 'Medicamento';
+      icon = Icons.medication_outlined;
+      textColor = const Color(0xFF0284C7);
+      bgColor = const Color(0xFFE0F2FE);
     } else {
+      label = type;
+      icon = Icons.category_outlined;
       textColor = AppColors.slate;
       bgColor = AppColors.slateLight.withValues(alpha: 0.5);
     }
@@ -170,14 +185,21 @@ class ProductTypeBadge extends StatelessWidget {
         color: bgColor,
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(
-        type.toUpperCase(),
-        style: TextStyle(
-          fontSize: 10.5,
-          fontWeight: FontWeight.w700,
-          color: textColor,
-          letterSpacing: 0.3,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: textColor),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
       ),
     );
   }

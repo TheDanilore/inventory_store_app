@@ -24,22 +24,9 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/mobile/products_mobile_card_list.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/quick_view/product_quick_view_sheet.dart';
 
-// Intents para atajos de teclado Pro Tool (Linear / Stripe style)
-class SearchIntent extends Intent {
-  const SearchIntent();
-}
-
-class NewProductIntent extends Intent {
-  const NewProductIntent();
-}
-
-class EscapeIntent extends Intent {
-  const EscapeIntent();
-}
-
-/// Pantalla Principal de Catálogo de Productos para Administradores.
-/// Diseño camaleónico de alta densidad para Desktop y estilo Apple HIG para Móvil.
-/// Optimizado para ultra-bajo consumo de memoria y scroll fluido sin header estático.
+/// Pantalla Principal de Catálogo e Inventario de Productos para Administradores.
+/// Diseño camaleónico de alta densidad para Desktop, eficiencia híbrida para Tablet
+/// y ergonomía estilo Apple HIG para Móvil.
 class AdminProductsScreen extends StatefulWidget {
   const AdminProductsScreen({super.key});
 
@@ -50,6 +37,7 @@ class AdminProductsScreen extends StatefulWidget {
 class _AdminProductsScreenState extends State<AdminProductsScreen> {
   final _searchCtrl = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  late final FocusNode _screenFocusNode;
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
@@ -60,9 +48,13 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   @override
   void initState() {
     super.initState();
+    _screenFocusNode = FocusNode();
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _searchCtrl.text = context.read<AdminCatalogCubit>().state.searchTerm;
+      if (mounted) {
+        _screenFocusNode.requestFocus();
+        _searchCtrl.text = context.read<AdminCatalogCubit>().state.searchTerm;
+      }
     });
   }
 
@@ -83,8 +75,78 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     _scrollController.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
+    _screenFocusNode.dispose();
     _selectedProductIdsNotifier.dispose();
     super.dispose();
+  }
+
+  // ── REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) ────────────────────
+  bool get _isInputFieldFocused {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus == null) return false;
+    return primaryFocus.context?.widget is EditableText;
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    // Si el usuario escribe en un campo editable, aislar atajos globales
+    if (_isInputFieldFocused) {
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        _searchFocusNode.unfocus();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    final key = event.logicalKey;
+
+    // Atajo [/] -> Enfocar buscador con selección total
+    if (key == LogicalKeyboardKey.slash) {
+      _searchFocusNode.requestFocus();
+      _searchCtrl.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _searchCtrl.text.length,
+      );
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [N] -> Nuevo Producto
+    if (key == LogicalKeyboardKey.keyN) {
+      context.go('/products/product-form');
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [R] -> Recargar catálogo
+    if (key == LogicalKeyboardKey.keyR) {
+      context.read<AdminCatalogCubit>().refreshProducts();
+      AppSnackbar.show(
+        context,
+        message: 'Catálogo de productos actualizado',
+        type: SnackbarType.info,
+        duration: const Duration(seconds: 2),
+      );
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [Escape] -> Limpiar búsqueda o selección
+    if (key == LogicalKeyboardKey.escape) {
+      if (_selectedProductIdsNotifier.value.isNotEmpty) {
+        _clearSelection();
+        return KeyEventResult.handled;
+      }
+      if (_searchCtrl.text.isNotEmpty) {
+        _searchCtrl.clear();
+        context.read<AdminCatalogCubit>().setSearchTerm('');
+        return KeyEventResult.handled;
+      }
+      if (_searchFocusNode.hasFocus) {
+        _searchFocusNode.unfocus();
+        return KeyEventResult.handled;
+      }
+    }
+
+    return KeyEventResult.ignored;
   }
 
   void _toggleProductSelected(String id, bool isSelected) {
@@ -202,52 +264,18 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<AdminCatalogCubit>();
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final isDesktop = screenWidth >= 900;
 
-    return Shortcuts(
-      shortcuts: <ShortcutActivator, Intent>{
-        const SingleActivator(LogicalKeyboardKey.keyF, control: true):
-            const SearchIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyF, meta: true):
-            const SearchIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyK, control: true):
-            const SearchIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyK, meta: true):
-            const SearchIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyN, control: true):
-            const NewProductIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyN, meta: true):
-            const NewProductIntent(),
-        const SingleActivator(LogicalKeyboardKey.escape): const EscapeIntent(),
-      },
-      child: Actions(
-        actions: <Type, Action<Intent>>{
-          SearchIntent: CallbackAction<SearchIntent>(
-            onInvoke: (SearchIntent intent) {
-              _searchFocusNode.requestFocus();
-              return null;
-            },
-          ),
-          NewProductIntent: CallbackAction<NewProductIntent>(
-            onInvoke: (NewProductIntent intent) {
-              context.go('/products/product-form');
-              return null;
-            },
-          ),
-          EscapeIntent: CallbackAction<EscapeIntent>(
-            onInvoke: (EscapeIntent intent) {
-              if (_selectedProductIdsNotifier.value.isNotEmpty) {
-                _clearSelection();
-              } else {
-                _searchFocusNode.unfocus();
-              }
-              return null;
-            },
-          ),
-        },
-        child: Focus(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final isMobile = width < 720;
+        final isTablet = width >= 720 && width < 1100;
+        final isDesktop = width >= 1100;
+
+        return Focus(
+          focusNode: _screenFocusNode,
           autofocus: true,
+          onKeyEvent: _handleKeyEvent,
           child: BlocListener<AdminCatalogCubit, AdminCatalogState>(
             listenWhen: (previous, current) =>
                 previous.actionState != current.actionState,
@@ -280,7 +308,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                   title: 'Inventario de Productos',
                   showBackButton: true,
                   actions: [
-                    if (!isDesktop) ...[
+                    if (isMobile) ...[
                       IconButton(
                         icon: const Icon(Icons.picture_as_pdf_rounded),
                         tooltip: 'Exportar PDF',
@@ -292,7 +320,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                         onPressed: () => context.go('/products/bulk-import'),
                       ),
                     ],
-                    if (isDesktop) ...[
+                    if (!isMobile) ...[
                       OutlinedButton.icon(
                         onPressed: () => _handleExportPdf(cubit, state),
                         icon: const Icon(
@@ -347,22 +375,47 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                           ),
                         ),
                         icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text(
-                          'Nuevo Producto',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                          ),
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Nuevo Producto',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 1.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.22),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'N',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ],
-                  floatingActionButton: !isDesktop
+                  floatingActionButton: isMobile
                       ? ValueListenableBuilder<bool>(
                           valueListenable: _isFabExtended,
                           builder: (context, extended, child) {
                             return extended
                                 ? FloatingActionButton.extended(
+                                    heroTag: 'products_add_fab',
                                     onPressed: () =>
                                         context.go('/products/product-form'),
                                     backgroundColor: AppColors.primary,
@@ -378,6 +431,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                     ),
                                   )
                                 : FloatingActionButton(
+                                    heroTag: 'products_add_fab',
                                     onPressed: () =>
                                         context.go('/products/product-form'),
                                     backgroundColor: AppColors.primary,
@@ -389,134 +443,235 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                           },
                         )
                       : null,
-                  body: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isDesktopLayout = constraints.maxWidth >= 900;
-
-                      return Stack(
-                        children: [
-                          Container(
-                            color: AppColors.background,
-                            child: RefreshIndicator(
-                              color: Theme.of(context).colorScheme.primary,
-                              onRefresh: () async => cubit.refreshProducts(),
-                              child: CustomScrollView(
-                                controller: _scrollController,
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                slivers: [
-                                  // ── Command Bar Dinámica (No estática: scrollea con la página) ──
-                                  SliverToBoxAdapter(
-                                    child: Padding(
-                                      padding: EdgeInsets.fromLTRB(
-                                        isDesktopLayout ? 24.0 : 16.0,
-                                        isDesktopLayout ? 24.0 : 16.0,
-                                        isDesktopLayout ? 24.0 : 16.0,
-                                        16.0,
-                                      ),
-                                      child: isDesktopLayout
-                                          ? ProductsDesktopCommandBar(
-                                              cubit: cubit,
-                                              state: state,
-                                              searchCtrl: _searchCtrl,
-                                              searchFocusNode: _searchFocusNode,
-                                            )
-                                          : ProductsMobileCommandBar(
-                                              cubit: cubit,
-                                              state: state,
-                                              searchCtrl: _searchCtrl,
-                                              searchFocusNode: _searchFocusNode,
-                                              onOpenFilters: () =>
-                                                  ProductsMobileFiltersSheet.show(
-                                                context,
-                                                cubit,
-                                              ),
-                                            ),
-                                    ),
-                                  ),
-
-                                  // ── Contenido Principal (Data-Grid vs Tarjetas) ─────────
-                                  _buildSliverBody(
-                                    state,
-                                    cubit,
-                                    isDesktop: isDesktopLayout,
-                                  ),
-
-                                  // ── Paginación Integrada al Flujo de Scroll ─────────────
-                                  if (state.products.isNotEmpty &&
-                                      state.totalPages > 1)
-                                    SliverToBoxAdapter(
-                                      child: Container(
-                                        margin: EdgeInsets.fromLTRB(
-                                          isDesktopLayout ? 24.0 : 16.0,
-                                          16.0,
-                                          isDesktopLayout ? 24.0 : 16.0,
-                                          32.0,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 12,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .surface,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: AppColors.border
-                                                .withValues(alpha: 0.8),
-                                          ),
-                                        ),
-                                        child: AdminPageBlocks(
-                                          currentPage: state.currentPage,
-                                          totalPages: state.totalPages,
-                                          onPageChanged: cubit.setPage,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          // ── Floating Bulk Action Bar (Aislado con ValueListenableBuilder) ──
-                          ValueListenableBuilder<Set<String>>(
-                            valueListenable: _selectedProductIdsNotifier,
-                            builder: (context, selectedIds, _) {
-                              if (selectedIds.isEmpty) {
-                                return const SizedBox.shrink();
-                              }
-                              return ProductsFloatingBulkBar(
-                                selectedCount: selectedIds.length,
-                                isDesktop: isDesktopLayout,
-                                onExportPdf: () => _handleBulkExportPdf(cubit),
-                                onClearSelection: _clearSelection,
-                              );
-                            },
-                          ),
-
-                          // ── Overlay de carga de acciones ───────────────────────
-                          if (state.actionState == ViewState.loading)
-                            Positioned.fill(
-                              child: Container(
-                                color: Colors.white.withValues(alpha: 0.45),
-                                child: const Center(
-                                  child: CircularProgressIndicator(),
+                  body: Stack(
+                    children: [
+                      Container(
+                        color: AppColors.background,
+                        child: RefreshIndicator(
+                          color: Theme.of(context).colorScheme.primary,
+                          onRefresh: () async => cubit.refreshProducts(),
+                          child: CustomScrollView(
+                            controller: _scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            slivers: [
+                              // ── 1. Bento Metric Strip (Pulso en Tiempo Real) ──
+                              SliverToBoxAdapter(
+                                child: _buildBentoMetrics(
+                                  state: state,
+                                  isMobile: isMobile,
+                                  isTablet: isTablet,
                                 ),
                               ),
+
+                              // ── 2. Command Bar Dinámica ────────────────────────
+                              SliverToBoxAdapter(
+                                child: Padding(
+                                  padding: EdgeInsets.fromLTRB(
+                                    isMobile ? 16.0 : 24.0,
+                                    8.0,
+                                    isMobile ? 16.0 : 24.0,
+                                    14.0,
+                                  ),
+                                  child: isMobile
+                                      ? ProductsMobileCommandBar(
+                                          cubit: cubit,
+                                          state: state,
+                                          searchCtrl: _searchCtrl,
+                                          searchFocusNode: _searchFocusNode,
+                                          onOpenFilters: () =>
+                                              ProductsMobileFiltersSheet.show(
+                                            context,
+                                            cubit,
+                                          ),
+                                        )
+                                      : ProductsDesktopCommandBar(
+                                          cubit: cubit,
+                                          state: state,
+                                          searchCtrl: _searchCtrl,
+                                          searchFocusNode: _searchFocusNode,
+                                        ),
+                                ),
+                              ),
+
+                              // ── 3. Contenido Principal (Data-Grid vs Tarjetas) ──
+                              _buildSliverBody(
+                                state,
+                                cubit,
+                                isDesktop: isDesktop || isTablet,
+                              ),
+
+                              // ── 4. Paginación Integrada ─────────────────────────
+                              if (state.products.isNotEmpty &&
+                                  state.totalPages > 1)
+                                SliverToBoxAdapter(
+                                  child: Container(
+                                    margin: EdgeInsets.fromLTRB(
+                                      isMobile ? 16.0 : 24.0,
+                                      16.0,
+                                      isMobile ? 16.0 : 24.0,
+                                      32.0,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .surface,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: AppColors.border
+                                            .withValues(alpha: 0.8),
+                                      ),
+                                    ),
+                                    child: AdminPageBlocks(
+                                      currentPage: state.currentPage,
+                                      totalPages: state.totalPages,
+                                      onPageChanged: cubit.setPage,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // ── Floating Bulk Action Bar ───────────────────────────────
+                      ValueListenableBuilder<Set<String>>(
+                        valueListenable: _selectedProductIdsNotifier,
+                        builder: (context, selectedIds, _) {
+                          if (selectedIds.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return ProductsFloatingBulkBar(
+                            selectedCount: selectedIds.length,
+                            isDesktop: !isMobile,
+                            onExportPdf: () => _handleBulkExportPdf(cubit),
+                            onClearSelection: _clearSelection,
+                          );
+                        },
+                      ),
+
+                      // ── Overlay de carga de acciones ───────────────────────────
+                      if (state.actionState == ViewState.loading)
+                        Positioned.fill(
+                          child: Container(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
                             ),
-                        ],
-                      );
-                    },
+                          ),
+                        ),
+                    ],
                   ),
                 );
               },
             ),
           ),
+        );
+      },
+    );
+  }
+
+  // ── BENTO METRICS HEADER ────────────────────────────────────────────────────
+
+  Widget _buildBentoMetrics({
+    required AdminCatalogState state,
+    required bool isMobile,
+    required bool isTablet,
+  }) {
+    final totalCount = state.totalCount;
+    final inStockCount =
+        state.products.where((p) => p.totalStock > 0).length;
+    final outOfStockCount =
+        state.products.where((p) => p.totalStock <= 0).length;
+    final totalUnits =
+        state.products.fold<int>(0, (sum, p) => sum + p.totalStock);
+
+    final cards = [
+      _ProductMetricCard(
+        title: 'TOTAL CATÁLOGO',
+        value: '$totalCount',
+        subtitle: '${state.categories.length} categorías registradas',
+        icon: Icons.inventory_2_rounded,
+        iconColor: AppColors.primary,
+        iconBg: AppColors.primaryLight,
+      ),
+      _ProductMetricCard(
+        title: 'EN STOCK DISPONIBLE',
+        value: '$inStockCount',
+        subtitle: totalCount > 0
+            ? '${((inStockCount / (totalCount > 0 ? totalCount : 1)) * 100).toStringAsFixed(0)}% disponible para venta'
+            : 'Listo para despacho',
+        icon: Icons.check_circle_outline_rounded,
+        iconColor: AppColors.successDark,
+        iconBg: AppColors.successLight,
+      ),
+      _ProductMetricCard(
+        title: 'AGOTADOS / CRÍTICOS',
+        value: '$outOfStockCount',
+        subtitle: outOfStockCount > 0
+            ? 'Requieren reposición'
+            : 'Sin quiebres de inventario',
+        icon: Icons.warning_amber_rounded,
+        iconColor: outOfStockCount > 0 ? AppColors.danger : AppColors.tealDark,
+        iconBg:
+            outOfStockCount > 0 ? AppColors.dangerLight : AppColors.tealLight,
+        isAlert: outOfStockCount > 0,
+      ),
+      _ProductMetricCard(
+        title: 'UNIDADES EN ALMACÉN',
+        value: '$totalUnits unid.',
+        subtitle: 'Existencias consolidadas',
+        icon: Icons.all_inbox_rounded,
+        iconColor: AppColors.info,
+        iconBg: AppColors.infoLight,
+      ),
+    ];
+
+    if (isMobile) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(child: cards[0]),
+                const SizedBox(width: 8),
+                Expanded(child: cards[1]),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(child: cards[2]),
+                const SizedBox(width: 8),
+                Expanded(child: cards[3]),
+              ],
+            ),
+          ],
         ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 4),
+      child: Row(
+        children: [
+          Expanded(child: cards[0]),
+          const SizedBox(width: 10),
+          Expanded(child: cards[1]),
+          const SizedBox(width: 10),
+          Expanded(child: cards[2]),
+          const SizedBox(width: 10),
+          Expanded(child: cards[3]),
+        ],
       ),
     );
   }
+
+  // ── CONTENIDO PRINCIPAL SLIVER ──────────────────────────────────────────────
 
   Widget _buildSliverBody(
     AdminCatalogState state,
@@ -706,6 +861,99 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
             context.go('/product/${p.id}', extra: p);
           },
         ),
+      ),
+    );
+  }
+}
+
+// ── BENTO METRIC MINI CARD ──────────────────────────────────────────────────
+
+class _ProductMetricCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final String subtitle;
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+  final bool isAlert;
+
+  const _ProductMetricCard({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    this.isAlert = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isAlert
+              ? AppColors.danger.withValues(alpha: 0.3)
+              : AppColors.border,
+        ),
+        boxShadow: AppColors.cardShadow(opacity: 0.02),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 19, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w800,
+                    color: isAlert ? AppColors.danger : AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: isAlert ? AppColors.danger : AppColors.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

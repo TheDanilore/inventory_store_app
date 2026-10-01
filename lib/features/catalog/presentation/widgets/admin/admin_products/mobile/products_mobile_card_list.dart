@@ -151,6 +151,20 @@ class ProductsMobileCardList extends StatelessWidget {
                             const SizedBox(width: 6),
                             ProductTypeBadge(type: product.productType),
                             const Spacer(),
+                            if (product.displaySalePrice != null ||
+                                product.minSalePrice != null)
+                              Text(
+                                product.productVariants.length > 1 &&
+                                        product.minSalePrice != null
+                                    ? 'Desde S/ ${product.minSalePrice!.toStringAsFixed(2)}'
+                                    : 'S/ ${product.displaySalePrice!.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            const SizedBox(width: 6),
                             // Menú de opciones rápido para móvil
                             PopupMenuButton<String>(
                               padding: EdgeInsets.zero,
