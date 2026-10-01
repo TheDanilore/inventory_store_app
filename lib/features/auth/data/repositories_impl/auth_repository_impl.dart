@@ -38,12 +38,13 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final model = AuthUserModel.fromMap(data, session.user.email ?? '');
 
-      // Cache local de perfil con trazabilidad de errores
+      // Cache local de perfil con clave delimitada por usuario para evitar contaminación entre sesiones
       try {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('profile_cache_full_name_', model.fullName);
+        final userId = session.user.id;
+        await prefs.setString('profile_cache_${userId}_full_name', model.fullName);
         if (model.avatarUrl != null) {
-          await prefs.setString('profile_cache_avatar_url_', model.avatarUrl!);
+          await prefs.setString('profile_cache_${userId}_avatar_url', model.avatarUrl!);
         }
       } catch (e, st) {
         LoggerService.w(
@@ -201,6 +202,16 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, void>> logout() async {
     try {
+      final currentUserId = _supabase.auth.currentUser?.id;
+      if (currentUserId != null) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('profile_cache_${currentUserId}_full_name');
+          await prefs.remove('profile_cache_${currentUserId}_avatar_url');
+          await prefs.remove('profile_cache_full_name_');
+          await prefs.remove('profile_cache_avatar_url_');
+        } catch (_) {}
+      }
       await _supabase.auth.signOut();
       return right(null);
     } catch (e, st) {

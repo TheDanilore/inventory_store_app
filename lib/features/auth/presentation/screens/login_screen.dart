@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -44,15 +45,16 @@ class _LoginScreenState extends State<LoginScreen>
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _fadeCtrl.forward();
 
+    // Animación suave de entrada única para evitar drenaje de 60-120 FPS en reposo
     _blobCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 4),
+      duration: const Duration(milliseconds: 1200),
     );
     _blobAnim = Tween<double>(
       begin: 0.95,
       end: 1.05,
     ).animate(CurvedAnimation(parent: _blobCtrl, curve: Curves.easeInOutSine));
-    _blobCtrl.repeat(reverse: true);
+    _blobCtrl.forward();
   }
 
   @override
@@ -80,7 +82,8 @@ class _LoginScreenState extends State<LoginScreen>
 
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+    // No recortamos espacios en la contraseña para permitir frases de paso o caracteres intencionales
+    final password = _passwordController.text;
 
     if (isLoginMode) {
       cubit.login(email, password);
@@ -116,6 +119,8 @@ class _LoginScreenState extends State<LoginScreen>
             type: SnackbarType.error,
           );
         } else if (state.viewState == ViewState.success) {
+          // Notifica al gestor de contraseñas del navegador y SO que guarde las credenciales asociadas
+          TextInput.finishAutofillContext(shouldSave: true);
           _passwordController.clear();
           _blobCtrl.stop();
           if (!state.isLoginMode) {

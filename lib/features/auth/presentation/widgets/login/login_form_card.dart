@@ -159,59 +159,61 @@ class _LoginFormCardState extends State<LoginFormCard> {
       );
     }
 
-    if (isMobile) {
-      await showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: AppColors.surface,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        builder: (ctx) {
-          return Padding(
-            padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 16,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(2),
+    try {
+      if (isMobile) {
+        await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: AppColors.surface,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          builder: (ctx) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 16,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                buildResetContent(ctx),
-              ],
-            ),
-          );
-        },
-      );
-    } else {
-      await showDialog(
-        context: context,
-        builder: (ctx) {
-          return AlertDialog(
-            backgroundColor: AppColors.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppColors.radiusLg),
-            ),
-            contentPadding: const EdgeInsets.all(24),
-            content: SizedBox(width: 400, child: buildResetContent(ctx)),
-          );
-        },
-      );
+                  const SizedBox(height: 16),
+                  buildResetContent(ctx),
+                ],
+              ),
+            );
+          },
+        );
+      } else {
+        await showDialog(
+          context: context,
+          builder: (ctx) {
+            return AlertDialog(
+              backgroundColor: AppColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
+              ),
+              contentPadding: const EdgeInsets.all(24),
+              content: SizedBox(width: 400, child: buildResetContent(ctx)),
+            );
+          },
+        );
+      }
+    } finally {
+      emailCtrl.dispose();
     }
-
-    emailCtrl.dispose();
   }
 
   @override
@@ -224,54 +226,66 @@ class _LoginFormCardState extends State<LoginFormCard> {
         border: Border.all(color: AppColors.border),
         boxShadow: AppColors.cardShadow(),
       ),
-      child: Form(
-        key: widget.formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!widget.isLoginMode) ...[
+      child: AutofillGroup(
+        child: Form(
+          key: widget.formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (!widget.isLoginMode) ...[
+                AppTextField(
+                  controller: widget.nameController,
+                  label: 'Nombre completo',
+                  icon: Icons.person_outline_rounded,
+                  keyboardType: TextInputType.name,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.name],
+                  validator: _validateName,
+                ),
+                const SizedBox(height: 14),
+              ],
+
               AppTextField(
-                controller: widget.nameController,
-                label: 'Nombre completo',
-                icon: Icons.person_outline_rounded,
-                keyboardType: TextInputType.name,
+                controller: widget.emailController,
+                label: 'Correo electrónico',
+                icon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
-                validator: _validateName,
+                autofillHints: const [
+                  AutofillHints.email,
+                  AutofillHints.username,
+                ],
+                onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                validator: _validateEmail,
               ),
               const SizedBox(height: 14),
-            ],
 
-            AppTextField(
-              controller: widget.emailController,
-              label: 'Correo electrónico',
-              icon: Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              validator: _validateEmail,
-            ),
-            const SizedBox(height: 14),
-
-            AppTextField(
-              controller: widget.passwordController,
-              label: 'Contraseña',
-              icon: Icons.lock_outline_rounded,
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted:
-                  widget.isLoading ? null : (_) => widget.onAuthenticate(),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscurePassword
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                  color: AppColors.textSecondary,
-                  size: 20,
+              AppTextField(
+                controller: widget.passwordController,
+                label: 'Contraseña',
+                icon: Icons.lock_outline_rounded,
+                textInputAction: TextInputAction.done,
+                autofillHints: [
+                  widget.isLoginMode
+                      ? AutofillHints.password
+                      : AutofillHints.newPassword,
+                ],
+                onFieldSubmitted:
+                    widget.isLoading ? null : (_) => widget.onAuthenticate(),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    color: AppColors.textSecondary,
+                    size: 20,
+                  ),
+                  onPressed:
+                      () => setState(() => _obscurePassword = !_obscurePassword),
                 ),
-                onPressed:
-                    () => setState(() => _obscurePassword = !_obscurePassword),
+                obscureText: _obscurePassword,
+                validator: _validatePassword,
               ),
-              obscureText: _obscurePassword,
-              validator: _validatePassword,
-            ),
 
             if (widget.isLoginMode) ...[
               Align(
@@ -357,6 +371,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

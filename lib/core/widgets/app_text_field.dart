@@ -21,6 +21,7 @@ class AppTextField extends StatelessWidget {
   final FocusNode? focusNode;
   final ValueChanged<String>? onFieldSubmitted;
   final TextStyle? style;
+  final Iterable<String>? autofillHints;
 
   const AppTextField({
     super.key,
@@ -43,6 +44,7 @@ class AppTextField extends StatelessWidget {
     this.focusNode,
     this.onFieldSubmitted,
     this.style,
+    this.autofillHints,
   });
 
   @override
@@ -53,6 +55,7 @@ class AppTextField extends StatelessWidget {
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       obscureText: obscureText,
+      autofillHints: autofillHints,
       onChanged: onChanged,
       onFieldSubmitted: onFieldSubmitted,
       maxLines: maxLines,
