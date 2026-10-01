@@ -17,131 +17,84 @@ class GlobalStatsBar extends StatelessWidget {
     this.accountsWithDebt = 0,
   });
 
+  String _compact(double v) =>
+      v >= 1000
+          ? 'S/ ${(v / 1000).toStringAsFixed(1)}K'
+          : 'S/ ${v.toStringAsFixed(2)}';
+
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isDesktop = constraints.maxWidth >= 950;
-        final isTablet =
-            constraints.maxWidth >= 600 && constraints.maxWidth < 950;
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width >= 800;
 
-        final cards = [
-          _BentoMetricCard(
-            title: 'Deuda Total',
-            value: 'S/ ${totalDebt.toStringAsFixed(2)}',
-            subtitle:
-                accountsWithDebt > 0
+    final cards = [
+      _BentoMetricCard(
+        title: 'Cuentas Activas',
+        value: '$activeAccounts',
+        subtitle:
+            suspendedAccounts > 0
+                ? '$suspendedAccounts suspendidas'
+                : '100% habilitadas',
+        icon: Icons.people_alt_rounded,
+        iconBgColor: AppColors.tealLight,
+        iconColor: AppColors.tealDark,
+      ),
+      _BentoMetricCard(
+        title: 'Al Límite (Riesgo)',
+        value: '$maxedOutAccounts',
+        subtitle:
+            maxedOutAccounts > 0 ? 'Requiere atención' : 'Líneas saludables',
+        icon: Icons.warning_amber_rounded,
+        iconBgColor:
+            maxedOutAccounts > 0 ? AppColors.dangerLight : AppColors.successLight,
+        iconColor:
+            maxedOutAccounts > 0 ? AppColors.danger : AppColors.successDark,
+        valueColor:
+            maxedOutAccounts > 0 ? AppColors.danger : AppColors.textPrimary,
+      ),
+      _BentoMetricCard(
+        title: 'Total por Cobrar',
+        value: _compact(totalDebt),
+        subtitle:
+            totalDebt > 0
+                ? (accountsWithDebt > 0
                     ? '$accountsWithDebt clientes con saldo'
-                    : 'Sin deudas pendientes',
-            icon: Icons.account_balance_wallet_rounded,
-            accentColor:
-                totalDebt > 0 ? const Color(0xFFDC2626) : AppColors.success,
-            iconBgColor:
-                totalDebt > 0
-                    ? const Color(0xFFFEF2F2)
-                    : const Color(0xFFF0FDF4),
-          ),
-          _BentoMetricCard(
-            title: 'Líneas Activas',
-            value: '$activeAccounts',
-            subtitle: 'Habilitadas para compras',
-            icon: Icons.credit_card_rounded,
-            accentColor: const Color(0xFF0D9488),
-            iconBgColor: const Color(0xFFF0FDFA),
-          ),
-          _BentoMetricCard(
-            title: 'Al Límite',
-            value: '$maxedOutAccounts',
-            subtitle: 'Cupo >= 80% utilizado',
-            icon: Icons.warning_amber_rounded,
-            accentColor:
-                maxedOutAccounts > 0
-                    ? const Color(0xFFEA580C)
-                    : AppColors.textMuted,
-            iconBgColor:
-                maxedOutAccounts > 0
-                    ? const Color(0xFFFFFBEB)
-                    : const Color(0xFFF8FAFC),
-          ),
-          _BentoMetricCard(
-            title: 'Suspendidas',
-            value: '$suspendedAccounts',
-            subtitle: 'Bloqueadas temporalmente',
-            icon: Icons.block_rounded,
-            accentColor:
-                suspendedAccounts > 0
-                    ? const Color(0xFFE11D48)
-                    : AppColors.textMuted,
-            iconBgColor:
-                suspendedAccounts > 0
-                    ? const Color(0xFFFFF1F2)
-                    : const Color(0xFFF8FAFC),
-          ),
-        ];
+                    : 'Deuda total por cobrar')
+                : 'Cuentas al día',
+        icon: Icons.account_balance_wallet_rounded,
+        iconBgColor: AppColors.primaryLight,
+        iconColor: AppColors.primary,
+        valueColor:
+            totalDebt > 0 ? AppColors.textPrimary : AppColors.successDark,
+      ),
+    ];
 
-        if (isDesktop) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                for (int i = 0; i < cards.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 12),
-                  Expanded(child: cards[i]),
-                ],
-              ],
-            ),
-          );
-        }
+    if (isDesktop) {
+      return Container(
+        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Row(
+          children: [
+            Expanded(child: cards[0]),
+            const SizedBox(width: 12),
+            Expanded(child: cards[1]),
+            const SizedBox(width: 12),
+            Expanded(child: cards[2]),
+          ],
+        ),
+      );
+    }
 
-        if (isTablet) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: cards[0]),
-                    const SizedBox(width: 12),
-                    Expanded(child: cards[1]),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(child: cards[2]),
-                    const SizedBox(width: 12),
-                    Expanded(child: cards[3]),
-                  ],
-                ),
-              ],
-            ),
-          );
-        }
-
-        // Mobile: 2x2 grid with compact height
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(child: cards[0]),
-                  const SizedBox(width: 10),
-                  Expanded(child: cards[1]),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(child: cards[2]),
-                  const SizedBox(width: 10),
-                  Expanded(child: cards[3]),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+    // Móvil / Tablet: Scroll horizontal sutil
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      height: 84,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: cards.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (_, index) => SizedBox(width: 220, child: cards[index]),
+      ),
     );
   }
 }
@@ -151,82 +104,85 @@ class _BentoMetricCard extends StatelessWidget {
   final String value;
   final String subtitle;
   final IconData icon;
-  final Color accentColor;
   final Color iconBgColor;
+  final Color iconColor;
+  final Color? valueColor;
 
   const _BentoMetricCard({
     required this.title,
     required this.value,
     required this.subtitle,
     required this.icon,
-    required this.accentColor,
     required this.iconBgColor,
+    required this.iconColor,
+    this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Color(0x050F172A),
+            blurRadius: 4,
+            offset: Offset(0, 1),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: iconBgColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                alignment: Alignment.center,
-                child: Icon(icon, color: accentColor, size: 17),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: accentColor,
-              letterSpacing: -0.5,
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              borderRadius: BorderRadius.circular(10),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            child: Icon(icon, color: iconColor, size: 20),
           ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w500,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: valueColor ?? AppColors.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

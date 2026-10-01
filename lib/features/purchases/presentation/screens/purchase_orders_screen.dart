@@ -73,6 +73,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     _pendingTargetOrderId = widget.targetOrderId;
     _checkDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _screenFocusNode.requestFocus();
       final state = cubit.state;
       if (state is! PurchaseOrdersLoaded || state.orders.isEmpty) {
         cubit.loadOrders(refresh: true);
@@ -200,6 +201,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     if (key == LogicalKeyboardKey.escape) {
       if (_searchFocusNode.hasFocus) {
         _searchFocusNode.unfocus();
+        _screenFocusNode.requestFocus();
         return KeyEventResult.handled;
       }
       if (_selectedOrder != null) {
@@ -263,7 +265,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       return KeyEventResult.handled;
     }
 
-    // Flechas arriba y abajo para navegar órdenes en split-view
+    // Flechas arriba y abajo para navegar órdenes y [Enter] para abrir detalles
     final filtered = viewModel.orders.cast<PurchaseOrderModel>();
     final displayOrders =
         (_selectedOrder != null &&
@@ -278,14 +280,25 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               : -1;
 
       if (key == LogicalKeyboardKey.arrowDown) {
-        final nextIndex = (currentIndex + 1).clamp(0, displayOrders.length - 1);
+        final nextIndex = currentIndex == -1 ? 0 : (currentIndex + 1).clamp(0, displayOrders.length - 1);
         _selectOrder(displayOrders[nextIndex], updateUrl: true);
         return KeyEventResult.handled;
       }
 
       if (key == LogicalKeyboardKey.arrowUp) {
-        final prevIndex = (currentIndex - 1).clamp(0, displayOrders.length - 1);
+        final prevIndex = currentIndex == -1 ? 0 : (currentIndex - 1).clamp(0, displayOrders.length - 1);
         _selectOrder(displayOrders[prevIndex], updateUrl: true);
+        return KeyEventResult.handled;
+      }
+
+      if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
+        final po = _selectedOrder ?? displayOrders.first;
+        final isTablet = MediaQuery.sizeOf(context).width >= 800;
+        if (isTablet) {
+          _openDesktopDetailSheet(po);
+        } else {
+          _showDetail(context, po);
+        }
         return KeyEventResult.handled;
       }
     }
@@ -618,6 +631,31 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       );
     }
 
+    if (isTablet) {
+      return SliverGrid(
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 440,
+          mainAxisExtent: 180,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final po = displayOrders[index];
+            final isSel = _selectedOrder?.id == po.id;
+            return POCard(
+              po: po,
+              isSelected: isSel,
+              onTap: () {
+                _openDesktopDetailSheet(po);
+              },
+            );
+          },
+          childCount: displayOrders.length,
+        ),
+      );
+    }
+
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
@@ -629,11 +667,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               po: po,
               isSelected: isSel,
               onTap: () {
-                if (isTablet) {
-                  _openDesktopDetailSheet(po);
-                } else {
-                  _showDetail(context, po);
-                }
+                _showDetail(context, po);
               },
             ),
           );

@@ -4,6 +4,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class SupplierCreditsTable extends StatefulWidget {
   final List<SupplierCreditEntity> accounts;
+  final SupplierCreditEntity? selectedAccount;
   final Function(SupplierCreditEntity) onSelectAccount;
   final Function(SupplierCreditEntity) onPay;
   final Function(SupplierCreditEntity) onViewHistory;
@@ -11,6 +12,7 @@ class SupplierCreditsTable extends StatefulWidget {
   const SupplierCreditsTable({
     super.key,
     required this.accounts,
+    this.selectedAccount,
     required this.onSelectAccount,
     required this.onPay,
     required this.onViewHistory,
@@ -163,6 +165,7 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                   final debtColor = _getDebtColor(pct, account.isMaxedOut, account.currentDebt);
 
                   final isHovered = _hoveredId == account.creditId;
+                  final isSelected = widget.selectedAccount?.creditId == account.creditId;
 
                   return MouseRegion(
                     cursor: SystemMouseCursors.click,
@@ -177,10 +180,18 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                         duration: const Duration(milliseconds: 140),
                         curve: Curves.easeInOut,
                         decoration: BoxDecoration(
-                          color: isHovered ? const Color(0xFFF8FAFC) : Colors.white,
+                          color: isSelected
+                              ? AppColors.teal.withValues(alpha: 0.05)
+                              : isHovered
+                                  ? const Color(0xFFF8FAFC)
+                                  : Colors.white,
                           border: Border(
                             left: BorderSide(
-                              color: isHovered ? AppColors.teal.withValues(alpha: 0.6) : Colors.transparent,
+                              color: isSelected
+                                  ? AppColors.teal
+                                  : isHovered
+                                      ? AppColors.teal.withValues(alpha: 0.6)
+                                      : Colors.transparent,
                               width: 3.5,
                             ),
                           ),

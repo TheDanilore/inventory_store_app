@@ -208,8 +208,7 @@ class _WarehousesManagementScreenState
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final isDesktop = width >= 1024;
-    final isTablet = width >= 600 && width < 1024;
+    final isDesktop = width >= 800;
 
     return BlocProvider(
       create: (_) => sl<WarehousesCubit>()..initLoad(),
@@ -276,157 +275,182 @@ class _WarehousesManagementScreenState
                             ),
                           )
                           : null,
-                  body: RefreshIndicator(
-                    onRefresh: () async => cubit.loadWarehouses(isRefresh: true),
-                    color: AppColors.primary,
-                    child: CustomScrollView(
-                      controller: _scrollController,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: [
-                        // ── 1. KPI Metric Ribbon ─────────────────────────
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                            child: _WarehousesKpiBar(
-                              totalCount:
-                                  state.totalRecords > 0
-                                      ? state.totalRecords
-                                      : warehouses.length,
-                              activeCount: activeCount,
-                              inactiveCount: inactiveCount,
-                              isDesktop: isDesktop || isTablet,
-                            ),
-                          ),
+                  body: Column(
+                    children: [
+                      // ── 1. Bento Metric Ribbon para Almacenes ─────────
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        child: _WarehousesKpiBar(
+                          totalCount:
+                              state.totalRecords > 0
+                                  ? state.totalRecords
+                                  : warehouses.length,
+                          activeCount: activeCount,
+                          inactiveCount: inactiveCount,
+                          isDesktop: isDesktop,
                         ),
+                      ),
 
-                        // ── 2. Toolbar de Búsqueda y Acciones ────────────
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                            child: _buildToolbar(
-                              context,
-                              cubit,
-                              state,
-                              isDesktop,
-                              isTablet,
-                            ),
-                          ),
-                        ),
+                      // ── 2. Toolbar Unificado de Búsqueda y Acciones ──
+                      _buildToolbar(
+                        context,
+                        cubit,
+                        isDesktop,
+                      ),
 
-                        // ── 3. Contenido Principal (Tabla o Grilla) ───────
-                        if (state.isLoading)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child:
-                                  isDesktop && _isTableView
-                                      ? const AppTableShimmer(
-                                        rowCount: 5,
-                                        minWidth: 840,
-                                      )
-                                      : const WarehousesSkeleton(itemCount: 4),
-                            ),
-                          )
-                        else if (warehouses.isEmpty)
-                          SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: AppEmptyState(
-                              icon: Icons.warehouse_outlined,
-                              title:
-                                  state.searchQuery.isNotEmpty
-                                      ? 'No se encontraron almacenes'
-                                      : 'No hay almacenes registrados',
-                              message:
-                                  state.searchQuery.isNotEmpty
-                                      ? 'No hay resultados que coincidan con "${state.searchQuery}". Intenta con otro término.'
-                                      : 'Comienza agregando los puntos de venta o almacenes donde gestionas el inventario.',
-                              action: ElevatedButton.icon(
-                                onPressed:
-                                    () => _openWarehouseModal(context, cubit),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
+                      // ── 3. Contenido Principal (Tabla o Grilla) ───────
+                      Expanded(
+                        child: Builder(
+                          builder: (context) {
+                            if (state.isLoading) {
+                              return Padding(
+                                padding: const EdgeInsets.all(16),
+                                child:
+                                    isDesktop && _isTableView
+                                        ? const AppTableShimmer(
+                                          rowCount: 5,
+                                          minWidth: 840,
+                                        )
+                                        : const WarehousesSkeleton(itemCount: 4),
+                              );
+                            }
+
+                            if (warehouses.isEmpty) {
+                              return Center(
+                                child: AppEmptyState(
+                                  icon: Icons.warehouse_outlined,
+                                  title:
+                                      state.searchQuery.isNotEmpty
+                                          ? 'No se encontraron almacenes'
+                                          : 'No hay almacenes registrados',
+                                  message:
+                                      state.searchQuery.isNotEmpty
+                                          ? 'No hay resultados que coincidan con "${state.searchQuery}". Intenta con otro término.'
+                                          : 'Comienza agregando los puntos de venta o almacenes donde gestionas el inventario.',
+                                  action:
+                                      state.searchQuery.isNotEmpty
+                                          ? OutlinedButton.icon(
+                                            onPressed: () {
+                                              _searchCtrl.clear();
+                                              cubit.clearSearch();
+                                            },
+                                            icon: const Icon(
+                                              Icons.clear_all_rounded,
+                                            ),
+                                            label: const Text('Limpiar búsqueda'),
+                                          )
+                                          : ElevatedButton.icon(
+                                            onPressed:
+                                                () => _openWarehouseModal(context, cubit),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: AppColors.primary,
+                                              foregroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 20,
+                                                vertical: 12,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                            icon: const Icon(
+                                              Icons.add_business_rounded,
+                                              size: 18,
+                                            ),
+                                            label: const Text('Registrar Almacén'),
+                                          ),
                                 ),
-                                icon: const Icon(Icons.add_rounded, size: 18),
-                                label: const Text('Registrar Almacén'),
-                              ),
-                            ),
-                          )
-                        else if (isDesktop && _isTableView)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                              child: WarehousesTableView(
-                                warehouses: warehouses,
-                                onEdit:
-                                    (wh) => _openWarehouseModal(
-                                      context,
-                                      cubit,
-                                      wh,
+                              );
+                            }
+
+                            return RefreshIndicator(
+                              onRefresh:
+                                  () async =>
+                                      cubit.loadWarehouses(isRefresh: true),
+                              color: AppColors.primary,
+                              child: CustomScrollView(
+                                controller: _scrollController,
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                slivers: [
+                                  SliverPadding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      4,
+                                      16,
+                                      16,
                                     ),
-                                onDelete:
-                                    (wh) => _confirmDeleteWarehouse(
-                                      context,
-                                      cubit,
-                                      wh,
-                                    ),
-                                onToggleStatus: (wh, val) {
-                                  cubit.toggleWarehouseStatus(wh, val);
-                                },
-                              ),
-                            ),
-                          )
-                        else
-                          SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                            sliver: SliverGrid(
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount:
-                                        isDesktop
-                                            ? 3
-                                            : (isTablet ? 2 : 1),
-                                    mainAxisExtent: 178,
-                                    crossAxisSpacing: 14,
-                                    mainAxisSpacing: 14,
+                                    sliver:
+                                        (isDesktop && _isTableView)
+                                            ? SliverToBoxAdapter(
+                                              child: WarehousesTableView(
+                                                warehouses: warehouses,
+                                                onEdit:
+                                                    (wh) => _openWarehouseModal(
+                                                      context,
+                                                      cubit,
+                                                      wh,
+                                                    ),
+                                                onDelete:
+                                                    (wh) => _confirmDeleteWarehouse(
+                                                      context,
+                                                      cubit,
+                                                      wh,
+                                                    ),
+                                                onToggleStatus: (wh, val) {
+                                                  cubit.toggleWarehouseStatus(
+                                                    wh,
+                                                    val,
+                                                  );
+                                                },
+                                              ),
+                                            )
+                                            : SliverGrid(
+                                              gridDelegate:
+                                                  const SliverGridDelegateWithMaxCrossAxisExtent(
+                                                    maxCrossAxisExtent: 440,
+                                                    mainAxisExtent: 178,
+                                                    crossAxisSpacing: 14,
+                                                    mainAxisSpacing: 14,
+                                                  ),
+                                              delegate: SliverChildBuilderDelegate((
+                                                context,
+                                                index,
+                                              ) {
+                                                final wh = warehouses[index];
+                                                return WarehouseCard(
+                                                  warehouse: wh,
+                                                  onEdit:
+                                                      () => _openWarehouseModal(
+                                                        context,
+                                                        cubit,
+                                                        wh,
+                                                      ),
+                                                  onDelete:
+                                                      () => _confirmDeleteWarehouse(
+                                                        context,
+                                                        cubit,
+                                                        wh,
+                                                      ),
+                                                  onToggleStatus: (val) {
+                                                    cubit.toggleWarehouseStatus(
+                                                      wh,
+                                                      val,
+                                                    );
+                                                  },
+                                                );
+                                              }, childCount: warehouses.length),
+                                            ),
                                   ),
-                              delegate: SliverChildBuilderDelegate((
-                                context,
-                                index,
-                              ) {
-                                final wh = warehouses[index];
-                                return WarehouseCard(
-                                  warehouse: wh,
-                                  onEdit:
-                                      () => _openWarehouseModal(
-                                        context,
-                                        cubit,
-                                        wh,
-                                      ),
-                                  onDelete:
-                                      () => _confirmDeleteWarehouse(
-                                        context,
-                                        cubit,
-                                        wh,
-                                      ),
-                                  onToggleStatus: (val) {
-                                    cubit.toggleWarehouseStatus(wh, val);
-                                  },
-                                );
-                              }, childCount: warehouses.length),
-                            ),
-                          ),
-                      ],
-                    ),
+                                  const SliverToBoxAdapter(
+                                    child: SizedBox(height: 16),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },
@@ -437,231 +461,254 @@ class _WarehousesManagementScreenState
     );
   }
 
-  // ── TOOLBAR DE ACCIONES Y BÚSQUEDA ─────────────────────────────────
+  // ── TOOLBAR UNIFICADO DE BÚSQUEDA Y ACCIONES (ESTILO SUPPLIERS) ────
   Widget _buildToolbar(
     BuildContext context,
     WarehousesCubit cubit,
-    WarehousesState state,
     bool isDesktop,
-    bool isTablet,
   ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 8,
+      ),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x040F172A),
+            color: Color(0x050F172A),
             blurRadius: 4,
             offset: Offset(0, 1),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          // Campo de búsqueda con estilo Stripe
-          Expanded(
-            child: TextField(
-              controller: _searchCtrl,
-              focusNode: _searchFocusNode,
-              onChanged: (val) => _onSearchChanged(val, cubit),
-              style: const TextStyle(
-                fontSize: 13.5,
-                color: AppColors.textPrimary,
-              ),
-              decoration: InputDecoration(
-                hintText:
-                    'Buscar almacén por nombre o dirección (${AppShortcutLabels.search})...',
-                hintStyle: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textMuted,
-                ),
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  size: 20,
-                  color: AppColors.textSecondary,
-                ),
-                prefixIconConstraints: const BoxConstraints(
-                  minWidth: 38,
-                  minHeight: 38,
-                ),
-                suffixIcon:
-                    _searchCtrl.text.isNotEmpty
-                        ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 18),
-                          color: AppColors.textSecondary,
-                          tooltip: 'Limpiar búsqueda (Esc)',
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            cubit.clearSearch();
-                          },
-                        )
-                        : Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: Center(
-                            widthFactor: 1,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(5),
-                                border: Border.all(
-                                  color: const Color(0xFFE2E8F0),
-                                ),
-                              ),
-                              child: const Text(
-                                '/',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
+      child:
+          isDesktop
+              ? Row(
+                children: [
+                  Expanded(child: _buildSearchField(cubit)),
+                  const SizedBox(width: 12),
+
+                  // Switch de vista Tabla vs Cards
+                  _buildViewModeToggle(),
+                  const SizedBox(width: 8),
+
+                  IconButton(
+                    icon: const Icon(
+                      Icons.refresh_rounded,
+                      size: 20,
+                    ),
+                    color: AppColors.textSecondary,
+                    tooltip: 'Refrescar almacenes [R]',
+                    onPressed: () => cubit.loadWarehouses(isRefresh: true),
+                  ),
+                  const SizedBox(width: 8),
+
+                  SizedBox(
+                    height: 40,
+                    child: FilledButton.icon(
+                      onPressed: () => _openWarehouseModal(context, cubit),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.add_business_rounded,
+                        size: 18,
+                      ),
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Nuevo Almacén',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12.5,
                             ),
                           ),
-                        ),
-                suffixIconConstraints: const BoxConstraints(
-                  minWidth: 32,
-                  minHeight: 32,
-                ),
-                isDense: true,
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
-                    width: 1.5,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 10),
-
-          // Botón Alternar Vista (Tabla / Cuadrícula)
-          if (isDesktop || isTablet)
-            Tooltip(
-              message:
-                  _isTableView
-                      ? 'Cambiar a cuadrícula (V)'
-                      : 'Cambiar a tabla (V)',
-              child: InkWell(
-                onTap: () => setState(() => _isTableView = !_isTableView),
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  height: 38,
-                  width: 38,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Icon(
-                    _isTableView
-                        ? Icons.grid_view_rounded
-                        : Icons.table_rows_rounded,
-                    size: 19,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-
-          if (isDesktop || isTablet) const SizedBox(width: 8),
-
-          // Botón Recargar
-          Tooltip(
-            message: 'Recargar lista (R)',
-            child: InkWell(
-              onTap: () => cubit.loadWarehouses(isRefresh: true),
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                height: 38,
-                width: 38,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: const Icon(
-                  Icons.refresh_rounded,
-                  size: 19,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-          ),
-
-          // Botón Principal en Desktop / Tablet (Elimina el FAB flotante en escritorio)
-          if (isDesktop || isTablet) ...[
-            const SizedBox(width: 10),
-            ElevatedButton.icon(
-              onPressed: () => _openWarehouseModal(context, cubit),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: Row(
-                children: [
-                  const Text(
-                    'Nuevo Almacén',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 1,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'N',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                          const SizedBox(width: 6),
+                          _buildButtonKeyHint('N'),
+                        ],
                       ),
                     ),
                   ),
                 ],
+              )
+              : _buildSearchField(cubit),
+    );
+  }
+
+  Widget _buildSearchField(WarehousesCubit cubit) {
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        controller: _searchCtrl,
+        focusNode: _searchFocusNode,
+        onChanged: (val) => _onSearchChanged(val, cubit),
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+        ),
+        textAlignVertical: TextAlignVertical.center,
+        decoration: InputDecoration(
+          hintText: 'Buscar almacén por nombre o dirección...',
+          hintStyle: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 12.5,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.teal,
+            size: 19,
+          ),
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _searchCtrl,
+            builder: (context, value, _) {
+              if (value.text.isNotEmpty) {
+                return IconButton(
+                  icon: const Icon(
+                    Icons.cancel_rounded,
+                    color: AppColors.textMuted,
+                    size: 16,
+                  ),
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    cubit.clearSearch();
+                  },
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildKeyHint('/'),
+                  ],
+                ),
+              );
+            },
+          ),
+          filled: true,
+          fillColor: const Color(0xFFF8FAFC),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildViewModeToggle() {
+    return SizedBox(
+      height: 40,
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            IconButton(
+              tooltip: 'Vista en Tabla Pro [V]',
+              icon: Icon(
+                Icons.table_rows_rounded,
+                size: 18,
+                color: _isTableView ? AppColors.tealDark : AppColors.textMuted,
               ),
+              style: IconButton.styleFrom(
+                backgroundColor:
+                    _isTableView ? AppColors.surface : Colors.transparent,
+                elevation: _isTableView ? 1 : 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.all(6),
+              ),
+              onPressed: () => setState(() => _isTableView = true),
+            ),
+            IconButton(
+              tooltip: 'Vista en Tarjetas [V]',
+              icon: Icon(
+                Icons.grid_view_rounded,
+                size: 18,
+                color: !_isTableView ? AppColors.tealDark : AppColors.textMuted,
+              ),
+              style: IconButton.styleFrom(
+                backgroundColor:
+                    !_isTableView ? AppColors.surface : Colors.transparent,
+                elevation: !_isTableView ? 1 : 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.all(6),
+              ),
+              onPressed: () => setState(() => _isTableView = false),
             ),
           ],
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKeyHint(String char) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Text(
+        char,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textMuted,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildButtonKeyHint(String char) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        char,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -713,111 +760,98 @@ class _WarehousesKpiBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final activePct =
+        totalCount > 0
+            ? ((activeCount / totalCount) * 100).toStringAsFixed(0)
+            : '100';
+
     final cards = [
-      _KpiCard(
+      _BentoWarehouseKpiCard(
         title: 'Total Almacenes',
         value: '$totalCount',
         subtitle: 'Puntos y depósitos registrados',
         icon: Icons.storefront_rounded,
-        iconBgColor: AppColors.primaryLight.withValues(alpha: 0.5),
+        iconBgColor: AppColors.primaryLight,
         iconColor: AppColors.primary,
       ),
-      _KpiCard(
+      _BentoWarehouseKpiCard(
         title: 'Almacenes Activos',
         value: '$activeCount',
-        subtitle:
-            totalCount > 0
-                ? '${((activeCount / totalCount) * 100).toStringAsFixed(0)}% de operatividad'
-                : 'Puntos listos',
+        subtitle: '$activePct% de operatividad',
         icon: Icons.check_circle_outline_rounded,
-        iconBgColor: AppColors.successLight.withValues(alpha: 0.6),
+        iconBgColor: AppColors.successLight,
         iconColor: AppColors.successDark,
-        valueColor: AppColors.successDark,
       ),
-      _KpiCard(
+      _BentoWarehouseKpiCard(
         title: 'Inactivos / Pausados',
         value: '$inactiveCount',
         subtitle:
             inactiveCount > 0
-                ? 'Fuera de operaciones'
+                ? '$inactiveCount fuera de operaciones'
                 : 'Sin almacenes suspendidos',
         icon: Icons.pause_circle_outline_rounded,
         iconBgColor:
             inactiveCount > 0
-                ? AppColors.errorLight.withValues(alpha: 0.4)
+                ? AppColors.errorLight
                 : const Color(0xFFF1F5F9),
-        iconColor: inactiveCount > 0 ? AppColors.error : AppColors.textMuted,
-        valueColor:
-            inactiveCount > 0 ? AppColors.error : AppColors.textSecondary,
+        iconColor:
+            inactiveCount > 0 ? AppColors.error : AppColors.textMuted,
       ),
     ];
 
     if (isDesktop) {
       return Row(
-        children:
-            cards
-                .map(
-                  (card) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: card,
-                    ),
-                  ),
-                )
-                .toList(),
+        children: [
+          Expanded(child: cards[0]),
+          const SizedBox(width: 12),
+          Expanded(child: cards[1]),
+          const SizedBox(width: 12),
+          Expanded(child: cards[2]),
+        ],
       );
     }
 
-    // En móvil: Scroll horizontal suave
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children:
-            cards
-                .map(
-                  (card) => Container(
-                    width: 240,
-                    margin: const EdgeInsets.only(right: 10),
-                    child: card,
-                  ),
-                )
-                .toList(),
+    return SizedBox(
+      height: 84,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: cards.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (_, index) => SizedBox(width: 220, child: cards[index]),
       ),
     );
   }
 }
 
-class _KpiCard extends StatelessWidget {
+class _BentoWarehouseKpiCard extends StatelessWidget {
   final String title;
   final String value;
   final String subtitle;
   final IconData icon;
   final Color iconBgColor;
   final Color iconColor;
-  final Color? valueColor;
 
-  const _KpiCard({
+  const _BentoWarehouseKpiCard({
     required this.title,
     required this.value,
     required this.subtitle,
     required this.icon,
     required this.iconBgColor,
     required this.iconColor,
-    this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x040F172A),
+            color: Color(0x050F172A),
             blurRadius: 4,
             offset: Offset(0, 1),
           ),
@@ -826,46 +860,49 @@ class _KpiCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: iconBgColor,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: iconColor, size: 22),
+            child: Icon(icon, color: iconColor, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary,
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                    color: valueColor ?? AppColors.textPrimary,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  value,
                   style: const TextStyle(
-                    fontSize: 10.5,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 10,
                     color: AppColors.textMuted,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

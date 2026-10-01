@@ -31,8 +31,10 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
     with SingleTickerProviderStateMixin {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
+  final _screenFocusNode = FocusNode();
   late final TabController _tabCtrl;
   bool _isTableView = true; // Desktop: por defecto vista tabla Pro de alta densidad
+  SupplierCreditEntity? _selectedAccount;
 
   @override
   void initState() {
@@ -41,6 +43,9 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
     _tabCtrl.addListener(_onTabChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _screenFocusNode.requestFocus();
+      }
       final cubit = context.read<SupplierCreditsCubit>();
       final currentState = cubit.state;
       if (currentState is SupplierCreditsLoaded) {
@@ -54,8 +59,17 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
   void dispose() {
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
+    _screenFocusNode.dispose();
     _tabCtrl.dispose();
     super.dispose();
+  }
+
+  List<SupplierCreditEntity> get _currentAccounts {
+    final state = context.read<SupplierCreditsCubit>().state;
+    if (state is SupplierCreditsLoaded) return state.accounts;
+    if (state is SupplierCreditsLoading) return state.currentAccounts;
+    if (state is SupplierCreditsError) return state.currentAccounts;
+    return const [];
   }
 
   void _onTabChanged() {
@@ -131,12 +145,46 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
 
     // Atajo [Esc] -> Limpiar búsqueda o desenfocar
     if (key == LogicalKeyboardKey.escape) {
+      if (_selectedAccount != null) {
+        setState(() => _selectedAccount = null);
+        _screenFocusNode.requestFocus();
+        return KeyEventResult.handled;
+      }
       if (_searchCtrl.text.isNotEmpty) {
         _searchCtrl.clear();
         context.read<SupplierCreditsCubit>().setSearchQuery('');
       }
       _searchFocusNode.unfocus();
+      _screenFocusNode.requestFocus();
       return KeyEventResult.handled;
+    }
+
+    // Flechas arriba y abajo para navegar cuentas y Enter para abrir opciones
+    final accounts = _currentAccounts;
+    if (accounts.isNotEmpty) {
+      final currentIndex =
+          _selectedAccount != null
+              ? accounts.indexWhere((a) => a.creditId == _selectedAccount!.creditId)
+              : -1;
+
+      if (key == LogicalKeyboardKey.arrowDown) {
+        final nextIndex = (currentIndex + 1).clamp(0, accounts.length - 1);
+        setState(() => _selectedAccount = accounts[nextIndex]);
+        return KeyEventResult.handled;
+      }
+
+      if (key == LogicalKeyboardKey.arrowUp) {
+        final prevIndex = (currentIndex - 1).clamp(0, accounts.length - 1);
+        setState(() => _selectedAccount = accounts[prevIndex]);
+        return KeyEventResult.handled;
+      }
+
+      if (key == LogicalKeyboardKey.enter ||
+          key == LogicalKeyboardKey.numpadEnter) {
+        final account = _selectedAccount ?? accounts.first;
+        _openAccountOptions(context, account);
+        return KeyEventResult.handled;
+      }
     }
 
     return KeyEventResult.ignored;
@@ -287,6 +335,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
     final isDesktop = width >= 800;
 
     return Focus(
+      focusNode: _screenFocusNode,
       autofocus: true,
       onKeyEvent: _handleKeyShortcuts,
       child: BlocListener<SupplierCreditsCubit, SupplierCreditsState>(
@@ -683,8 +732,11 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                           sliver: SliverToBoxAdapter(
                             child: SupplierCreditsTable(
                               accounts: accounts,
-                              onSelectAccount:
-                                  (acc) => _openAccountOptions(context, acc),
+                              selectedAccount: _selectedAccount,
+                              onSelectAccount: (acc) {
+                                setState(() => _selectedAccount = acc);
+                                _openAccountOptions(context, acc);
+                              },
                               onPay: _openPaymentModal,
                               onViewHistory: _navigateToHistory,
                             ),
@@ -711,11 +763,14 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                                       final account = accounts[index];
                                       return SupplierCreditCard(
                                         account: account,
-                                        onTap:
-                                            () => _openAccountOptions(
-                                              context,
-                                              account,
-                                            ),
+                                        isSelected: _selectedAccount?.creditId == account.creditId,
+                                        onTap: () {
+                                          setState(() => _selectedAccount = account);
+                                          _openAccountOptions(
+                                            context,
+                                            account,
+                                          );
+                                        },
                                         onPay: () => _openPaymentModal(account),
                                         onViewHistory:
                                             () => _navigateToHistory(account),
@@ -734,11 +789,14 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                                         ),
                                         child: SupplierCreditCard(
                                           account: account,
-                                          onTap:
-                                              () => _openAccountOptions(
-                                                context,
-                                                account,
-                                              ),
+                                          isSelected: _selectedAccount?.creditId == account.creditId,
+                                          onTap: () {
+                                            setState(() => _selectedAccount = account);
+                                            _openAccountOptions(
+                                              context,
+                                              account,
+                                            );
+                                          },
                                           onPay:
                                               () => _openPaymentModal(account),
                                           onViewHistory:

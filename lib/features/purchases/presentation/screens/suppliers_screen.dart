@@ -26,15 +26,36 @@ class SuppliersScreen extends StatefulWidget {
 class _SuppliersScreenState extends State<SuppliersScreen> {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
+  final _screenFocusNode = FocusNode();
   Timer? _debounce;
   bool _isTableView = true; // Por defecto en Desktop: Tabla Pro 100%
+  SupplierEntity? _selectedSupplier;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _screenFocusNode.requestFocus();
+      }
+    });
+  }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
+    _screenFocusNode.dispose();
     _debounce?.cancel();
     super.dispose();
+  }
+
+  List<SupplierEntity> get _currentSuppliers {
+    final state = context.read<SuppliersCubit>().state;
+    if (state is SuppliersLoaded) return state.suppliers;
+    if (state is SuppliersLoading) return state.currentSuppliers;
+    if (state is SuppliersError) return state.currentSuppliers;
+    return const [];
   }
 
   void _onSearchChanged(String query) {
@@ -100,12 +121,46 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
 
     // Atajo [Esc] -> Limpiar búsqueda o desenfocar
     if (key == LogicalKeyboardKey.escape) {
+      if (_selectedSupplier != null) {
+        setState(() => _selectedSupplier = null);
+        _screenFocusNode.requestFocus();
+        return KeyEventResult.handled;
+      }
       if (_searchCtrl.text.isNotEmpty) {
         _searchCtrl.clear();
         context.read<SuppliersCubit>().setSearchQuery('');
       }
       _searchFocusNode.unfocus();
+      _screenFocusNode.requestFocus();
       return KeyEventResult.handled;
+    }
+
+    // Flechas arriba y abajo para navegar proveedores y Enter para abrir modal/detalles
+    final suppliers = _currentSuppliers;
+    if (suppliers.isNotEmpty) {
+      final currentIndex =
+          _selectedSupplier != null
+              ? suppliers.indexWhere((s) => s.id == _selectedSupplier!.id)
+              : -1;
+
+      if (key == LogicalKeyboardKey.arrowDown) {
+        final nextIndex = (currentIndex + 1).clamp(0, suppliers.length - 1);
+        setState(() => _selectedSupplier = suppliers[nextIndex]);
+        return KeyEventResult.handled;
+      }
+
+      if (key == LogicalKeyboardKey.arrowUp) {
+        final prevIndex = (currentIndex - 1).clamp(0, suppliers.length - 1);
+        setState(() => _selectedSupplier = suppliers[prevIndex]);
+        return KeyEventResult.handled;
+      }
+
+      if (key == LogicalKeyboardKey.enter ||
+          key == LogicalKeyboardKey.numpadEnter) {
+        final supplier = _selectedSupplier ?? suppliers.first;
+        _openSupplierModal(context, supplier);
+        return KeyEventResult.handled;
+      }
     }
 
     return KeyEventResult.ignored;
@@ -155,6 +210,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     final isDesktop = width >= 800;
 
     return Focus(
+      focusNode: _screenFocusNode,
       autofocus: true,
       onKeyEvent: _handleKeyShortcuts,
       child: BlocListener<SuppliersCubit, SuppliersState>(
@@ -460,11 +516,11 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                                         ? SliverToBoxAdapter(
                                           child: SuppliersTableView(
                                             suppliers: suppliers,
-                                            onEdit:
-                                                (s) => _openSupplierModal(
-                                                  context,
-                                                  s,
-                                                ),
+                                            selectedSupplier: _selectedSupplier,
+                                            onEdit: (s) {
+                                              setState(() => _selectedSupplier = s);
+                                              _openSupplierModal(context, s);
+                                            },
                                             onToggleStatus:
                                                 (s) => context
                                                     .read<SuppliersCubit>()
@@ -489,11 +545,14 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                                                     suppliers[index];
                                                 return SupplierCard(
                                                   supplier: supplier,
-                                                  onEdit:
-                                                      () => _openSupplierModal(
-                                                        context,
-                                                        supplier,
-                                                      ),
+                                                  isSelected: _selectedSupplier?.id == supplier.id,
+                                                  onEdit: () {
+                                                    setState(() => _selectedSupplier = supplier);
+                                                    _openSupplierModal(
+                                                      context,
+                                                      supplier,
+                                                    );
+                                                  },
                                                   onToggleStatus:
                                                       () => context
                                                           .read<
@@ -519,12 +578,14 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                                                       ),
                                                   child: SupplierCard(
                                                     supplier: supplier,
-                                                    onEdit:
-                                                        () =>
-                                                            _openSupplierModal(
-                                                              context,
-                                                              supplier,
-                                                            ),
+                                                    isSelected: _selectedSupplier?.id == supplier.id,
+                                                    onEdit: () {
+                                                      setState(() => _selectedSupplier = supplier);
+                                                      _openSupplierModal(
+                                                        context,
+                                                        supplier,
+                                                      );
+                                                    },
                                                     onToggleStatus:
                                                         () => context
                                                             .read<

@@ -8,6 +8,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
@@ -45,6 +46,7 @@ class _CustomerCreditsScreenContentState
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   Timer? _debounce;
+  bool _isTableView = true;
 
   @override
   void initState() {
@@ -53,6 +55,7 @@ class _CustomerCreditsScreenContentState
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         context.read<CustomerCreditListCubit>().setTab(_tabController.index);
+        setState(() {});
       }
     });
   }
@@ -155,628 +158,777 @@ class _CustomerCreditsScreenContentState
     );
   }
 
+  // --- REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) ---
+  bool get _isInputFieldFocused {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus == null) return false;
+    return primaryFocus.context?.widget is EditableText;
+  }
+
+  KeyEventResult _handleKeyShortcuts(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    // Si el usuario está escribiendo en un campo de texto, aislar atajos
+    if (_isInputFieldFocused) {
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        _searchFocusNode.unfocus();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    final key = event.logicalKey;
+
+    // Atajo [/] -> Enfocar buscador
+    if (key == LogicalKeyboardKey.slash) {
+      _searchFocusNode.requestFocus();
+      _searchCtrl.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _searchCtrl.text.length,
+      );
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [N] -> Nueva Línea de Crédito
+    if (key == LogicalKeyboardKey.keyN) {
+      _openCreateAccountModal();
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [R] -> Recargar datos
+    if (key == LogicalKeyboardKey.keyR) {
+      context.read<CustomerCreditListCubit>().loadData();
+      AppSnackbar.show(
+        context,
+        message: 'Actualizando cuentas de clientes...',
+        type: SnackbarType.info,
+      );
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [1] -> Pestaña Todas
+    if (key == LogicalKeyboardKey.digit1 || key == LogicalKeyboardKey.numpad1) {
+      _tabController.animateTo(0);
+      setState(() {});
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [2] -> Pestaña Por Cobrar
+    if (key == LogicalKeyboardKey.digit2 || key == LogicalKeyboardKey.numpad2) {
+      _tabController.animateTo(1);
+      setState(() {});
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [V] -> Alternar Vista (Cards vs Tabla)
+    if (key == LogicalKeyboardKey.keyV) {
+      setState(() => _isTableView = !_isTableView);
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [Esc] -> Limpiar búsqueda o desenfocar
+    if (key == LogicalKeyboardKey.escape) {
+      if (_searchCtrl.text.isNotEmpty) {
+        _searchCtrl.clear();
+        _debounce?.cancel();
+        context.read<CustomerCreditListCubit>().setSearch('');
+      }
+      _searchFocusNode.unfocus();
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final isDesktop = width >= 950;
-        final isTablet = width >= 600 && width < 950;
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width >= 800;
 
-        return CallbackShortcuts(
-          bindings: {
-            const SingleActivator(LogicalKeyboardKey.keyK, alt: true): () {
-              _searchFocusNode.requestFocus();
-            },
-            const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
-              _searchFocusNode.requestFocus();
-            },
-            const SingleActivator(LogicalKeyboardKey.keyN, alt: true): () {
-              _openCreateAccountModal();
-            },
-            const SingleActivator(LogicalKeyboardKey.keyN, control: true): () {
-              _openCreateAccountModal();
-            },
-            const SingleActivator(LogicalKeyboardKey.escape): () {
-              if (_searchCtrl.text.isNotEmpty) {
-                _searchCtrl.clear();
-                _debounce?.cancel();
-                context.read<CustomerCreditListCubit>().setSearch('');
-              } else {
-                _searchFocusNode.unfocus();
-              }
-            },
-          },
-          child: BlocBuilder<CustomerCreditListCubit, CustomerCreditListState>(
-            builder: (context, state) {
-              final int accountsWithDebtCount =
-                  state.accounts.where((a) => a.currentDebt > 0).length;
+    return Focus(
+      autofocus: true,
+      onKeyEvent: _handleKeyShortcuts,
+      child: BlocBuilder<CustomerCreditListCubit, CustomerCreditListState>(
+        builder: (context, state) {
+          final int accountsWithDebtCount =
+              state.accounts.where((a) => a.currentDebt > 0 && a.isActive).length;
 
-              return AdminLayout(
-                title: 'Cuentas por Cobrar',
-                showBackButton: true,
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.refresh_rounded),
-                    tooltip: 'Refrescar datos',
-                    onPressed: () {
-                      context.read<CustomerCreditListCubit>().loadData();
-                    },
-                  ),
-                ],
-                floatingActionButton:
-                    isDesktop
-                        ? null
-                        : FloatingActionButton.extended(
-                          onPressed: () => _openCreateAccountModal(),
-                          backgroundColor: AppColors.primary,
-                          icon: const Icon(
-                            Icons.domain_add_rounded,
-                            color: Colors.white,
-                          ),
-                          label: const Text(
-                            'Nuevo Crédito',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+          return AdminLayout(
+            title: 'Cuentas por Cobrar',
+            showBackButton: true,
+            // En escritorio ocultamos el FAB flotante; la acción se ubica en el Toolbar superior
+            floatingActionButton:
+                isDesktop
+                    ? null
+                    : FloatingActionButton(
+                      onPressed: () => _openCreateAccountModal(),
+                      backgroundColor: AppColors.primary,
+                      tooltip: 'Nueva Línea',
+                      child: const Icon(Icons.add_rounded, color: Colors.white),
+                    ),
+            body: Column(
+              children: [
+                Expanded(
+                  child: RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh:
+                        () async =>
+                            context.read<CustomerCreditListCubit>().loadData(),
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        // --- 1. KPI BENTO METRIC BAR ---
+                        if (!state.isLoading || state.accounts.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: GlobalStatsBar(
+                              totalDebt: state.totalDebt,
+                              activeAccounts: state.activeAccounts,
+                              suspendedAccounts: state.suspendedAccounts,
+                              maxedOutAccounts: state.maxedOutAccounts,
+                              accountsWithDebt: accountsWithDebtCount,
                             ),
+                          ),
+
+                        // --- 2. TOOLBAR UNIFICADO DE BÚSQUEDA Y ACCIONES ---
+                        SliverToBoxAdapter(
+                          child: Container(
+                            margin: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x050F172A),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child:
+                                isDesktop
+                                    ? Row(
+                                      children: [
+                                        // Buscador con badge de atajo [/]
+                                        Expanded(
+                                          flex: 5,
+                                          child: _buildSearchField(),
+                                        ),
+                                        const SizedBox(width: 12),
+
+                                        // Segmented Control de Filtro
+                                        _buildSegmentedFilter(
+                                          accountsWithDebtCount,
+                                        ),
+                                        const SizedBox(width: 12),
+
+                                        // Toggle Vista Cards vs Tabla
+                                        _buildViewModeToggle(),
+                                        const SizedBox(width: 8),
+
+                                        // Botón Refrescar [R]
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.refresh_rounded,
+                                            size: 20,
+                                          ),
+                                          color: AppColors.textSecondary,
+                                          tooltip: 'Refrescar créditos [R]',
+                                          onPressed:
+                                              () => context
+                                                  .read<CustomerCreditListCubit>()
+                                                  .loadData(),
+                                        ),
+                                        const SizedBox(width: 8),
+
+                                        // Botón Primario: Nueva Línea [N]
+                                        SizedBox(
+                                          height: 40,
+                                          child: FilledButton.icon(
+                                            onPressed:
+                                                () => _openCreateAccountModal(),
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor:
+                                                  AppColors.primary,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                  ),
+                                              elevation: 0,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                            icon: const Icon(
+                                              Icons.add_rounded,
+                                              size: 18,
+                                            ),
+                                            label: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Text(
+                                                  'Nueva Línea',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 12.5,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                _buildButtonKeyHint('N'),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                    : Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        _buildSearchField(),
+                                        const SizedBox(height: 10),
+                                        _buildSegmentedFilter(
+                                          accountsWithDebtCount,
+                                        ),
+                                      ],
+                                    ),
                           ),
                         ),
-                body: Column(
-                  children: [
-                    Expanded(
-                      child: RefreshIndicator(
-                        color: AppColors.primary,
-                        onRefresh:
-                            () async => context
-                                .read<CustomerCreditListCubit>()
-                                .loadData(),
-                        child: CustomScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          slivers: [
-                            // 1. Bento Metric Cards (Stripe / Linear style)
-                            if (!state.isLoading || state.accounts.isNotEmpty)
-                              SliverToBoxAdapter(
-                                child: GlobalStatsBar(
-                                  totalDebt: state.totalDebt,
-                                  activeAccounts: state.activeAccounts,
-                                  suspendedAccounts: state.suspendedAccounts,
-                                  maxedOutAccounts: state.maxedOutAccounts,
-                                  accountsWithDebt: accountsWithDebtCount,
-                                ),
-                              ),
 
-                            // 2. Adaptive Unified Toolbar
-                            SliverToBoxAdapter(
-                              child: _buildAdaptiveToolbar(
-                                state: state,
-                                isDesktop: isDesktop,
-                                isTablet: isTablet,
-                              ),
-                            ),
-
-                            // 3. Content States
-                            if (state.isLoading && state.accounts.isEmpty)
-                              SliverToBoxAdapter(
-                                child:
-                                    isDesktop
-                                        ? const _DesktopCreditsSkeleton()
-                                        : const _MobileCreditsSkeleton(),
-                              )
-                            else if (state.errorMessage.isNotEmpty &&
-                                state.accounts.isEmpty)
-                              SliverFillRemaining(
-                                hasScrollBody: false,
-                                child: AppEmptyState(
-                                  icon: Icons.error_outline_rounded,
-                                  color: AppColors.error,
-                                  title: 'Error de carga',
-                                  message: state.errorMessage,
-                                  action: FilledButton(
-                                    onPressed:
-                                        () => context
-                                            .read<CustomerCreditListCubit>()
-                                            .loadData(),
-                                    child: const Text('Reintentar'),
-                                  ),
-                                ),
-                              )
-                            else if (state.accounts.isEmpty)
-                              SliverFillRemaining(
-                                hasScrollBody: false,
-                                child: AppEmptyState(
-                                  icon: Icons.credit_card_off_rounded,
-                                  title: 'No se encontraron líneas de crédito',
-                                  message:
-                                      _searchCtrl.text.isNotEmpty
-                                          ? 'No hay resultados que coincidan con "${_searchCtrl.text}".'
-                                          : 'Crea una nueva línea de crédito para autorizar ventas a plazo.',
-                                  action: FilledButton(
-                                    onPressed: () {
-                                      if (_searchCtrl.text.isNotEmpty) {
-                                        _searchCtrl.clear();
-                                        _onSearchChanged('');
-                                      } else {
-                                        _openCreateAccountModal();
-                                      }
-                                    },
-                                    child: Text(
-                                      _searchCtrl.text.isNotEmpty
-                                          ? 'Limpiar filtro'
-                                          : '+ Nueva Línea de Crédito',
+                        // --- 2.5 ENCABEZADO DE NAVEGACIÓN Y CONTADOR ---
+                        if (!state.isLoading && state.accounts.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    '${state.accounts.length} ${state.accounts.length == 1 ? "cuenta" : "cuentas"} en esta página',
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                ),
-                              )
-                            else if (isDesktop)
-                              // Desktop View: High-Density Data Table
-                              SliverPadding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  6,
-                                  16,
-                                  24,
-                                ),
-                                sliver: SliverToBoxAdapter(
-                                  child: _CustomerCreditsDataTable(
-                                    accounts: state.accounts,
-                                    onPayTap: _openPaymentModal,
-                                    onHistoryTap: _openMovementsScreen,
-                                    onEditTap:
-                                        (account) => _openCreateAccountModal(
-                                          accountToEdit: account,
+                                  if (isDesktop) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surface,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color: const Color(0xFFE2E8F0),
                                         ),
-                                    onToggleStatusTap: _toggleAccountStatus,
-                                    onCopy: _copyToClipboard,
+                                      ),
+                                      child: const Text(
+                                        '↑ ↓ navegar',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: const Color(0xFFE2E8F0),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Pág. ${state.currentPage} / ${state.totalPages}',
+                                      style: const TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              )
-                            else if (isTablet)
-                              // Tablet View: 2-Column Responsive Card Grid
-                              SliverPadding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  6,
-                                  16,
-                                  24,
-                                ),
-                                sliver: SliverGrid(
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount: 2,
-                                        crossAxisSpacing: 12,
-                                        mainAxisSpacing: 12,
-                                        mainAxisExtent: 220,
-                                      ),
-                                  delegate: SliverChildBuilderDelegate((
-                                    context,
-                                    index,
-                                  ) {
-                                    final account = state.accounts[index];
-                                    return CreditAccountCard(
-                                      account: account,
-                                      onTap:
-                                          () => _showAccountOptions(
-                                            context,
-                                            account,
+                                ],
+                              ),
+                            ),
+                          ),
+
+                        // --- 3. CONTENIDO: CARDS O TABLA ---
+                        if (state.isLoading && state.accounts.isEmpty)
+                          (isDesktop && _isTableView)
+                              ? const SliverPadding(
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
+                                  sliver: SliverToBoxAdapter(
+                                    child: AppTableShimmer(),
+                                  ),
+                                )
+                              : SliverPadding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  sliver:
+                                      isDesktop
+                                          ? SliverGrid(
+                                            gridDelegate:
+                                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                                                  maxCrossAxisExtent: 420,
+                                                  mainAxisExtent: 220,
+                                                  crossAxisSpacing: 16,
+                                                  mainAxisSpacing: 16,
+                                                ),
+                                            delegate:
+                                                SliverChildBuilderDelegate(
+                                                  (context, index) =>
+                                                      const AppShimmer(
+                                                        width: double.infinity,
+                                                        height:
+                                                            double.infinity,
+                                                        borderRadius: 16,
+                                                      ),
+                                                  childCount: 6,
+                                                ),
+                                          )
+                                          : SliverList(
+                                            delegate:
+                                                SliverChildBuilderDelegate(
+                                                  (context, index) =>
+                                                      const Padding(
+                                                        padding:
+                                                            EdgeInsets.only(
+                                                              bottom: 12,
+                                                            ),
+                                                        child: AppShimmer(
+                                                          width:
+                                                              double.infinity,
+                                                          height: 180,
+                                                          borderRadius: 16,
+                                                        ),
+                                                      ),
+                                                  childCount: 4,
+                                                ),
                                           ),
-                                      onPayTap:
-                                          account.isActive &&
-                                                  account.currentDebt > 0
-                                              ? () => _openPaymentModal(account)
-                                              : null,
-                                      onHistoryTap:
-                                          () => _openMovementsScreen(account),
-                                    );
-                                  }, childCount: state.accounts.length),
-                                ),
-                              )
-                            else
-                              // Mobile View: Refined Apple HIG Cards
-                              SliverPadding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  6,
-                                  16,
-                                  24,
-                                ),
-                                sliver: SliverList(
-                                  delegate: SliverChildBuilderDelegate((
-                                    context,
-                                    index,
-                                  ) {
-                                    final account = state.accounts[index];
-                                    return Padding(
-                                      padding: const EdgeInsets.only(
-                                        bottom: 12,
-                                      ),
-                                      child: CreditAccountCard(
-                                        account: account,
-                                        onTap:
-                                            () => _showAccountOptions(
-                                              context,
-                                              account,
-                                            ),
-                                        onPayTap:
-                                            account.isActive &&
-                                                    account.currentDebt > 0
-                                                ? () =>
-                                                    _openPaymentModal(account)
-                                                : null,
-                                        onHistoryTap:
-                                            () => _openMovementsScreen(account),
-                                      ),
-                                    );
-                                  }, childCount: state.accounts.length),
+                                )
+                        else if (state.errorMessage.isNotEmpty &&
+                            state.accounts.isEmpty)
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: AppEmptyState(
+                              icon: Icons.error_outline_rounded,
+                              color: AppColors.danger,
+                              title: 'Error de carga',
+                              message: state.errorMessage,
+                              action: FilledButton.icon(
+                                onPressed:
+                                    () => context
+                                        .read<CustomerCreditListCubit>()
+                                        .loadData(),
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: const Text('Reintentar'),
+                              ),
+                            ),
+                          )
+                        else if (state.accounts.isEmpty)
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: AppEmptyState(
+                              icon: Icons.receipt_long_rounded,
+                              title:
+                                  _searchCtrl.text.isNotEmpty
+                                      ? 'No se encontraron resultados'
+                                      : (_tabController.index == 1
+                                          ? 'No hay créditos con deuda pendiente'
+                                          : 'No hay líneas de crédito registradas'),
+                              message:
+                                  _searchCtrl.text.isNotEmpty
+                                      ? 'No hay resultados que coincidan con "${_searchCtrl.text}".'
+                                      : 'Crea una nueva línea de crédito para autorizar ventas a plazo.',
+                              action: FilledButton(
+                                onPressed: () {
+                                  if (_searchCtrl.text.isNotEmpty) {
+                                    _searchCtrl.clear();
+                                    _debounce?.cancel();
+                                    context
+                                        .read<CustomerCreditListCubit>()
+                                        .setSearch('');
+                                  } else {
+                                    _openCreateAccountModal();
+                                  }
+                                },
+                                child: Text(
+                                  _searchCtrl.text.isNotEmpty
+                                      ? 'Limpiar filtro'
+                                      : '+ Nueva Línea de Crédito',
                                 ),
                               ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // 4. Pagination
-                    if (!state.isLoading && state.totalPages > 1)
-                      Container(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: const Border(
-                            top: BorderSide(color: AppColors.border),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, -4),
                             ),
-                          ],
-                        ),
-                        child: SafeArea(
-                          top: false,
-                          child: AdminPageBlocks(
-                            currentPage: state.currentPage,
-                            totalPages: state.totalPages,
-                            onPageChanged:
-                                (page) => context
-                                    .read<CustomerCreditListCubit>()
-                                    .setPage(page),
+                          )
+                        else if (isDesktop && _isTableView)
+                          // VISTA DE ALTA DENSIDAD: TABLA PRO
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            sliver: SliverToBoxAdapter(
+                              child: _CustomerCreditsDataTable(
+                                accounts: state.accounts,
+                                onPayTap: _openPaymentModal,
+                                onHistoryTap: _openMovementsScreen,
+                                onEditTap:
+                                    (account) => _openCreateAccountModal(
+                                      accountToEdit: account,
+                                    ),
+                                onToggleStatusTap: _toggleAccountStatus,
+                                onCopy: _copyToClipboard,
+                              ),
+                            ),
+                          )
+                        else
+                          // VISTA VISUAL: TARJETAS DINÁMICAS
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            sliver:
+                                isDesktop
+                                    ? SliverGrid(
+                                      gridDelegate:
+                                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                                            maxCrossAxisExtent: 420,
+                                            mainAxisExtent: 220,
+                                            crossAxisSpacing: 16,
+                                            mainAxisSpacing: 16,
+                                          ),
+                                      delegate: SliverChildBuilderDelegate((
+                                        context,
+                                        index,
+                                      ) {
+                                        final account = state.accounts[index];
+                                        return CreditAccountCard(
+                                          account: account,
+                                          onTap:
+                                              () => _showAccountOptions(
+                                                context,
+                                                account,
+                                              ),
+                                          onPayTap:
+                                              account.isActive &&
+                                                      account.currentDebt > 0
+                                                  ? () =>
+                                                      _openPaymentModal(account)
+                                                  : null,
+                                          onHistoryTap:
+                                              () =>
+                                                  _openMovementsScreen(account),
+                                        );
+                                      }, childCount: state.accounts.length),
+                                    )
+                                    : SliverList(
+                                      delegate: SliverChildBuilderDelegate((
+                                        context,
+                                        index,
+                                      ) {
+                                        final account = state.accounts[index];
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 12,
+                                          ),
+                                          child: CreditAccountCard(
+                                            account: account,
+                                            onTap:
+                                                () => _showAccountOptions(
+                                                  context,
+                                                  account,
+                                                ),
+                                            onPayTap:
+                                                account.isActive &&
+                                                        account.currentDebt > 0
+                                                    ? () => _openPaymentModal(
+                                                      account,
+                                                    )
+                                                    : null,
+                                            onHistoryTap:
+                                                () => _openMovementsScreen(
+                                                  account,
+                                                ),
+                                          ),
+                                        );
+                                      }, childCount: state.accounts.length),
+                                    ),
                           ),
-                        ),
-                      ),
+
+                        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // --- 4. PAGINACIÓN FIJA AL PIE (ESTILO PEDIDOS / STRIPE) ---
+                _buildPagination(
+                  currentPage: state.currentPage,
+                  totalPages: state.totalPages,
+                  totalItems: state.totalAccounts,
+                  isLoading: state.isLoading,
+                  isDesktop: isDesktop,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPagination({
+    required int currentPage,
+    required int totalPages,
+    required int totalItems,
+    required bool isLoading,
+    required bool isDesktop,
+  }) {
+    if (totalPages < 1 || totalItems == 0) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      alignment: Alignment.center,
+      child: SafeArea(
+        top: false,
+        bottom: !isDesktop,
+        child: AdminPageBlocks(
+          currentPage: currentPage,
+          totalPages: totalPages,
+          onPageChanged:
+              (page) => context.read<CustomerCreditListCubit>().setPage(page),
+        ),
+      ),
+    );
+  }
+
+  // --- SUBCOMPONENTES DE TOOLBAR ---
+
+  Widget _buildSearchField() {
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        controller: _searchCtrl,
+        focusNode: _searchFocusNode,
+        onChanged: _onSearchChanged,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+        ),
+        textAlignVertical: TextAlignVertical.center,
+        decoration: InputDecoration(
+          hintText: 'Buscar por cliente, documento o teléfono...',
+          hintStyle: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 12.5,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.teal,
+            size: 19,
+          ),
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _searchCtrl,
+            builder: (context, value, _) {
+              if (value.text.isNotEmpty) {
+                return IconButton(
+                  icon: const Icon(
+                    Icons.cancel_rounded,
+                    color: AppColors.textMuted,
+                    size: 16,
+                  ),
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    _debounce?.cancel();
+                    context.read<CustomerCreditListCubit>().setSearch('');
+                  },
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildKeyHint('/'),
                   ],
                 ),
               );
             },
           ),
-        );
-      },
+          filled: true,
+          fillColor: const Color(0xFFF8FAFC),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 0,
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildAdaptiveToolbar({
-    required CustomerCreditListState state,
-    required bool isDesktop,
-    required bool isTablet,
-  }) {
-    final int debtCount =
-        state.accounts.where((a) => a.currentDebt > 0 && a.isActive).length;
-    final int totalCount = state.accounts.length;
-
-    if (isDesktop) {
-      // Desktop: Unified 48px Pro Toolbar
-      return Container(
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+  Widget _buildSegmentedFilter(int debtCount) {
+    return SizedBox(
+      height: 40,
+      child: Container(
+        padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _FilterTabButton(
+              title: 'Todas',
+              shortcutHint: '1',
+              isSelected: _tabController.index == 0,
+              onTap: () {
+                _tabController.animateTo(0);
+                setState(() {});
+              },
+            ),
+            const SizedBox(width: 4),
+            _FilterTabButton(
+              title: 'Por Cobrar',
+              count: debtCount,
+              shortcutHint: '2',
+              isSelected: _tabController.index == 1,
+              onTap: () {
+                _tabController.animateTo(1);
+                setState(() {});
+              },
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildViewModeToggle() {
+    return SizedBox(
+      height: 40,
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Segmented Pills
-            _SegmentedTabPill(
-              label: 'Todas',
-              count: totalCount,
-              isSelected: _tabController.index == 0,
-              onTap: () => _tabController.animateTo(0),
-            ),
-            const SizedBox(width: 8),
-            _SegmentedTabPill(
-              label: 'Con Deuda',
-              count: debtCount,
-              isSelected: _tabController.index == 1,
-              isAlert: debtCount > 0,
-              onTap: () => _tabController.animateTo(1),
-            ),
-            const Spacer(),
-            // Search field
-            SizedBox(
-              width: 340,
-              height: 40,
-              child: TextField(
-                controller: _searchCtrl,
-                focusNode: _searchFocusNode,
-                onChanged: _onSearchChanged,
-                style: const TextStyle(fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'Buscar cliente, DNI o teléfono...',
-                  hintStyle: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textMuted,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    size: 18,
-                    color: AppColors.textMuted,
-                  ),
-                  suffixIcon:
-                      _searchCtrl.text.isNotEmpty
-                          ? IconButton(
-                            icon: const Icon(
-                              Icons.close_rounded,
-                              size: 16,
-                              color: AppColors.textMuted,
-                            ),
-                            splashRadius: 14,
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              _onSearchChanged('');
-                            },
-                          )
-                          : Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 9,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.background,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: const Text(
-                              'Alt + K',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textMuted,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                  filled: true,
-                  fillColor: AppColors.background,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                ),
+            IconButton(
+              tooltip: 'Vista en Tabla Pro [V]',
+              icon: Icon(
+                Icons.table_rows_rounded,
+                size: 18,
+                color: _isTableView ? AppColors.tealDark : AppColors.textMuted,
               ),
-            ),
-            const SizedBox(width: 12),
-            // Primary Action Button
-            FilledButton.icon(
-              onPressed: () => _openCreateAccountModal(),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 11,
-                ),
+              style: IconButton.styleFrom(
+                backgroundColor:
+                    _isTableView ? AppColors.surface : Colors.transparent,
+                elevation: _isTableView ? 1 : 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
+                padding: const EdgeInsets.all(6),
               ),
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Row(
-                children: [
-                  Text(
-                    'Nueva Línea',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    '[Alt + N]',
-                    style: TextStyle(fontSize: 11, color: Colors.white70),
-                  ),
-                ],
+              onPressed: () => setState(() => _isTableView = true),
+            ),
+            IconButton(
+              tooltip: 'Vista en Tarjetas [V]',
+              icon: Icon(
+                Icons.grid_view_rounded,
+                size: 18,
+                color:
+                    !_isTableView ? AppColors.tealDark : AppColors.textMuted,
               ),
+              style: IconButton.styleFrom(
+                backgroundColor:
+                    !_isTableView ? AppColors.surface : Colors.transparent,
+                elevation: !_isTableView ? 1 : 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.all(6),
+              ),
+              onPressed: () => setState(() => _isTableView = false),
             ),
           ],
         ),
-      );
-    }
-
-    if (isTablet) {
-      // Tablet: 2-row clean toolbar
-      return Container(
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                _SegmentedTabPill(
-                  label: 'Todas',
-                  count: totalCount,
-                  isSelected: _tabController.index == 0,
-                  onTap: () => _tabController.animateTo(0),
-                ),
-                const SizedBox(width: 8),
-                _SegmentedTabPill(
-                  label: 'Con Deuda',
-                  count: debtCount,
-                  isSelected: _tabController.index == 1,
-                  isAlert: debtCount > 0,
-                  onTap: () => _tabController.animateTo(1),
-                ),
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: () => _openCreateAccountModal(),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 9,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text(
-                    'Nueva Línea',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _searchCtrl,
-              focusNode: _searchFocusNode,
-              onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Buscar cliente, DNI o teléfono...',
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  color: AppColors.textMuted,
-                  size: 18,
-                ),
-                suffixIcon:
-                    _searchCtrl.text.isNotEmpty
-                        ? IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 16),
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            _onSearchChanged('');
-                          },
-                        )
-                        : null,
-                filled: true,
-                fillColor: AppColors.background,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Mobile: Touch-friendly layout
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        children: [
-          TextField(
-            controller: _searchCtrl,
-            focusNode: _searchFocusNode,
-            onChanged: _onSearchChanged,
-            decoration: InputDecoration(
-              hintText: 'Buscar cliente, DNI o teléfono...',
-              prefixIcon: const Icon(
-                Icons.search_rounded,
-                color: AppColors.textMuted,
-              ),
-              suffixIcon:
-                  _searchCtrl.text.isNotEmpty
-                      ? IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 18),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          _onSearchChanged('');
-                        },
-                      )
-                      : null,
-              filled: true,
-              fillColor: AppColors.background,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              labelColor: Colors.white,
-              unselectedLabelColor: AppColors.textMuted,
-              indicator: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              padding: const EdgeInsets.all(4),
-              tabs: [
-                Tab(text: 'Todas ($totalCount)'),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Con Deuda'),
-                      if (debtCount > 0) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.error,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '$debtCount',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+    );
+  }
+
+  Widget _buildKeyHint(String char) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Text(
+        char,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textMuted,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildButtonKeyHint(String char) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        char,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -1004,20 +1156,20 @@ class _CustomerCreditsScreenContentState
 }
 
 // -----------------------------------------------------------------------------
-// Component: Segmented Tab Pill
+// Component: Filter Tab Button (Segmented Pill)
 // -----------------------------------------------------------------------------
-class _SegmentedTabPill extends StatelessWidget {
-  final String label;
-  final int count;
+class _FilterTabButton extends StatelessWidget {
+  final String title;
+  final int? count;
+  final String shortcutHint;
   final bool isSelected;
-  final bool isAlert;
   final VoidCallback onTap;
 
-  const _SegmentedTabPill({
-    required this.label,
-    required this.count,
+  const _FilterTabButton({
+    required this.title,
+    this.count,
+    required this.shortcutHint,
     required this.isSelected,
-    this.isAlert = false,
     required this.onTap,
   });
 
@@ -1025,51 +1177,70 @@ class _SegmentedTabPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.background,
+          color: isSelected ? AppColors.surface : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
-          ),
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                  : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              label,
+              title,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                color: isSelected ? Colors.white : AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-              decoration: BoxDecoration(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 color:
                     isSelected
-                        ? Colors.white.withValues(alpha: 0.22)
-                        : (isAlert
-                            ? const Color(0xFFFEF2F2)
-                            : const Color(0xFFE2E8F0)),
-                borderRadius: BorderRadius.circular(10),
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary,
+              ),
+            ),
+            if (count != null && count! > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.danger : AppColors.dangerLight,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : AppColors.danger,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 11,
+                shortcutHint,
+                style: const TextStyle(
+                  fontSize: 9,
                   fontWeight: FontWeight.bold,
-                  color:
-                      isSelected
-                          ? Colors.white
-                          : (isAlert
-                              ? const Color(0xFFDC2626)
-                              : AppColors.textSecondary),
+                  color: AppColors.textMuted,
                 ),
               ),
             ),
@@ -1808,217 +1979,4 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Component: Skeletons (Desktop Table & Mobile Cards)
-// -----------------------------------------------------------------------------
-class _DesktopCreditsSkeleton extends StatelessWidget {
-  const _DesktopCreditsSkeleton();
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: const Color(0xFFF8FAFC),
-            child: Row(
-              children: const [
-                Expanded(
-                  flex: 3,
-                  child: AppShimmer(width: 80, height: 12, borderRadius: 4),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: AppShimmer(width: 60, height: 12, borderRadius: 4),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: AppShimmer(width: 70, height: 12, borderRadius: 4),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: AppShimmer(width: 70, height: 12, borderRadius: 4),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: AppShimmer(width: 70, height: 12, borderRadius: 4),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: EdgeInsets.only(left: 20),
-                    child: AppShimmer(width: 50, height: 12, borderRadius: 4),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: AppShimmer(width: 80, height: 12, borderRadius: 4),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: AppColors.border),
-          for (int i = 0; i < 6; i++) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Row(
-                      children: const [
-                        AppShimmer(width: 36, height: 36, borderRadius: 8),
-                        SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            AppShimmer(width: 120, height: 14, borderRadius: 4),
-                            SizedBox(height: 4),
-                            AppShimmer(width: 80, height: 10, borderRadius: 3),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Expanded(
-                    flex: 2,
-                    child: AppShimmer(width: 60, height: 20, borderRadius: 6),
-                  ),
-                  const Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: AppShimmer(width: 65, height: 14, borderRadius: 4),
-                    ),
-                  ),
-                  const Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: AppShimmer(width: 65, height: 14, borderRadius: 4),
-                    ),
-                  ),
-                  const Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: AppShimmer(width: 65, height: 14, borderRadius: 4),
-                    ),
-                  ),
-                  const Expanded(
-                    flex: 2,
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 20),
-                      child: AppShimmer(width: 60, height: 6, borderRadius: 3),
-                    ),
-                  ),
-                  const Expanded(
-                    flex: 3,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: AppShimmer(width: 70, height: 24, borderRadius: 6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (i < 5) const Divider(height: 1, color: AppColors.border),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _MobileCreditsSkeleton extends StatelessWidget {
-  const _MobileCreditsSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      shrinkWrap: true,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: 5,
-      physics: const NeverScrollableScrollPhysics(),
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (_, _) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: const [
-                  AppShimmer(width: 40, height: 40, borderRadius: 10),
-                  SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AppShimmer(width: 140, height: 14, borderRadius: 4),
-                      SizedBox(height: 4),
-                      AppShimmer(width: 80, height: 10, borderRadius: 3),
-                    ],
-                  ),
-                  Spacer(),
-                  AppShimmer(width: 60, height: 18, borderRadius: 6),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AppShimmer(width: 60, height: 10, borderRadius: 2),
-                      SizedBox(height: 4),
-                      AppShimmer(width: 90, height: 20, borderRadius: 4),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      AppShimmer(width: 80, height: 12, borderRadius: 3),
-                      SizedBox(height: 4),
-                      AppShimmer(width: 60, height: 10, borderRadius: 2),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const AppShimmer(
-                width: double.infinity,
-                height: 6,
-                borderRadius: 3,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}

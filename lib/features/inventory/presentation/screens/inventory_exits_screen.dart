@@ -52,6 +52,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     _checkDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        _screenFocusNode.requestFocus();
         final cubit = context.read<InventoryExitsCubit>();
         _searchCtrl.text = cubit.state.searchQuery;
         cubit.initLoad();
@@ -195,17 +196,19 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     if (key == LogicalKeyboardKey.escape) {
       if (_selectedExit != null) {
         setState(() => _selectedExit = null);
+        _screenFocusNode.requestFocus();
         return KeyEventResult.handled;
       }
       if (_searchFocusNode.hasFocus) {
         _searchFocusNode.unfocus();
+        _screenFocusNode.requestFocus();
         return KeyEventResult.handled;
       }
     }
 
-    // Flechas arriba y abajo para navegar salidas en split-view
+    // Flechas arriba y abajo para navegar salidas
     final state = context.read<InventoryExitsCubit>().state;
-    if (state.exits.isNotEmpty && !_isTableView) {
+    if (state.exits.isNotEmpty) {
       final exits = state.exits;
       final currentIndex =
           _selectedExit != null
@@ -221,6 +224,18 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
       if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
         final prevIndex = (currentIndex - 1).clamp(0, exits.length - 1);
         _selectExit(exits[prevIndex], updateUrl: true);
+        return KeyEventResult.handled;
+      }
+
+      if (event.logicalKey == LogicalKeyboardKey.enter ||
+          event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+        final exit = _selectedExit ?? exits.first;
+        final isTablet = MediaQuery.sizeOf(context).width >= 800;
+        if (isTablet) {
+          _openDesktopDetailSheet(exit);
+        } else {
+          _showDetailBottomSheet(context, exit);
+        }
         return KeyEventResult.handled;
       }
     }
@@ -671,7 +686,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                                   ),
                                 )
                                 : isTablet
-                                ? _buildTabletSplitLayout(context, state, cubit)
+                                ? _buildTabletGridLayout(context, state, cubit)
                                 : _buildMobileCardsLayout(
                                   context,
                                   state,
@@ -726,63 +741,32 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     );
   }
 
-  Widget _buildTabletSplitLayout(
+  Widget _buildTabletGridLayout(
     BuildContext context,
     InventoryExitsState state,
     InventoryExitsCubit cubit,
   ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Panel izquierdo: Lista de tarjetas
-        Expanded(
-          flex: 4,
-          child: Container(
-            decoration: const BoxDecoration(
-              border: Border(right: BorderSide(color: AppColors.border)),
-            ),
-            child: RefreshIndicator(
-              color: AppColors.danger,
-              onRefresh: () => cubit.loadExits(isRefresh: true),
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                itemCount: state.exits.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (context, i) {
-                  final exit = state.exits[i];
-                  return _ExitCard(
-                    exitData: exit,
-                    isSelected: _selectedExit?.id == exit.id,
-                    onTap: () => _selectExit(exit, updateUrl: true),
-                  );
-                },
-              ),
-            ),
-          ),
+    return RefreshIndicator(
+      color: AppColors.danger,
+      onRefresh: () => cubit.loadExits(isRefresh: true),
+      child: GridView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 440,
+          mainAxisExtent: 180,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
         ),
-        // Panel derecho: Detalle
-        Expanded(
-          flex: 6,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child:
-                _selectedExit == null
-                    ? const AppEmptyState(
-                      key: ValueKey('empty_detail'),
-                      icon: Icons.outbox_rounded,
-                      title: 'Ninguna Salida Seleccionada',
-                      message:
-                          'Selecciona una salida del panel izquierdo para ver sus detalles.',
-                    )
-                    : InventoryExitDetailSheet(
-                      key: ValueKey('detail_${_selectedExit!.id}'),
-                      exitData: _selectedExit!,
-                      isBottomSheet: false,
-                      loadItems: () => _loadItems(_selectedExit!),
-                    ),
-          ),
-        ),
-      ],
+        itemCount: state.exits.length,
+        itemBuilder: (context, i) {
+          final exit = state.exits[i];
+          return _ExitCard(
+            exitData: exit,
+            isSelected: _selectedExit?.id == exit.id,
+            onTap: () => _openDesktopDetailSheet(exit),
+          );
+        },
+      ),
     );
   }
 

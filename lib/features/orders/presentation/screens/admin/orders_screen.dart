@@ -40,6 +40,7 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
+  final _screenFocusNode = FocusNode();
   Timer? _debounce;
   OrderEntity? _selectedOrder;
   String? _pendingTargetOrderId;
@@ -51,6 +52,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     super.initState();
     _pendingTargetOrderId = widget.targetOrderId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _screenFocusNode.requestFocus();
       final cubit = context.read<OrdersCubit>();
       if (cubit.state.orders.isEmpty) {
         cubit.loadOrders(reset: true);
@@ -163,6 +165,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   void dispose() {
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
+    _screenFocusNode.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -181,6 +184,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (_isInputFieldFocused) {
       if (event.logicalKey == LogicalKeyboardKey.escape) {
         _searchFocusNode.unfocus();
+        _screenFocusNode.requestFocus();
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;
@@ -205,6 +209,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (key == LogicalKeyboardKey.escape) {
       if (_searchFocusNode.hasFocus) {
         _searchFocusNode.unfocus();
+        _screenFocusNode.requestFocus();
         return KeyEventResult.handled;
       }
       if (_selectedOrder != null) {
@@ -265,7 +270,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
       return KeyEventResult.handled;
     }
 
-    // Navegación con flechas [↑ / ↓] entre pedidos
+    // Navegación con flechas [↑ / ↓] y [Enter] entre pedidos
     final cubit = context.read<OrdersCubit>();
     final orders = cubit.state.orders;
     if (orders.isNotEmpty) {
@@ -274,12 +279,19 @@ class _OrdersScreenState extends State<OrdersScreen> {
           : -1;
 
       if (key == LogicalKeyboardKey.arrowDown) {
-        final nextIndex = (currentIndex + 1).clamp(0, orders.length - 1);
+        final nextIndex = currentIndex == -1 ? 0 : (currentIndex + 1).clamp(0, orders.length - 1);
         _selectOrder(orders[nextIndex], updateUrl: true);
         return KeyEventResult.handled;
       } else if (key == LogicalKeyboardKey.arrowUp) {
-        final prevIndex = (currentIndex - 1).clamp(0, orders.length - 1);
+        final prevIndex = currentIndex == -1 ? 0 : (currentIndex - 1).clamp(0, orders.length - 1);
         _selectOrder(orders[prevIndex], updateUrl: true);
+        return KeyEventResult.handled;
+      }
+
+      if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
+        final order = _selectedOrder ?? orders.first;
+        final isWide = MediaQuery.sizeOf(context).width >= 800;
+        _showOrderDetails(order, isWide);
         return KeyEventResult.handled;
       }
     }
@@ -496,6 +508,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final isWide = width >= 800;
 
     return Focus(
+      focusNode: _screenFocusNode,
       onKeyEvent: _handleKeyEvent,
       autofocus: true,
       child: AdminLayout(
@@ -776,14 +789,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
       );
     }
 
-    // MODO TARJETAS (MÓVIL O TOGGLE SPLIT)
-    final itemCount = pageItems.length;
-
-    return SliverList(
-      delegate: SliverChildBuilderDelegate((context, index) {
-        if (index < pageItems.length) {
+    // MODO TARJETAS (RESPONSIVE GRID EN DESKTOP, LIST EN MÓVIL)
+    if (isWide) {
+      return SliverGrid(
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 440,
+          mainAxisExtent: 220,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
           final order = pageItems[index];
-          final isSelected = isWide && selectedOrder?.id == order.id;
+          final isSelected = selectedOrder?.id == order.id;
 
           return AdminOrderCard(
             order: order,
@@ -796,6 +813,33 @@ class _OrdersScreenState extends State<OrdersScreen> {
             onTap: () => _showOrderDetails(order, isWide),
             onUpdateStatus: (o, s) => _updateOrderStatus(o, s),
             onPrint: () => _printOrderTicket(order),
+          );
+        }, childCount: pageItems.length),
+      );
+    }
+
+    final itemCount = pageItems.length;
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate((context, index) {
+        if (index < pageItems.length) {
+          final order = pageItems[index];
+          final isSelected = isWide && selectedOrder?.id == order.id;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: AdminOrderCard(
+              order: order,
+              isProcessing:
+                  cubit.state.isOrderProcessing(order.id) ||
+                  state.isBackgroundLoading,
+              isGeneratingPDF: state.isGeneratingPDF(order.id),
+              isSelected: isSelected,
+              isLoyaltyEnabled: isLoyaltyEnabled,
+              onTap: () => _showOrderDetails(order, isWide),
+              onUpdateStatus: (o, s) => _updateOrderStatus(o, s),
+              onPrint: () => _printOrderTicket(order),
+            ),
           );
         }
 

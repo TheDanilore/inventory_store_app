@@ -5,12 +5,14 @@ import 'package:url_launcher/url_launcher.dart';
 
 class SupplierCard extends StatefulWidget {
   final SupplierEntity supplier;
+  final bool isSelected;
   final VoidCallback onEdit;
   final VoidCallback onToggleStatus;
 
   const SupplierCard({
     super.key,
     required this.supplier,
+    this.isSelected = false,
     required this.onEdit,
     required this.onToggleStatus,
   });
@@ -68,19 +70,25 @@ class _SupplierCardState extends State<SupplierCard> {
         curve: Curves.easeOut,
         transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: widget.isSelected
+              ? AppColors.teal.withValues(alpha: 0.04)
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: _isHovered
-                ? AppColors.teal.withValues(alpha: 0.35)
-                : AppColors.border,
-            width: _isHovered ? 1.5 : 1.0,
+            color: widget.isSelected
+                ? AppColors.teal
+                : _isHovered
+                    ? AppColors.teal.withValues(alpha: 0.35)
+                    : AppColors.border,
+            width: (widget.isSelected || _isHovered) ? 1.5 : 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: _isHovered ? 0.06 : 0.025),
-              blurRadius: _isHovered ? 14 : 8,
-              offset: Offset(0, _isHovered ? 4 : 2),
+              color: Colors.black.withValues(
+                alpha: widget.isSelected ? 0.08 : (_isHovered ? 0.06 : 0.025),
+              ),
+              blurRadius: (widget.isSelected || _isHovered) ? 14 : 8,
+              offset: Offset(0, (widget.isSelected || _isHovered) ? 4 : 2),
             ),
           ],
         ),

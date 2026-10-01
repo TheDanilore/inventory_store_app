@@ -4,6 +4,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class SupplierCreditCard extends StatefulWidget {
   final SupplierCreditEntity account;
+  final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback? onPay;
   final VoidCallback? onViewHistory;
@@ -11,6 +12,7 @@ class SupplierCreditCard extends StatefulWidget {
   const SupplierCreditCard({
     super.key,
     required this.account,
+    this.isSelected = false,
     required this.onTap,
     this.onPay,
     this.onViewHistory,
@@ -52,21 +54,27 @@ class _SupplierCreditCardState extends State<SupplierCreditCard> {
         curve: Curves.easeOut,
         transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: widget.isSelected
+              ? AppColors.teal.withValues(alpha: 0.04)
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: account.isMaxedOut
-                ? AppColors.danger.withValues(alpha: 0.5)
-                : (_isHovered
-                    ? AppColors.primary.withValues(alpha: 0.3)
-                    : AppColors.border),
-            width: _isHovered ? 1.5 : 1,
+            color: widget.isSelected
+                ? AppColors.teal
+                : account.isMaxedOut
+                    ? AppColors.danger.withValues(alpha: 0.5)
+                    : (_isHovered
+                        ? AppColors.teal.withValues(alpha: 0.35)
+                        : AppColors.border),
+            width: (widget.isSelected || _isHovered) ? 1.5 : 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: _isHovered ? 0.08 : 0.03),
-              blurRadius: _isHovered ? 14 : 8,
-              offset: Offset(0, _isHovered ? 4 : 2),
+              color: Colors.black.withValues(
+                alpha: widget.isSelected ? 0.08 : (_isHovered ? 0.08 : 0.03),
+              ),
+              blurRadius: (widget.isSelected || _isHovered) ? 14 : 8,
+              offset: Offset(0, (widget.isSelected || _isHovered) ? 4 : 2),
             ),
           ],
         ),

@@ -51,7 +51,10 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     _pendingTargetEntryId = widget.targetEntryId;
     _checkDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<InventoryEntriesCubit>().init();
+      if (mounted) {
+        _screenFocusNode.requestFocus();
+        context.read<InventoryEntriesCubit>().init();
+      }
     });
   }
 
@@ -244,30 +247,43 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
       }
       if (_searchFocusNode.hasFocus) {
         _searchFocusNode.unfocus();
+        _screenFocusNode.requestFocus();
         return KeyEventResult.handled;
       }
     }
 
-    // Flechas arriba y abajo para navegar entradas en split-view
+    // Flechas arriba y abajo para navegar entradas y [Enter] para abrir detalles
     final state = context.read<InventoryEntriesCubit>().state;
-    if (state is InventoryEntriesLoaded &&
-        state.entries.isNotEmpty &&
-        !_isTableView) {
-      final entries = state.entries;
+    final loadedState =
+        state is InventoryEntriesLoaded ? state : _lastLoadedState;
+    if (loadedState != null && loadedState.entries.isNotEmpty) {
+      final entries = loadedState.entries;
       final currentIndex =
           _selectedEntry != null
               ? entries.indexWhere((e) => e.id == _selectedEntry!.id)
               : -1;
 
       if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-        final nextIndex = (currentIndex + 1).clamp(0, entries.length - 1);
+        final nextIndex = currentIndex == -1 ? 0 : (currentIndex + 1).clamp(0, entries.length - 1);
         _selectEntry(entries[nextIndex], updateUrl: true);
         return KeyEventResult.handled;
       }
 
       if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-        final prevIndex = (currentIndex - 1).clamp(0, entries.length - 1);
+        final prevIndex = currentIndex == -1 ? 0 : (currentIndex - 1).clamp(0, entries.length - 1);
         _selectEntry(entries[prevIndex], updateUrl: true);
+        return KeyEventResult.handled;
+      }
+
+      if (event.logicalKey == LogicalKeyboardKey.enter ||
+          event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+        final entry = _selectedEntry ?? entries.first;
+        final isTablet = MediaQuery.sizeOf(context).width >= 800;
+        if (isTablet) {
+          _openDesktopDetailSheet(entry);
+        } else {
+          _showDetailBottomSheet(context, entry);
+        }
         return KeyEventResult.handled;
       }
     }
@@ -796,7 +812,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                                   ),
                                 )
                                 : isTablet
-                                ? _buildTabletSplitLayout(
+                                ? _buildTabletGridLayout(
                                   context,
                                   currentState,
                                   displayEntries,
@@ -826,65 +842,28 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     );
   }
 
-  Widget _buildTabletSplitLayout(
+  Widget _buildTabletGridLayout(
     BuildContext context,
     InventoryEntriesLoaded state,
     List<InventoryEntryEntity> displayEntries,
   ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Panel izquierdo: Lista de tarjetas
-        Expanded(
-          flex: 4,
-          child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            itemCount: displayEntries.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (context, i) {
-              final entry = displayEntries[i];
-              return _EntryCard(
-                entry: entry,
-                isSelected: _selectedEntry?.id == entry.id,
-                onTap: () => _onEntryTapped(context, entry, true),
-              );
-            },
-          ),
-        ),
-        Container(width: 1, color: AppColors.border),
-        // Panel derecho: Detalle
-        Expanded(
-          flex: 6,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child:
-                _selectedEntry == null
-                    ? const AppEmptyState(
-                      key: ValueKey('empty_detail'),
-                      icon: Icons.receipt_long_rounded,
-                      title: 'Ninguna Entrada Seleccionada',
-                      message:
-                          'Selecciona una entrada del panel izquierdo para ver sus detalles.',
-                    )
-                    : Container(
-                      key: ValueKey(_selectedEntry!.id),
-                      margin: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: InventoryEntryDetailSheet(
-                        entry: _selectedEntry!,
-                        isBottomSheet: false,
-                        loadItems:
-                            () => _loadEntryItems(_selectedEntry!.id, null),
-                      ),
-                    ),
-          ),
-        ),
-      ],
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 440,
+        mainAxisExtent: 180,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: displayEntries.length,
+      itemBuilder: (context, i) {
+        final entry = displayEntries[i];
+        return _EntryCard(
+          entry: entry,
+          isSelected: _selectedEntry?.id == entry.id,
+          onTap: () => _openDesktopDetailSheet(entry),
+        );
+      },
     );
   }
 

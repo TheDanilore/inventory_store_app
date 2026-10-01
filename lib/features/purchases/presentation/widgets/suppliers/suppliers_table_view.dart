@@ -7,12 +7,14 @@ import 'package:url_launcher/url_launcher.dart';
 
 class SuppliersTableView extends StatefulWidget {
   final List<SupplierEntity> suppliers;
+  final SupplierEntity? selectedSupplier;
   final Function(SupplierEntity) onEdit;
   final Function(SupplierEntity) onToggleStatus;
 
   const SuppliersTableView({
     super.key,
     required this.suppliers,
+    this.selectedSupplier,
     required this.onEdit,
     required this.onToggleStatus,
   });
@@ -168,6 +170,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                   final supplier = widget.suppliers[index];
 
                   final isHovered = _hoveredId == supplier.id;
+                  final isSelected = widget.selectedSupplier?.id == supplier.id;
 
                   return MouseRegion(
                     cursor: SystemMouseCursors.click,
@@ -182,10 +185,18 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                         duration: const Duration(milliseconds: 140),
                         curve: Curves.easeInOut,
                         decoration: BoxDecoration(
-                          color: isHovered ? const Color(0xFFF8FAFC) : Colors.white,
+                          color: isSelected
+                              ? AppColors.teal.withValues(alpha: 0.05)
+                              : isHovered
+                                  ? const Color(0xFFF8FAFC)
+                                  : Colors.white,
                           border: Border(
                             left: BorderSide(
-                              color: isHovered ? AppColors.teal.withValues(alpha: 0.6) : Colors.transparent,
+                              color: isSelected
+                                  ? AppColors.teal
+                                  : isHovered
+                                      ? AppColors.teal.withValues(alpha: 0.6)
+                                      : Colors.transparent,
                               width: 3.5,
                             ),
                           ),
