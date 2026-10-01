@@ -246,7 +246,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       searchByIngredient: state.searchByIngredient,
       limit: AdminCatalogState.pageSize,
       offset: offset,
-      sortByPriceAsc: true,
+      sortByPriceAsc: state.sortOption == CatalogSortOption.priceAsc,
       stockFilter: state.stockFilter,
       sortOption: state.sortOption,
     );
@@ -409,9 +409,12 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         categoryId: state.selectedCategoryId,
         brandId: state.selectedBrandId,
         isActive: state.filterIsActive,
+        searchByIngredient: state.searchByIngredient,
         limit: 50,
         offset: 0,
-        sortByPriceAsc: true,
+        sortByPriceAsc: state.sortOption == CatalogSortOption.priceAsc,
+        stockFilter: state.stockFilter,
+        sortOption: state.sortOption,
       );
 
       final allProducts = result.fold(

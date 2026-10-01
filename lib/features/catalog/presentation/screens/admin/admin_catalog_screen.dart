@@ -322,8 +322,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   final headerSliver = SliverPersistentHeader(
                     pinned: true,
                     delegate: _CatalogHeaderDelegate(
-                      minHeight: 68.0,
-                      maxHeight: state.searchByIngredient ? 120.0 : 68.0,
+                      minHeight: 70.0,
+                      maxHeight: state.searchByIngredient ? 122.0 : 70.0,
                       isExporting: state.actionState == ViewState.loading,
                       searchByIngredient: state.searchByIngredient,
                       child: Container(
@@ -365,9 +365,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     ),
                   );
 
-                  final chipsSliver = ((state.categories.isNotEmpty ||
-                              state.brands.isNotEmpty) &&
-                          !state.searchByIngredient)
+                  final chipsSliver = !state.searchByIngredient
                       ? SliverToBoxAdapter(
                           child: CategoryChips(
                             categories: state.categories,
@@ -546,7 +544,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               Widget catalogBody = Column(
                 children: [
                   Expanded(child: mainContent),
-                  if (state.products.isNotEmpty && state.totalPages > 1)
+                  if (state.products.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                       decoration: BoxDecoration(

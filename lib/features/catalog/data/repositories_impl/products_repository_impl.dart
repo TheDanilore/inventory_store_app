@@ -148,13 +148,16 @@ class ProductsRepositoryImpl implements ProductsRepository {
           stockQuery = stockQuery.eq('total_stock', 0);
         }
 
-        // Limitamos a un máximo seguro de 150 IDs para prevenir desbordamiento de URL (HTTP 414 / 431)
-        final summaryRes = await stockQuery.limit(150);
+        // Limitamos a un conjunto seguro de hasta 150 IDs únicos de productos
+        // para prevenir desbordamiento de URL (HTTP 414 / 431) y asegurar que las
+        // múltiples variantes de un producto no reduzcan el número de ítems devueltos.
+        final summaryRes = await stockQuery.limit(400);
         final matchingIds = <String>{};
         for (final row in List<Map<String, dynamic>>.from(summaryRes)) {
           final pid = row['product_id'] as String?;
           if (pid != null && pid.isNotEmpty) {
             matchingIds.add(pid);
+            if (matchingIds.length >= 150) break;
           }
         }
         if (matchingIds.isEmpty) {
