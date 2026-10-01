@@ -1,5 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:fpdart/fpdart.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/features/customers/data/repositories_impl/customers_repository_impl.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
 import 'package:inventory_store_app/features/dashboard/domain/usecases/get_critical_batches_usecase.dart';
 import 'package:inventory_store_app/features/dashboard/domain/usecases/get_inventory_metrics_usecase.dart';
@@ -21,30 +28,58 @@ class DashboardCubit extends Cubit<DashboardState> {
   Future<void> loadDashboardData() async {
     emit(DashboardLoading());
 
-    final inventoryResult = await getInventoryMetrics();
-    final salesResult = await getSalesMetrics(filter: SalesTimeFilter.today);
-    final batchesResult = await getCriticalBatches(daysThreshold: 30);
+    try {
+      // Carga paralela de alto rendimiento (erradica cascada secuencial)
+      final results = await Future.wait([
+        getInventoryMetrics(),
+        getSalesMetrics(filter: SalesTimeFilter.today),
+        getCriticalBatches(daysThreshold: 30),
+        _fetchTopCustomers(limit: 5),
+      ]);
 
-    inventoryResult.fold((failure) => emit(DashboardError(failure.message)), (
-      inventory,
-    ) {
-      salesResult.fold((failure) => emit(DashboardError(failure.message)), (
-        sales,
+      final inventoryResult =
+          results[0] as Either<Failure, InventoryMetricsEntity>;
+      final salesResult = results[1] as Either<Failure, SalesMetricsEntity>;
+      final batchesResult =
+          results[2] as Either<Failure, List<Map<String, dynamic>>>;
+      final topCustomers = results[3] as List<CustomerEntity>;
+
+      inventoryResult.fold((failure) => emit(DashboardError(failure.message)), (
+        inventory,
       ) {
-        batchesResult.fold((failure) => emit(DashboardError(failure.message)), (
-          batches,
+        salesResult.fold((failure) => emit(DashboardError(failure.message)), (
+          sales,
         ) {
-          emit(
-            DashboardLoaded(
-              inventory: inventory,
-              sales: sales,
-              criticalBatches: batches,
-              salesFilter: SalesTimeFilter.today,
-            ),
+          batchesResult.fold(
+            (failure) => emit(DashboardError(failure.message)),
+            (batches) {
+              emit(
+                DashboardLoaded(
+                  inventory: inventory,
+                  sales: sales,
+                  criticalBatches: batches,
+                  topCustomers: topCustomers,
+                  salesFilter: SalesTimeFilter.today,
+                ),
+              );
+            },
           );
         });
       });
-    });
+    } catch (e, stack) {
+      LoggerService.e('Error cargando dashboard', error: e, stackTrace: stack);
+      emit(DashboardError('Error inesperado al cargar el dashboard: $e'));
+    }
+  }
+
+  Future<List<CustomerEntity>> _fetchTopCustomers({int limit = 5}) async {
+    try {
+      final repo = CustomersRepositoryImpl();
+      return await repo.getTopCustomers(limit);
+    } catch (e) {
+      LoggerService.e('Error cargando top clientes para dashboard: $e');
+      return [];
+    }
   }
 
   Future<void> updateSalesFilter(SalesTimeFilter filter) async {

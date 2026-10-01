@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -14,6 +15,7 @@ import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboa
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_cards.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_skeleton.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/admin_goal_dialog.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/top_customers_card.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -31,20 +33,77 @@ class DashboardScreen extends StatelessWidget {
 class _DashboardScreenContent extends StatelessWidget {
   const _DashboardScreenContent();
 
+  bool _isTextFieldFocused() {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    return primaryFocus != null && primaryFocus.context?.widget is EditableText;
+  }
+
   void _openGoalDialog(
     BuildContext context,
     double currentAmount,
     double targetAmount,
   ) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AdminGoalDialog(
-          currentAmount: currentAmount,
-          targetAmount: targetAmount,
-        );
-      },
-    );
+    final isDesktop = MediaQuery.of(context).size.width >= 720;
+
+    if (isDesktop) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            backgroundColor: AppColors.surface,
+            elevation: 16,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: AdminGoalDialog(
+                currentAmount: currentAmount,
+                targetAmount: targetAmount,
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 10),
+                  // Drag handle
+                  Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  AdminGoalDialog(
+                    currentAmount: currentAmount,
+                    targetAmount: targetAmount,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
   }
 
   @override
@@ -53,102 +112,167 @@ class _DashboardScreenContent extends StatelessWidget {
     final adminGoalTarget = config.getDouble('admin_goal_target', 2600.0);
     final adminGoalCurrent = config.getDouble('admin_goal_current', 0.0);
 
-    return AdminLayout(
-      title: 'Dashboard',
-      showBackButton: true,
-      showDrawerButton: true,
-      showProfileButton: true,
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: () async {
-          if (!kIsWeb) {
-            Vibration.vibrate(duration: 50, amplitude: 128);
-          }
-          await context.read<DashboardCubit>().loadDashboardData();
+    return CallbackShortcuts(
+      bindings: {
+        // Atajo R: Recargar Dashboard
+        const SingleActivator(LogicalKeyboardKey.keyR): () {
+          if (_isTextFieldFocused()) return;
+          context.read<DashboardCubit>().loadDashboardData();
         },
-        child: BlocBuilder<DashboardCubit, DashboardState>(
-          builder: (context, state) {
-            if (state is DashboardInitial || state is DashboardLoading) {
-              return const SingleChildScrollView(
-                physics: AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
-                child: DashboardSkeleton(),
-              );
-            }
-
-            if (state is DashboardError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        size: 48,
-                        color: AppColors.error,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        state.message,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppColors.error),
-                      ),
-                      const SizedBox(height: 24),
-                      FilledButton.icon(
-                        onPressed:
-                            () =>
-                                context
-                                    .read<DashboardCubit>()
-                                    .loadDashboardData(),
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Reintentar'),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            if (state is DashboardLoaded) {
-              return LayoutBuilder(
-                builder: (context, constraints) {
-                  final isDesktop = constraints.maxWidth >= 1100;
-                  final isTablet = constraints.maxWidth >= 720;
-
-                  if (isDesktop) {
-                    return _buildDesktopLayout(
-                      context,
-                      adminGoalCurrent,
-                      adminGoalTarget,
-                      state,
-                    );
+        // Atajos 1-4: Filtros temporales de ventas
+        const SingleActivator(LogicalKeyboardKey.digit1): () {
+          if (_isTextFieldFocused()) return;
+          context.read<DashboardCubit>().updateSalesFilter(SalesTimeFilter.today);
+        },
+        const SingleActivator(LogicalKeyboardKey.digit2): () {
+          if (_isTextFieldFocused()) return;
+          context.read<DashboardCubit>().updateSalesFilter(SalesTimeFilter.thisWeek);
+        },
+        const SingleActivator(LogicalKeyboardKey.digit3): () {
+          if (_isTextFieldFocused()) return;
+          context.read<DashboardCubit>().updateSalesFilter(SalesTimeFilter.thisMonth);
+        },
+        const SingleActivator(LogicalKeyboardKey.digit4): () {
+          if (_isTextFieldFocused()) return;
+          context.read<DashboardCubit>().updateSalesFilter(SalesTimeFilter.allTime);
+        },
+        // Atajo G o M: Abrir meta de ahorro
+        const SingleActivator(LogicalKeyboardKey.keyG): () {
+          if (_isTextFieldFocused()) return;
+          _openGoalDialog(context, adminGoalCurrent, adminGoalTarget);
+        },
+        const SingleActivator(LogicalKeyboardKey.keyM): () {
+          if (_isTextFieldFocused()) return;
+          _openGoalDialog(context, adminGoalCurrent, adminGoalTarget);
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: AdminLayout(
+          title: 'Dashboard',
+          showBackButton: true,
+          showDrawerButton: true,
+          showProfileButton: true,
+          actions: [
+            // Botón rápido de recarga en el header con tooltip de atajo [R]
+            Tooltip(
+              message: 'Recargar métricas (Atajo: R)',
+              child: IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                onPressed: () async {
+                  if (!kIsWeb) {
+                    Vibration.vibrate(duration: 40, amplitude: 90);
                   }
-                  if (isTablet) {
-                    return _buildTabletLayout(
-                      context,
-                      adminGoalCurrent,
-                      adminGoalTarget,
-                      state,
-                    );
-                  }
-                  return _buildMobileLayout(
-                    context,
-                    adminGoalCurrent,
-                    adminGoalTarget,
-                    state,
-                  );
+                  await context.read<DashboardCubit>().loadDashboardData();
                 },
-              );
-            }
+              ),
+            ),
+          ],
+          body: RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: () async {
+              if (!kIsWeb) {
+                Vibration.vibrate(duration: 50, amplitude: 128);
+              }
+              await context.read<DashboardCubit>().loadDashboardData();
+            },
+            child: BlocBuilder<DashboardCubit, DashboardState>(
+              builder: (context, state) {
+                if (state is DashboardInitial || state is DashboardLoading) {
+                  return const SingleChildScrollView(
+                    physics: AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(20, 16, 20, 32),
+                    child: DashboardSkeleton(),
+                  );
+                }
 
-            return const SizedBox.shrink();
-          },
+                if (state is DashboardError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.error_outline_rounded,
+                              size: 48,
+                              color: AppColors.error,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            state.message,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          FilledButton.icon(
+                            onPressed: () => context
+                                .read<DashboardCubit>()
+                                .loadDashboardData(),
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Reintentar conexión'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                if (state is DashboardLoaded) {
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isDesktop = constraints.maxWidth >= 1100;
+                      final isTablet = constraints.maxWidth >= 720;
+
+                      if (isDesktop) {
+                        return _buildDesktopLayout(
+                          context,
+                          adminGoalCurrent,
+                          adminGoalTarget,
+                          state,
+                        );
+                      }
+                      if (isTablet) {
+                        return _buildTabletLayout(
+                          context,
+                          adminGoalCurrent,
+                          adminGoalTarget,
+                          state,
+                        );
+                      }
+                      return _buildMobileLayout(
+                        context,
+                        adminGoalCurrent,
+                        adminGoalTarget,
+                        state,
+                      );
+                    },
+                  );
+                }
+
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
         ),
       ),
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // DESKTOP: PRO POWER-USER ERP TOOL (HERO 4-KPIS + BALANCED 2-COL + TOP CLIENTS)
+  // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildDesktopLayout(
     BuildContext context,
     double goalCurrent,
@@ -169,40 +293,75 @@ class _DashboardScreenContent extends StatelessWidget {
                   criticalBatchesCount: state.criticalBatches.length,
                 ),
                 const SizedBox(height: 20),
+
+                // FILA HERO SUPERIOR (4 KPIs ejecutivos con balance visual)
+                Row(
+                  children: [
+                    Expanded(
+                      child: KpiCard(
+                        title: 'Ventas Totales',
+                        value: state.sales.totalSales.toString(),
+                        subtitle: 'Órdenes en período',
+                        icon: Icons.receipt_long_rounded,
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primary.withValues(alpha: 0.8),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: KpiCard(
+                        title: 'Ticket Promedio',
+                        value: 'S/ ${state.sales.averageTicket.toStringAsFixed(2)}',
+                        subtitle: 'Gasto medio por orden',
+                        icon: Icons.calculate_rounded,
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.teal,
+                            AppColors.teal.withValues(alpha: 0.8),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: KpiCard(
+                        title: 'Stock Total',
+                        value: state.inventory.totalStock.toString(),
+                        subtitle: '${state.inventory.totalProducts} productos activos',
+                        icon: Icons.inventory_2_rounded,
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.info,
+                            AppColors.info.withValues(alpha: 0.85),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: AdminGoalCard(
+                        currentAmount: goalCurrent,
+                        targetAmount: goalTarget,
+                        onAddPressed: () => _openGoalDialog(
+                          context,
+                          goalCurrent,
+                          goalTarget,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // CUERPO PRINCIPAL (Simetría balanceada 6:6)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      flex: 4,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          AdminGoalCard(
-                            currentAmount: goalCurrent,
-                            targetAmount: goalTarget,
-                            onAddPressed:
-                                () => _openGoalDialog(
-                                  context,
-                                  goalCurrent,
-                                  goalTarget,
-                                ),
-                          ),
-                          const SizedBox(height: 20),
-                          if (state.criticalBatches.isNotEmpty) ...[
-                            ExpiringBatchesCard(batches: state.criticalBatches),
-                            const SizedBox(height: 20),
-                          ],
-                          const SectionHeader(
-                            icon: Icons.inventory_2_rounded,
-                            title: 'Inventario',
-                            subtitle: 'Valorización y proyecciones de stock',
-                          ),
-                          const SizedBox(height: 12),
-                          _buildInventoryContent(state.inventory),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 24),
+                    // Columna Izquierda: Tracción de Ventas y Clientes VIP
                     Expanded(
                       flex: 6,
                       child: Column(
@@ -214,13 +373,40 @@ class _DashboardScreenContent extends StatelessWidget {
                               const SectionHeader(
                                 icon: Icons.point_of_sale_rounded,
                                 title: 'Ventas Registradas',
-                                subtitle: 'Órdenes con estado COMPLETADO',
+                                subtitle: 'Facturación con estado COMPLETADO',
                               ),
-                              _buildSalesFilters(context, state),
+                              _buildSalesFilters(context, state, isDesktop: true),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
                           _buildSalesContent(state.sales, state.isSalesLoading),
+                          const SizedBox(height: 24),
+                          // NUEVA SECCIÓN ESTELAR: CLIENTES QUE MÁS COMPRAN
+                          TopCustomersCard(
+                            customers: state.topCustomers,
+                            displayMode: TopCustomersDisplayMode.desktop,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    // Columna Derecha: Inventario, Lotes y Proyecciones de Margen
+                    Expanded(
+                      flex: 6,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (state.criticalBatches.isNotEmpty) ...[
+                            ExpiringBatchesCard(batches: state.criticalBatches),
+                            const SizedBox(height: 20),
+                          ],
+                          const SectionHeader(
+                            icon: Icons.bar_chart_rounded,
+                            title: 'Inventario & Proyecciones',
+                            subtitle: 'Valorización y margen bruto estimado',
+                          ),
+                          const SizedBox(height: 14),
+                          _buildInventoryContent(state.inventory),
                         ],
                       ),
                     ),
@@ -234,6 +420,9 @@ class _DashboardScreenContent extends StatelessWidget {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // TABLET: HYBRID EFFICIENCY (BALANCED 2-COL + MODALS CONSTRAINED)
+  // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildTabletLayout(
     BuildContext context,
     double goalCurrent,
@@ -244,63 +433,72 @@ class _DashboardScreenContent extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
           sliver: SliverToBoxAdapter(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  flex: 4,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _HealthSummaryBar(
-                        lowStockCount: state.inventory.lowStockProducts,
-                        criticalBatchesCount: state.criticalBatches.length,
-                      ),
-                      const SizedBox(height: 16),
-                      AdminGoalCard(
-                        currentAmount: goalCurrent,
-                        targetAmount: goalTarget,
-                        onAddPressed:
-                            () => _openGoalDialog(
-                              context,
-                              goalCurrent,
-                              goalTarget,
-                            ),
-                      ),
-                      const SizedBox(height: 24),
-                      if (state.criticalBatches.isNotEmpty) ...[
-                        ExpiringBatchesCard(batches: state.criticalBatches),
-                        const SizedBox(height: 24),
-                      ],
-                      const SectionHeader(
-                        icon: Icons.inventory_2_rounded,
-                        title: 'Inventario',
-                        subtitle: 'Valorización y proyecciones de stock',
-                      ),
-                      const SizedBox(height: 12),
-                      _buildInventoryContent(state.inventory),
-                    ],
+                _HealthSummaryBar(
+                  lowStockCount: state.inventory.lowStockProducts,
+                  criticalBatchesCount: state.criticalBatches.length,
+                ),
+                const SizedBox(height: 16),
+                AdminGoalCard(
+                  currentAmount: goalCurrent,
+                  targetAmount: goalTarget,
+                  onAddPressed: () => _openGoalDialog(
+                    context,
+                    goalCurrent,
+                    goalTarget,
                   ),
                 ),
-                const SizedBox(width: 32),
-                Expanded(
-                  flex: 6,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SectionHeader(
-                        icon: Icons.point_of_sale_rounded,
-                        title: 'Ventas Registradas',
-                        subtitle: 'Órdenes con estado COMPLETADO',
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SectionHeader(
+                            icon: Icons.point_of_sale_rounded,
+                            title: 'Ventas',
+                            subtitle: 'Órdenes completadas',
+                          ),
+                          const SizedBox(height: 12),
+                          _buildSalesFilters(context, state),
+                          const SizedBox(height: 14),
+                          _buildSalesContent(state.sales, state.isSalesLoading),
+                          const SizedBox(height: 20),
+                          TopCustomersCard(
+                            customers: state.topCustomers,
+                            displayMode: TopCustomersDisplayMode.tablet,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      _buildSalesFilters(context, state),
-                      const SizedBox(height: 16),
-                      _buildSalesContent(state.sales, state.isSalesLoading),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (state.criticalBatches.isNotEmpty) ...[
+                            ExpiringBatchesCard(batches: state.criticalBatches),
+                            const SizedBox(height: 20),
+                          ],
+                          const SectionHeader(
+                            icon: Icons.inventory_2_rounded,
+                            title: 'Inventario',
+                            subtitle: 'Stock y márgenes',
+                          ),
+                          const SizedBox(height: 12),
+                          _buildInventoryContent(state.inventory),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -310,6 +508,9 @@ class _DashboardScreenContent extends StatelessWidget {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // MOBILE: APPLE HIG / IOS PREMIUM (THUMB-ZONE FIRST + BOTTOMSHEET GESTURES)
+  // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildMobileLayout(
     BuildContext context,
     double goalCurrent,
@@ -320,7 +521,7 @@ class _DashboardScreenContent extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
               _HealthSummaryBar(
@@ -331,13 +532,12 @@ class _DashboardScreenContent extends StatelessWidget {
               AdminGoalCard(
                 currentAmount: goalCurrent,
                 targetAmount: goalTarget,
-                onAddPressed:
-                    () => _openGoalDialog(context, goalCurrent, goalTarget),
+                onAddPressed: () => _openGoalDialog(context, goalCurrent, goalTarget),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               if (state.criticalBatches.isNotEmpty) ...[
                 ExpiringBatchesCard(batches: state.criticalBatches),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
               ],
               const SectionHeader(
                 icon: Icons.inventory_2_rounded,
@@ -349,28 +549,31 @@ class _DashboardScreenContent extends StatelessWidget {
             ]),
           ),
         ),
+        // Sticky Header de Ventas con Filtros táctiles optimizados
         SliverPersistentHeader(
           pinned: true,
           delegate: _StickyHeaderDelegate(
             child: Row(
               children: [
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
+                    children: [
                       Text(
                         'Ventas',
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       Text(
                         'Órdenes COMPLETADAS',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -382,29 +585,60 @@ class _DashboardScreenContent extends StatelessWidget {
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
-          sliver: SliverToBoxAdapter(
-            child: _buildSalesContent(state.sales, state.isSalesLoading),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              _buildSalesContent(state.sales, state.isSalesLoading),
+              const SizedBox(height: 24),
+              // Clientes destacados en móvil
+              TopCustomersCard(
+                customers: state.topCustomers,
+                displayMode: TopCustomersDisplayMode.mobile,
+              ),
+            ]),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSalesFilters(BuildContext context, DashboardLoaded state) {
+  // ─────────────────────────────────────────────────────────────────────────────
+  // FILTROS DE TIEMPO CON INDICADORES DE TECLADO EN DESKTOP
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildSalesFilters(
+    BuildContext context,
+    DashboardLoaded state, {
+    bool isDesktop = false,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
-      padding: const EdgeInsets.all(2),
+      padding: const EdgeInsets.all(3),
       child: SegmentedButton<SalesTimeFilter>(
-        segments: const [
-          ButtonSegment(value: SalesTimeFilter.today, label: Text('Hoy')),
-          ButtonSegment(value: SalesTimeFilter.thisWeek, label: Text('Sem')),
-          ButtonSegment(value: SalesTimeFilter.thisMonth, label: Text('Mes')),
-          ButtonSegment(value: SalesTimeFilter.allTime, label: Text('Hist')),
+        segments: [
+          ButtonSegment(
+            value: SalesTimeFilter.today,
+            label: Text(isDesktop ? 'Hoy [1]' : 'Hoy'),
+            tooltip: isDesktop ? 'Filtrar por hoy (Atajo: 1)' : null,
+          ),
+          ButtonSegment(
+            value: SalesTimeFilter.thisWeek,
+            label: Text(isDesktop ? 'Sem [2]' : 'Sem'),
+            tooltip: isDesktop ? 'Filtrar por semana (Atajo: 2)' : null,
+          ),
+          ButtonSegment(
+            value: SalesTimeFilter.thisMonth,
+            label: Text(isDesktop ? 'Mes [3]' : 'Mes'),
+            tooltip: isDesktop ? 'Filtrar por mes (Atajo: 3)' : null,
+          ),
+          ButtonSegment(
+            value: SalesTimeFilter.allTime,
+            label: Text(isDesktop ? 'Hist [4]' : 'Hist'),
+            tooltip: isDesktop ? 'Filtrar histórico (Atajo: 4)' : null,
+          ),
         ],
         selected: {state.salesFilter},
         showSelectedIcon: false,
@@ -415,8 +649,8 @@ class _DashboardScreenContent extends StatelessWidget {
           context.read<DashboardCubit>().updateSalesFilter(set.first);
         },
         style: ButtonStyle(
-          visualDensity: VisualDensity.compact,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: isDesktop ? VisualDensity.compact : VisualDensity.comfortable,
+          tapTargetSize: MaterialTapTargetSize.padded,
           backgroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
               return AppColors.primary;
@@ -434,7 +668,7 @@ class _DashboardScreenContent extends StatelessWidget {
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           textStyle: WidgetStateProperty.all(
-            const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+            const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
           ),
         ),
       ),
@@ -444,7 +678,7 @@ class _DashboardScreenContent extends StatelessWidget {
   Widget _buildSalesContent(SalesMetricsEntity sales, bool isSalesLoading) {
     if (isSalesLoading) {
       return Container(
-        height: 300,
+        height: 240,
         alignment: Alignment.center,
         child: const CircularProgressIndicator(),
       );
@@ -470,7 +704,7 @@ class _DashboardScreenContent extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
               flex: 3,
               child: KpiCard(
@@ -506,7 +740,7 @@ class _DashboardScreenContent extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         GananciaBrutaCard(
           gananciaBruta: sales.totalProfit,
           inversion: sales.replacementFund,
@@ -538,7 +772,7 @@ class _DashboardScreenContent extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
               child: KpiCard(
                 title: 'Stock Total',
@@ -567,7 +801,7 @@ class _DashboardScreenContent extends StatelessWidget {
           rightLabel: 'Inversión Total',
           rightValue: 'S/ ${inventory.totalInvestment.toStringAsFixed(2)}',
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         GananciaBrutaCard(
           gananciaBruta: inventory.expectedMaxProfit,
           inversion: inventory.totalInvestment,
@@ -604,7 +838,7 @@ class _DashboardScreenContent extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: KpiCard(
                 title: 'G. Mayorista',
@@ -694,16 +928,16 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
   Widget build(BuildContext context) {
     if (widget.lowStockCount == 0 && widget.criticalBatchesCount == 0) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.25)),
           boxShadow: [
             BoxShadow(
               color: AppColors.success.withValues(alpha: 0.05),
               blurRadius: 10,
-              offset: const Offset(0, 4),
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -716,10 +950,10 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
             ),
             SizedBox(width: 12),
             Text(
-              'Todo bajo control. No hay alertas para hoy.',
+              'Todo bajo control. No hay alertas de stock ni vencimiento para hoy.',
               style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
+                color: AppColors.slate,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -729,14 +963,14 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.25)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.error.withValues(alpha: 0.05),
+            color: AppColors.error.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -747,9 +981,9 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
           ScaleTransition(
             scale: _scaleAnimation,
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.1),
+                color: AppColors.error.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -765,10 +999,10 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Atención requerida',
+                  'Atención requerida en almacén',
                   style: TextStyle(
                     color: AppColors.error,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w800,
                     fontSize: 13,
                   ),
                 ),
@@ -776,13 +1010,13 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
                 Text(
                   [
                     if (widget.lowStockCount > 0)
-                      '${widget.lowStockCount} bajo stock',
+                      '${widget.lowStockCount} productos bajo stock',
                     if (widget.criticalBatchesCount > 0)
-                      '${widget.criticalBatchesCount} lotes críticos',
+                      '${widget.criticalBatchesCount} lotes próximos a vencer',
                   ].join(' · '),
                   style: const TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -793,7 +1027,7 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
             onPressed: () => context.go('/inventory'),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.error,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               minimumSize: const Size(48, 48),
             ),
             icon: const Icon(Icons.chevron_right_rounded, size: 18),
@@ -821,16 +1055,16 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   ) {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       child: child,
     );
   }
 
   @override
-  double get maxExtent => 70.0;
+  double get maxExtent => 68.0;
 
   @override
-  double get minExtent => 70.0;
+  double get minExtent => 68.0;
 
   @override
   bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>

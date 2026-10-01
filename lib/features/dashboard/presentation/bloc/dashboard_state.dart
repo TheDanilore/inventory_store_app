@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
@@ -18,6 +19,7 @@ class DashboardLoaded extends DashboardState {
   final InventoryMetricsEntity inventory;
   final SalesMetricsEntity sales;
   final List<Map<String, dynamic>> criticalBatches;
+  final List<CustomerEntity> topCustomers;
   final SalesTimeFilter salesFilter;
   final bool isSalesLoading;
 
@@ -25,6 +27,7 @@ class DashboardLoaded extends DashboardState {
     required this.inventory,
     required this.sales,
     required this.criticalBatches,
+    this.topCustomers = const [],
     required this.salesFilter,
     this.isSalesLoading = false,
   });
@@ -33,6 +36,7 @@ class DashboardLoaded extends DashboardState {
     InventoryMetricsEntity? inventory,
     SalesMetricsEntity? sales,
     List<Map<String, dynamic>>? criticalBatches,
+    List<CustomerEntity>? topCustomers,
     SalesTimeFilter? salesFilter,
     bool? isSalesLoading,
   }) {
@@ -40,6 +44,7 @@ class DashboardLoaded extends DashboardState {
       inventory: inventory ?? this.inventory,
       sales: sales ?? this.sales,
       criticalBatches: criticalBatches ?? this.criticalBatches,
+      topCustomers: topCustomers ?? this.topCustomers,
       salesFilter: salesFilter ?? this.salesFilter,
       isSalesLoading: isSalesLoading ?? this.isSalesLoading,
     );
@@ -50,6 +55,7 @@ class DashboardLoaded extends DashboardState {
     inventory,
     sales,
     criticalBatches,
+    topCustomers,
     salesFilter,
     isSalesLoading,
   ];

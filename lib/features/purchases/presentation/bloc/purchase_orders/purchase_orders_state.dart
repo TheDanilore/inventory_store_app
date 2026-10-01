@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 abstract class PurchaseOrdersState extends Equatable {
-  static const int pageSize = 4;
+  static const int pageSize = 24;
   const PurchaseOrdersState();
 
   @override
