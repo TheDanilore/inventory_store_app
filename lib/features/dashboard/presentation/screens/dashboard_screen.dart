@@ -379,7 +379,11 @@ class _DashboardScreenContent extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 14),
-                          _buildSalesContent(state.sales, state.isSalesLoading),
+                          _buildSalesContent(
+                            state.sales,
+                            state.isSalesLoading,
+                            showKpiRow: false,
+                          ),
                           const SizedBox(height: 24),
                           // NUEVA SECCIÓN ESTELAR: CLIENTES QUE MÁS COMPRAN
                           TopCustomersCard(
@@ -406,7 +410,10 @@ class _DashboardScreenContent extends StatelessWidget {
                             subtitle: 'Valorización y margen bruto estimado',
                           ),
                           const SizedBox(height: 14),
-                          _buildInventoryContent(state.inventory),
+                          _buildInventoryContent(
+                            state.inventory,
+                            showKpiRow: false,
+                          ),
                         ],
                       ),
                     ),
@@ -675,7 +682,11 @@ class _DashboardScreenContent extends StatelessWidget {
     );
   }
 
-  Widget _buildSalesContent(SalesMetricsEntity sales, bool isSalesLoading) {
+  Widget _buildSalesContent(
+    SalesMetricsEntity sales,
+    bool isSalesLoading, {
+    bool showKpiRow = true,
+  }) {
     if (isSalesLoading) {
       return Container(
         height: 240,
@@ -685,46 +696,48 @@ class _DashboardScreenContent extends StatelessWidget {
     }
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: KpiCard(
-                title: 'Ventas Totales',
-                value: sales.totalSales.toString(),
-                subtitle: 'Órdenes despachadas',
-                icon: Icons.receipt_long_rounded,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.primary,
-                    AppColors.primary.withValues(alpha: 0.8),
-                  ],
+        if (showKpiRow) ...[
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: KpiCard(
+                  title: 'Ventas Totales',
+                  value: sales.totalSales.toString(),
+                  subtitle: 'Órdenes despachadas',
+                  icon: Icons.receipt_long_rounded,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.primary,
+                      AppColors.primary.withValues(alpha: 0.8),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 3,
-              child: KpiCard(
-                title: 'Ticket Promedio',
-                value: 'S/ ${sales.averageTicket.toStringAsFixed(2)}',
-                subtitle: 'Gasto por cliente',
-                icon: Icons.calculate_rounded,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.teal,
-                    AppColors.teal.withValues(alpha: 0.8),
-                  ],
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 3,
+                child: KpiCard(
+                  title: 'Ticket Promedio',
+                  value: 'S/ ${sales.averageTicket.toStringAsFixed(2)}',
+                  subtitle: 'Gasto por cliente',
+                  icon: Icons.calculate_rounded,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.teal,
+                      AppColors.teal.withValues(alpha: 0.8),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         Row(
           children: [
             Expanded(
@@ -751,47 +764,52 @@ class _DashboardScreenContent extends StatelessWidget {
     );
   }
 
-  Widget _buildInventoryContent(InventoryMetricsEntity inventory) {
+  Widget _buildInventoryContent(
+    InventoryMetricsEntity inventory, {
+    bool showKpiRow = true,
+  }) {
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: KpiCard(
-                title: 'Catálogo',
-                value: inventory.totalProducts.toString(),
-                subtitle: 'Productos activos',
-                icon: Icons.category_rounded,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.primary,
-                    AppColors.primary.withValues(alpha: 0.8),
-                  ],
+        if (showKpiRow) ...[
+          Row(
+            children: [
+              Expanded(
+                child: KpiCard(
+                  title: 'Catálogo',
+                  value: inventory.totalProducts.toString(),
+                  subtitle: 'Productos activos',
+                  icon: Icons.category_rounded,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.primary,
+                      AppColors.primary.withValues(alpha: 0.8),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: KpiCard(
-                title: 'Stock Total',
-                value: inventory.totalStock.toString(),
-                subtitle: 'Unidades en tiendas',
-                icon: Icons.widgets_rounded,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.teal,
-                    AppColors.teal.withValues(alpha: 0.8),
-                  ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: KpiCard(
+                  title: 'Stock Total',
+                  value: inventory.totalStock.toString(),
+                  subtitle: 'Unidades en tiendas',
+                  icon: Icons.widgets_rounded,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.teal,
+                      AppColors.teal.withValues(alpha: 0.8),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         KpiCardWide(
           title: 'Valorización al Público',
           value: 'S/ ${inventory.retailValue.toStringAsFixed(2)}',

@@ -173,119 +173,15 @@ class TopCustomersCard extends StatelessWidget {
   Widget _buildBody(BuildContext context) {
     switch (displayMode) {
       case TopCustomersDisplayMode.desktop:
-        return _buildDesktopTable(context);
+        return _DesktopTable(
+          customers: customers,
+          onCustomerTap: (customer) => _openCustomerActionSheet(context, customer),
+        );
       case TopCustomersDisplayMode.tablet:
         return _buildTabletList(context);
       case TopCustomersDisplayMode.mobile:
         return _buildMobileList(context);
     }
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // DESKTOP: TABLA DE ALTA DENSIDAD CON HOVER Y MICROINTERACCIONES
-  // ─────────────────────────────────────────────────────────────────────────────
-  Widget _buildDesktopTable(BuildContext context) {
-    final maxRevenue = customers.first.totalRevenue > 0
-        ? customers.first.totalRevenue
-        : 1.0;
-
-    return Column(
-      children: [
-        // Table Header
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          color: AppColors.background.withValues(alpha: 0.6),
-          child: const Row(
-            children: [
-              SizedBox(
-                width: 44,
-                child: Text(
-                  '#',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 4,
-                child: Text(
-                  'CLIENTE',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 2,
-                child: Text(
-                  'PEDIDOS',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 3,
-                child: Text(
-                  'TICKET MEDIO',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 3,
-                child: Text(
-                  'TOTAL FACTURADO',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              SizedBox(width: 80),
-            ],
-          ),
-        ),
-        const Divider(height: 1, color: AppColors.border),
-        // Table Rows
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: customers.length,
-          separatorBuilder: (_, _) =>
-              const Divider(height: 1, color: AppColors.border),
-          itemBuilder: (context, index) {
-            final customer = customers[index];
-            final rank = index + 1;
-            final averageTicket = customer.orderCount > 0
-                ? customer.totalRevenue / customer.orderCount
-                : 0.0;
-            final sharePercent = ((customer.totalRevenue / maxRevenue) * 100)
-                .clamp(0, 100)
-                .toDouble();
-
-            return _DesktopCustomerRow(
-              rank: rank,
-              customer: customer,
-              averageTicket: averageTicket,
-              sharePercent: sharePercent,
-              onTap: () => _openCustomerActionSheet(context, customer),
-            );
-          },
-        ),
-      ],
-    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -639,208 +535,299 @@ class TopCustomersCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FILA DE ESCRITORIO CON HOVER REACTIVO
+// TABLA DE ESCRITORIO CON EXCLUSIÓN MUTUA DE HOVER (0% RIESGO DE DOBLE SOMBREADO)
 // ─────────────────────────────────────────────────────────────────────────────
-class _DesktopCustomerRow extends StatefulWidget {
-  final int rank;
-  final CustomerEntity customer;
-  final double averageTicket;
-  final double sharePercent;
-  final VoidCallback onTap;
+class _DesktopTable extends StatefulWidget {
+  final List<CustomerEntity> customers;
+  final ValueChanged<CustomerEntity> onCustomerTap;
 
-  const _DesktopCustomerRow({
-    required this.rank,
-    required this.customer,
-    required this.averageTicket,
-    required this.sharePercent,
-    required this.onTap,
+  const _DesktopTable({
+    required this.customers,
+    required this.onCustomerTap,
   });
 
   @override
-  State<_DesktopCustomerRow> createState() => _DesktopCustomerRowState();
+  State<_DesktopTable> createState() => _DesktopTableState();
 }
 
-class _DesktopCustomerRowState extends State<_DesktopCustomerRow> {
-  bool _isHovered = false;
+class _DesktopTableState extends State<_DesktopTable> {
+  int? _hoveredRank;
 
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          color: _isHovered
-              ? AppColors.primaryLight.withValues(alpha: 0.3)
-              : Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Row(
-            children: [
-              // Rank
-              SizedBox(
-                width: 44,
-                child: Row(
-                  children: [
-                    if (widget.rank <= 3) ...[
-                      Icon(
-                        Icons.workspace_premium_rounded,
-                        size: 16,
-                        color: widget.rank == 1
-                            ? const Color(0xFFF59E0B)
-                            : widget.rank == 2
-                                ? const Color(0xFF64748B)
-                                : const Color(0xFFB45309),
-                      ),
-                      const SizedBox(width: 4),
-                    ],
-                    Text(
-                      '${widget.rank}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: widget.rank <= 3
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary,
-                      ),
+      onExit: (_) {
+        if (_hoveredRank != null) {
+          setState(() => _hoveredRank = null);
+        }
+      },
+      child: Column(
+        children: [
+          // Table Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            color: AppColors.background.withValues(alpha: 0.6),
+            child: const Row(
+              children: [
+                SizedBox(
+                  width: 44,
+                  child: Text(
+                    '#',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
                     ),
-                  ],
-                ),
-              ),
-              // Customer Avatar + Name
-              Expanded(
-                flex: 4,
-                child: Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        widget.customer.fullName.isNotEmpty
-                            ? widget.customer.fullName[0].toUpperCase()
-                            : 'C',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.customer.fullName,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (widget.customer.phone != null &&
-                              widget.customer.phone!.isNotEmpty)
-                            Text(
-                              widget.customer.phone!,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Orders count
-              Expanded(
-                flex: 2,
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.slateLight.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '${widget.customer.orderCount} ord.',
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.slate,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Average Ticket
-              Expanded(
-                flex: 3,
-                child: Text(
-                  'S/ ${widget.averageTicket.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
                   ),
                 ),
-              ),
-              // Total Facturado
-              Expanded(
-                flex: 3,
-                child: Text(
-                  'S/ ${widget.customer.totalRevenue.toStringAsFixed(2)}',
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.tealDark,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ),
-              // Action Button
-              SizedBox(
-                width: 80,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: IconButton(
-                    tooltip: 'Ver detalle de cliente',
-                    icon: const Icon(
-                      Icons.arrow_forward_rounded,
-                      size: 16,
-                      color: AppColors.primary,
+                Expanded(
+                  flex: 4,
+                  child: Text(
+                    'CLIENTE',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
                     ),
-                    onPressed: widget.onTap,
                   ),
                 ),
-              ),
-            ],
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'PEDIDOS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'TICKET MEDIO',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'TOTAL FACTURADO',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 80),
+              ],
+            ),
           ),
-        ),
+          const Divider(height: 1, color: AppColors.border),
+          // Table Rows con exclusión mutua instantánea (sin desvanecimientos solapados)
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: widget.customers.length,
+            separatorBuilder: (_, _) =>
+                const Divider(height: 1, color: AppColors.border),
+            itemBuilder: (context, index) {
+              final customer = widget.customers[index];
+              final rank = index + 1;
+              final averageTicket = customer.orderCount > 0
+                  ? customer.totalRevenue / customer.orderCount
+                  : 0.0;
+              final isHovered = _hoveredRank == rank;
+
+              return MouseRegion(
+                cursor: SystemMouseCursors.click,
+                onEnter: (_) {
+                  if (_hoveredRank != rank) {
+                    setState(() => _hoveredRank = rank);
+                  }
+                },
+                child: GestureDetector(
+                  onTap: () => widget.onCustomerTap(customer),
+                  child: Container(
+                    color: isHovered
+                        ? AppColors.primaryLight.withValues(alpha: 0.45)
+                        : Colors.transparent,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    child: Row(
+                      children: [
+                        // Rank
+                        SizedBox(
+                          width: 44,
+                          child: Row(
+                            children: [
+                              if (rank <= 3) ...[
+                                Icon(
+                                  Icons.workspace_premium_rounded,
+                                  size: 16,
+                                  color: rank == 1
+                                      ? const Color(0xFFF59E0B)
+                                      : rank == 2
+                                          ? const Color(0xFF64748B)
+                                          : const Color(0xFFB45309),
+                                ),
+                                const SizedBox(width: 4),
+                              ],
+                              Text(
+                                '$rank',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: rank <= 3
+                                      ? AppColors.textPrimary
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Customer Avatar + Name
+                        Expanded(
+                          flex: 4,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  customer.fullName.isNotEmpty
+                                      ? customer.fullName[0].toUpperCase()
+                                      : 'C',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      customer.fullName,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (customer.phone != null &&
+                                        customer.phone!.isNotEmpty)
+                                      Text(
+                                        customer.phone!,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Orders count
+                        Expanded(
+                          flex: 2,
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.slateLight.withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '${customer.orderCount} ord.',
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.slate,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Average Ticket
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            'S/ ${averageTicket.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        // Total Facturado
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            'S/ ${customer.totalRevenue.toStringAsFixed(2)}',
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.tealDark,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ),
+                        // Action Button
+                        SizedBox(
+                          width: 80,
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: IconButton(
+                              tooltip: 'Ver detalle de cliente',
+                              icon: const Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                              onPressed: () => widget.onCustomerTap(customer),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DETALLE DE CLIENTE VIP EN MODAL / BOTTOM SHEET
+// DETALLE DE CLIENTE VIP EN MODAL / BOTTOM SHEET CON BOTÓN DE CIERRE
 // ─────────────────────────────────────────────────────────────────────────────
 class _CustomerDetailView extends StatelessWidget {
   final CustomerEntity customer;
@@ -920,6 +907,12 @@ class _CustomerDetailView extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              // Botón de cierre explícito para mouse en Desktop
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 20),
+                tooltip: 'Cerrar',
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           ),
