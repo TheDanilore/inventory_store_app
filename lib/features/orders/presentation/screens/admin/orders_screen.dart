@@ -596,6 +596,66 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       ),
                     ),
 
+                    // --- 2.5 ENCABEZADO DE NAVEGACIÓN Y CONTADOR (ESTILO COMPRAS / PEDIDOS) ---
+                    if (!state.isLoading && displayOrders.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${displayOrders.length} ${displayOrders.length == 1 ? "pedido" : "pedidos"} en esta página',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (isWide) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: const Text(
+                                  '↑ ↓ navegar',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Text(
+                                'Pág. ${state.currentPage + 1} / ${state.totalPages}',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
                     // --- 3. LISTADO O TABLA PRO ---
                     Expanded(
                       child: RefreshIndicator(
@@ -703,66 +763,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
 
     // MODO TARJETAS (MÓVIL O TOGGLE SPLIT)
-    final itemCount = 1 + pageItems.length;
+    final itemCount = pageItems.length;
 
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        if (index == 0) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(4, 8, 4, 14),
-            child: Row(
-              children: [
-                Text(
-                  '${pageItems.length} pedidos en esta página',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (isWide) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: const Text(
-                      '↑ ↓ navegar',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ),
-                ],
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Text(
-                    'Pág. ${state.currentPage + 1} / ${state.totalPages}',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (index <= pageItems.length) {
-          final order = pageItems[index - 1];
+        if (index < pageItems.length) {
+          final order = pageItems[index];
           final isSelected = isWide && selectedOrder?.id == order.id;
 
           return AdminOrderCard(
