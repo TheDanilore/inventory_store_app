@@ -568,95 +568,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         minHeight: 2,
                       ),
 
-                    // --- 1. BENTO KPI BAR ---
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                      child: _OrdersBentoKpiBar(
-                        pageOrdersCount: state.orders.length,
-                        totalRecords: state.totalRecords,
-                        pageTotalAmount: state.totalAmountCurrentPage,
-                        pendingCount: state.pendingCountCurrentPage,
-                        pendingDebt: state.pendingDebtCurrentPage,
-                        isWide: isWide,
-                      ),
-                    ),
-
-                    // --- 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh) ---
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                      child: _OrdersToolbar(
-                        searchCtrl: _searchCtrl,
-                        searchFocusNode: _searchFocusNode,
-                        onSearchChanged: _onSearchChanged,
-                        cubit: cubit,
-                        state: state,
-                        isWide: isWide,
-                        isTableView: _isTableView,
-                        onToggleTableView: (val) => setState(() => _isTableView = val),
-                      ),
-                    ),
-
-                    // --- 2.5 ENCABEZADO DE NAVEGACIÓN Y CONTADOR (ESTILO COMPRAS / PEDIDOS) ---
-                    if (!state.isLoading && displayOrders.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                        child: Row(
-                          children: [
-                            Text(
-                              '${displayOrders.length} ${displayOrders.length == 1 ? "pedido" : "pedidos"} en esta página',
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            if (isWide) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                                ),
-                                child: const Text(
-                                  '↑ ↓ navegar',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
-                              ),
-                            ],
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
-                              ),
-                              child: Text(
-                                'Pág. ${state.currentPage + 1} / ${state.totalPages}',
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    // --- 3. LISTADO O TABLA PRO ---
+                    // --- 1. CONTENIDO SCROLLEABLE (Métricas, Buscador, Tabla) ---
                     Expanded(
                       child: RefreshIndicator(
                         color: AppColors.primary,
@@ -664,6 +576,106 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         child: CustomScrollView(
                           physics: const AlwaysScrollableScrollPhysics(),
                           slivers: [
+                            // --- 1. BENTO KPI BAR ---
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                                child: _OrdersBentoKpiBar(
+                                  pageOrdersCount: state.orders.length,
+                                  totalRecords: state.totalRecords,
+                                  pageTotalAmount: state.totalAmountCurrentPage,
+                                  pendingCount: state.pendingCountCurrentPage,
+                                  pendingDebt: state.pendingDebtCurrentPage,
+                                  isWide: isWide,
+                                ),
+                              ),
+                            ),
+
+                            // --- 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh) ---
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                                child: _OrdersToolbar(
+                                  searchCtrl: _searchCtrl,
+                                  searchFocusNode: _searchFocusNode,
+                                  onSearchChanged: _onSearchChanged,
+                                  cubit: cubit,
+                                  state: state,
+                                  isWide: isWide,
+                                  isTableView: _isTableView,
+                                  onToggleTableView: (val) =>
+                                      setState(() => _isTableView = val),
+                                ),
+                              ),
+                            ),
+
+                            // --- 2.5 ENCABEZADO DE NAVEGACIÓN Y CONTADOR (ESTILO COMPRAS / PEDIDOS) ---
+                            if (!state.isLoading && displayOrders.isNotEmpty)
+                              SliverToBoxAdapter(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        '${displayOrders.length} ${displayOrders.length == 1 ? "pedido" : "pedidos"} en esta página',
+                                        style: const TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      if (isWide) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.surface,
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                            border: Border.all(
+                                                color: const Color(0xFFE2E8F0)),
+                                          ),
+                                          child: const Text(
+                                            '↑ ↓ navegar',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      const Spacer(),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.surface,
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          border: Border.all(
+                                              color: const Color(0xFFE2E8F0)),
+                                        ),
+                                        child: Text(
+                                          'Pág. ${state.currentPage + 1} / ${state.totalPages}',
+                                          style: const TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                            // --- 3. LISTADO O TABLA PRO ---
                             SliverPadding(
                               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                               sliver: _buildListOrTableSliver(
@@ -724,6 +736,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     if (state.errorMessage.isNotEmpty) {
       return SliverFillRemaining(
+        hasScrollBody: false,
         child: AppEmptyState(
           icon: Icons.error_outline_rounded,
           color: AppColors.error,
@@ -740,6 +753,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     if (pageItems.isEmpty) {
       return const SliverFillRemaining(
+        hasScrollBody: false,
         child: AppEmptyState(
           icon: Icons.receipt_long_rounded,
           title: 'No se encontraron pedidos.',
