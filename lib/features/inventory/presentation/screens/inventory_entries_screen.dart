@@ -1146,6 +1146,25 @@ class _InventoryEntriesToolbar extends StatelessWidget {
     );
   }
 
+  Widget _buildButtonKeyHint(String char) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        char,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
   Widget _buildSearchField() {
     return SizedBox(
       height: 40,
@@ -1369,24 +1388,38 @@ class _InventoryEntriesToolbar extends StatelessWidget {
                   onPressed: onRefresh,
                 ),
                 const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: onNewEntry,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
-                    minimumSize: const Size(0, 40),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                SizedBox(
+                  height: 40,
+                  child: FilledButton.icon(
+                    onPressed: onNewEntry,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                  ),
-                  icon: Icon(hasDraft ? Icons.edit_note_rounded : Icons.add_rounded, size: 17),
-                  label: Text(
-                    hasDraft ? 'Continuar Borrador [N]' : 'Nueva Entrada [N]',
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
+                    icon: Icon(
+                      hasDraft ? Icons.edit_note_rounded : Icons.add_box_rounded,
+                      size: 18,
+                    ),
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          hasDraft ? 'Continuar Borrador' : 'Nueva Entrada',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        _buildButtonKeyHint('N'),
+                      ],
                     ),
                   ),
                 ),
