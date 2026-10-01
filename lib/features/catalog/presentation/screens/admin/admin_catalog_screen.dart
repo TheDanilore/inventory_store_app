@@ -544,31 +544,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               Widget catalogBody = Column(
                 children: [
                   Expanded(child: mainContent),
-                  if (state.products.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        border: const Border(
-                          top: BorderSide(color: AppColors.border, width: 1),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, -2),
-                          ),
-                        ],
-                      ),
-                      child: SafeArea(
-                        top: false,
-                        child: AdminPageBlocks(
-                          currentPage: state.currentPage,
-                          totalPages: state.totalPages,
-                          onPageChanged: cubit.setPage,
-                        ),
-                      ),
-                    ),
                 ],
               );
 
@@ -744,6 +719,31 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             child: bodyContent,
           ),
           floatingActionButton: effectiveFab,
+          bottomNavigationBar: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+            buildWhen: (prev, curr) =>
+                prev.products != curr.products ||
+                prev.currentPage != curr.currentPage ||
+                prev.totalPages != curr.totalPages,
+            builder: (context, state) {
+              if (state.products.isEmpty || state.totalPages < 1) {
+                return const SizedBox.shrink();
+              }
+              return Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  border: const Border(
+                    top: BorderSide(color: AppColors.border, width: 1),
+                  ),
+                ),
+                child: AdminPageBlocks(
+                  currentPage: state.currentPage,
+                  totalPages: state.totalPages,
+                  onPageChanged: cubit.setPage,
+                ),
+              );
+            },
+          ),
         );
       },
     );
