@@ -29,6 +29,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
   late final TabController _mobileTabController;
   late final TabController _tabletTabController;
   final FocusNode _screenFocusNode = FocusNode();
+  final FocusNode _searchFocusNode = FocusNode();
 
   String? _selectedAccountId;
 
@@ -57,6 +58,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
 
   @override
   void dispose() {
+    _searchFocusNode.dispose();
     _screenFocusNode.dispose();
     _mobileTabController.dispose();
     _tabletTabController.dispose();
@@ -122,14 +124,22 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
       return KeyEventResult.ignored;
     }
 
-    // 'N' o Ctrl/Alt+N: Nuevo Movimiento
+    // '/' o Alt+/: Enfocar buscador de movimientos
+    if (event.logicalKey == LogicalKeyboardKey.slash && !isModifier) {
+      _tabletTabController.animateTo(0);
+      _mobileTabController.animateTo(1);
+      _searchFocusNode.requestFocus();
+      return KeyEventResult.handled;
+    }
+
+    // 'N' o Ctrl/Alt+N: Nuevo Movimiento (Side Sheet emergente)
     if ((event.logicalKey == LogicalKeyboardKey.keyN && !isModifier) ||
         (isModifier && event.logicalKey == LogicalKeyboardKey.keyN)) {
       MovementFormSheet.show(context);
       return KeyEventResult.handled;
     }
 
-    // 'C' o Alt+C: Nueva Cuenta
+    // 'C' o Alt+C: Nueva Cuenta (Side Sheet emergente)
     if ((event.logicalKey == LogicalKeyboardKey.keyC && !isModifier) ||
         (isAlt && event.logicalKey == LogicalKeyboardKey.keyC)) {
       AccountFormSheet.show(context);
@@ -173,70 +183,68 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
         return AdminLayout(
           title: 'Cuentas y Bancos',
           showBackButton: true,
-          actions:
-              isMobile
-                  ? [
-                    IconButton(
-                      icon: const Icon(Icons.refresh_rounded),
-                      tooltip: 'Actualizar [R]',
-                      onPressed: _refreshAll,
-                    ),
-                  ]
-                  : [
-                    FilledButton.icon(
-                      onPressed: () => MovementFormSheet.show(context),
-                      icon: const Icon(Icons.add_rounded, size: 18),
-                      label: const Text('Nuevo Movimiento [N]'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.teal,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+          actions: isMobile
+              ? [
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded),
+                    tooltip: 'Actualizar [R]',
+                    onPressed: _refreshAll,
+                  ),
+                ]
+              : [
+                  FilledButton.icon(
+                    onPressed: () => MovementFormSheet.show(context),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Nuevo Movimiento [N]'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.teal,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: () => AccountFormSheet.show(context),
-                      icon: const Icon(
-                        Icons.account_balance_wallet_outlined,
-                        size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => AccountFormSheet.show(context),
+                    icon: const Icon(
+                      Icons.account_balance_wallet_outlined,
+                      size: 16,
+                    ),
+                    label: const Text('Nueva Cuenta [C]'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      side: const BorderSide(color: AppColors.border),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
                       ),
-                      label: const Text('Nueva Cuenta [C]'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textPrimary,
-                        side: const BorderSide(color: Color(0xFFCBD5E1)),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    IconButton(
-                      tooltip: 'Actualizar [R]',
-                      icon: const Icon(Icons.refresh_rounded),
-                      onPressed: _refreshAll,
-                    ),
-                    const SizedBox(width: 4),
-                  ],
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    tooltip: 'Actualizar [R]',
+                    icon: const Icon(Icons.refresh_rounded),
+                    onPressed: _refreshAll,
+                  ),
+                  const SizedBox(width: 4),
+                ],
           floatingActionButton: isMobile ? _buildMobileFab() : null,
           body: Focus(
             focusNode: _screenFocusNode,
             autofocus: true,
             onKeyEvent: _handleKeyEvent,
-            child:
-                isMobile
-                    ? _buildMobileLayout()
-                    : _buildDesktopLayout(isDesktop),
+            child: isMobile
+                ? _buildMobileLayout()
+                : _buildDesktopLayout(isDesktop),
           ),
         );
       },
@@ -281,7 +289,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
           decoration: BoxDecoration(
             color: const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: AppColors.border),
           ),
           child: TabBar(
             controller: _mobileTabController,
@@ -342,6 +350,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
               MovementsTab(
                 showFab: false,
                 onClearAccountFilter: _clearAccountFilter,
+                searchFocusNode: _searchFocusNode,
               ),
               const ShiftsTab(showOpenShiftButton: false),
             ],
@@ -357,16 +366,17 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
       children: [
         // ── Panel Izquierdo: Cuentas Financieras (Master) ───────────
         SizedBox(
-          width: isDesktop ? 380 : 320,
+          width: isDesktop ? 390 : 330,
           child: AccountsTab(
             showFab: false,
             selectedAccountId: _selectedAccountId,
             onSelectAccount: _onSelectAccount,
+            onSelectAll: _clearAccountFilter,
           ),
         ),
 
         // ── Divisor sutil ──────────────────────────────────────────
-        Container(width: 1, color: const Color(0xFFE2E8F0)),
+        Container(width: 1, color: AppColors.border),
 
         // ── Panel Derecho: Movimientos y Turnos (Detail) ───────────
         Expanded(
@@ -379,7 +389,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: TabBar(
                   controller: _tabletTabController,
@@ -429,6 +439,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
                     MovementsTab(
                       showFab: false,
                       onClearAccountFilter: _clearAccountFilter,
+                      searchFocusNode: _searchFocusNode,
                     ),
                     const ShiftsTab(showOpenShiftButton: false),
                   ],

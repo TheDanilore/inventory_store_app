@@ -22,11 +22,13 @@ import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 class MovementsTab extends StatefulWidget {
   final bool showFab;
   final VoidCallback? onClearAccountFilter;
+  final FocusNode? searchFocusNode;
 
   const MovementsTab({
     super.key,
     this.showFab = true,
     this.onClearAccountFilter,
+    this.searchFocusNode,
   });
 
   @override
@@ -355,9 +357,10 @@ class _MovementsTabState extends State<MovementsTab> {
                             ],
                           ),
                           child: TextField(
+                            focusNode: widget.searchFocusNode,
                             onChanged: (val) => movCubit.setSearchText(val),
                             decoration: InputDecoration(
-                              hintText: 'Buscar movimientos...',
+                              hintText: 'Buscar movimientos... [/]',
                               hintStyle: TextStyle(
                                 fontSize: 14,
                                 color: AppColors.textSecondary.withValues(
@@ -517,39 +520,50 @@ class _MovementsTabState extends State<MovementsTab> {
                           : Column(
                             children: [
                               Expanded(
-                                child: RefreshIndicator(
-                                  onRefresh:
-                                      () async => movCubit.fetchMovements(),
-                                  child: AnimationLimiter(
-                                    child: ListView.separated(
-                                      controller: _scrollController,
-                                      padding: const EdgeInsets.fromLTRB(
-                                        16,
-                                        4,
-                                        16,
-                                        16,
-                                      ),
-                                      itemCount: movements.length,
-                                      separatorBuilder:
-                                          (_, _) => const SizedBox(height: 8),
-                                      itemBuilder:
-                                          (_, i) =>
-                                              AnimationConfiguration.staggeredList(
-                                                position: i,
-                                                duration: const Duration(
-                                                  milliseconds: 375,
-                                                ),
-                                                child: SlideAnimation(
-                                                  verticalOffset: 50.0,
-                                                  child: FadeInAnimation(
-                                                    child: _MovementCard(
-                                                      movement: movements[i],
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final isDesktop = constraints.maxWidth >= 720;
+                                    if (isDesktop) {
+                                      return _MovementsDesktopTable(
+                                        movements: movements,
+                                        scrollController: _scrollController,
+                                      );
+                                    }
+                                    return RefreshIndicator(
+                                      onRefresh:
+                                          () async => movCubit.fetchMovements(),
+                                      child: AnimationLimiter(
+                                        child: ListView.separated(
+                                          controller: _scrollController,
+                                          padding: const EdgeInsets.fromLTRB(
+                                            16,
+                                            4,
+                                            16,
+                                            16,
+                                          ),
+                                          itemCount: movements.length,
+                                          separatorBuilder:
+                                              (_, _) => const SizedBox(height: 8),
+                                          itemBuilder:
+                                              (_, i) =>
+                                                  AnimationConfiguration.staggeredList(
+                                                    position: i,
+                                                    duration: const Duration(
+                                                      milliseconds: 300,
+                                                    ),
+                                                    child: SlideAnimation(
+                                                      verticalOffset: 30.0,
+                                                      child: FadeInAnimation(
+                                                        child: _MovementCard(
+                                                          movement: movements[i],
+                                                        ),
+                                                      ),
                                                     ),
                                                   ),
-                                                ),
-                                              ),
-                                    ),
-                                  ),
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
                             ],
@@ -662,7 +676,7 @@ class _DashboardSummary extends StatelessWidget {
                 child: _DashItem(
                   title: 'Ingresos',
                   amount: totalIncome,
-                  color: AppColors.success,
+                  color: AppColors.tealDark,
                   icon: Icons.arrow_upward_rounded,
                 ),
               ),
@@ -680,7 +694,7 @@ class _DashboardSummary extends StatelessWidget {
                 child: _DashItem(
                   title: 'Flujo Neto',
                   amount: balance,
-                  color: balance >= 0 ? AppColors.teal : AppColors.danger,
+                  color: balance >= 0 ? AppColors.tealDark : AppColors.danger,
                   icon: Icons.account_balance_wallet_rounded,
                 ),
               ),
@@ -695,7 +709,7 @@ class _DashboardSummary extends StatelessWidget {
                   if (totalIncome > 0)
                     Expanded(
                       flex: (totalIncome * 100).toInt(),
-                      child: Container(height: 4, color: AppColors.success),
+                      child: Container(height: 4, color: AppColors.teal),
                     ),
                   if (totalExpense > 0)
                     Expanded(
@@ -782,7 +796,7 @@ class _MovementCardState extends State<_MovementCard> {
   Widget build(BuildContext context) {
     final movement = widget.movement;
     final isIncome = movement.movementType == 'INCOME';
-    final color = isIncome ? AppColors.success : AppColors.danger;
+    final color = isIncome ? AppColors.tealDark : AppColors.danger;
     final icon =
         isIncome ? Icons.add_circle_rounded : Icons.remove_circle_rounded;
 
@@ -956,6 +970,299 @@ class _MovementsSkeleton extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// ── Data Table Pro para Desktop y Tablets Horizontales ───────────────────────
+class _MovementsDesktopTable extends StatelessWidget {
+  final List<AccountMovementEntity> movements;
+  final ScrollController scrollController;
+
+  const _MovementsDesktopTable({
+    required this.movements,
+    required this.scrollController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x050F172A),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Column(
+          children: [
+            // Cabecera fija de la tabla
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF8FAFC),
+                border: Border(bottom: BorderSide(color: AppColors.border)),
+              ),
+              child: const Row(
+                children: [
+                  SizedBox(
+                    width: 140,
+                    child: Text(
+                      'FECHA Y HORA',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 4,
+                    child: Text(
+                      'DESCRIPCIÓN / MOTIVO',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 150,
+                    child: Text(
+                      'CUENTA',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 110,
+                    child: Text(
+                      'TIPO',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 120,
+                    child: Text(
+                      'REGISTRADO POR',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 130,
+                    child: Text(
+                      'MONTO (S/)',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Filas
+            Expanded(
+              child: ListView.separated(
+                controller: scrollController,
+                itemCount: movements.length,
+                separatorBuilder: (_, _) => const Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Color(0xFFF1F5F9),
+                ),
+                itemBuilder: (context, index) {
+                  return _DesktopMovementRow(movement: movements[index]);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopMovementRow extends StatefulWidget {
+  final AccountMovementEntity movement;
+  const _DesktopMovementRow({required this.movement});
+
+  @override
+  State<_DesktopMovementRow> createState() => _DesktopMovementRowState();
+}
+
+class _DesktopMovementRowState extends State<_DesktopMovementRow> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = widget.movement;
+    final isIncome = m.movementType == 'INCOME';
+    final isExpense = m.movementType == 'EXPENSE';
+
+    final Color badgeBg = isIncome
+        ? AppColors.teal.withValues(alpha: 0.1)
+        : (isExpense
+            ? AppColors.danger.withValues(alpha: 0.1)
+            : AppColors.info.withValues(alpha: 0.1));
+    final Color badgeColor = isIncome
+        ? AppColors.tealDark
+        : (isExpense ? AppColors.dangerDark : AppColors.info);
+    final String badgeLabel = isIncome
+        ? 'Ingreso'
+        : (isExpense ? 'Egreso' : 'Transfer.');
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Container(
+        color: _isHovered ? const Color(0xFFF8FAFC) : Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            // Fecha y hora
+            SizedBox(
+              width: 140,
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.access_time_rounded,
+                    size: 13,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    DateFormat('dd/MM/yyyy HH:mm', 'es').format(m.createdAt.toLocal()),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Descripción
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Text(
+                  m.description,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            // Cuenta
+            SizedBox(
+              width: 150,
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.account_balance_wallet_rounded,
+                    size: 13,
+                    color: AppColors.tealDark,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      m.accountName ?? 'Sin cuenta',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Tipo badge
+            SizedBox(
+              width: 110,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    badgeLabel,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: badgeColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Operador
+            SizedBox(
+              width: 120,
+              child: Text(
+                m.createdByName?.split(' ').first ?? 'Sistema',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Monto
+            SizedBox(
+              width: 130,
+              child: Text(
+                '${isIncome ? '+' : '-'} S/ ${m.amount.toStringAsFixed(2)}',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  color: isIncome ? AppColors.tealDark : AppColors.danger,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

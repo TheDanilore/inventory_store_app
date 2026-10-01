@@ -16,12 +16,14 @@ class AccountsTab extends StatefulWidget {
   final bool showFab;
   final String? selectedAccountId;
   final ValueChanged<FinancialAccountEntity>? onSelectAccount;
+  final VoidCallback? onSelectAll;
 
   const AccountsTab({
     super.key,
     this.showFab = true,
     this.selectedAccountId,
     this.onSelectAccount,
+    this.onSelectAll,
   });
 
   @override
@@ -99,6 +101,17 @@ class _AccountsTabState extends State<AccountsTab> {
                                 ),
                                 children: [
                                   _buildGlobalBalanceCard(activeAccounts),
+                                  if (widget.onSelectAll != null && activeAccounts.isNotEmpty) ...[
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8, bottom: 4),
+                                      child: _AllAccountsCard(
+                                        isSelected: widget.selectedAccountId == null,
+                                        totalBalance: activeAccounts.fold<double>(0.0, (sum, a) => sum + a.balance),
+                                        activeCount: activeAccounts.length,
+                                        onTap: widget.onSelectAll!,
+                                      ),
+                                    ),
+                                  ],
                                   if (activeAccounts.isNotEmpty) ...[
                                     const Padding(
                                       padding: EdgeInsets.only(
@@ -559,7 +572,7 @@ class _AccountCardState extends State<_AccountCard> {
                             currencyFmt.format(account.balance),
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
-                              fontSize: 14.5,
+                              fontSize: 15.5,
                               color:
                                   account.isActive
                                       ? AppColors.textPrimary
@@ -570,28 +583,40 @@ class _AccountCardState extends State<_AccountCard> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                account.isActive ? 'Activa' : 'Inactiva',
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
-                                  color:
-                                      account.isActive
-                                          ? AppColors.teal
-                                          : AppColors.textSecondary,
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1.5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: account.isActive
+                                      ? AppColors.teal.withValues(alpha: 0.1)
+                                      : const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  account.isActive ? 'Activa' : 'Inactiva',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        account.isActive
+                                            ? AppColors.tealDark
+                                            : AppColors.textSecondary,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 4),
                               IconButton(
                                 icon: const Icon(
                                   Icons.edit_outlined,
-                                  size: 14,
-                                  color: AppColors.textMuted,
+                                  size: 15,
+                                  color: AppColors.textSecondary,
                                 ),
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(
-                                  minWidth: 24,
-                                  minHeight: 24,
+                                  minWidth: 36,
+                                  minHeight: 36,
                                 ),
                                 tooltip: 'Editar cuenta',
                                 onPressed: widget.onEdit,
@@ -616,6 +641,175 @@ class _AccountCardState extends State<_AccountCard> {
     if (type == 'BANCO') return Icons.account_balance_rounded;
     if (type == 'DIGITAL') return Icons.phone_android_rounded;
     return Icons.savings_rounded;
+  }
+}
+
+class _AllAccountsCard extends StatefulWidget {
+  final bool isSelected;
+  final double totalBalance;
+  final int activeCount;
+  final VoidCallback onTap;
+
+  const _AllAccountsCard({
+    required this.isSelected,
+    required this.totalBalance,
+    required this.activeCount,
+    required this.onTap,
+  });
+
+  @override
+  State<_AllAccountsCard> createState() => _AllAccountsCardState();
+}
+
+class _AllAccountsCardState extends State<_AllAccountsCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final currencyFmt = NumberFormat.currency(locale: 'es_PE', symbol: 'S/ ');
+    final isSelected = widget.isSelected;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFF0FDFA) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.teal
+                : _isHovered
+                    ? AppColors.teal.withValues(alpha: 0.4)
+                    : AppColors.border,
+            width: (isSelected || _isHovered) ? 1.5 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? AppColors.teal.withValues(alpha: 0.1)
+                  : Colors.black.withValues(alpha: _isHovered ? 0.06 : 0.025),
+              blurRadius: (isSelected || _isHovered) ? 14 : 6,
+              offset: Offset(0, (isSelected || _isHovered) ? 4 : 2),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              children: [
+                if (isSelected)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 3.5,
+                      decoration: const BoxDecoration(
+                        color: AppColors.teal,
+                        borderRadius: BorderRadius.horizontal(
+                          left: Radius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.teal.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.dashboard_customize_rounded,
+                          color: AppColors.tealDark,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Todas las Cuentas',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${widget.activeCount} activas • Consolidado',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            currencyFmt.format(widget.totalBalance),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.teal.withValues(alpha: 0.12)
+                                  : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              isSelected ? 'Seleccionado' : 'Ver todo',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: isSelected
+                                    ? AppColors.tealDark
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -665,3 +859,4 @@ class _AccountsSkeleton extends StatelessWidget {
     );
   }
 }
+

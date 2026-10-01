@@ -1,35 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements/account_movements_cubit.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements/account_movements_state.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_cubit.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_state.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 class MovementFormSheet extends StatefulWidget {
-  const MovementFormSheet({super.key});
+  final bool isSlideOver;
+
+  const MovementFormSheet({super.key, this.isSlideOver = false});
 
   static Future<bool?> show(BuildContext context) {
     final accCubit = context.read<FinancialAccountsCubit>();
     final movCubit = context.read<AccountMovementsCubit>();
     final shiftCubit = context.read<CashShiftsCubit>();
-    return showModalBottomSheet<bool>(
+
+    return AdaptiveSideSheet.show<bool>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (_) => MultiBlocProvider(
-            providers: [
-              BlocProvider.value(value: accCubit),
-              BlocProvider.value(value: movCubit),
-              BlocProvider.value(value: shiftCubit),
-            ],
-            child: const MovementFormSheet(),
-          ),
+      desktopWidth: 500.0,
+      builder: (dialogCtx, isSlideOver) => MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: accCubit),
+          BlocProvider.value(value: movCubit),
+          BlocProvider.value(value: shiftCubit),
+        ],
+        child: MovementFormSheet(isSlideOver: isSlideOver),
+      ),
     );
   }
 
@@ -54,10 +56,9 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final accState = context.read<FinancialAccountsCubit>().state;
-      final accounts =
-          accState is FinancialAccountsLoaded
-              ? accState.accounts.where((a) => a.isActive).toList()
-              : <FinancialAccountEntity>[];
+      final accounts = accState is FinancialAccountsLoaded
+          ? accState.accounts.where((a) => a.isActive).toList()
+          : <FinancialAccountEntity>[];
       setState(() {
         _accounts = accounts;
         if (_accounts.isNotEmpty) {
@@ -72,7 +73,6 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
     });
   }
 
-  /// Verifica si una cuenta es de tipo CAJA Y no tiene turno abierto.
   bool _isCajaWithoutShift(String? accountId) {
     if (accountId == null) return false;
     final acc = _accounts.where((a) => a.id == accountId).firstOrNull;
@@ -85,12 +85,10 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
   bool get _isDestCajaWithoutShift =>
       _type == 'TRANSFER' && _isCajaWithoutShift(_destAccountId);
 
-  /// Retorna true si hay un bloqueo por turno cerrado en alguna de las cuentas participantes.
   bool get _hasShiftBlocker =>
       _isSourceCajaWithoutShift || _isDestCajaWithoutShift;
 
   String _friendlyError(String rawMessage) {
-    // Extraer texto limpio del RAISE EXCEPTION de PostgreSQL que viene en el estado
     final match = RegExp(r'message:\s*(.+?)(?:,|$)').firstMatch(rawMessage);
     if (match != null) return match.group(1)!.trim();
     if (rawMessage.startsWith('Exception: ')) {
@@ -111,67 +109,37 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
       return;
     }
 
-    // Validación preventiva de turno de caja (guard pre-submit con mensaje contextual)
     if (_hasShiftBlocker) {
       String msg;
       if (_type == 'TRANSFER') {
         if (_isSourceCajaWithoutShift && _isDestCajaWithoutShift) {
-          final sName =
-              _accounts
-                  .where((a) => a.id == _sourceAccountId)
-                  .firstOrNull
-                  ?.name ??
-              'origen';
-          final dName =
-              _accounts
-                  .where((a) => a.id == _destAccountId)
-                  .firstOrNull
-                  ?.name ??
-              'destino';
+          final sName = _accounts.where((a) => a.id == _sourceAccountId).firstOrNull?.name ?? 'origen';
+          final dName = _accounts.where((a) => a.id == _destAccountId).firstOrNull?.name ?? 'destino';
           msg = 'Las cuentas "$sName" y "$dName" requieren turnos de caja abiertos.';
         } else if (_isDestCajaWithoutShift) {
-          final dName =
-              _accounts
-                  .where((a) => a.id == _destAccountId)
-                  .firstOrNull
-                  ?.name ??
-              'destino';
+          final dName = _accounts.where((a) => a.id == _destAccountId).firstOrNull?.name ?? 'destino';
           msg = 'La cuenta destino "$dName" no tiene un turno de caja abierto.';
         } else {
-          final sName =
-              _accounts
-                  .where((a) => a.id == _sourceAccountId)
-                  .firstOrNull
-                  ?.name ??
-              'origen';
+          final sName = _accounts.where((a) => a.id == _sourceAccountId).firstOrNull?.name ?? 'origen';
           msg = 'La cuenta origen "$sName" no tiene un turno de caja abierto.';
         }
       } else {
-        final sName =
-            _accounts
-                .where((a) => a.id == _sourceAccountId)
-                .firstOrNull
-                ?.name ??
-            'seleccionada';
+        final sName = _accounts.where((a) => a.id == _sourceAccountId).firstOrNull?.name ?? 'seleccionada';
         msg = 'La cuenta "$sName" no tiene un turno de caja abierto.';
       }
 
       AppSnackbar.show(
         context,
-        message:
-            '$msg Abre el turno desde el módulo de Punto de Venta antes de continuar.',
+        message: '$msg Abre el turno desde el módulo de Punto de Venta antes de continuar.',
         type: SnackbarType.warning,
       );
       return;
     }
 
-    final amount =
-        double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
+    final amount = double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
     final description = _descCtrl.text.trim();
 
-    // Validación preventiva de saldo en cuenta origen
-    final sourceAccount =
-        _accounts.where((a) => a.id == _sourceAccountId).firstOrNull;
+    final sourceAccount = _accounts.where((a) => a.id == _sourceAccountId).firstOrNull;
     if (sourceAccount != null && (_type == 'EXPENSE' || _type == 'TRANSFER')) {
       if (amount > sourceAccount.balance) {
         AppSnackbar.show(
@@ -197,20 +165,19 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
         return;
       }
       await context.read<AccountMovementsCubit>().transferFunds(
-        sourceAccountId: _sourceAccountId!,
-        destAccountId: _destAccountId!,
-        amount: amount,
-        description: description,
-      );
+            sourceAccountId: _sourceAccountId!,
+            destAccountId: _destAccountId!,
+            amount: amount,
+            description: description,
+          );
     } else {
       await context.read<AccountMovementsCubit>().saveMovement(
-        accountId: _sourceAccountId!,
-        movementType: _type,
-        amount: amount,
-        description: description,
-      );
+            accountId: _sourceAccountId!,
+            movementType: _type,
+            amount: amount,
+            description: description,
+          );
     }
-    // La respuesta es manejada reactivamente por BlocListener abajo
   }
 
   @override
@@ -222,13 +189,9 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-
-    // Reactividad: si las cuentas cargan o actualizan, sincronizar _accounts
     final accState = context.watch<FinancialAccountsCubit>().state;
     if (accState is FinancialAccountsLoaded) {
-      final activeAccounts =
-          accState.accounts.where((a) => a.isActive).toList();
+      final activeAccounts = accState.accounts.where((a) => a.isActive).toList();
       if (_accounts.isEmpty && activeAccounts.isNotEmpty) {
         _accounts = activeAccounts;
         _sourceAccountId ??= _accounts.first.id;
@@ -242,21 +205,9 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
       }
     }
 
-    if (_accounts.isEmpty) {
-      return Container(
-        height: 200,
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: const Center(child: Text('Cargando cuentas...')),
-      );
-    }
-
     return BlocListener<AccountMovementsCubit, AccountMovementsState>(
       listener: (context, state) {
         if (state is AccountMovementSaved) {
-          // Éxito: actualizar cuentas y cerrar modal
           context.read<FinancialAccountsCubit>().fetchAccounts();
           AppSnackbar.show(
             context,
@@ -265,7 +216,6 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
           );
           Navigator.pop(context, true);
         } else if (state is AccountMovementSaveError) {
-          // Error del servidor: NO cerrar modal, mostrar mensaje amigable
           setState(() => _saving = false);
           AppSnackbar.show(
             context,
@@ -274,153 +224,122 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
           );
         }
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + bottom),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: widget.isSlideOver ? _buildSlideOverLayout() : _buildBottomSheetLayout(),
+    );
+  }
+
+  // ── Desktop / Tablet: Slide-over Right Side Sheet Layout ───────────────────
+  Widget _buildSlideOverLayout() {
+    if (_accounts.isEmpty) {
+      return Container(
+        color: AppColors.surface,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Column(
+      children: [
+        // Encabezado corporativo Linear/Stripe
+        Container(
+          padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            border: Border(bottom: BorderSide(color: AppColors.border)),
+          ),
+          child: Row(
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.textSecondary.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.teal.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.swap_horiz_rounded,
+                  color: AppColors.tealDark,
+                  size: 22,
                 ),
               ),
-              const Text(
-                'Nuevo Movimiento',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Nuevo Movimiento Financiero',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Registra ingresos, egresos o traspasos de saldo',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 20),
+              IconButton(
+                tooltip: 'Cerrar [Esc]',
+                icon: const Icon(Icons.close_rounded, size: 20),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
 
-              _FieldLabel('Tipo de movimiento'),
-              Row(
-                children: [
-                  Expanded(
-                    child: _TypeToggle(
-                      label: 'Ingreso',
-                      icon: Icons.add_circle_rounded,
-                      color: AppColors.success,
-                      isSelected: _type == 'INCOME',
-                      onTap: () => setState(() => _type = 'INCOME'),
+        // Cuerpo desplazable
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: _formKey,
+              child: _buildFormFields(),
+            ),
+          ),
+        ),
+
+        // Barra inferior fija
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            border: Border(top: BorderSide(color: AppColors.border)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _saving ? null : () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    side: const BorderSide(color: AppColors.border),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _TypeToggle(
-                      label: 'Egreso',
-                      icon: Icons.remove_circle_rounded,
-                      color: AppColors.danger,
-                      isSelected: _type == 'EXPENSE',
-                      onTap: () => setState(() => _type = 'EXPENSE'),
-                    ),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _TypeToggle(
-                      label: 'Transfer.',
-                      icon: Icons.swap_horiz_rounded,
-                      color: AppColors.primary,
-                      isSelected: _type == 'TRANSFER',
-                      onTap: () => setState(() => _type = 'TRANSFER'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-
-              _FieldLabel(
-                _type == 'TRANSFER'
-                    ? 'Cuenta Origen (De donde sale)'
-                    : 'Cuenta',
-              ),
-              _AccountSelector(
-                value: _sourceAccountId,
-                accounts: _accounts,
-                onChanged: (v) => setState(() => _sourceAccountId = v),
-              ),
-              const SizedBox(height: 14),
-
-              if (_type == 'TRANSFER') ...[
-                _FieldLabel('Cuenta Destino (A donde entra)'),
-                _AccountSelector(
-                  value: _destAccountId,
-                  accounts: _accounts,
-                  onChanged: (v) => setState(() => _destAccountId = v),
                 ),
-                const SizedBox(height: 14),
-              ],
-
-              // ── Banner preventivo de turno de caja ─────────────────────────
-              if (_hasShiftBlocker)
-                _ShiftWarningBanner(
-                  isTransfer: _type == 'TRANSFER',
-                  isSourceBlocked: _isSourceCajaWithoutShift,
-                  isDestBlocked: _isDestCajaWithoutShift,
-                  sourceAccountName:
-                      _accounts
-                          .where((a) => a.id == _sourceAccountId)
-                          .firstOrNull
-                          ?.name,
-                  destAccountName:
-                      _accounts
-                          .where((a) => a.id == _destAccountId)
-                          .firstOrNull
-                          ?.name,
-                ),
-              if (_hasShiftBlocker) const SizedBox(height: 12),
-
-              _FieldLabel('Monto (S/)'),
-              TextFormField(
-                controller: _amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                ],
-                decoration: _inputDeco('0.00').copyWith(prefixText: 'S/ '),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Ingresa un monto';
-                  if ((double.tryParse(v.replaceAll(',', '.')) ?? 0) <= 0) {
-                    return 'Monto inválido';
-                  }
-                  return null;
-                },
               ),
-              const SizedBox(height: 14),
-
-              _FieldLabel('Descripción'),
-              TextFormField(
-                controller: _descCtrl,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: _inputDeco(
-                  'Ej. Aporte de capital, Pago de taxi...',
-                ),
-                validator:
-                    (v) =>
-                        (v == null || v.trim().isEmpty) && _type != 'TRANSFER'
-                            ? 'Requerido'
-                            : null,
-              ),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: FilledButton.icon(
                   onPressed: _saving || _hasShiftBlocker ? null : _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _type == 'INCOME'
+                        ? AppColors.tealDark
+                        : (_type == 'EXPENSE' ? AppColors.danger : AppColors.primary),
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: Colors.grey.shade300,
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -428,51 +347,297 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child:
-                      _saving
-                          ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                          : Text(
-                            _hasShiftBlocker
-                                ? (_isDestCajaWithoutShift &&
-                                        !_isSourceCajaWithoutShift
-                                    ? 'Caja destino sin turno abierto'
-                                    : 'Sin turno de caja abierto')
-                                : 'Guardar movimiento',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                            ),
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
                           ),
+                        )
+                      : const Icon(Icons.check_rounded, size: 18),
+                  label: Text(
+                    _saving
+                        ? 'Guardando...'
+                        : (_hasShiftBlocker
+                            ? 'Caja sin turno abierto'
+                            : 'Guardar Movimiento'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  // ── Mobile: Bottom Sheet Layout (Apple HIG) ───────────────────────────────
+  Widget _buildBottomSheetLayout() {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    if (_accounts.isEmpty) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + bottom),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Nuevo Movimiento',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: SingleChildScrollView(
+                child: _buildFormFields(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton(
+                onPressed: _saving || _hasShiftBlocker ? null : _save,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _type == 'INCOME'
+                      ? AppColors.tealDark
+                      : (_type == 'EXPENSE' ? AppColors.danger : AppColors.primary),
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey.shade300,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        _hasShiftBlocker
+                            ? 'Caja sin turno abierto'
+                            : 'Guardar movimiento',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  Widget _buildFormFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _fieldLabel('Tipo de movimiento *'),
+        Row(
+          children: [
+            Expanded(
+              child: _TypeToggle(
+                label: 'Ingreso',
+                icon: Icons.arrow_downward_rounded,
+                color: AppColors.tealDark,
+                isSelected: _type == 'INCOME',
+                onTap: () => setState(() => _type = 'INCOME'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _TypeToggle(
+                label: 'Egreso',
+                icon: Icons.arrow_upward_rounded,
+                color: AppColors.danger,
+                isSelected: _type == 'EXPENSE',
+                onTap: () => setState(() => _type = 'EXPENSE'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _TypeToggle(
+                label: 'Transfer.',
+                icon: Icons.swap_horiz_rounded,
+                color: AppColors.primary,
+                isSelected: _type == 'TRANSFER',
+                onTap: () => setState(() => _type = 'TRANSFER'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+
+        _fieldLabel(
+          _type == 'TRANSFER'
+              ? 'Cuenta Origen (Sale el dinero) *'
+              : 'Cuenta Financiera *',
+        ),
+        _AccountSelector(
+          value: _sourceAccountId,
+          accounts: _accounts,
+          onChanged: (v) => setState(() => _sourceAccountId = v),
+        ),
+        const SizedBox(height: 14),
+
+        if (_type == 'TRANSFER') ...[
+          _fieldLabel('Cuenta Destino (Entra el dinero) *'),
+          _AccountSelector(
+            value: _destAccountId,
+            accounts: _accounts,
+            onChanged: (v) => setState(() => _destAccountId = v),
+          ),
+          const SizedBox(height: 14),
+        ],
+
+        if (_hasShiftBlocker) ...[
+          _ShiftWarningBanner(
+            isTransfer: _type == 'TRANSFER',
+            isSourceBlocked: _isSourceCajaWithoutShift,
+            isDestBlocked: _isDestCajaWithoutShift,
+            sourceAccountName: _accounts.where((a) => a.id == _sourceAccountId).firstOrNull?.name,
+            destAccountName: _accounts.where((a) => a.id == _destAccountId).firstOrNull?.name,
+          ),
+          const SizedBox(height: 14),
+        ],
+
+        _fieldLabel('Monto (S/) *'),
+        TextFormField(
+          controller: _amountCtrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+          ],
+          decoration: _inputDeco('0.00').copyWith(
+            prefixIcon: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Text(
+                'S/ ',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+            prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+          ),
+          validator: (v) {
+            if (v == null || v.isEmpty) return 'Ingresa un monto';
+            final parsed = double.tryParse(v.replaceAll(',', '.')) ?? 0;
+            if (parsed <= 0) return 'Monto debe ser mayor a 0';
+            return null;
+          },
+        ),
+        const SizedBox(height: 14),
+
+        _fieldLabel('Descripción o motivo *'),
+        TextFormField(
+          controller: _descCtrl,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: _inputDeco('Ej. Depósito ventas del día, Pago de servicios, etc.'),
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) && _type != 'TRANSFER'
+                  ? 'La descripción es obligatoria'
+                  : null,
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _fieldLabel(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      );
+
   InputDecoration _inputDeco(String hint) => InputDecoration(
-    hintText: hint,
-    isDense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    filled: true,
-    fillColor: AppColors.surface,
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide.none,
-    ),
-  );
+        hintText: hint,
+        hintStyle: const TextStyle(fontSize: 13.5, color: AppColors.textMuted),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        filled: true,
+        fillColor: AppColors.surface,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.danger),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
+        ),
+      );
 }
 
-// ── Banner de advertencia preventiva ─────────────────────────────────────────
+// ── Banner preventivo de turno de caja ─────────────────────────────────────────
 class _ShiftWarningBanner extends StatelessWidget {
   final bool isTransfer;
   final bool isSourceBlocked;
@@ -495,44 +660,40 @@ class _ShiftWarningBanner extends StatelessWidget {
       if (isSourceBlocked && isDestBlocked) {
         final sName = sourceAccountName ?? 'la caja de origen';
         final dName = destAccountName ?? 'la caja de destino';
-        message =
-            'Tanto la cuenta origen "$sName" como la destino "$dName" no tienen un turno de caja abierto.';
+        message = 'Tanto "$sName" como "$dName" no tienen un turno de caja abierto.';
       } else if (isDestBlocked) {
         final dName = destAccountName ?? 'la caja de destino';
-        message =
-            'La cuenta destino "$dName" no tiene un turno de caja abierto.';
+        message = 'La caja destino "$dName" no tiene un turno de caja abierto.';
       } else {
         final sName = sourceAccountName ?? 'la caja de origen';
-        message =
-            'La cuenta origen "$sName" no tiene un turno de caja abierto.';
+        message = 'La caja origen "$sName" no tiene un turno de caja abierto.';
       }
     } else {
       final sName = sourceAccountName ?? 'la caja seleccionada';
-      message = '"$sName" no tiene un turno de caja abierto.';
+      message = '"$sName" requiere un turno de caja abierto para registrar movimientos.';
     }
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+    return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.08),
+        color: AppColors.warning.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
             Icons.warning_amber_rounded,
-            color: AppColors.warning,
+            color: AppColors.warningDark,
             size: 20,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              '⚠️  $message Abre el turno desde el módulo de Punto de Venta antes de registrar este movimiento.',
+              '$message Abre el turno desde el Punto de Venta antes de registrar este movimiento.',
               style: const TextStyle(
-                color: AppColors.warning,
+                color: AppColors.warningDark,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
                 height: 1.4,
@@ -544,15 +705,6 @@ class _ShiftWarningBanner extends StatelessWidget {
     );
   }
 }
-
-// ignore: non_constant_identifier_names
-Widget _FieldLabel(String text) => Padding(
-  padding: const EdgeInsets.only(bottom: 6),
-  child: Text(
-    text,
-    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-  ),
-);
 
 class _TypeToggle extends StatelessWidget {
   final String label;
@@ -571,38 +723,48 @@ class _TypeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? color : AppColors.surface,
-          borderRadius: BorderRadius.circular(10),
-          border:
-              isSelected
-                  ? null
-                  : Border.all(
-                    color: AppColors.textSecondary.withValues(alpha: 0.2),
-                  ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: isSelected ? Colors.white : AppColors.textSecondary,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            color: isSelected ? color : AppColors.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? color : AppColors.border,
+              width: isSelected ? 1.5 : 1.0,
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.22),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                size: 20,
                 color: isSelected ? Colors.white : AppColors.textSecondary,
               ),
-            ),
-          ],
+              const SizedBox(height: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  color: isSelected ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -626,51 +788,50 @@ class _AccountSelector extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          items:
-              accounts.map((a) {
-                IconData typeIcon = Icons.savings_rounded;
-                if (a.type == 'CAJA') typeIcon = Icons.point_of_sale_rounded;
-                if (a.type == 'BANCO') typeIcon = Icons.account_balance_rounded;
-                if (a.type == 'DIGITAL') typeIcon = Icons.phone_android_rounded;
+          icon: const Icon(Icons.expand_more_rounded, size: 20, color: AppColors.textSecondary),
+          items: accounts.map((a) {
+            IconData typeIcon = Icons.savings_rounded;
+            if (a.type == 'CAJA') typeIcon = Icons.point_of_sale_rounded;
+            if (a.type == 'BANCO') typeIcon = Icons.account_balance_rounded;
+            if (a.type == 'DIGITAL') typeIcon = Icons.phone_android_rounded;
 
-                return DropdownMenuItem<String>(
-                  value: a.id,
-                  child: Row(
-                    children: [
-                      Icon(typeIcon, size: 16, color: AppColors.textSecondary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          a.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+            return DropdownMenuItem<String>(
+              value: a.id,
+              child: Row(
+                children: [
+                  Icon(typeIcon, size: 16, color: AppColors.tealDark),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      a.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
+                        color: AppColors.textPrimary,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'S/ ${a.balance.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                          color:
-                              a.balance >= 0
-                                  ? AppColors.textSecondary
-                                  : AppColors.danger,
-                        ),
-                      ),
-                    ],
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                );
-              }).toList(),
+                  const SizedBox(width: 8),
+                  Text(
+                    'S/ ${a.balance.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                      color: a.balance >= 0 ? AppColors.tealDark : AppColors.danger,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
           onChanged: onChanged,
         ),
       ),
