@@ -61,7 +61,7 @@ class SupplierCreditMovementsLoaded extends SupplierCreditMovementsState {
     this.isExporting = false,
   });
 
-  int get totalPages => totalCount == 0 ? 1 : (totalCount / 8).ceil();
+  int get totalPages => totalCount == 0 ? 1 : (totalCount / 24).ceil();
 
   SupplierCreditMovementsLoaded copyWith({
     List<SupplierCreditMovementEntity>? movements,

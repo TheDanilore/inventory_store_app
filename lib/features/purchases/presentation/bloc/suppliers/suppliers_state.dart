@@ -45,7 +45,7 @@ class SuppliersLoaded extends SuppliersState {
     required this.totalCount,
   });
 
-  int get totalPages => totalCount == 0 ? 1 : (totalCount / 8).ceil();
+  int get totalPages => totalCount == 0 ? 1 : (totalCount / 24).ceil();
 
   SuppliersLoaded copyWith({
     List<SupplierEntity>? suppliers,

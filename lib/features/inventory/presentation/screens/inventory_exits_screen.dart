@@ -575,7 +575,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            if (isTablet && !_isTableView) ...[
+                            if (isTablet) ...[
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -703,7 +703,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     InventoryExitsCubit cubit, {
     bool isTablet = false,
   }) {
-    if (state.totalPages < 1 || state.isLoading || state.exits.isEmpty) {
+    if (state.totalPages < 1 || state.exits.isEmpty) {
       return const SizedBox.shrink();
     }
     return Container(
@@ -720,9 +720,6 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
         child: AdminPageBlocks(
           currentPage: state.currentPage,
           totalPages: state.totalPages,
-          totalItems: state.totalRecords,
-          itemsPerPage: state.pageSize,
-          itemName: 'salidas',
           onPageChanged: (page) => cubit.changePage(page),
         ),
       ),

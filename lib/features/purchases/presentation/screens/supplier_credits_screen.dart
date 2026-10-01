@@ -340,7 +340,10 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 withDebtOnly = state.withDebtOnly;
                 currentPage = state.currentPage;
                 totalPages =
-                    state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                    state.totalCount == 0
+                        ? 1
+                        : (state.totalCount / SupplierCreditsCubit.pageSize)
+                            .ceil();
                 totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditsError) {
@@ -348,7 +351,10 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 withDebtOnly = state.withDebtOnly;
                 currentPage = state.currentPage;
                 totalPages =
-                    state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                    state.totalCount == 0
+                        ? 1
+                        : (state.totalCount / SupplierCreditsCubit.pageSize)
+                            .ceil();
                 totalCount = state.totalCount;
                 stats = state.stats;
                 errorMessage = state.message;
@@ -357,7 +363,10 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 withDebtOnly = state.withDebtOnly;
                 currentPage = state.currentPage;
                 totalPages =
-                    state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                    state.totalCount == 0
+                        ? 1
+                        : (state.totalCount / SupplierCreditsCubit.pageSize)
+                            .ceil();
                 totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditSaveSuccess) {
@@ -365,7 +374,10 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 withDebtOnly = state.withDebtOnly;
                 currentPage = state.currentPage;
                 totalPages =
-                    state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                    state.totalCount == 0
+                        ? 1
+                        : (state.totalCount / SupplierCreditsCubit.pageSize)
+                            .ceil();
                 totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditSaveError) {
@@ -373,7 +385,10 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 withDebtOnly = state.withDebtOnly;
                 currentPage = state.currentPage;
                 totalPages =
-                    state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                    state.totalCount == 0
+                        ? 1
+                        : (state.totalCount / SupplierCreditsCubit.pageSize)
+                            .ceil();
                 totalCount = state.totalCount;
                 stats = state.stats;
                 errorMessage = state.message;
@@ -764,7 +779,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
     required bool isLoading,
     required bool isDesktop,
   }) {
-    if (totalPages < 1 || isLoading || totalItems == 0) {
+    if (totalPages < 1 || totalItems == 0) {
       return const SizedBox.shrink();
     }
     return Container(
@@ -781,9 +796,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
         child: AdminPageBlocks(
           currentPage: currentPage,
           totalPages: totalPages,
-          totalItems: totalItems,
-          itemsPerPage: 8,
-          itemName: 'créditos',
           onPageChanged: context.read<SupplierCreditsCubit>().setPage,
         ),
       ),

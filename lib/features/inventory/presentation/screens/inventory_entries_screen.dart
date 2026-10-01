@@ -43,6 +43,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   InventoryEntryEntity? _selectedEntry; // State for Master-Detail / Table selection
   String? _pendingTargetEntryId;
   bool _isFetchingTargetEntry = false;
+  InventoryEntriesLoaded? _lastLoadedState;
 
   @override
   void initState() {
@@ -475,7 +476,11 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         }
       },
       builder: (context, state) {
-        final loadedState = state is InventoryEntriesLoaded ? state : null;
+        if (state is InventoryEntriesLoaded) {
+          _lastLoadedState = state;
+        }
+        final loadedState =
+            state is InventoryEntriesLoaded ? state : _lastLoadedState;
 
         if (loadedState == null && state is InventoryEntriesError) {
           return Center(child: Text('Error: ${state.message}'));
@@ -693,7 +698,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            if (isTablet && !_isTableView) ...[
+                            if (isTablet) ...[
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -909,7 +914,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     bool isLoading, {
     bool isTablet = false,
   }) {
-    if (state.totalPages < 1 || isLoading || state.entries.isEmpty) {
+    if (state.totalPages < 1 || state.entries.isEmpty) {
       return const SizedBox.shrink();
     }
     return Container(
@@ -926,9 +931,6 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         child: AdminPageBlocks(
           currentPage: state.currentPage,
           totalPages: state.totalPages,
-          totalItems: state.totalCount,
-          itemsPerPage: 10,
-          itemName: 'entradas',
           onPageChanged: context.read<InventoryEntriesCubit>().goToPage,
         ),
       ),

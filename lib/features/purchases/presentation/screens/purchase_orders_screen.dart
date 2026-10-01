@@ -532,7 +532,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     _PurchaseOrdersViewModel viewModel, {
     bool isTablet = false,
   }) {
-    if (viewModel.totalPages < 1 || viewModel.isLoading || viewModel.orders.isEmpty) {
+    if (viewModel.totalPages < 1 || viewModel.orders.isEmpty) {
       return const SizedBox.shrink();
     }
     return Container(
@@ -549,9 +549,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         child: AdminPageBlocks(
           currentPage: viewModel.currentPage,
           totalPages: viewModel.totalPages,
-          totalItems: viewModel.totalCount,
-          itemsPerPage: 10,
-          itemName: 'órdenes',
           onPageChanged: (p) => viewModel.setPage(p),
         ),
       ),

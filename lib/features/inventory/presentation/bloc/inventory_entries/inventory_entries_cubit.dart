@@ -12,6 +12,8 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
   final GetActiveWarehousesUseCase getActiveWarehouses;
   static const int pageSize = 24;
 
+  InventoryEntriesLoaded? _lastLoaded;
+
   InventoryEntriesCubit({
     required this.getInventoryEntries,
     required this.getActiveWarehouses,
@@ -31,18 +33,18 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
       );
     }
 
-    emit(
-      InventoryEntriesLoaded(
-        entries: const [],
-        searchQuery: '',
-        warehouseFilter: 'Todos',
-        dateRange: null,
-        availableWarehouses: warehouses,
-        currentPage: 0,
-        totalCount: 0,
-        totalPages: 1,
-      ),
+    final initialLoaded = InventoryEntriesLoaded(
+      entries: const [],
+      searchQuery: '',
+      warehouseFilter: 'Todos',
+      dateRange: null,
+      availableWarehouses: warehouses,
+      currentPage: 0,
+      totalCount: 0,
+      totalPages: 1,
     );
+    _lastLoaded = initialLoaded;
+    emit(initialLoaded);
 
     await loadEntries(page: 0);
   }
@@ -57,8 +59,9 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
     final currentState =
         state is InventoryEntriesLoaded
             ? state as InventoryEntriesLoaded
-            : null;
+            : _lastLoaded;
     if (currentState == null) return;
+    _lastLoaded = currentState;
 
     final currentQuery = searchQuery ?? currentState.searchQuery;
     final currentWarehouse = warehouseFilter ?? currentState.warehouseFilter;
@@ -145,8 +148,11 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
   }
 
   void goToPage(int page) {
-    if (state is InventoryEntriesLoaded) {
-      final currentState = state as InventoryEntriesLoaded;
+    final currentState =
+        state is InventoryEntriesLoaded
+            ? state as InventoryEntriesLoaded
+            : _lastLoaded;
+    if (currentState != null) {
       if (page < 0 ||
           page >= currentState.totalPages ||
           page == currentState.currentPage) {

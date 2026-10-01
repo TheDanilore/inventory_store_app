@@ -55,7 +55,7 @@ class SupplierCreditsLoaded extends SupplierCreditsState {
     required this.stats,
   });
 
-  int get totalPages => totalCount == 0 ? 1 : (totalCount / 8).ceil();
+  int get totalPages => totalCount == 0 ? 1 : (totalCount / 24).ceil();
 
   SupplierCreditsLoaded copyWith({
     List<SupplierCreditEntity>? accounts,

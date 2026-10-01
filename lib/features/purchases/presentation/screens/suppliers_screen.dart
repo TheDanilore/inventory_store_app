@@ -206,14 +206,18 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                 searchQuery = state.searchQuery;
                 currentPage = state.currentPage;
                 totalPages =
-                    state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                    state.totalCount == 0
+                        ? 1
+                        : (state.totalCount / SuppliersCubit.pageSize).ceil();
                 totalCount = state.totalCount;
               } else if (state is SuppliersError) {
                 suppliers = state.currentSuppliers;
                 searchQuery = state.searchQuery;
                 currentPage = state.currentPage;
                 totalPages =
-                    state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                    state.totalCount == 0
+                        ? 1
+                        : (state.totalCount / SuppliersCubit.pageSize).ceil();
                 totalCount = state.totalCount;
               }
 
@@ -568,7 +572,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     required bool isLoading,
     required bool isDesktop,
   }) {
-    if (totalPages < 1 || isLoading || totalItems == 0) {
+    if (totalPages < 1 || totalItems == 0) {
       return const SizedBox.shrink();
     }
     return Container(
@@ -585,9 +589,6 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         child: AdminPageBlocks(
           currentPage: currentPage,
           totalPages: totalPages,
-          totalItems: totalItems,
-          itemsPerPage: 8,
-          itemName: 'proveedores',
           onPageChanged: context.read<SuppliersCubit>().setPage,
         ),
       ),

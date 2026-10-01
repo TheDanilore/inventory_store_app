@@ -20,7 +20,7 @@ class InventoryExitsState extends Equatable {
     this.errorMessage,
     this.currentPage = 0,
     this.totalRecords = 0,
-    this.pageSize = 8,
+    this.pageSize = 24,
     this.searchQuery = '',
     this.startDate,
     this.endDate,
