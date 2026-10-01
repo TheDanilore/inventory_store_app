@@ -12,6 +12,7 @@ import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/utils/focus_utils.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'dart:async';
 
@@ -84,11 +85,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
     );
   }
 
-  bool get _isInputFieldFocused {
-    final primaryFocus = FocusManager.instance.primaryFocus;
-    if (primaryFocus == null) return false;
-    return primaryFocus.context?.widget is EditableText;
-  }
+  bool get _isInputFieldFocused =>
+      FocusUtils.isInputFieldFocused(_searchFocusNode);
 
   @override
   Widget build(BuildContext context) {

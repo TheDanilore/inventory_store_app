@@ -9,6 +9,7 @@ import 'package:inventory_store_app/features/inventory/domain/entities/inventory
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/utils/focus_utils.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'dart:async';
 
@@ -226,7 +227,8 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
       autofocus: true,
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent) {
-          final isInputFocused = _searchFocusNode.hasFocus;
+          final isInputFocused =
+              FocusUtils.isInputFieldFocused(_searchFocusNode);
           if (isInputFocused) {
             if (event.logicalKey == LogicalKeyboardKey.escape) {
               _searchFocusNode.unfocus();

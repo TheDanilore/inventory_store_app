@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/utils/focus_utils.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements/account_movements_cubit.dart';
@@ -91,12 +92,8 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
     }
   }
 
-  bool _isEditableFocused() {
-    final primaryFocus = FocusManager.instance.primaryFocus;
-    if (primaryFocus == null) return false;
-    final widget = primaryFocus.context?.widget;
-    return widget is EditableText;
-  }
+  bool get _isInputFieldFocused =>
+      FocusUtils.isInputFieldFocused(_searchFocusNode);
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
@@ -105,22 +102,24 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
     final isControl = HardwareKeyboard.instance.isControlPressed;
     final isMeta = HardwareKeyboard.instance.isMetaPressed;
     final isModifier = isAlt || isControl || isMeta;
-    final isTyping = _isEditableFocused();
+    final isTyping = _isInputFieldFocused;
 
     // Escape: Limpiar filtro de cuenta seleccionada o desenfocar
     if (event.logicalKey == LogicalKeyboardKey.escape) {
+      if (isTyping) {
+        _searchFocusNode.unfocus();
+        FocusManager.instance.primaryFocus?.unfocus();
+        _screenFocusNode.requestFocus();
+        return KeyEventResult.handled;
+      }
       if (_selectedAccountId != null) {
         _clearAccountFilter();
         return KeyEventResult.handled;
       }
-      if (isTyping) {
-        FocusManager.instance.primaryFocus?.unfocus();
-        return KeyEventResult.handled;
-      }
     }
 
-    // Si el usuario escribe en un campo de texto, no disparamos atajos de tecla única
-    if (isTyping && !isModifier) {
+    // Si el usuario escribe en un campo de texto, no interceptar ninguna tecla para permitir escritura natural
+    if (isTyping) {
       return KeyEventResult.ignored;
     }
 

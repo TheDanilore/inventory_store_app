@@ -7,6 +7,7 @@ import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/dialogs/adaptive_destructive_dialog.dart';
+import 'package:inventory_store_app/core/utils/focus_utils.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
@@ -81,11 +82,8 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   }
 
   // ── REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) ────────────────────
-  bool get _isInputFieldFocused {
-    final primaryFocus = FocusManager.instance.primaryFocus;
-    if (primaryFocus == null) return false;
-    return primaryFocus.context?.widget is EditableText;
-  }
+  bool get _isInputFieldFocused =>
+      FocusUtils.isInputFieldFocused(_searchFocusNode);
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
@@ -94,6 +92,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     if (_isInputFieldFocused) {
       if (event.logicalKey == LogicalKeyboardKey.escape) {
         _searchFocusNode.unfocus();
+        FocusManager.instance.primaryFocus?.unfocus();
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;

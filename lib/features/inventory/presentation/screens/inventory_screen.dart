@@ -7,6 +7,7 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/invento
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_state.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_stock_tab.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_batches_tab.dart';
+import 'package:inventory_store_app/core/utils/focus_utils.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_export_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
@@ -72,11 +73,7 @@ class _InventoryScreenState extends State<InventoryScreen>
   }
 
   // ── REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) ────────────────────
-  bool get _isInputFieldFocused {
-    final primaryFocus = FocusManager.instance.primaryFocus;
-    if (primaryFocus == null) return false;
-    return primaryFocus.context?.widget is EditableText;
-  }
+  bool get _isInputFieldFocused => FocusUtils.isInputFieldFocused();
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
