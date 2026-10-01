@@ -265,31 +265,21 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
 
                                 // Switch de vista Tabla vs Cards
                                 _buildViewModeToggle(),
-                                const SizedBox(width: 12),
+                                const SizedBox(width: 8),
 
-                                SizedBox(
-                                  height: 40,
-                                  width: 40,
-                                  child: IconButton(
-                                    icon: const Icon(
-                                      Icons.refresh_rounded,
-                                      size: 20,
-                                    ),
-                                    color: AppColors.textSecondary,
-                                    tooltip: 'Refrescar [R]',
-                                    style: IconButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                        side: const BorderSide(color: Color(0xFFE2E8F0)),
-                                      ),
-                                    ),
-                                    onPressed:
-                                        () => context
-                                            .read<SuppliersCubit>()
-                                            .loadSuppliers(refresh: true),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.refresh_rounded,
+                                    size: 20,
                                   ),
+                                  color: AppColors.textSecondary,
+                                  tooltip: 'Refrescar proveedores [R]',
+                                  onPressed:
+                                      () => context
+                                          .read<SuppliersCubit>()
+                                          .loadSuppliers(refresh: true),
                                 ),
-                                const SizedBox(width: 12),
+                                const SizedBox(width: 8),
 
                                 SizedBox(
                                   height: 40,
@@ -330,6 +320,70 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                             )
                             : _buildSearchField(),
                   ),
+
+                  // --- 2.5 ENCABEZADO DE NAVEGACIÓN Y CONTADOR ---
+                  if (!isLoading && suppliers.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${suppliers.length} ${suppliers.length == 1 ? "proveedor" : "proveedores"} en esta página',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (isDesktop) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: const Color(0xFFE2E8F0),
+                                ),
+                              ),
+                              child: const Text(
+                                '↑ ↓ navegar',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ),
+                          ],
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            child: Text(
+                              'Pág. ${currentPage + 1} / $totalPages',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                   // --- 3. LISTADO / TABLA O GRILLA RESPONSIVA ---
                   Expanded(
@@ -525,43 +579,65 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         controller: _searchCtrl,
         focusNode: _searchFocusNode,
         onChanged: _onSearchChanged,
-        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+        ),
         textAlignVertical: TextAlignVertical.center,
         decoration: InputDecoration(
           hintText: 'Buscar por nombre, RUC o contacto...',
-          hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+          hintStyle: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 12.5,
+          ),
           prefixIcon: const Icon(
             Icons.search_rounded,
-            color: AppColors.textSecondary,
-            size: 20,
+            color: AppColors.teal,
+            size: 19,
           ),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_searchCtrl.text.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.clear_rounded, size: 18),
-                  color: AppColors.textMuted,
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _searchCtrl,
+            builder: (context, value, _) {
+              if (value.text.isNotEmpty) {
+                return IconButton(
+                  icon: const Icon(
+                    Icons.cancel_rounded,
+                    color: AppColors.textMuted,
+                    size: 16,
+                  ),
                   onPressed: () {
                     _searchCtrl.clear();
                     context.read<SuppliersCubit>().setSearchQuery('');
                   },
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: _buildKeyHint('/'),
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildKeyHint('/'),
+                  ],
                 ),
-            ],
+              );
+            },
           ),
           filled: true,
-          fillColor: AppColors.background,
-          isDense: true,
+          fillColor: const Color(0xFFF8FAFC),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
         ),
       ),
     );
@@ -627,16 +703,16 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.8),
+        color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Text(
         char,
         style: const TextStyle(
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.bold,
-          color: AppColors.textSecondary,
+          color: AppColors.textMuted,
         ),
       ),
     );
