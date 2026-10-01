@@ -909,7 +909,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     bool isLoading, {
     bool isTablet = false,
   }) {
-    if (state.totalPages <= 1 || isLoading) {
+    if (state.totalPages < 1 || isLoading || state.entries.isEmpty) {
       return const SizedBox.shrink();
     }
     return Container(
@@ -924,9 +924,11 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         top: false,
         bottom: !isTablet,
         child: AdminPageBlocks(
-          isCompact: isTablet,
           currentPage: state.currentPage,
           totalPages: state.totalPages,
+          totalItems: state.totalCount,
+          itemsPerPage: 10,
+          itemName: 'entradas',
           onPageChanged: context.read<InventoryEntriesCubit>().goToPage,
         ),
       ),

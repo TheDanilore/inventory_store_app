@@ -324,6 +324,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
               bool withDebtOnly = false;
               int currentPage = 0;
               int totalPages = 1;
+              int totalCount = 0;
               Map<String, dynamic> stats = {};
               String? errorMessage;
 
@@ -332,6 +333,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 withDebtOnly = state.withDebtOnly;
                 currentPage = state.currentPage;
                 totalPages = state.totalPages;
+                totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditsLoading) {
                 accounts = state.currentAccounts;
@@ -339,6 +341,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 currentPage = state.currentPage;
                 totalPages =
                     state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditsError) {
                 accounts = state.currentAccounts;
@@ -346,6 +349,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 currentPage = state.currentPage;
                 totalPages =
                     state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                totalCount = state.totalCount;
                 stats = state.stats;
                 errorMessage = state.message;
               } else if (state is SupplierCreditSaving) {
@@ -354,6 +358,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 currentPage = state.currentPage;
                 totalPages =
                     state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditSaveSuccess) {
                 accounts = state.currentAccounts;
@@ -361,6 +366,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 currentPage = state.currentPage;
                 totalPages =
                     state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditSaveError) {
                 accounts = state.currentAccounts;
@@ -368,6 +374,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 currentPage = state.currentPage;
                 totalPages =
                     state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                totalCount = state.totalCount;
                 stats = state.stats;
                 errorMessage = state.message;
               }
@@ -384,15 +391,17 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
               final debtCount =
                   int.tryParse(stats['debtCount']?.toString() ?? '0') ?? 0;
 
-              return Center(
-                child: RefreshIndicator(
-                  onRefresh:
-                      () => context.read<SupplierCreditsCubit>().loadAccounts(
-                        refresh: true,
-                      ),
-                  child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
+              return Column(
+                children: [
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh:
+                          () => context.read<SupplierCreditsCubit>().loadAccounts(
+                            refresh: true,
+                          ),
+                      child: CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
                       // --- 1. KPI BENTO METRIC BAR ---
                       SliverToBoxAdapter(
                         child: SupplierGlobalStatsBar(
@@ -725,27 +734,57 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                                   ),
                         ),
 
-                      // --- 4. PAGINACIÓN ---
-                      if (!isLoading && totalPages > 1)
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-                            child: AdminPageBlocks(
-                              currentPage: currentPage,
-                              totalPages: totalPages,
-                              onPageChanged:
-                                 context.read<SupplierCreditsCubit>().setPage,
-                            ),
-                          ),
-                        )
-                      else
-                        const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                    ],
+                          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+
+                  // --- 4. PAGINACIÓN FIJA AL PIE (ESTILO PEDIDOS / STRIPE) ---
+                  _buildPagination(
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                    totalItems: totalCount,
+                    isLoading: isLoading,
+                    isDesktop: isDesktop,
+                  ),
+                ],
               );
             },
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPagination({
+    required int currentPage,
+    required int totalPages,
+    required int totalItems,
+    required bool isLoading,
+    required bool isDesktop,
+  }) {
+    if (totalPages < 1 || isLoading || totalItems == 0) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      alignment: Alignment.center,
+      child: SafeArea(
+        top: false,
+        bottom: !isDesktop,
+        child: AdminPageBlocks(
+          currentPage: currentPage,
+          totalPages: totalPages,
+          totalItems: totalItems,
+          itemsPerPage: 8,
+          itemName: 'créditos',
+          onPageChanged: context.read<SupplierCreditsCubit>().setPage,
         ),
       ),
     );

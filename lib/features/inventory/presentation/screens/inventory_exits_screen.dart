@@ -436,28 +436,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                     ),
                   )
                   : null,
-          bottomNavigationBar:
-              (state.totalPages > 1 && !state.isLoading)
-                  ? Container(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.background.withValues(alpha: 0.9),
-                      border: Border(
-                        top: BorderSide(
-                          color: Colors.grey.withValues(alpha: 0.2),
-                        ),
-                      ),
-                    ),
-                    child: SafeArea(
-                      top: false,
-                      child: AdminPageBlocks(
-                        currentPage: state.currentPage,
-                        totalPages: state.totalPages,
-                        onPageChanged: cubit.changePage,
-                      ),
-                    ),
-                  )
-                  : null,
+
           body: Focus(
             focusNode: _screenFocusNode,
             autofocus: true,
@@ -700,6 +679,14 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                                 ),
                       ),
                     ),
+
+                    // ── 6. Paginación Inferior Fija (AdminPageBlocks) ────────
+                    _buildPagination(
+                      context,
+                      state,
+                      cubit,
+                      isTablet: isTablet,
+                    ),
                   ],
                 );
               },
@@ -707,6 +694,38 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildPagination(
+    BuildContext context,
+    InventoryExitsState state,
+    InventoryExitsCubit cubit, {
+    bool isTablet = false,
+  }) {
+    if (state.totalPages < 1 || state.isLoading || state.exits.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      alignment: Alignment.center,
+      child: SafeArea(
+        top: false,
+        bottom: !isTablet,
+        child: AdminPageBlocks(
+          currentPage: state.currentPage,
+          totalPages: state.totalPages,
+          totalItems: state.totalRecords,
+          itemsPerPage: state.pageSize,
+          itemName: 'salidas',
+          onPageChanged: (page) => cubit.changePage(page),
+        ),
+      ),
     );
   }
 

@@ -270,7 +270,7 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
                               decoration: BoxDecoration(
                                 color:
                                     isSelected
-                                        ? AppColors.teal.withValues(alpha: 0.06)
+                                        ? AppColors.tealLight.withValues(alpha: 0.45)
                                         : (isHovered
                                             ? const Color(0xFFF8FAFC)
                                             : Colors.white),
@@ -296,52 +296,56 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
+                                        InkWell(
+                                          onTap:
+                                              () => _copyToClipboard(
+                                                context,
+                                                shortId,
+                                                'Código de entrada',
+                                              ),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.background,
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                              border: Border.all(
+                                                color: AppColors.border,
+                                              ),
+                                            ),
+                                            child: Text(
                                               '#$shortId',
                                               style: const TextStyle(
                                                 fontFamily: 'monospace',
+                                                fontSize: 11,
                                                 fontWeight: FontWeight.w700,
-                                                fontSize: 13,
                                                 color: AppColors.textPrimary,
                                               ),
                                             ),
-                                            const SizedBox(width: 4),
-                                            InkWell(
-                                              onTap:
-                                                  () => _copyToClipboard(
-                                                    context,
-                                                    entry.id,
-                                                    'Código de entrada',
-                                                  ),
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                              child: const Padding(
-                                                padding: EdgeInsets.all(2),
-                                                child: Icon(
-                                                  Icons.copy_rounded,
-                                                  size: 12,
-                                                  color: AppColors.textMuted,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          docInfo,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: AppColors.textSecondary,
-                                            fontWeight: FontWeight.w500,
                                           ),
                                         ),
+                                        if (docInfo.isNotEmpty &&
+                                            docInfo.toUpperCase() != 'NINGUNO') ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            docInfo,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 10.5,
+                                              color: AppColors.textMuted,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),

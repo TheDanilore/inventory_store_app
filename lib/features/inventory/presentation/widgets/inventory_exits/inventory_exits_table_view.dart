@@ -141,7 +141,7 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
                     child: const Row(
                       children: [
                         SizedBox(
-                          width: 120,
+                          width: 100,
                           child: Text(
                             'CÓDIGO',
                             style: TextStyle(
@@ -270,7 +270,7 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
                               decoration: BoxDecoration(
                                 color:
                                     isSelected
-                                        ? AppColors.teal.withValues(alpha: 0.06)
+                                        ? AppColors.tealLight.withValues(alpha: 0.45)
                                         : (isHovered
                                             ? const Color(0xFFF8FAFC)
                                             : Colors.white),
@@ -292,56 +292,34 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
                                 children: [
                                   // 1. Código
                                   SizedBox(
-                                    width: 120,
+                                    width: 100,
                                     child: Row(
-                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Container(
-                                          width: 28,
-                                          height: 28,
-                                          decoration: BoxDecoration(
-                                            color: AppColors.background,
-                                            borderRadius:
-                                                BorderRadius.circular(6),
-                                            border: Border.all(
-                                              color: const Color(0xFFE2E8F0),
-                                            ),
-                                          ),
-                                          child: const Center(
-                                            child: Icon(
-                                              Icons.outbox_rounded,
-                                              size: 15,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          '#$shortId',
-                                          style: const TextStyle(
-                                            fontFamily: 'monospace',
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 13,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
                                         InkWell(
-                                          onTap:
-                                              () => _copyToClipboard(
-                                                context,
-                                                exit.id,
-                                                'Código de salida',
-                                              ),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
+                                          onTap: () => _copyToClipboard(
+                                            context,
+                                            exit.id,
+                                            'Código de salida',
                                           ),
-                                          child: const Padding(
-                                            padding: EdgeInsets.all(2),
-                                            child: Icon(
-                                              Icons.copy_rounded,
-                                              size: 13,
-                                              color: AppColors.textMuted,
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.background,
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(color: AppColors.border),
+                                            ),
+                                            child: Text(
+                                              '#$shortId',
+                                              style: const TextStyle(
+                                                fontFamily: 'monospace',
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.textPrimary,
+                                              ),
                                             ),
                                           ),
                                         ),

@@ -809,9 +809,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
     OrdersCubit cubit, {
     required bool isWide,
   }) {
-    if (state.totalPages <= 1 ||
+    if (state.totalPages < 1 ||
         state.isLoading ||
-        state.errorMessage.isNotEmpty) {
+        state.errorMessage.isNotEmpty ||
+        state.orders.isEmpty) {
       return const SizedBox.shrink();
     }
     return Container(

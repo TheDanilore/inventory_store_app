@@ -534,39 +534,61 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                                               }, childCount: suppliers.length),
                                             )),
                               ),
-                              if (totalPages > 1)
-                                SliverToBoxAdapter(
-                                  child: Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      8,
-                                      16,
-                                      24,
-                                    ),
-                                    child: AdminPageBlocks(
-                                      currentPage: currentPage,
-                                      totalPages: totalPages,
-                                      onPageChanged:
-                                          context
-                                              .read<SuppliersCubit>()
-                                              .setPage,
-                                    ),
-                                  ),
-                                )
-                              else
-                                const SliverToBoxAdapter(
-                                  child: SizedBox(height: 24),
-                                ),
+                              const SliverToBoxAdapter(
+                                child: SizedBox(height: 16),
+                              ),
                             ],
                           ),
                         );
                       },
                     ),
                   ),
+
+                  // --- 4. PAGINACIÓN FIJA AL PIE (ESTILO PEDIDOS / STRIPE) ---
+                  _buildPagination(
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                    totalItems: totalCount,
+                    isLoading: isLoading,
+                    isDesktop: isDesktop,
+                  ),
                 ],
               );
             },
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPagination({
+    required int currentPage,
+    required int totalPages,
+    required int totalItems,
+    required bool isLoading,
+    required bool isDesktop,
+  }) {
+    if (totalPages < 1 || isLoading || totalItems == 0) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      alignment: Alignment.center,
+      child: SafeArea(
+        top: false,
+        bottom: !isDesktop,
+        child: AdminPageBlocks(
+          currentPage: currentPage,
+          totalPages: totalPages,
+          totalItems: totalItems,
+          itemsPerPage: 8,
+          itemName: 'proveedores',
+          onPageChanged: context.read<SuppliersCubit>().setPage,
         ),
       ),
     );
