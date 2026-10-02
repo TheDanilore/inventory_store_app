@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -117,8 +116,6 @@ class _LoginScreenState extends State<LoginScreen>
             type: SnackbarType.error,
           );
         } else if (state.viewState == ViewState.success) {
-          // Solicita al gestor de contraseñas (Google/Apple/Edge) guardar o actualizar credenciales si el usuario lo desea
-          TextInput.finishAutofillContext(shouldSave: true);
           _passwordController.clear();
           _blobCtrl.stop();
           if (!state.isLoginMode) {
