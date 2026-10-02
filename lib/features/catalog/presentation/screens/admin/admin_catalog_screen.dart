@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
@@ -317,7 +316,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 prev.actionState != current.actionState ||
                 prev.errorMessage != current.errorMessage,
             builder: (context, state) {
-              final double fabsBottomPadding = isMobile ? 128.0 : 16.0;
+              const double fabsBottomPadding = 16.0;
 
               Widget mainContent = Builder(
                 builder: (context) {
@@ -721,31 +720,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             child: bodyContent,
           ),
           floatingActionButton: effectiveFab,
-          bottomNavigationBar: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
-            buildWhen: (prev, curr) =>
-                prev.products != curr.products ||
-                prev.currentPage != curr.currentPage ||
-                prev.totalPages != curr.totalPages,
-            builder: (context, state) {
-              if (state.products.isEmpty || state.totalPages < 1) {
-                return const SizedBox.shrink();
-              }
-              return Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  border: const Border(
-                    top: BorderSide(color: AppColors.border, width: 1),
-                  ),
-                ),
-                child: AdminPageBlocks(
-                  currentPage: state.currentPage,
-                  totalPages: state.totalPages,
-                  onPageChanged: cubit.setPage,
-                ),
-              );
-            },
-          ),
         );
       },
     );

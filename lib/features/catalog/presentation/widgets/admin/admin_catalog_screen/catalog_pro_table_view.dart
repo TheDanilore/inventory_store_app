@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 
@@ -101,7 +102,7 @@ class CatalogProTableView extends StatelessWidget {
 
         // ── Contenedor Virtualizado de la Tabla Pro ─────────────────────────
         SliverPadding(
-          padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPadding + 16),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           sliver: SliverMainAxisGroup(
             slivers: [
               // Cabecera Fija con borde superior redondeado
@@ -179,6 +180,30 @@ class CatalogProTableView extends StatelessWidget {
             ],
           ),
         ),
+        if (totalPages > 1)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: AppColors.cardShadow(opacity: 0.03),
+                ),
+                child: AdminPageBlocks(
+                  currentPage: currentPage,
+                  totalPages: totalPages,
+                  onPageChanged: onPageChanged,
+                  totalItems: effectiveTotal,
+                  itemsPerPage: pageSize,
+                  itemName: 'productos',
+                ),
+              ),
+            ),
+          ),
+        SliverToBoxAdapter(child: SizedBox(height: bottomPadding + 16)),
       ],
     );
   }

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_product_card.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -119,9 +120,30 @@ class CatalogGridScrollView extends StatelessWidget {
             );
           },
         ),
-        // La paginación (AdminPageBlocks) fue extraída a la pantalla principal
-        // para estar anclada abajo fuera del scroll.
-        SliverToBoxAdapter(child: SizedBox(height: bottomPadding)),
+        if (totalPages > 1)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: AppColors.cardShadow(opacity: 0.03),
+                ),
+                child: AdminPageBlocks(
+                  currentPage: currentPage,
+                  totalPages: totalPages,
+                  onPageChanged: onPageChanged,
+                  totalItems: effectiveTotal,
+                  itemsPerPage: pageSize,
+                  itemName: 'productos',
+                ),
+              ),
+            ),
+          ),
+        SliverToBoxAdapter(child: SizedBox(height: bottomPadding + 16)),
       ],
     );
   }
