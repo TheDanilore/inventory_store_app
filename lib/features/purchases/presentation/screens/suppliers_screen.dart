@@ -24,6 +24,7 @@ class SuppliersScreen extends StatefulWidget {
 }
 
 class _SuppliersScreenState extends State<SuppliersScreen> {
+  final _scrollController = ScrollController();
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _screenFocusNode = FocusNode();
@@ -43,6 +44,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     _screenFocusNode.dispose();
@@ -245,31 +247,6 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                       color: Colors.white,
                     ),
                   ),
-          bottomNavigationBar: BlocBuilder<SuppliersCubit, SuppliersState>(
-            builder: (context, state) {
-              int pg = 0, tp = 0, tc = 0;
-              if (state is SuppliersLoaded) {
-                pg = state.currentPage;
-                tp = state.totalPages;
-                tc = state.totalCount;
-              } else if (state is SuppliersLoading) {
-                pg = state.currentPage;
-                tc = state.totalCount;
-                tp = tc == 0 ? 0 : (tc / SuppliersCubit.pageSize).ceil();
-              } else if (state is SuppliersError) {
-                pg = state.currentPage;
-                tc = state.totalCount;
-                tp = tc == 0 ? 0 : (tc / SuppliersCubit.pageSize).ceil();
-              }
-              return _buildPagination(
-                currentPage: pg,
-                totalPages: tp,
-                totalItems: tc,
-                isLoading: state is SuppliersLoading,
-                isDesktop: true,
-              );
-            },
-          ),
           body: BlocBuilder<SuppliersCubit, SuppliersState>(
             builder: (context, state) {
               final isLoading =
@@ -313,333 +290,199 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                       .where((s) => s.taxId != null && s.taxId!.isNotEmpty)
                       .length;
 
-              return Column(
-                children: [
-                  // --- 1. BENTO METRIC RIBBON PARA PROVEEDORES ---
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: _SuppliersKpiBar(
-                      totalCount:
-                          totalCount > 0 ? totalCount : suppliers.length,
-                      activeCount: activeCount,
-                      withRucCount: withRucCount,
-                      isDesktop: isDesktop,
-                    ),
-                  ),
-
-                  // --- 2. TOOLBAR UNIFICADO DE BÚSQUEDA Y ACCIONES ---
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x050F172A),
-                          blurRadius: 4,
-                          offset: Offset(0, 1),
+              return RefreshIndicator(
+                onRefresh: () async =>
+                    context.read<SuppliersCubit>().loadSuppliers(refresh: true),
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    // --- 1. BENTO METRIC RIBBON PARA PROVEEDORES ---
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        child: _SuppliersKpiBar(
+                          totalCount:
+                              totalCount > 0 ? totalCount : suppliers.length,
+                          activeCount: activeCount,
+                          withRucCount: withRucCount,
+                          isDesktop: isDesktop,
                         ),
-                      ],
+                      ),
                     ),
-                    child:
-                        isDesktop
-                            ? Row(
-                              children: [
-                                Expanded(child: _buildSearchField()),
-                                const SizedBox(width: 12),
 
-                                // Switch de vista Tabla vs Cards
-                                _buildViewModeToggle(),
-                                const SizedBox(width: 8),
+                    // --- 2. TOOLBAR UNIFICADO DE BÚSQUEDA Y ACCIONES ---
+                    SliverToBoxAdapter(
+                      child: Container(
+                        margin: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x050F172A),
+                              blurRadius: 4,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child:
+                            isDesktop
+                                ? Row(
+                                  children: [
+                                    Expanded(child: _buildSearchField()),
+                                    const SizedBox(width: 12),
 
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.refresh_rounded,
-                                    size: 20,
-                                  ),
-                                  color: AppColors.textSecondary,
-                                  tooltip: 'Refrescar proveedores [R]',
-                                  onPressed:
-                                      () => context
-                                          .read<SuppliersCubit>()
-                                          .loadSuppliers(refresh: true),
-                                ),
-                                const SizedBox(width: 8),
+                                    // Switch de vista Tabla vs Cards
+                                    _buildViewModeToggle(),
+                                    const SizedBox(width: 8),
 
-                                SizedBox(
-                                  height: 40,
-                                  child: FilledButton.icon(
-                                    onPressed: () => _openSupplierModal(context),
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: AppColors.primary,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.refresh_rounded,
+                                        size: 20,
                                       ),
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
+                                      color: AppColors.textSecondary,
+                                      tooltip: 'Refrescar proveedores [R]',
+                                      onPressed:
+                                          () => context
+                                              .read<SuppliersCubit>()
+                                              .loadSuppliers(refresh: true),
                                     ),
-                                    icon: const Icon(
-                                      Icons.add_business_rounded,
-                                      size: 18,
-                                    ),
-                                    label: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Text(
-                                          'Nuevo Proveedor',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12.5,
+                                    const SizedBox(width: 8),
+
+                                    SizedBox(
+                                      height: 40,
+                                      child: FilledButton.icon(
+                                        onPressed:
+                                            () => _openSupplierModal(context),
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: AppColors.primary,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                          ),
+                                          elevation: 0,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
                                           ),
                                         ),
-                                        const SizedBox(width: 6),
-                                        _buildButtonKeyHint('N'),
-                                      ],
+                                        icon: const Icon(
+                                          Icons.add_business_rounded,
+                                          size: 18,
+                                        ),
+                                        label: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Text(
+                                              'Nuevo Proveedor',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 12.5,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            _buildButtonKeyHint('N'),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                                : _buildSearchField(),
+                      ),
+                    ),
+
+                    // --- 2.5 ENCABEZADO DE NAVEGACIÓN Y CONTADOR ---
+                    if (!isLoading && suppliers.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                          child: Row(
+                            children: [
+                              Text(
+                                '${suppliers.length} ${suppliers.length == 1 ? "proveedor" : "proveedores"} en esta página',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (isDesktop) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: const Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    '↑ ↓ navegar',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textMuted,
                                     ),
                                   ),
                                 ),
                               ],
-                            )
-                            : _buildSearchField(),
-                  ),
-
-                  // --- 2.5 ENCABEZADO DE NAVEGACIÓN Y CONTADOR ---
-                  if (!isLoading && suppliers.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                      child: Row(
-                        children: [
-                          Text(
-                            '${suppliers.length} ${suppliers.length == 1 ? "proveedor" : "proveedores"} en esta página',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (isDesktop) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(
-                                  color: const Color(0xFFE2E8F0),
+                              const Spacer(),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
                                 ),
-                              ),
-                              child: const Text(
-                                '↑ ↓ navegar',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textMuted,
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: const Color(0xFFE2E8F0),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ],
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: const Color(0xFFE2E8F0),
-                              ),
-                            ),
-                            child: Text(
-                              'Pág. ${currentPage + 1} / $totalPages',
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // --- 3. LISTADO / TABLA O GRILLA RESPONSIVA ---
-                  Expanded(
-                    child: Builder(
-                      builder: (context) {
-                        if (isLoading && suppliers.isEmpty) {
-                          return _buildSkeletons(isDesktop);
-                        }
-
-                        if (suppliers.isEmpty) {
-                          return Center(
-                            child: AppEmptyState(
-                              icon: Icons.storefront_rounded,
-                              title:
-                                  searchQuery.isNotEmpty
-                                      ? 'No se encontraron resultados'
-                                      : 'No hay proveedores registrados',
-                              message:
-                                  searchQuery.isNotEmpty
-                                      ? 'Intenta con otro término o limpia el buscador.'
-                                      : 'Registra un nuevo proveedor para comenzar.',
-                              action:
-                                  searchQuery.isNotEmpty
-                                      ? OutlinedButton.icon(
-                                        onPressed: () {
-                                          _searchCtrl.clear();
-                                          context
-                                              .read<SuppliersCubit>()
-                                              .setSearchQuery('');
-                                        },
-                                        icon: const Icon(
-                                          Icons.clear_all_rounded,
-                                        ),
-                                        label: const Text('Limpiar búsqueda'),
-                                      )
-                                      : ElevatedButton.icon(
-                                        onPressed:
-                                            () => _openSupplierModal(context),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppColors.teal,
-                                          foregroundColor: Colors.white,
-                                        ),
-                                        icon: const Icon(
-                                          Icons.add_business_rounded,
-                                        ),
-                                        label: const Text('Nuevo Proveedor'),
-                                      ),
-                            ),
-                          );
-                        }
-
-                        return RefreshIndicator(
-                          onRefresh:
-                              () async => context
-                                  .read<SuppliersCubit>()
-                                  .loadSuppliers(refresh: true),
-                          child: CustomScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            slivers: [
-                              SliverPadding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  4,
-                                  16,
-                                  16,
+                                child: Text(
+                                  'Pág. ${currentPage + 1} / $totalPages',
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                                sliver:
-                                    (isDesktop && _isTableView)
-                                        // MODO TABLA PRO DE ALTA DENSIDAD
-                                        ? SliverToBoxAdapter(
-                                          child: SuppliersTableView(
-                                            suppliers: suppliers,
-                                            selectedSupplier: _selectedSupplier,
-                                            onEdit: (s) {
-                                              setState(() => _selectedSupplier = s);
-                                              _openSupplierModal(context, s);
-                                            },
-                                            onToggleStatus:
-                                                (s) => context
-                                                    .read<SuppliersCubit>()
-                                                    .toggleSupplierStatus(s),
-                                          ),
-                                        )
-                                        // MODO TARJETAS (RESPONSIVE GRID)
-                                        : (isDesktop
-                                            ? SliverGrid(
-                                              gridDelegate:
-                                                  const SliverGridDelegateWithMaxCrossAxisExtent(
-                                                    maxCrossAxisExtent: 440,
-                                                    mainAxisExtent: 180,
-                                                    crossAxisSpacing: 16,
-                                                    mainAxisSpacing: 16,
-                                                  ),
-                                              delegate: SliverChildBuilderDelegate((
-                                                context,
-                                                index,
-                                              ) {
-                                                final supplier =
-                                                    suppliers[index];
-                                                return SupplierCard(
-                                                  supplier: supplier,
-                                                  isSelected: _selectedSupplier?.id == supplier.id,
-                                                  onEdit: () {
-                                                    setState(() => _selectedSupplier = supplier);
-                                                    _openSupplierModal(
-                                                      context,
-                                                      supplier,
-                                                    );
-                                                  },
-                                                  onToggleStatus:
-                                                      () => context
-                                                          .read<
-                                                            SuppliersCubit
-                                                          >()
-                                                          .toggleSupplierStatus(
-                                                            supplier,
-                                                          ),
-                                                );
-                                              }, childCount: suppliers.length),
-                                            )
-                                            : SliverList(
-                                              delegate: SliverChildBuilderDelegate((
-                                                context,
-                                                index,
-                                              ) {
-                                                final supplier =
-                                                    suppliers[index];
-                                                return Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                        bottom: 12,
-                                                      ),
-                                                  child: SupplierCard(
-                                                    supplier: supplier,
-                                                    isSelected: _selectedSupplier?.id == supplier.id,
-                                                    onEdit: () {
-                                                      setState(() => _selectedSupplier = supplier);
-                                                      _openSupplierModal(
-                                                        context,
-                                                        supplier,
-                                                      );
-                                                    },
-                                                    onToggleStatus:
-                                                        () => context
-                                                            .read<
-                                                              SuppliersCubit
-                                                            >()
-                                                            .toggleSupplierStatus(
-                                                              supplier,
-                                                            ),
-                                                  ),
-                                                );
-                                              }, childCount: suppliers.length),
-                                            )),
-                              ),
-                              const SliverToBoxAdapter(
-                                child: SizedBox(height: 16),
                               ),
                             ],
                           ),
-                        );
-                      },
-                    ),
-                  ),
+                        ),
+                      ),
 
-                ],
+                    // --- 3. LISTADO / TABLA O GRILLA RESPONSIVA EN SLIVERS ---
+                    ..._buildSupplierContentSlivers(
+                      isLoading: isLoading,
+                      suppliers: suppliers,
+                      isDesktop: isDesktop,
+                      searchQuery: searchQuery,
+                    ),
+
+                    // --- 4. PAGINACIÓN FLUIDA AL PIE DEL SCROLL ---
+                    _buildPaginationSliver(
+                      currentPage: currentPage,
+                      totalPages: totalPages,
+                      totalItems: totalCount,
+                      isLoading: isLoading,
+                      context: context,
+                    ),
+                  ],
+                ),
               );
             },
           ),
@@ -648,31 +491,172 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     );
   }
 
-  Widget _buildPagination({
+  List<Widget> _buildSupplierContentSlivers({
+    required bool isLoading,
+    required List<SupplierEntity> suppliers,
+    required bool isDesktop,
+    required String searchQuery,
+  }) {
+    if (isLoading && suppliers.isEmpty) {
+      return [_buildSkeletonsSliver(isDesktop)];
+    }
+
+    if (suppliers.isEmpty) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: AppEmptyState(
+              icon: Icons.storefront_rounded,
+              title:
+                  searchQuery.isNotEmpty
+                      ? 'No se encontraron resultados'
+                      : 'No hay proveedores registrados',
+              message:
+                  searchQuery.isNotEmpty
+                      ? 'Intenta con otro término o limpia el buscador.'
+                      : 'Registra un nuevo proveedor para comenzar.',
+              action:
+                  searchQuery.isNotEmpty
+                      ? OutlinedButton.icon(
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          context.read<SuppliersCubit>().setSearchQuery('');
+                        },
+                        icon: const Icon(Icons.clear_all_rounded),
+                        label: const Text('Limpiar búsqueda'),
+                      )
+                      : ElevatedButton.icon(
+                        onPressed: () => _openSupplierModal(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.teal,
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.add_business_rounded),
+                        label: const Text('Nuevo Proveedor'),
+                      ),
+            ),
+          ),
+        ),
+      ];
+    }
+
+    if (isDesktop && _isTableView) {
+      return [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverToBoxAdapter(
+            child: SuppliersTableView(
+              suppliers: suppliers,
+              selectedSupplier: _selectedSupplier,
+              onEdit: (s) {
+                setState(() => _selectedSupplier = s);
+                _openSupplierModal(context, s);
+              },
+              onToggleStatus:
+                  (s) =>
+                      context.read<SuppliersCubit>().toggleSupplierStatus(s),
+            ),
+          ),
+        ),
+      ];
+    }
+
+    if (isDesktop) {
+      return [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 440,
+              mainAxisExtent: 180,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final supplier = suppliers[index];
+              return SupplierCard(
+                supplier: supplier,
+                isSelected: _selectedSupplier?.id == supplier.id,
+                onEdit: () {
+                  setState(() => _selectedSupplier = supplier);
+                  _openSupplierModal(context, supplier);
+                },
+                onToggleStatus:
+                    () => context.read<SuppliersCubit>().toggleSupplierStatus(
+                      supplier,
+                    ),
+              );
+            }, childCount: suppliers.length),
+          ),
+        ),
+      ];
+    }
+
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final supplier = suppliers[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SupplierCard(
+                supplier: supplier,
+                isSelected: _selectedSupplier?.id == supplier.id,
+                onEdit: () {
+                  setState(() => _selectedSupplier = supplier);
+                  _openSupplierModal(context, supplier);
+                },
+                onToggleStatus:
+                    () => context.read<SuppliersCubit>().toggleSupplierStatus(
+                      supplier,
+                    ),
+              ),
+            );
+          }, childCount: suppliers.length),
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildPaginationSliver({
     required int currentPage,
     required int totalPages,
     required int totalItems,
     required bool isLoading,
-    required bool isDesktop,
+    required BuildContext context,
   }) {
-    if (totalPages < 1 || totalItems == 0) {
-      return const SizedBox.shrink();
+    if (totalPages <= 1 || isLoading || totalItems == 0) {
+      return const SliverToBoxAdapter(child: SizedBox(height: 24));
     }
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      alignment: Alignment.center,
-      child: SafeArea(
-        top: false,
-        bottom: !isDesktop,
-        child: AdminPageBlocks(
-          currentPage: currentPage,
-          totalPages: totalPages,
-          onPageChanged: context.read<SuppliersCubit>().setPage,
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppColors.cardShadow(opacity: 0.03),
+          ),
+          child: AdminPageBlocks(
+            currentPage: currentPage,
+            totalPages: totalPages,
+            onPageChanged: (page) {
+              context.read<SuppliersCubit>().setPage(page);
+              if (_scrollController.hasClients) {
+                _scrollController.animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                );
+              }
+            },
+            totalItems: totalItems,
+            itemName: 'proveedores',
+          ),
         ),
       ),
     );
@@ -843,42 +827,50 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     );
   }
 
-  Widget _buildSkeletons(bool isDesktop) {
+  Widget _buildSkeletonsSliver(bool isDesktop) {
     if (isDesktop && _isTableView) {
-      return const Padding(
+      return const SliverPadding(
         padding: EdgeInsets.all(16),
-        child: AppTableShimmer(),
+        sliver: SliverToBoxAdapter(child: AppTableShimmer()),
       );
     }
     if (isDesktop) {
-      return GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 440,
-          mainAxisExtent: 180,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-        ),
-        itemCount: 6,
-        itemBuilder:
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: SliverGrid(
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 440,
+            mainAxisExtent: 180,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+          ),
+          delegate: SliverChildBuilderDelegate(
             (_, _) => const AppShimmer(
               width: double.infinity,
               height: double.infinity,
               borderRadius: 16,
             ),
+            childCount: 6,
+          ),
+        ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: 5,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder:
-          (_, _) => const AppShimmer(
-            width: double.infinity,
-            height: 160,
-            borderRadius: 16,
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (_, _) => const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: AppShimmer(
+              width: double.infinity,
+              height: 160,
+              borderRadius: 16,
+            ),
           ),
+          childCount: 5,
+        ),
+      ),
     );
   }
 }

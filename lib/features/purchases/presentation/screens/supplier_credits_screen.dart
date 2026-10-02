@@ -32,6 +32,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _screenFocusNode = FocusNode();
+  final _scrollController = ScrollController();
   late final TabController _tabCtrl;
   bool _isTableView = true; // Desktop: por defecto vista tabla Pro de alta densidad
   SupplierCreditEntity? _selectedAccount;
@@ -60,6 +61,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     _screenFocusNode.dispose();
+    _scrollController.dispose();
     _tabCtrl.dispose();
     super.dispose();
   }
@@ -367,35 +369,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                     tooltip: 'Nueva Línea',
                     child: const Icon(Icons.add_rounded, color: Colors.white),
                   ),
-          bottomNavigationBar: BlocBuilder<SupplierCreditsCubit, SupplierCreditsState>(
-            builder: (context, state) {
-              int pg = 0, tp = 0, tc = 0;
-              if (state is SupplierCreditsLoaded) {
-                pg = state.currentPage;
-                tp = state.totalPages;
-                tc = state.totalCount;
-              } else if (state is SupplierCreditsLoading) {
-                pg = state.currentPage;
-                tc = state.totalCount;
-                tp = tc == 0 ? 0 : (tc / SupplierCreditsCubit.pageSize).ceil();
-              } else if (state is SupplierCreditsError) {
-                pg = state.currentPage;
-                tc = state.totalCount;
-                tp = tc == 0 ? 0 : (tc / SupplierCreditsCubit.pageSize).ceil();
-              } else if (state is SupplierCreditSaving) {
-                pg = state.currentPage;
-                tc = state.totalCount;
-                tp = tc == 0 ? 0 : (tc / SupplierCreditsCubit.pageSize).ceil();
-              }
-              return _buildPagination(
-                currentPage: pg,
-                totalPages: tp,
-                totalItems: tc,
-                isLoading: state is SupplierCreditsLoading,
-                isDesktop: true,
-              );
-            },
-          ),
           body: BlocBuilder<SupplierCreditsCubit, SupplierCreditsState>(
             builder: (context, state) {
               final isLoading =
@@ -407,6 +380,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
               bool withDebtOnly = false;
               int currentPage = 0;
               int totalPages = 1;
+              int totalCount = 0;
               Map<String, dynamic> stats = {};
               String? errorMessage;
 
@@ -415,6 +389,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 withDebtOnly = state.withDebtOnly;
                 currentPage = state.currentPage;
                 totalPages = state.totalPages;
+                totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditsLoading) {
                 accounts = state.currentAccounts;
@@ -425,6 +400,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                         ? 1
                         : (state.totalCount / SupplierCreditsCubit.pageSize)
                             .ceil();
+                totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditsError) {
                 accounts = state.currentAccounts;
@@ -435,6 +411,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                         ? 1
                         : (state.totalCount / SupplierCreditsCubit.pageSize)
                             .ceil();
+                totalCount = state.totalCount;
                 stats = state.stats;
                 errorMessage = state.message;
               } else if (state is SupplierCreditSaving) {
@@ -446,6 +423,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                         ? 1
                         : (state.totalCount / SupplierCreditsCubit.pageSize)
                             .ceil();
+                totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditSaveSuccess) {
                 accounts = state.currentAccounts;
@@ -456,6 +434,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                         ? 1
                         : (state.totalCount / SupplierCreditsCubit.pageSize)
                             .ceil();
+                totalCount = state.totalCount;
                 stats = state.stats;
               } else if (state is SupplierCreditSaveError) {
                 accounts = state.currentAccounts;
@@ -466,6 +445,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                         ? 1
                         : (state.totalCount / SupplierCreditsCubit.pageSize)
                             .ceil();
+                totalCount = state.totalCount;
                 stats = state.stats;
                 errorMessage = state.message;
               }
@@ -482,17 +462,15 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
               final debtCount =
                   int.tryParse(stats['debtCount']?.toString() ?? '0') ?? 0;
 
-              return Column(
-                children: [
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh:
-                          () => context.read<SupplierCreditsCubit>().loadAccounts(
-                            refresh: true,
-                          ),
-                      child: CustomScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: [
+              return RefreshIndicator(
+                onRefresh:
+                    () => context.read<SupplierCreditsCubit>().loadAccounts(
+                      refresh: true,
+                    ),
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
                       // --- 1. KPI BENTO METRIC BAR ---
                       SliverToBoxAdapter(
                         child: SupplierGlobalStatsBar(
@@ -834,14 +812,17 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                                   ),
                         ),
 
-                          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                        ],
+                      // --- 4. PAGINACIÓN FLUIDA AL PIE DEL SCROLL ---
+                      _buildPaginationSliver(
+                        currentPage: currentPage,
+                        totalPages: totalPages,
+                        totalItems: totalCount,
+                        isLoading: isLoading,
+                        context: context,
                       ),
-                    ),
+                    ],
                   ),
-
-                ],
-              );
+                );
             },
           ),
         ),
@@ -849,31 +830,43 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
     );
   }
 
-  Widget _buildPagination({
+  Widget _buildPaginationSliver({
     required int currentPage,
     required int totalPages,
     required int totalItems,
     required bool isLoading,
-    required bool isDesktop,
+    required BuildContext context,
   }) {
-    if (totalPages < 1 || totalItems == 0) {
-      return const SizedBox.shrink();
+    if (totalPages <= 1 || isLoading || totalItems == 0) {
+      return const SliverToBoxAdapter(child: SizedBox(height: 24));
     }
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      alignment: Alignment.center,
-      child: SafeArea(
-        top: false,
-        bottom: !isDesktop,
-        child: AdminPageBlocks(
-          currentPage: currentPage,
-          totalPages: totalPages,
-          onPageChanged: context.read<SupplierCreditsCubit>().setPage,
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppColors.cardShadow(opacity: 0.03),
+          ),
+          child: AdminPageBlocks(
+            currentPage: currentPage,
+            totalPages: totalPages,
+            onPageChanged: (page) {
+              context.read<SupplierCreditsCubit>().setPage(page);
+              if (_scrollController.hasClients) {
+                _scrollController.animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                );
+              }
+            },
+            totalItems: totalItems,
+            itemName: 'líneas de crédito',
+          ),
         ),
       ),
     );

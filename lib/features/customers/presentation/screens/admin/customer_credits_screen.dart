@@ -45,6 +45,7 @@ class _CustomerCreditsScreenContentState
   late TabController _tabController;
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
+  final _scrollController = ScrollController();
   Timer? _debounce;
   bool _isTableView = true;
 
@@ -65,6 +66,7 @@ class _CustomerCreditsScreenContentState
     _tabController.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -273,27 +275,15 @@ class _CustomerCreditsScreenContentState
                       tooltip: 'Nueva Línea',
                       child: const Icon(Icons.add_rounded, color: Colors.white),
                     ),
-            bottomNavigationBar:
-                state.totalAccounts == 0 || state.totalPages < 1
-                    ? null
-                    : _buildPagination(
-                      currentPage: state.currentPage,
-                      totalPages: state.totalPages,
-                      totalItems: state.totalAccounts,
-                      isLoading: state.isLoading,
-                      isDesktop: true,
-                    ),
-            body: Column(
-              children: [
-                Expanded(
-                  child: RefreshIndicator(
-                    color: AppColors.primary,
-                    onRefresh:
-                        () async =>
-                            context.read<CustomerCreditListCubit>().loadData(),
-                    child: CustomScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: [
+            body: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh:
+                  () async =>
+                      context.read<CustomerCreditListCubit>().loadData(),
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
                         // --- 1. KPI BENTO METRIC BAR ---
                         if (!state.isLoading || state.accounts.isNotEmpty)
                           SliverToBoxAdapter(
@@ -683,45 +673,60 @@ class _CustomerCreditsScreenContentState
                                     ),
                           ),
 
-                        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                        // --- 4. PAGINACIÓN FLUIDA AL PIE DEL SCROLL ---
+                        _buildPaginationSliver(
+                          currentPage: state.currentPage,
+                          totalPages: state.totalPages,
+                          totalItems: state.totalAccounts,
+                          isLoading: state.isLoading,
+                          context: context,
+                        ),
                       ],
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
+                );
         },
       ),
     );
   }
 
-  Widget _buildPagination({
+  Widget _buildPaginationSliver({
     required int currentPage,
     required int totalPages,
     required int totalItems,
     required bool isLoading,
-    required bool isDesktop,
+    required BuildContext context,
   }) {
-    if (totalPages < 1 || totalItems == 0) {
-      return const SizedBox.shrink();
+    if (totalPages <= 1 || isLoading || totalItems == 0) {
+      return const SliverToBoxAdapter(child: SizedBox(height: 24));
     }
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      alignment: Alignment.center,
-      child: SafeArea(
-        top: false,
-        bottom: !isDesktop,
-        child: AdminPageBlocks(
-          currentPage: currentPage,
-          totalPages: totalPages,
-          onPageChanged:
-              (page) => context.read<CustomerCreditListCubit>().setPage(page),
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppColors.cardShadow(opacity: 0.03),
+          ),
+          child: AdminPageBlocks(
+            currentPage: currentPage,
+            totalPages: totalPages,
+            onPageChanged: (page) {
+              context.read<CustomerCreditListCubit>().setPage(page);
+              if (_scrollController.hasClients) {
+                _scrollController.animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                );
+              }
+            },
+            totalItems: totalItems,
+            itemName: 'créditos de clientes',
+          ),
         ),
       ),
     );
