@@ -695,7 +695,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
                             // --- 3. LISTADO O TABLA PRO ---
                             SliverPadding(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                               sliver: _buildListOrTableSliver(
                                 state,
                                 cubit,
@@ -705,13 +705,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 displayOrders,
                               ),
                             ),
+
+                            // --- 4. PAGINACIÓN FLUIDA AL PIE DEL SCROLL ---
+                            _buildPaginationSliver(context, state, cubit),
                           ],
                         ),
                       ),
                     ),
-
-                    // --- 4. PAGINACIÓN FIJA AL PIE ---
-                    _buildPagination(state, cubit, isWide: isWide),
                   ],
                 );
 
@@ -853,32 +853,37 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Widget _buildPagination(
+  Widget _buildPaginationSliver(
+    BuildContext context,
     OrdersState state,
-    OrdersCubit cubit, {
-    required bool isWide,
-  }) {
-    if (state.totalPages < 1 ||
+    OrdersCubit cubit,
+  ) {
+    if (state.totalPages <= 1 ||
         state.isLoading ||
         state.errorMessage.isNotEmpty ||
         state.orders.isEmpty) {
-      return const SizedBox.shrink();
+      return const SliverToBoxAdapter(child: SizedBox(height: 24));
     }
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      alignment: Alignment.center,
-      child: SafeArea(
-        top: false,
-        bottom: !isWide,
-        child: AdminPageBlocks(
-          currentPage: state.currentPage,
-          totalPages: state.totalPages,
-          onPageChanged: cubit.goToPage,
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppColors.cardShadow(opacity: 0.03),
+          ),
+          child: AdminPageBlocks(
+            currentPage: state.currentPage,
+            totalPages: state.totalPages,
+            onPageChanged: cubit.goToPage,
+            totalItems: state.totalRecords,
+            itemsPerPage: OrdersState.pageSize,
+            itemName: 'pedidos',
+          ),
         ),
       ),
     );
