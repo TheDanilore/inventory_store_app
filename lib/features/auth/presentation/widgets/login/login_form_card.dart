@@ -198,47 +198,58 @@ class _LoginFormCardState extends State<LoginFormCard> {
         border: Border.all(color: AppColors.border),
         boxShadow: AppColors.cardShadow(),
       ),
-      child: Form(
-        key: widget.formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!widget.isLoginMode) ...[
+      child: AutofillGroup(
+        child: Form(
+          key: widget.formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (!widget.isLoginMode) ...[
+                AppTextField(
+                  controller: widget.nameController,
+                  label: 'Nombre completo',
+                  icon: Icons.person_outline_rounded,
+                  keyboardType: TextInputType.name,
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.name],
+                  validator: _validateName,
+                ),
+                const SizedBox(height: 14),
+              ],
+
               AppTextField(
-                controller: widget.nameController,
-                label: 'Nombre completo',
-                icon: Icons.person_outline_rounded,
-                keyboardType: TextInputType.name,
-                textCapitalization: TextCapitalization.words,
+                controller: widget.emailController,
+                label: 'Correo electrónico',
+                icon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
-                validator: _validateName,
+                autofillHints: const [
+                  AutofillHints.username,
+                  AutofillHints.email,
+                ],
+                onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                validator: _validateEmail,
               ),
               const SizedBox(height: 14),
-            ],
 
-            AppTextField(
-              controller: widget.emailController,
-              label: 'Correo electrónico',
-              icon: Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-              validator: _validateEmail,
-            ),
-            const SizedBox(height: 14),
-
-            ValueListenableBuilder<bool>(
-              valueListenable: _obscurePasswordNotifier,
-              builder: (context, obscure, _) {
-                return AppTextField(
-                  controller: widget.passwordController,
-                  label: 'Contraseña',
-                  icon: Icons.lock_outline_rounded,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted:
-                      widget.isLoading
-                          ? null
-                          : (_) => widget.onAuthenticate(),
+              ValueListenableBuilder<bool>(
+                valueListenable: _obscurePasswordNotifier,
+                builder: (context, obscure, _) {
+                  return AppTextField(
+                    controller: widget.passwordController,
+                    label: 'Contraseña',
+                    icon: Icons.lock_outline_rounded,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: [
+                      widget.isLoginMode
+                          ? AutofillHints.password
+                          : AutofillHints.newPassword,
+                    ],
+                    onFieldSubmitted:
+                        widget.isLoading
+                            ? null
+                            : (_) => widget.onAuthenticate(),
                     suffixIcon: IconButton(
                       icon: Icon(
                         obscure
@@ -293,7 +304,8 @@ class _LoginFormCardState extends State<LoginFormCard> {
             ],
           ),
         ),
-      );
+      ),
+    );
   }
 }
 

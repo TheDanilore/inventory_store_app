@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -116,7 +117,8 @@ class _LoginScreenState extends State<LoginScreen>
             type: SnackbarType.error,
           );
         } else if (state.viewState == ViewState.success) {
-          _passwordController.clear();
+          // Permite al gestor de contraseñas capturar usuario y contraseña correctamente
+          TextInput.finishAutofillContext(shouldSave: true);
           _blobCtrl.stop();
           if (!state.isLoginMode) {
             AppSnackbar.show(
