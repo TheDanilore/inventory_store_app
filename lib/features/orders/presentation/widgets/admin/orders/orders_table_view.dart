@@ -35,15 +35,9 @@ class OrdersTableView extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x050F172A),
-                blurRadius: 4,
-                offset: Offset(0, 1),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border, width: 1.2),
+            boxShadow: AppColors.cardShadow(opacity: 0.04),
           ),
           clipBehavior: Clip.antiAlias,
           child: SingleChildScrollView(
@@ -54,12 +48,12 @@ class OrdersTableView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // --- Encabezado Fijo de Tabla ---
+                  // --- Encabezado Fijo de Tabla (Slate Tonal Header) ---
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
                     decoration: const BoxDecoration(
-                      color: AppColors.background,
-                      border: Border(bottom: BorderSide(color: AppColors.border)),
+                      color: Color(0xFFF1F5F9), // Slate 100
+                      border: Border(bottom: BorderSide(color: Color(0xFFCBD5E1), width: 1)),
                     ),
                     child: const Row(
                       children: [
@@ -69,9 +63,9 @@ class OrdersTableView extends StatelessWidget {
                             'ID PEDIDO',
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF334155),
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
@@ -81,9 +75,9 @@ class OrdersTableView extends StatelessWidget {
                             'FECHA / HORA',
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF334155),
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
@@ -93,9 +87,9 @@ class OrdersTableView extends StatelessWidget {
                             'CLIENTE / DESTINO',
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF334155),
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
@@ -105,9 +99,9 @@ class OrdersTableView extends StatelessWidget {
                             'ESTADO',
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF334155),
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
@@ -117,9 +111,9 @@ class OrdersTableView extends StatelessWidget {
                             'PAGO',
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF334155),
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
@@ -130,9 +124,9 @@ class OrdersTableView extends StatelessWidget {
                             textAlign: TextAlign.end,
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF334155),
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
@@ -143,9 +137,9 @@ class OrdersTableView extends StatelessWidget {
                             textAlign: TextAlign.end,
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF334155),
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
@@ -225,58 +219,65 @@ class _OrderTableRowState extends State<_OrderTableRow> {
 
   Widget _buildStatusBadge(String status) {
     Color bg;
+    Color border;
     Color text;
     String label;
     IconData icon;
 
     switch (status.toUpperCase()) {
       case 'COMPLETED':
-        bg = AppColors.successLight;
-        text = AppColors.successDark;
+        bg = const Color(0xFFECFDF5);
+        border = const Color(0xFFA7F3D0);
+        text = const Color(0xFF047857);
         label = 'Completado';
         icon = Icons.check_circle_rounded;
         break;
       case 'DRAFT':
-        bg = AppColors.warningLight;
-        text = AppColors.warningDark;
+        bg = const Color(0xFFFFFBEB);
+        border = const Color(0xFFFDE68A);
+        text = const Color(0xFFB45309);
         label = 'Borrador';
         icon = Icons.hourglass_top_rounded;
         break;
       case 'CANCELLED':
-        bg = AppColors.dangerLight;
-        text = AppColors.danger;
+        bg = const Color(0xFFFFF1F2);
+        border = const Color(0xFFFECDD3);
+        text = const Color(0xFFBE123C);
         label = 'Cancelado';
         icon = Icons.cancel_rounded;
         break;
       case 'RETURNED':
-        bg = Colors.purple.shade50;
-        text = Colors.purple.shade700;
+        bg = const Color(0xFFF5F3FF);
+        border = const Color(0xFFDDD6FE);
+        text = const Color(0xFF6D28D9);
         label = 'Devuelto';
         icon = Icons.assignment_return_rounded;
         break;
       default:
-        bg = Colors.grey.shade100;
-        text = AppColors.textSecondary;
+        bg = const Color(0xFFF1F5F9);
+        border = const Color(0xFFCBD5E1);
+        text = const Color(0xFF475569);
         label = status;
         icon = Icons.info_outline_rounded;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: border, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: text),
-          const SizedBox(width: 4),
+          Icon(icon, size: 12.5, color: text),
+          const SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
               color: text,
             ),
           ),
@@ -287,24 +288,32 @@ class _OrderTableRowState extends State<_OrderTableRow> {
 
   Widget _buildPaymentBadge(String paymentStatus, String method, double pending) {
     final isPaid = paymentStatus.toUpperCase() == 'PAID';
-    final bg = isPaid ? AppColors.successLight : AppColors.warningLight;
-    final text = isPaid ? AppColors.successDark : AppColors.warningDark;
+    final Color bg = isPaid
+        ? const Color(0xFFECFDF5)
+        : (pending > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFF1F5F9));
+    final Color border = isPaid
+        ? const Color(0xFFA7F3D0)
+        : (pending > 0 ? const Color(0xFFFDE68A) : const Color(0xFFCBD5E1));
+    final Color text = isPaid
+        ? const Color(0xFF047857)
+        : (pending > 0 ? const Color(0xFFB45309) : const Color(0xFF475569));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
             color: bg,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(color: border, width: 1),
           ),
           child: Text(
             isPaid ? 'Pagado' : (pending > 0 ? 'Por Cobrar' : 'Pendiente'),
             style: TextStyle(
               fontSize: 10.5,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
               color: text,
             ),
           ),
@@ -314,9 +323,9 @@ class _OrderTableRowState extends State<_OrderTableRow> {
           Text(
             method,
             style: const TextStyle(
-              fontSize: 10,
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w500,
+              fontSize: 10.5,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w600,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -352,18 +361,18 @@ class _OrderTableRowState extends State<_OrderTableRow> {
           curve: Curves.easeInOut,
           decoration: BoxDecoration(
             color: isSelected
-                ? AppColors.tealLight.withValues(alpha: 0.45)
+                ? const Color(0xFFF0FDFA)
                 : (_isHovered ? const Color(0xFFF8FAFC) : Colors.white),
             border: Border(
               left: BorderSide(
-                color: isSelected ? AppColors.teal : const Color(0x000D9488),
-                width: 3.5,
+                color: isSelected ? const Color(0xFF0D9488) : Colors.transparent,
+                width: 4,
               ),
             ),
           ),
           padding: const EdgeInsets.symmetric(
             horizontal: 18,
-            vertical: 11,
+            vertical: 13,
           ),
           child: Row(
             children: [
@@ -374,24 +383,24 @@ class _OrderTableRowState extends State<_OrderTableRow> {
                   children: [
                     InkWell(
                       onTap: () => _copyToClipboard(context, shortId, 'ID'),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(6),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
+                          horizontal: 8,
+                          vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: AppColors.border),
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFFCBD5E1)),
                         ),
                         child: Text(
                           '#$shortId',
                           style: const TextStyle(
                             fontFamily: 'monospace',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
                           ),
                         ),
                       ),
@@ -407,8 +416,8 @@ class _OrderTableRowState extends State<_OrderTableRow> {
                   dateFormatted,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF475569),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -423,21 +432,22 @@ class _OrderTableRowState extends State<_OrderTableRow> {
                     Text(
                       order.displayCustomerName,
                       style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 1),
+                    const SizedBox(height: 2),
                     Text(
                       (order.warehouseName != null && order.warehouseName!.isNotEmpty)
                           ? order.warehouseName!
                           : 'Tienda Principal',
                       style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
+                        fontSize: 11.5,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -468,14 +478,30 @@ class _OrderTableRowState extends State<_OrderTableRow> {
               // 6. Total
               SizedBox(
                 width: 110,
-                child: Text(
-                  'S/ ${order.totalAmount.toStringAsFixed(2)}',
+                child: RichText(
                   textAlign: TextAlign.end,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                    fontFeatures: [FontFeature.tabularFigures()],
+                  text: TextSpan(
+                    children: [
+                      const TextSpan(
+                        text: 'S/ ',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF64748B),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      TextSpan(
+                        text: order.totalAmount.toStringAsFixed(2),
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0F172A),
+                          fontFamily: 'Inter',
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -489,17 +515,18 @@ class _OrderTableRowState extends State<_OrderTableRow> {
                     IconButton(
                       icon: const Icon(
                         Icons.receipt_long_rounded,
-                        size: 18,
-                        color: AppColors.textSecondary,
+                        size: 19,
+                        color: Color(0xFF64748B),
                       ),
                       tooltip: 'Imprimir Ticket [P]',
+                      hoverColor: const Color(0xFFF1F5F9),
                       onPressed: widget.onPrintTicket,
                     ),
                     if (order.status == 'DRAFT')
                       IconButton(
                         icon: const Icon(
                           Icons.payments_rounded,
-                          size: 18,
+                          size: 19,
                           color: AppColors.teal,
                         ),
                         tooltip: 'Completar / Cobrar',
@@ -509,8 +536,8 @@ class _OrderTableRowState extends State<_OrderTableRow> {
                       IconButton(
                         icon: Icon(
                           Icons.chevron_right_rounded,
-                          size: 20,
-                          color: _isHovered ? AppColors.tealDark : AppColors.textMuted,
+                          size: 21,
+                          color: _isHovered ? AppColors.teal : const Color(0xFF94A3B8),
                         ),
                         tooltip: 'Ver detalle',
                         onPressed: widget.onSelect,

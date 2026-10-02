@@ -924,16 +924,22 @@ class _OrdersBentoKpiBar extends StatelessWidget {
         value: '$totalRecords',
         subtitle: 'Pedidos registrados',
         icon: Icons.receipt_long_rounded,
-        iconBgColor: AppColors.tealLight,
-        iconColor: AppColors.tealDark,
+        gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
+        iconGradient: const [Color(0xFF0D9488), Color(0xFF0F766E)],
+        borderColor: const Color(0xFF99F6E4),
+        accentColor: const Color(0xFF0D9488),
+        glowColor: const Color(0x2E0D9488),
       ),
       _BentoOrderKpiCard(
         title: 'Total Facturado',
         value: 'S/ ${pageTotalAmount.toStringAsFixed(2)}',
-        subtitle: 'Total facturado',
+        subtitle: 'Total facturado en pág.',
         icon: Icons.payments_rounded,
-        iconBgColor: AppColors.successLight,
-        iconColor: AppColors.successDark,
+        gradientColors: const [Colors.white, Color(0xFFECFDF5)],
+        iconGradient: const [Color(0xFF10B981), Color(0xFF059669)],
+        borderColor: const Color(0xFFA7F3D0),
+        accentColor: const Color(0xFF059669),
+        glowColor: const Color(0x2E10B981),
       ),
       _BentoOrderKpiCard(
         title: pendingDebt > 0 ? 'Por Cobrar' : 'Pedidos Pendientes',
@@ -946,8 +952,11 @@ class _OrdersBentoKpiBar extends StatelessWidget {
         icon: pendingDebt > 0
             ? Icons.credit_card_rounded
             : Icons.pending_actions_rounded,
-        iconBgColor: AppColors.warningLight,
-        iconColor: AppColors.warningDark,
+        gradientColors: const [Colors.white, Color(0xFFFFFBEB)],
+        iconGradient: const [Color(0xFFF59E0B), Color(0xFFD97706)],
+        borderColor: const Color(0xFFFDE68A),
+        accentColor: const Color(0xFFD97706),
+        glowColor: const Color(0x2EF59E0B),
       ),
     ];
 
@@ -955,111 +964,156 @@ class _OrdersBentoKpiBar extends StatelessWidget {
       return Row(
         children: [
           Expanded(child: cards[0]),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(child: cards[1]),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(child: cards[2]),
         ],
       );
     }
 
     return SizedBox(
-      height: 84,
+      height: 90,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         itemCount: cards.length,
         separatorBuilder: (_, _) => const SizedBox(width: 12),
-        itemBuilder: (_, index) => SizedBox(width: 220, child: cards[index]),
+        itemBuilder: (_, index) => SizedBox(width: 240, child: cards[index]),
       ),
     );
   }
 }
 
-class _BentoOrderKpiCard extends StatelessWidget {
+class _BentoOrderKpiCard extends StatefulWidget {
   final String title;
   final String value;
   final String subtitle;
   final IconData icon;
-  final Color iconBgColor;
-  final Color iconColor;
+  final List<Color> gradientColors;
+  final List<Color> iconGradient;
+  final Color borderColor;
+  final Color accentColor;
+  final Color glowColor;
 
   const _BentoOrderKpiCard({
     required this.title,
     required this.value,
     required this.subtitle,
     required this.icon,
-    required this.iconBgColor,
-    required this.iconColor,
+    required this.gradientColors,
+    required this.iconGradient,
+    required this.borderColor,
+    required this.accentColor,
+    required this.glowColor,
   });
 
   @override
+  State<_BentoOrderKpiCard> createState() => _BentoOrderKpiCardState();
+}
+
+class _BentoOrderKpiCardState extends State<_BentoOrderKpiCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x050F172A),
-            blurRadius: 4,
-            offset: Offset(0, 1),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        transform: Matrix4.translationValues(0, _isHovered ? -2.0 : 0, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: widget.gradientColors,
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _isHovered
+                ? widget.accentColor.withValues(alpha: 0.6)
+                : widget.borderColor,
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _isHovered ? widget.glowColor : const Color(0x060F172A),
+              blurRadius: _isHovered ? 14 : 6,
+              offset: Offset(0, _isHovered ? 4 : 2),
             ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: widget.iconGradient,
                 ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.3,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.glowColor,
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textMuted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
+              child: Icon(widget.icon, color: Colors.white, size: 22),
             ),
-          ),
-        ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    widget.title.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: widget.accentColor,
+                      letterSpacing: 0.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.value,
+                    style: const TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.4,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    widget.subtitle,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1186,18 +1240,18 @@ class _OrdersToolbar extends StatelessWidget {
             },
           ),
           filled: true,
-          fillColor: const Color(0xFFF8FAFC),
+          fillColor: Colors.white,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
+            borderSide: const BorderSide(color: AppColors.teal, width: 1.8),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
         ),
@@ -1272,10 +1326,10 @@ class _OrdersToolbar extends StatelessWidget {
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: isFiltered ? AppColors.teal.withValues(alpha: 0.1) : const Color(0xFFF8FAFC),
+          color: isFiltered ? AppColors.tealLight.withValues(alpha: 0.7) : Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isFiltered ? AppColors.teal : const Color(0xFFE2E8F0),
+            color: isFiltered ? AppColors.teal : const Color(0xFFCBD5E1),
             width: isFiltered ? 1.5 : 1,
           ),
         ),
@@ -1377,10 +1431,10 @@ class _OrdersToolbar extends StatelessWidget {
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: isPaymentFiltered ? activePaymentColor.withValues(alpha: 0.1) : const Color(0xFFF8FAFC),
+          color: isPaymentFiltered ? activePaymentColor.withValues(alpha: 0.12) : Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isPaymentFiltered ? activePaymentColor : const Color(0xFFE2E8F0),
+            color: isPaymentFiltered ? activePaymentColor : const Color(0xFFCBD5E1),
             width: isPaymentFiltered ? 1.5 : 1,
           ),
         ),
@@ -1415,11 +1469,11 @@ class _OrdersToolbar extends StatelessWidget {
 
   Widget _buildViewToggle() {
     return Container(
-      padding: const EdgeInsets.all(2),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFCBD5E1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1429,10 +1483,10 @@ class _OrdersToolbar extends StatelessWidget {
             icon: Icon(
               Icons.table_rows_rounded,
               size: 16,
-              color: isTableView ? AppColors.tealDark : AppColors.textMuted,
+              color: isTableView ? AppColors.tealDark : AppColors.textSecondary,
             ),
             style: IconButton.styleFrom(
-              backgroundColor: isTableView ? AppColors.surface : Colors.transparent,
+              backgroundColor: isTableView ? Colors.white : Colors.transparent,
               padding: const EdgeInsets.all(6),
               elevation: isTableView ? 1 : 0,
               shape: RoundedRectangleBorder(
@@ -1446,10 +1500,10 @@ class _OrdersToolbar extends StatelessWidget {
             icon: Icon(
               Icons.grid_view_rounded,
               size: 16,
-              color: !isTableView ? AppColors.tealDark : AppColors.textMuted,
+              color: !isTableView ? AppColors.tealDark : AppColors.textSecondary,
             ),
             style: IconButton.styleFrom(
-              backgroundColor: !isTableView ? AppColors.surface : Colors.transparent,
+              backgroundColor: !isTableView ? Colors.white : Colors.transparent,
               padding: const EdgeInsets.all(6),
               elevation: !isTableView ? 1 : 0,
               shape: RoundedRectangleBorder(
@@ -1469,15 +1523,9 @@ class _OrdersToolbar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x050F172A),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1.2),
+        boxShadow: AppColors.cardShadow(opacity: 0.04),
       ),
       child: isWide
           ? Row(
