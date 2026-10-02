@@ -175,11 +175,11 @@ class OrdersCubit extends Cubit<OrdersState> {
     }, (items) => Right(items));
   }
 
-  Future<void> updateOrderStatus(OrderEntity order, String newStatus) async {
-    if (state.isOrderProcessing(order.id)) return;
+  Future<bool> updateOrderStatus(OrderEntity order, String newStatus) async {
+    if (state.isOrderProcessing(order.id)) return false;
 
     final processing = Set<String>.from(state.processingOrders)..add(order.id);
-    emit(state.copyWith(processingOrders: processing));
+    emit(state.copyWith(processingOrders: processing, errorMessage: ''));
 
     try {
       final result = await _updateOrderStatusUc(
@@ -190,16 +190,18 @@ class OrdersCubit extends Cubit<OrdersState> {
         ),
       );
 
-      result.fold(
+      return result.fold(
         (failure) {
           LoggerService.e(
             'Error actualizando estado: ${failure.message}',
             tag: 'OrdersCubit',
           );
           emit(state.copyWith(errorMessage: failure.message));
+          return false;
         },
         (_) {
           loadOrders(background: true);
+          return true;
         },
       );
     } catch (e, st) {
@@ -214,6 +216,7 @@ class OrdersCubit extends Cubit<OrdersState> {
           errorMessage: 'Ocurrió un error inesperado al actualizar la orden.',
         ),
       );
+      return false;
     } finally {
       final updatedProcessing = Set<String>.from(state.processingOrders)
         ..remove(order.id);

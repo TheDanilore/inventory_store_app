@@ -215,6 +215,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width >= 800;
+    final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 800;
 
     return Focus(
       focusNode: _screenFocusNode,
@@ -234,6 +235,18 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         child: AdminLayout(
           title: 'Directorio de Proveedores',
           showBackButton: true,
+          actions:
+              isDesktopOrTablet
+                  ? null
+                  : [
+                    IconButton(
+                      icon: const Icon(Icons.refresh_rounded),
+                      tooltip: 'Actualizar proveedores',
+                      onPressed: () {
+                        context.read<SuppliersCubit>().loadSuppliers(page: 0, refresh: true);
+                      },
+                    ),
+                  ],
           // En escritorio ocultamos el FAB; la acción vive en el Toolbar
           floatingActionButton:
               isDesktop

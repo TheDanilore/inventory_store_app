@@ -577,9 +577,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                       icon: const Icon(Icons.refresh_rounded),
                       tooltip: 'Actualizar entradas',
                       onPressed: () {
-                        context.read<InventoryEntriesCubit>().loadEntries(
-                          page: 0,
-                        );
+                        context.read<InventoryEntriesCubit>().loadEntries(page: 0);
                       },
                     ),
                   ],

@@ -340,6 +340,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width >= 800;
+     final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 800;
 
     return Focus(
       focusNode: _screenFocusNode,
@@ -359,6 +360,18 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
         child: AdminLayout(
           title: 'Créditos de Proveedores',
           showBackButton: true,
+          actions:
+              isDesktopOrTablet
+                  ? null
+                  : [
+                    IconButton(
+                      icon: const Icon(Icons.refresh_rounded),
+                      tooltip: 'Actualizar cuentas',
+                      onPressed: () {
+                        context.read<SupplierCreditsCubit>().loadAccounts(refresh: true);
+                      },
+                    ),
+                  ],
           // En escritorio ocultamos el FAB flotante; la acción se ubica en el Toolbar superior
           floatingActionButton:
               isDesktop

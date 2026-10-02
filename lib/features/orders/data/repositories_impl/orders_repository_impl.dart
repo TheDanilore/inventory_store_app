@@ -1,7 +1,6 @@
 import 'dart:async' show StreamController, Timer;
 import 'dart:io' show SocketException;
 
-import 'dart:developer' as developer;
 import 'package:fpdart/fpdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
@@ -49,11 +48,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final orders = data.map((json) => OrderModel.fromJson(json)).toList();
       return Right(orders);
     } on PostgrestException catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error de Supabase en getCustomerOrders',
+        tag: 'ORDERS_REPO',
         error: e.toString(),
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(
@@ -61,21 +60,21 @@ class OrdersRepositoryImpl implements OrdersRepository {
         ),
       );
     } on SocketException catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error de red en getCustomerOrders',
+        tag: 'ORDERS_REPO',
         error: e.toString(),
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(message: 'Sin conexión a internet. Verifique su red.'),
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error inesperado en getCustomerOrders',
+        tag: 'ORDERS_REPO',
         error: e.toString(),
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(ServerFailure(message: 'No se pudieron cargar los pedidos.'));
     }
@@ -317,11 +316,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final items = data.map((json) => OrderItemModel.fromJson(json)).toList();
       return Right(items);
     } on PostgrestException catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error de Supabase en getOrderItems',
+        tag: 'ORDERS_REPO',
         error: e.toString(),
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(
@@ -329,11 +328,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
         ),
       );
     } on SocketException catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error de red en getOrderItems',
+        tag: 'ORDERS_REPO',
         error: e.toString(),
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(
@@ -341,11 +340,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
         ),
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error inesperado en getOrderItems',
+        tag: 'ORDERS_REPO',
         error: e.toString(),
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(message: 'No se pudo obtener el detalle de la orden.'),
@@ -500,31 +499,31 @@ class OrdersRepositoryImpl implements OrdersRepository {
         priceChanged: priceChanged,
       ));
     } on PostgrestException catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error de Supabase en validateReorderItems',
+        tag: 'ORDERS_REPO',
         error: e.toString(),
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(message: 'Error al verificar stock: ${e.message}'),
       );
     } on SocketException catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error de red en validateReorderItems',
+        tag: 'ORDERS_REPO',
         error: e.toString(),
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(message: 'Sin conexión para validar disponibilidad.'),
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error inesperado en validateReorderItems',
+        tag: 'ORDERS_REPO',
         error: e.toString(),
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(
@@ -575,11 +574,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
         return const Right(null);
       }
     } on PostgrestException catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'PostgrestException en updateOrderStatus',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(
@@ -587,11 +586,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
         ),
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error inesperado en updateOrderStatus',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(message: 'Error inesperado al actualizar el estado.'),
@@ -736,11 +735,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
       return const Right(null);
     } on PostgrestException catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'PostgrestException en saveOrderChanges',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(
@@ -748,11 +747,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
         ),
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error en saveOrderChanges',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(ServerFailure(message: 'Error al guardar: $e'));
     }
@@ -777,11 +776,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
       );
       return const Right(null);
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error en processReturn',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(ServerFailure(message: 'Error al registrar devolución: $e'));
     }
@@ -814,21 +813,21 @@ class OrdersRepositoryImpl implements OrdersRepository {
       await _supabase.rpc('rpc_cancel_order', params: {'payload': payload});
       return const Right(null);
     } on PostgrestException catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'PostgrestException en cancelOrder',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(message: 'Error de BD al cancelar orden: ${e.message}'),
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error inesperado en cancelOrder',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(ServerFailure(message: 'Error al cancelar orden: $e'));
     }
@@ -857,11 +856,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
       return Right(List<Map<String, dynamic>>.from(resp));
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error en fetchOrderItemsForPdf',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(message: 'Error al obtener ítems para PDF: $e'),
@@ -881,11 +880,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final accounts = List<Map<String, dynamic>>.from(response);
       return Right(accounts);
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error en getFinancialAccounts',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(message: 'Error fetching financial accounts: $e'),
@@ -906,11 +905,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
               .maybeSingle();
       return Right(response);
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error en getProfileById',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(ServerFailure(message: 'Error fetching profile: $e'));
     }
@@ -930,11 +929,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
           .limit(20);
       return Right(List<Map<String, dynamic>>.from(response));
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error en searchCustomers',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(ServerFailure(message: 'Error searching customers: $e'));
     }
@@ -943,15 +942,41 @@ class OrdersRepositoryImpl implements OrdersRepository {
   @override
   Future<Either<Failure, String?>> checkActiveCashShift() async {
     try {
-      // The active shift is no longer checked in the client side.
-      // We return null since the RPC register_financial_movement will handle it.
+      final user = _supabase.auth.currentUser;
+      if (user != null) {
+        final userShift = await _supabase
+            .from('cash_shifts')
+            .select('id')
+            .eq('status', 'OPEN')
+            .eq('opened_by', user.id)
+            .order('opened_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
+
+        if (userShift != null && userShift['id'] != null) {
+          return Right(userShift['id'] as String);
+        }
+      }
+
+      final anyShift = await _supabase
+          .from('cash_shifts')
+          .select('id')
+          .eq('status', 'OPEN')
+          .order('opened_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (anyShift != null && anyShift['id'] != null) {
+        return Right(anyShift['id'] as String);
+      }
+
       return const Right(null);
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error en checkActiveCashShift',
+        tag: 'ORDERS_REPO',
         error: e,
         stackTrace: st,
-        name: 'OrdersRepo',
       );
       return Left(
         ServerFailure(message: 'Error checking active cash shift: $e'),
@@ -1065,11 +1090,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
           controller.add(Right(response.count));
         }
       } catch (e, st) {
-        developer.log(
+        LoggerService.e(
           'Error fetching count',
+          tag: 'ORDERS_REPO',
           error: e,
           stackTrace: st,
-          name: 'OrdersRepo',
         );
         if (!controller.isClosed) {
           controller.add(

@@ -41,6 +41,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _screenFocusNode = FocusNode();
+  final _scrollController = ScrollController();
   Timer? _debounce;
   OrderEntity? _selectedOrder;
   String? _pendingTargetOrderId;
@@ -166,6 +167,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     _screenFocusNode.dispose();
+    _scrollController.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -357,8 +359,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (!mounted) return;
 
     try {
-      await context.read<OrdersCubit>().updateOrderStatus(order, newStatus);
-      if (mounted) {
+      final success =
+          await context.read<OrdersCubit>().updateOrderStatus(order, newStatus);
+      if (!mounted) return;
+      if (success) {
         AppSnackbar.show(
           context,
           message:
@@ -366,6 +370,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   ? 'Pedido completado correctamente'
                   : 'Estado actualizado correctamente',
           type: SnackbarType.success,
+        );
+      } else {
+        final errorMsg = context.read<OrdersCubit>().state.errorMessage;
+        AppSnackbar.show(
+          context,
+          message:
+              errorMsg.isNotEmpty
+                  ? errorMsg
+                  : 'No se pudo actualizar el estado de la orden.',
+          type: SnackbarType.error,
         );
       }
     } catch (e) {
@@ -494,15 +508,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    try {
-      context.read<OrdersCubit>();
-      return _buildContent(context);
-    } catch (_) {
-      return BlocProvider(
-        create: (_) => sl<OrdersCubit>()..loadOrders(reset: true),
-        child: Builder(builder: (context) => _buildContent(context)),
-      );
-    }
+    return _buildContent(context);
   }
 
   Widget _buildContent(BuildContext context) {
@@ -578,27 +584,26 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ? [currentSelectedOrder, ...state.orders]
                     : state.orders;
 
-                final mainListContent = Column(
-                  children: [
-                    if (state.isBackgroundLoading)
-                      const LinearProgressIndicator(
-                        color: AppColors.teal,
-                        minHeight: 2,
-                      ),
+                return RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: () async => cubit.loadOrders(reset: true),
+                  child: CustomScrollView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      if (state.isBackgroundLoading)
+                        const SliverToBoxAdapter(
+                          child: LinearProgressIndicator(
+                            color: AppColors.teal,
+                            minHeight: 2,
+                          ),
+                        ),
 
-                    // --- 1. CONTENIDO SCROLLEABLE (Métricas, Buscador, Tabla) ---
-                    Expanded(
-                      child: RefreshIndicator(
-                        color: AppColors.primary,
-                        onRefresh: () async => cubit.loadOrders(reset: true),
-                        child: CustomScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          slivers: [
-                            // --- 1. BENTO KPI BAR ---
-                            SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                                child: _OrdersBentoKpiBar(
+                      // --- 1. BENTO KPI BAR ---
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          child: _OrdersBentoKpiBar(
                                   pageOrdersCount: state.orders.length,
                                   totalRecords: state.totalRecords,
                                   pageTotalAmount: state.totalAmountCurrentPage,
@@ -710,12 +715,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             _buildPaginationSliver(context, state, cubit),
                           ],
                         ),
-                      ),
-                    ),
-                  ],
-                );
-
-                return mainListContent;
+                      );
               },
             );
           },
@@ -879,7 +879,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
           child: AdminPageBlocks(
             currentPage: state.currentPage,
             totalPages: state.totalPages,
-            onPageChanged: cubit.goToPage,
+            onPageChanged: (page) {
+              cubit.goToPage(page);
+              if (_scrollController.hasClients) {
+                _scrollController.animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                );
+              }
+            },
             totalItems: state.totalRecords,
             itemsPerPage: OrdersState.pageSize,
             itemName: 'pedidos',
