@@ -383,17 +383,20 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   : MainAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              width: 38,
+              height: 38,
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.accent],
-                ),
+                color: const Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.35),
+                  width: 1,
+                ),
               ),
-              child: const Icon(
-                Icons.storefront_rounded,
-                color: Colors.white,
-                size: 20,
+              child: Image.asset(
+                'assets/logo_icon.png',
+                fit: BoxFit.contain,
               ),
             ),
             if (!widget.isCollapsed) ...[
@@ -402,28 +405,63 @@ class _AdminSidebarState extends State<AdminSidebar> {
                 child: BlocSelector<AppConfigCubit, AppConfigState, String>(
                   selector:
                       (state) =>
-                          state.businessInfo?.businessName ?? 'ERP Tienda',
+                          state.businessInfo?.businessName ?? 'DANILORE ONE',
                   builder: (context, name) {
+                    final isDefault = name.trim().isEmpty ||
+                        name == 'ERP Tienda' ||
+                        name == 'Mi Tienda' ||
+                        name.toUpperCase().contains('DANILORE');
+
                     return Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (isDefault)
+                          const Row(
+                            children: [
+                              Text(
+                                'DANILORE ',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              Text(
+                                'ONE',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF0284C7),
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
                         Text(
-                          name,
+                          isDefault
+                              ? 'Todo tu negocio en un solo lugar'
+                              : 'DANILORE ONE ERP',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.sidebarText,
+                            letterSpacing: 0.1,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const Text(
-                          'Panel de Control',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.sidebarText,
-                          ),
                         ),
                       ],
                     );

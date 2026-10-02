@@ -829,15 +829,20 @@ class _DrawerHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            width: 56,
+            height: 56,
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.35),
+                width: 1.5,
+              ),
             ),
-            child: const Icon(
-              Icons.storefront_rounded,
-              color: Colors.white,
-              size: 36,
+            child: Image.asset(
+              'assets/logo_icon.png',
+              fit: BoxFit.contain,
             ),
           ),
           const SizedBox(height: 16),

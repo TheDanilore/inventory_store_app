@@ -1,6 +1,7 @@
 import 'package:injectable/injectable.dart';
 import 'dart:typed_data';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
 import 'package:inventory_store_app/features/app_config/domain/repositories/app_config_repository.dart';
@@ -16,7 +17,13 @@ class UploadLogoUseCase extends UseCase<String, Uint8List> {
     try {
       final logoUrl = await repository.uploadBusinessLogo(params);
       return right(logoUrl);
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al ejecutar UploadLogoUseCase',
+        tag: 'UploadLogoUseCase',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from(e));
     }
   }

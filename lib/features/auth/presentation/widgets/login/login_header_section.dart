@@ -12,27 +12,11 @@ class LoginHeaderSection extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primary, Color(0xFF0F3460)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.30),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.storefront_rounded,
-              size: 40,
-              color: Colors.white,
+            height: 110,
+            constraints: const BoxConstraints(maxWidth: 180),
+            child: Image.asset(
+              'assets/logo_full.png',
+              fit: BoxFit.contain,
             ),
           ),
           const SizedBox(height: 20),
@@ -50,12 +34,12 @@ class LoginHeaderSection extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             isLoginMode
-                ? 'Ingresa para continuar comprando'
+                ? 'Todo tu negocio en un solo lugar.'
                 : 'Completa tus datos para empezar',
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 14,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w500,
               height: 1.4,
             ),
             textAlign: TextAlign.center,

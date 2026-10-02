@@ -1,8 +1,8 @@
 import 'package:injectable/injectable.dart';
-import 'dart:developer' as developer;
 import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/app_config/domain/entities/app_setting_entity.dart';
 import 'package:inventory_store_app/features/app_config/domain/repositories/app_config_repository.dart';
 import 'package:inventory_store_app/features/app_config/domain/usecases/get_app_settings_uc.dart';
@@ -108,9 +108,10 @@ class AppConfigCubit extends Cubit<AppConfigState> {
       );
       return true;
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'AppConfigCubit.saveMultipleValues falló',
-        error: e.toString(),
+        tag: 'AppConfigCubit',
+        error: e,
         stackTrace: st,
       );
       emit(
@@ -126,6 +127,10 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   Future<String?> uploadBusinessLogo(Uint8List bytes) async {
     final result = await uploadLogoUseCase(bytes);
     return result.fold((failure) {
+      LoggerService.e(
+        'Fallo al subir logo del negocio: ${failure.message}',
+        tag: 'AppConfigCubit',
+      );
       emit(
         state.copyWith(
           saveStatus: ViewState.error,
@@ -133,7 +138,25 @@ class AppConfigCubit extends Cubit<AppConfigState> {
         ),
       );
       return null;
-    }, (url) => url);
+    }, (url) {
+      if (state.businessInfo != null) {
+        emit(
+          state.copyWith(
+            businessInfo: BusinessInfoEntity(
+              id: state.businessInfo!.id,
+              businessName: state.businessInfo!.businessName,
+              taxId: state.businessInfo!.taxId,
+              address: state.businessInfo!.address,
+              phone: state.businessInfo!.phone,
+              logoUrl: url,
+              loyaltyGlobalEnabled: state.businessInfo!.loyaltyGlobalEnabled,
+              loyaltyCustomerVisible: state.businessInfo!.loyaltyCustomerVisible,
+            ),
+          ),
+        );
+      }
+      return url;
+    });
   }
 
   Future<void> loadConfig({bool force = false}) async {
@@ -178,6 +201,10 @@ class AppConfigCubit extends Cubit<AppConfigState> {
 
     result.fold(
       (failure) {
+        LoggerService.e(
+          'Fallo al cargar información del negocio en Cubit: ${failure.message}',
+          tag: 'AppConfigCubit',
+        );
         emit(
           state.copyWith(
             status: ViewState.error,
@@ -222,6 +249,7 @@ class AppConfigCubit extends Cubit<AppConfigState> {
     required String taxId,
     required String address,
     required String phone,
+    String? logoUrl,
     required bool loyaltyGlobalEnabled,
     required bool loyaltyCustomerVisible,
   }) async {
@@ -247,7 +275,9 @@ class AppConfigCubit extends Cubit<AppConfigState> {
       taxId: taxId,
       address: address,
       phone: phone,
-      logoUrl: currentInfo.logoUrl,
+      logoUrl: (logoUrl != null && logoUrl.isNotEmpty)
+          ? logoUrl
+          : currentInfo.logoUrl,
       loyaltyGlobalEnabled: loyaltyGlobalEnabled,
       loyaltyCustomerVisible: loyaltyCustomerVisible,
     );
@@ -256,6 +286,10 @@ class AppConfigCubit extends Cubit<AppConfigState> {
 
     return result.fold(
       (failure) {
+        LoggerService.e(
+          'Fallo al guardar business_info en Cubit: ${failure.message}',
+          tag: 'AppConfigCubit',
+        );
         emit(
           state.copyWith(
             saveStatus: ViewState.error,

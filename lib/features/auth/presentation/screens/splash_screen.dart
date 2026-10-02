@@ -106,14 +106,13 @@ class _SplashScreenState extends State<SplashScreen> {
                                   ),
                                 ],
                               ),
-                              child: ClipOval(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(28),
                                 child: Image.asset(
-                                  'assets/app_icon.png',
-                                  width: 130,
-                                  height: 130,
-                                  cacheWidth: 260,
-                                  cacheHeight: 260,
-                                  fit: BoxFit.cover,
+                                  'assets/logo_circle.png',
+                                  width: 120,
+                                  height: 120,
+                                  fit: BoxFit.contain,
                                   errorBuilder:
                                       (context, error, stackTrace) =>
                                           const Icon(
@@ -124,7 +123,17 @@ class _SplashScreenState extends State<SplashScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 36),
+                            const SizedBox(height: 18),
+                            const Text(
+                              'Todo tu negocio en un solo lugar.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white70,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
                             if (state.authStatus == AuthStatus.error) ...[
                               Container(
                                 constraints: const BoxConstraints(

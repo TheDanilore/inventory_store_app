@@ -1,5 +1,5 @@
 name: inventory_store_app
-description: "Inventory Store - Sistema de gestión de inventario profesional."
+description: "Danilore One - Todo tu negocio en un solo lugar."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -97,6 +97,10 @@ flutter:
   # Debes declarar la carpeta o la imagen exacta aquí:
   assets:
     - assets/app_icon.png
+    - assets/logo_full.png
+    - assets/logo_icon.png
+    - assets/logo_circle.png
+    - assets/favicon.ico
     # - env.json
 
 flutter_launcher_icons:

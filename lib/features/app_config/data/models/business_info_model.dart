@@ -84,7 +84,7 @@ class BusinessInfoModel {
       'loyalty_global_enabled': loyaltyGlobalEnabled,
       'loyalty_customer_visible': loyaltyCustomerVisible,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }..removeWhere((_, value) => value == null);
+    };
   }
 
   BusinessInfoModel copyWith({

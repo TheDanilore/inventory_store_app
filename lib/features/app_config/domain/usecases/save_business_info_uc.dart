@@ -1,5 +1,6 @@
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
 import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
@@ -20,7 +21,13 @@ class SaveBusinessInfoUseCase
       final savedInfo = await repository.saveBusinessInfo(params);
       await repository.cacheBusinessInfo(savedInfo);
       return right(savedInfo);
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al ejecutar SaveBusinessInfoUseCase',
+        tag: 'SaveBusinessInfoUseCase',
+        error: e,
+        stackTrace: st,
+      );
       return left(Failure.from(e));
     }
   }

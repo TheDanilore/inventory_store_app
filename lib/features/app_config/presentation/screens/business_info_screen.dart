@@ -11,6 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/app_config/presentation/widgets/change_connection_dialog.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
@@ -40,9 +41,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   bool _loyaltyGlobalEnabled = false;
   bool _loyaltyCustomerVisible = false;
 
-  String _previewName = '';
-  String _previewAddress = '';
-  String? _logoUrl;
+  final _logoNotifier = ValueNotifier<String>('');
 
   @override
   void initState() {
@@ -61,7 +60,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
   void _onLogoFocusChange() {
     if (!_logoUrlFocus.hasFocus) {
-      setState(() => _logoUrl = _logoUrlCtrl.text);
+      _logoNotifier.value = _logoUrlCtrl.text.trim();
     }
   }
 
@@ -73,18 +72,17 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     _addressCtrl.text = info.address;
     _phoneCtrl.text = info.phone;
     _logoUrlCtrl.text = info.logoUrl;
+    _logoNotifier.value = info.logoUrl;
     _loyaltyGlobalEnabled = info.loyaltyGlobalEnabled;
     _loyaltyCustomerVisible = info.loyaltyCustomerVisible;
-
-    _previewName = _businessNameCtrl.text;
-    _previewAddress = _addressCtrl.text;
-    _logoUrl = _logoUrlCtrl.text;
-    _showManualUrlInput = info.logoUrl.isNotEmpty && !info.logoUrl.contains('supabase.co');
+    _showManualUrlInput =
+        info.logoUrl.isNotEmpty && !info.logoUrl.contains('supabase.co');
   }
 
   @override
   void dispose() {
     _logoUrlFocus.removeListener(_onLogoFocusChange);
+    _logoNotifier.dispose();
     _businessNameCtrl.dispose();
     _taxIdCtrl.dispose();
     _addressCtrl.dispose();
@@ -117,40 +115,51 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   }
 
   Future<void> _pickLogoImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile == null) return;
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile == null) return;
 
-    if (!mounted) return;
-    final cubit = context.read<AppConfigCubit>();
-    final bytes = await pickedFile.readAsBytes();
+      if (!mounted) return;
+      final cubit = context.read<AppConfigCubit>();
+      final bytes = await pickedFile.readAsBytes();
 
-    final compressed = await FlutterImageCompress.compressWithList(
-      bytes,
-      minWidth: 500,
-      minHeight: 500,
-      quality: 85,
-    );
+      final compressed = await FlutterImageCompress.compressWithList(
+        bytes,
+        minWidth: 500,
+        minHeight: 500,
+        quality: 85,
+        format: CompressFormat.webp, // Preserva canal alfa transparente de logos PNG/WebP
+      );
 
-    final url = await cubit.uploadBusinessLogo(compressed);
-    if (url != null) {
-      setState(() {
+      final url = await cubit.uploadBusinessLogo(compressed);
+      if (url != null && mounted) {
         _logoUrlCtrl.text = url;
-        _logoUrl = url;
+        _logoNotifier.value = url;
         _markChanged();
-      });
-      if (mounted) {
         AppSnackbar.show(
           context,
           message: 'Logo subido correctamente.',
           type: SnackbarType.success,
         );
-      }
-    } else {
-      if (mounted) {
+      } else if (mounted) {
         AppSnackbar.show(
           context,
           message: 'Error al subir el logo. Intenta nuevamente.',
+          type: SnackbarType.error,
+        );
+      }
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado al seleccionar o comprimir el logo comercial',
+        tag: 'BusinessInfoScreen',
+        error: e,
+        stackTrace: st,
+      );
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'No se pudo procesar la imagen seleccionada.',
           type: SnackbarType.error,
         );
       }
@@ -162,10 +171,11 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
     final cubit = context.read<AppConfigCubit>();
     await cubit.saveBusinessInfo(
-      businessName: _businessNameCtrl.text,
-      taxId: _taxIdCtrl.text,
-      address: _addressCtrl.text,
-      phone: _phoneCtrl.text,
+      businessName: _businessNameCtrl.text.trim(),
+      taxId: _taxIdCtrl.text.trim(),
+      address: _addressCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim(),
+      logoUrl: _logoUrlCtrl.text.trim(),
       loyaltyGlobalEnabled: _loyaltyGlobalEnabled,
       loyaltyCustomerVisible: _loyaltyCustomerVisible,
     );
@@ -208,6 +218,10 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
         ),
       ],
       child: BlocBuilder<AppConfigCubit, AppConfigState>(
+        buildWhen: (previous, current) =>
+            previous.status != current.status ||
+            previous.connectionUrl != current.connectionUrl ||
+            previous.saveStatus != current.saveStatus,
         builder: (context, state) {
           final isSaving = state.saveStatus == ViewState.loading;
           final isLoading =
@@ -483,14 +497,31 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   }
 
   Widget _buildPreviewCard() {
-    return _BusinessPreviewCard(
-      businessName: _previewName.isEmpty ? 'Nombre del negocio' : _previewName,
-      businessLogoUrl: _logoUrl ?? '',
-      businessAddress:
-          _previewAddress.isEmpty ? 'Dirección no configurada' : _previewAddress,
-      businessTaxId: _taxIdCtrl.text.isEmpty ? 'Sin RUC' : _taxIdCtrl.text,
-      businessPhone: _phoneCtrl.text.isEmpty ? 'Sin teléfono' : _phoneCtrl.text,
-      onUploadLogo: _pickLogoImage,
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        _businessNameCtrl,
+        _taxIdCtrl,
+        _addressCtrl,
+        _phoneCtrl,
+        _logoNotifier,
+      ]),
+      builder: (context, _) {
+        final name = _businessNameCtrl.text.trim();
+        final address = _addressCtrl.text.trim();
+        final taxId = _taxIdCtrl.text.trim();
+        final phone = _phoneCtrl.text.trim();
+        final logo = _logoNotifier.value.trim();
+
+        return _BusinessPreviewCard(
+          businessName: name.isEmpty ? 'Nombre del negocio' : name,
+          businessLogoUrl: logo,
+          businessAddress:
+              address.isEmpty ? 'Dirección no configurada' : address,
+          businessTaxId: taxId.isEmpty ? 'Sin RUC' : taxId,
+          businessPhone: phone.isEmpty ? 'Sin teléfono' : phone,
+          onUploadLogo: _pickLogoImage,
+        );
+      },
     );
   }
 
@@ -574,15 +605,21 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                       label: 'Nombre del negocio',
                       icon: Icons.store_rounded,
                       hintText: 'Ej. Mi Tienda',
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(100),
+                      ],
                       textCapitalization: TextCapitalization.words,
                       textInputAction: TextInputAction.next,
-                      validator: (val) => val == null || val.trim().isEmpty
-                          ? 'El nombre del negocio es requerido'
-                          : null,
-                      onChanged: (val) {
-                        setState(() => _previewName = val);
-                        _markChanged();
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'El nombre del negocio es requerido';
+                        }
+                        if (val.trim().length < 2) {
+                          return 'Debe tener al menos 2 caracteres';
+                        }
+                        return null;
                       },
+                      onChanged: (_) => _markChanged(),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -595,11 +632,21 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                       keyboardType: TextInputType.number,
                       focusNode: _taxIdFocus,
                       textInputAction: TextInputAction.next,
-                      helperText: 'Identificador fiscal para comprobantes',
-                      onChanged: (val) {
-                        setState(() {});
-                        _markChanged();
+                      helperText:
+                          'Identificador fiscal para comprobantes (11 dígitos)',
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(11),
+                      ],
+                      validator: (val) {
+                        if (val != null && val.trim().isNotEmpty) {
+                          if (val.trim().length != 11) {
+                            return 'El RUC debe tener exactamente 11 dígitos';
+                          }
+                        }
+                        return null;
                       },
+                      onChanged: (_) => _markChanged(),
                     ),
                   ),
                 ],
@@ -615,13 +662,13 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                       icon: Icons.location_on_outlined,
                       hintText: 'Av. Principal 123, Lima',
                       maxLines: 2,
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(200),
+                      ],
                       textCapitalization: TextCapitalization.sentences,
                       focusNode: _addressFocus,
                       textInputAction: TextInputAction.next,
-                      onChanged: (val) {
-                        setState(() => _previewAddress = val);
-                        _markChanged();
-                      },
+                      onChanged: (_) => _markChanged(),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -635,10 +682,21 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                       focusNode: _phoneFocus,
                       textInputAction: TextInputAction.next,
                       helperText: 'Contacto comercial para clientes',
-                      onChanged: (val) {
-                        setState(() {});
-                        _markChanged();
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s-]')),
+                        LengthLimitingTextInputFormatter(20),
+                      ],
+                      validator: (val) {
+                        if (val != null && val.trim().isNotEmpty) {
+                          final digits =
+                              val.trim().replaceAll(RegExp(r'\D'), '');
+                          if (digits.length < 6) {
+                            return 'Ingresa un número telefónico válido';
+                          }
+                        }
+                        return null;
                       },
+                      onChanged: (_) => _markChanged(),
                     ),
                   ),
                 ],
@@ -649,15 +707,21 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                 label: 'Nombre del negocio',
                 icon: Icons.store_rounded,
                 hintText: 'Ej. Mi Tienda',
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(100),
+                ],
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.next,
-                validator: (val) => val == null || val.trim().isEmpty
-                    ? 'El nombre del negocio es requerido'
-                    : null,
-                onChanged: (val) {
-                  setState(() => _previewName = val);
-                  _markChanged();
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'El nombre del negocio es requerido';
+                  }
+                  if (val.trim().length < 2) {
+                    return 'Debe tener al menos 2 caracteres';
+                  }
+                  return null;
                 },
+                onChanged: (_) => _markChanged(),
               ),
               const SizedBox(height: 16),
               AppTextField(
@@ -668,11 +732,21 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                 keyboardType: TextInputType.number,
                 focusNode: _taxIdFocus,
                 textInputAction: TextInputAction.next,
-                helperText: 'Identificador fiscal para comprobantes',
-                onChanged: (val) {
-                  setState(() {});
-                  _markChanged();
+                helperText:
+                    'Identificador fiscal para comprobantes (11 dígitos)',
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(11),
+                ],
+                validator: (val) {
+                  if (val != null && val.trim().isNotEmpty) {
+                    if (val.trim().length != 11) {
+                      return 'El RUC debe tener exactamente 11 dígitos';
+                    }
+                  }
+                  return null;
                 },
+                onChanged: (_) => _markChanged(),
               ),
               const SizedBox(height: 16),
               AppTextField(
@@ -681,13 +755,13 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                 icon: Icons.location_on_outlined,
                 hintText: 'Av. Principal 123',
                 maxLines: 2,
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(200),
+                ],
                 textCapitalization: TextCapitalization.sentences,
                 focusNode: _addressFocus,
                 textInputAction: TextInputAction.next,
-                onChanged: (val) {
-                  setState(() => _previewAddress = val);
-                  _markChanged();
-                },
+                onChanged: (_) => _markChanged(),
               ),
               const SizedBox(height: 16),
               AppTextField(
@@ -699,10 +773,20 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                 focusNode: _phoneFocus,
                 textInputAction: TextInputAction.next,
                 helperText: 'Contacto comercial para clientes',
-                onChanged: (val) {
-                  setState(() {});
-                  _markChanged();
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s-]')),
+                  LengthLimitingTextInputFormatter(20),
+                ],
+                validator: (val) {
+                  if (val != null && val.trim().isNotEmpty) {
+                    final digits = val.trim().replaceAll(RegExp(r'\D'), '');
+                    if (digits.length < 6) {
+                      return 'Ingresa un número telefónico válido';
+                    }
+                  }
+                  return null;
                 },
+                onChanged: (_) => _markChanged(),
               ),
             ],
 
@@ -722,29 +806,40 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                   Row(
                     children: [
                       // Avatar del logo actual
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: _logoUrl != null && _logoUrl!.isNotEmpty
-                            ? CachedNetworkImage(
-                                imageUrl: _logoUrl!,
-                                fit: BoxFit.cover,
-                                errorWidget: (context, url, error) => const Icon(
-                                  Icons.storefront_rounded,
-                                  color: Colors.grey,
-                                ),
-                              )
-                            : const Icon(
-                                Icons.storefront_rounded,
-                                color: Colors.grey,
-                                size: 30,
-                              ),
+                      ValueListenableBuilder<String>(
+                        valueListenable: _logoNotifier,
+                        builder: (context, logoUrl, _) {
+                          return Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: logoUrl.isNotEmpty
+                                ? CachedNetworkImage(
+                                    imageUrl: logoUrl,
+                                    fit: BoxFit.cover,
+                                    errorWidget: (context, url, error) =>
+                                        Padding(
+                                      padding: const EdgeInsets.all(8),
+                                      child: Image.asset(
+                                        'assets/logo_icon.png',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  )
+                                : Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Image.asset(
+                                      'assets/logo_icon.png',
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                          );
+                        },
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -843,7 +938,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                         return null;
                       },
                       onChanged: (val) {
-                        setState(() => _logoUrl = val);
+                        _logoNotifier.value = val.trim();
                         _markChanged();
                       },
                     ),
@@ -1168,14 +1263,14 @@ class _LogoBadge extends StatelessWidget {
       return Container(
         width: 54,
         height: 54,
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: const Icon(
-          Icons.storefront_rounded,
-          color: Colors.white,
-          size: 28,
+        child: Image.asset(
+          'assets/logo_icon.png',
+          fit: BoxFit.contain,
         ),
       );
     }
@@ -1201,10 +1296,12 @@ class _LogoBadge extends StatelessWidget {
             ),
           ),
         ),
-        errorWidget: (context, url, error) => const Icon(
-          Icons.storefront_rounded,
-          color: Colors.white,
-          size: 28,
+        errorWidget: (context, url, error) => Padding(
+          padding: const EdgeInsets.all(8),
+          child: Image.asset(
+            'assets/logo_icon.png',
+            fit: BoxFit.contain,
+          ),
         ),
       ),
     );
