@@ -27,8 +27,6 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  bool _isBackBtnPressed = false;
-
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
 
@@ -45,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen>
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _fadeCtrl.forward();
 
-    // Animación suave de entrada única para evitar drenaje de 60-120 FPS en reposo
+    // Animación suave de entrada única con bajo costo computacional
     _blobCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -71,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen>
     final cubit = context.read<AuthCubit>();
     if (cubit.state.viewState == ViewState.loading) return;
 
-    if (!_formKey.currentState!.validate()) {
+    if (!(_formKey.currentState?.validate() ?? false)) {
       AppSnackbar.show(
         context,
         message: 'Revisa los campos obligatorios.',
@@ -82,7 +80,6 @@ class _LoginScreenState extends State<LoginScreen>
 
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
-    // No recortamos espacios en la contraseña para permitir frases de paso o caracteres intencionales
     final password = _passwordController.text;
 
     if (isLoginMode) {
@@ -95,6 +92,7 @@ class _LoginScreenState extends State<LoginScreen>
   void _onToggleMode(bool currentIsLoginMode) {
     final cubit = context.read<AuthCubit>();
     cubit.toggleMode();
+    _formKey.currentState?.reset();
     if (!currentIsLoginMode) {
       _nameController.clear();
     }
@@ -130,7 +128,8 @@ class _LoginScreenState extends State<LoginScreen>
               type: SnackbarType.success,
             );
           }
-          context.go('/');
+          // Nota: La redirección se gestiona de forma centralizada por
+          // GoRouterRefreshStream en AppRouter para respetar deep links y evitar carreras.
         }
       },
       builder: (context, state) {
@@ -174,17 +173,18 @@ class _LoginScreenState extends State<LoginScreen>
                   child: RepaintBoundary(
                     child: AnimatedBuilder(
                       animation: _blobAnim,
+                      child: Container(
+                        width: 380,
+                        height: 380,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.05),
+                        ),
+                      ),
                       builder: (context, child) {
                         return Transform.scale(
                           scale: _blobAnim.value,
-                          child: Container(
-                            width: 380,
-                            height: 380,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withValues(alpha: 0.05),
-                            ),
-                          ),
+                          child: child,
                         );
                       },
                     ),
@@ -256,7 +256,6 @@ class _LoginScreenState extends State<LoginScreen>
             color: AppColors.background,
             child: Stack(
               children: [
-                // Back Button invitado
                 Positioned(top: 24, left: 24, child: _buildBackButton(context)),
                 Center(
                   child: ConstrainedBox(
@@ -305,24 +304,24 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildMobileLayout(BuildContext context, AuthState state) {
     return Stack(
       children: [
-        // Blobs decorativos con RepaintBoundary para evitar repintados continuos
         Positioned(
           top: -80,
           right: -80,
           child: RepaintBoundary(
             child: AnimatedBuilder(
               animation: _blobAnim,
+              child: Container(
+                width: 260,
+                height: 260,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primary.withValues(alpha: 0.06),
+                ),
+              ),
               builder: (context, child) {
                 return Transform.scale(
                   scale: _blobAnim.value,
-                  child: Container(
-                    width: 260,
-                    height: 260,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.primary.withValues(alpha: 0.06),
-                    ),
-                  ),
+                  child: child,
                 );
               },
             ),
@@ -334,17 +333,18 @@ class _LoginScreenState extends State<LoginScreen>
           child: RepaintBoundary(
             child: AnimatedBuilder(
               animation: _blobAnim,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.accent.withValues(alpha: 0.05),
+                ),
+              ),
               builder: (context, child) {
                 return Transform.scale(
                   scale: 2.0 - _blobAnim.value,
-                  child: Container(
-                    width: 180,
-                    height: 180,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.accent.withValues(alpha: 0.05),
-                    ),
-                  ),
+                  child: child,
                 );
               },
             ),
@@ -410,7 +410,7 @@ class _LoginScreenState extends State<LoginScreen>
     if (!context.canPop()) {
       return const SizedBox.shrink();
     }
-    final isDesktop = MediaQuery.of(context).size.width >= 1024;
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
 
     if (isDesktop) {
       return TextButton.icon(
@@ -431,12 +431,47 @@ class _LoginScreenState extends State<LoginScreen>
       );
     }
 
+    return const _MobileBackButton();
+  }
+
+  Widget _buildFeatureBadge(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileBackButton extends StatefulWidget {
+  const _MobileBackButton();
+
+  @override
+  State<_MobileBackButton> createState() => _MobileBackButtonState();
+}
+
+class _MobileBackButtonState extends State<_MobileBackButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => setState(() => _isBackBtnPressed = true),
-      onTapUp: (_) => setState(() => _isBackBtnPressed = false),
-      onTapCancel: () => setState(() => _isBackBtnPressed = false),
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
       child: AnimatedScale(
-        scale: _isBackBtnPressed ? 0.90 : 1.0,
+        scale: _isPressed ? 0.90 : 1.0,
         duration: const Duration(milliseconds: 150),
         child: IconButton(
           icon: Container(
@@ -454,25 +489,6 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
           onPressed: () => context.pop(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFeatureBadge(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
         ),
       ),
     );

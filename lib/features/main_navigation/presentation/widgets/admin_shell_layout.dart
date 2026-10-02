@@ -7,6 +7,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_sidebar.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_desktop_top_bar.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_offline_banner.dart';
+import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 
 /// Configuración reactiva de la cabecera del ERP.
 /// Permite a las pantallas hijas comunicar su título, acciones y botones de navegación
@@ -317,31 +318,10 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
   }
 
   void _handleDefaultBack(BuildContext context) {
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-      return;
-    }
-
-    try {
-      final currentUri = GoRouterState.of(context).uri;
-      final pathSegments = currentUri.pathSegments;
-
-      if (pathSegments.length > 1) {
-        final parentPath =
-            '/${pathSegments.sublist(0, pathSegments.length - 1).join('/')}';
-        context.go(parentPath);
-        return;
-      }
-    } catch (e, st) {
-      LoggerService.w(
-        'Error calculando ruta padre en back',
-        error: e,
-        stackTrace: st,
-        tag: 'AdminShellLayout',
-      );
-    }
-
-    context.go('/');
+    AppBackHandler.handleBack(
+      context,
+      onCustomBack: _headerNotifier.value.onBack,
+    );
   }
 
   @override
@@ -365,15 +345,17 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
           headerNotifier: _headerNotifier,
           isDesktop: true,
           updateHeader: _updateHeader,
-          child: AnnotatedRegion<SystemUiOverlayStyle>(
-            value: const SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              statusBarIconBrightness: Brightness.dark,
-              statusBarBrightness: Brightness.light,
-            ),
-            child: Scaffold(
-              backgroundColor: AppColors.background,
-              body: Row(
+          child: AppPopScope(
+            onCustomBack: _headerNotifier.value.onBack,
+            child: AnnotatedRegion<SystemUiOverlayStyle>(
+              value: const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.dark,
+                statusBarBrightness: Brightness.light,
+              ),
+              child: Scaffold(
+                backgroundColor: AppColors.background,
+                body: Row(
                 children: [
                   // ── Left Sidebar (Desktop, MONTADO UNA SOLA VEZ) ─────────
                   RepaintBoundary(
@@ -442,8 +424,9 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
               ),
             ),
           ),
-        );
-      },
+        ),
+      );
+    },
     );
   }
 }

@@ -30,6 +30,7 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checko
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_sidebar_rail.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_cubit.dart';
+import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_screen.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_sales_view.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/all_cash_shifts_screen.dart';
@@ -424,10 +425,12 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 800;
 
-    return CallbackShortcuts(
-      bindings: <ShortcutActivator, VoidCallback>{
-        // Foco de Búsqueda (Ctrl+K, Cmd+K, Alt+K)
-        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _focusSearch,
+    return AppPopScope(
+      onCustomBack: _onExitPos,
+      child: CallbackShortcuts(
+        bindings: <ShortcutActivator, VoidCallback>{
+          // Foco de Búsqueda (Ctrl+K, Cmd+K, Alt+K)
+          const SingleActivator(LogicalKeyboardKey.keyK, control: true): _focusSearch,
         const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _focusSearch,
         const SingleActivator(LogicalKeyboardKey.keyK, alt: true): _focusSearch,
 
@@ -768,8 +771,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildCatalogHeaderSliver(BuildContext context) {
     return SliverToBoxAdapter(

@@ -6,6 +6,7 @@ import 'package:inventory_store_app/core/router/go_router_refresh_stream.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 import 'package:inventory_store_app/features/app_config/presentation/routes/app_config_routes.dart';
 import 'package:inventory_store_app/features/auth/presentation/routes/auth_routes.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
@@ -228,7 +229,7 @@ class AppRouter {
                   BlocProvider(create: (_) => sl<PosCubit>()),
                   BlocProvider(create: (_) => sl<CashShiftsCubit>()),
                 ],
-                child: navigationShell,
+                child: AppPopScope(child: navigationShell),
               ),
           navigatorContainerBuilder:
               (context, navigationShell, children) => _LazyBranchContainer(

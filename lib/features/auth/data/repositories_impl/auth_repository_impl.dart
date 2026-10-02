@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
@@ -37,23 +36,6 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final model = AuthUserModel.fromMap(data, session.user.email ?? '');
-
-      // Cache local de perfil con clave delimitada por usuario para evitar contaminación entre sesiones
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        final userId = session.user.id;
-        await prefs.setString('profile_cache_${userId}_full_name', model.fullName);
-        if (model.avatarUrl != null) {
-          await prefs.setString('profile_cache_${userId}_avatar_url', model.avatarUrl!);
-        }
-      } catch (e, st) {
-        LoggerService.w(
-          'No se pudo persistir caché de perfil en SharedPreferences',
-          tag: 'AuthRepositoryImpl',
-          error: e,
-          stackTrace: st,
-        );
-      }
 
       return right(model.toEntity());
     } on sb.PostgrestException catch (e, st) {
@@ -126,9 +108,16 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, String>> register({
     required String email,
     required String password,
+    String? fullName,
   }) async {
     try {
-      final res = await _supabase.auth.signUp(email: email, password: password);
+      final res = await _supabase.auth.signUp(
+        email: email,
+        password: password,
+        data: fullName != null && fullName.trim().isNotEmpty
+            ? {'full_name': fullName.trim()}
+            : null,
+      );
 
       if (res.user != null) {
         return right(res.user!.id);
@@ -202,16 +191,6 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, void>> logout() async {
     try {
-      final currentUserId = _supabase.auth.currentUser?.id;
-      if (currentUserId != null) {
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.remove('profile_cache_${currentUserId}_full_name');
-          await prefs.remove('profile_cache_${currentUserId}_avatar_url');
-          await prefs.remove('profile_cache_full_name_');
-          await prefs.remove('profile_cache_avatar_url_');
-        } catch (_) {}
-      }
       await _supabase.auth.signOut();
       return right(null);
     } catch (e, st) {

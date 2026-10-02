@@ -95,7 +95,7 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp.router(
         restorationScopeId: 'app',
-        title: 'Inventario Store',
+        title: 'Danilore One',
         theme: AppTheme.light(),
         debugShowCheckedModeBanner: false,
         supportedLocales: const [Locale('es', 'ES'), Locale('en', 'US')],

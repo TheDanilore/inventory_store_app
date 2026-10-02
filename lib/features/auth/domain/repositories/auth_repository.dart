@@ -15,6 +15,7 @@ abstract class AuthRepository {
   Future<Either<Failure, String>> register({
     required String email,
     required String password,
+    String? fullName,
   });
 
   Future<Either<Failure, UserEntity>> createProfile({

@@ -14,6 +14,7 @@ import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_offline_banner.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_desktop_top_bar.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_shell_layout.dart';
+import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 export 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_shell_layout.dart';
 
 class AdminLayout extends StatefulWidget {
@@ -193,9 +194,11 @@ class _AdminLayoutState extends State<AdminLayout> {
 
           // ── 2. Modo Autónomo (Standalone Desktop sin Persistent Shell) ──
           if (isDesktop) {
-            return Scaffold(
-              backgroundColor: AppColors.background,
-              body: Row(
+            return AppPopScope(
+              onCustomBack: widget.onBack,
+              child: Scaffold(
+                backgroundColor: AppColors.background,
+                body: Row(
                 children: [
                   AdminSidebar(
                     isCollapsed: _isSidebarCollapsed,
@@ -225,14 +228,17 @@ class _AdminLayoutState extends State<AdminLayout> {
               ),
               floatingActionButton: widget.floatingActionButton,
               bottomNavigationBar: widget.bottomNavigationBar,
-            );
-          }
+            ),
+          );
+        }
 
           // ── Mobile / Tablet Layout ──────────────────────────────────────────
-          return Scaffold(
-            backgroundColor: AppColors.background,
-            endDrawer:
-                widget.showDrawerButton ? const AppDrawer(isAdmin: true) : null,
+          return AppPopScope(
+            onCustomBack: widget.onBack,
+            child: Scaffold(
+              backgroundColor: AppColors.background,
+              endDrawer:
+                  widget.showDrawerButton ? const AppDrawer(isAdmin: true) : null,
             appBar:
                 widget.showAppBar
                     ? AppBar(
@@ -333,46 +339,16 @@ class _AdminLayoutState extends State<AdminLayout> {
             ),
             floatingActionButton: widget.floatingActionButton,
             bottomNavigationBar: widget.bottomNavigationBar,
-          );
-        },
+          ),
+        );
+      },
       ),
     );
   }
 
-  // Lógica mejorada del botón atrás según la URL actual de forma dinámica
+  // Lógica unificada del botón atrás del SO y AppBar
   void _handleBackButton(BuildContext context) {
-    if (widget.onBack != null) {
-      widget.onBack!();
-      return;
-    }
-
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-      return;
-    }
-
-    try {
-      final currentUri = GoRouterState.of(context).uri;
-      final pathSegments = currentUri.pathSegments;
-
-      // Si tiene más de 1 segmento (ej. /customers/customer-detail), vamos al padre (/customers)
-      if (pathSegments.length > 1) {
-        final parentPath =
-            '/${pathSegments.sublist(0, pathSegments.length - 1).join('/')}';
-        context.go(parentPath);
-        return;
-      }
-    } catch (e, st) {
-      LoggerService.w(
-        'Error resolviendo ruta padre en AdminLayout._handleBackButton',
-        error: e,
-        stackTrace: st,
-        tag: 'AdminLayout',
-      );
-    }
-
-    // Fallback genérico
-    context.go('/');
+    AppBackHandler.handleBack(context, onCustomBack: widget.onBack);
   }
 
   String _buildBreadcrumbText(BuildContext context) {

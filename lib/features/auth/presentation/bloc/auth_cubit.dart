@@ -110,6 +110,7 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> login(String email, String password) async {
+    LoggerService.i('Iniciando intento de autenticación para $email', tag: 'AuthCubit');
     emit(state.copyWith(viewState: ViewState.loading, clearErrorMessage: true));
 
     final result = await loginUseCase(
@@ -118,6 +119,7 @@ class AuthCubit extends Cubit<AuthState> {
 
     result.fold(
       (failure) {
+        LoggerService.w('Fallo de autenticación: ${failure.message}', tag: 'AuthCubit');
         emit(
           state.copyWith(
             viewState: ViewState.error,
@@ -126,6 +128,7 @@ class AuthCubit extends Cubit<AuthState> {
         );
       },
       (user) {
+        LoggerService.i('Autenticación exitosa: ${user.fullName} (${user.role})', tag: 'AuthCubit');
         emit(
           state.copyWith(
             viewState: ViewState.success,
@@ -138,6 +141,7 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> register(String email, String password, String fullName) async {
+    LoggerService.i('Iniciando registro de nuevo usuario: $email', tag: 'AuthCubit');
     emit(state.copyWith(viewState: ViewState.loading, clearErrorMessage: true));
 
     final result = await registerUseCase(
@@ -146,6 +150,7 @@ class AuthCubit extends Cubit<AuthState> {
 
     result.fold(
       (failure) {
+        LoggerService.w('Fallo en registro de usuario: ${failure.message}', tag: 'AuthCubit');
         emit(
           state.copyWith(
             viewState: ViewState.error,
@@ -154,6 +159,7 @@ class AuthCubit extends Cubit<AuthState> {
         );
       },
       (user) {
+        LoggerService.i('Registro y vinculación exitosa: ${user.fullName}', tag: 'AuthCubit');
         emit(
           state.copyWith(
             viewState: ViewState.success,
@@ -166,6 +172,7 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> logout() async {
+    LoggerService.i('Cerrando sesión de usuario', tag: 'AuthCubit');
     emit(state.copyWith(viewState: ViewState.loading));
     await logoutUseCase(const NoParams());
     emit(
@@ -177,20 +184,15 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<String?> resetPassword(String email) async {
-    emit(state.copyWith(viewState: ViewState.loading, clearErrorMessage: true));
+    LoggerService.i('Solicitando reseteo de contraseña para $email', tag: 'AuthCubit');
     final result = await resetPasswordUseCase(email);
     return result.fold(
       (failure) {
-        emit(
-          state.copyWith(
-            viewState: ViewState.error,
-            errorMessage: failure.message,
-          ),
-        );
+        LoggerService.w('Fallo al resetear contraseña: ${failure.message}', tag: 'AuthCubit');
         return failure.message;
       },
       (_) {
-        emit(state.copyWith(viewState: ViewState.initial));
+        LoggerService.i('Reseteo de contraseña solicitado con éxito para $email', tag: 'AuthCubit');
         return null;
       },
     );

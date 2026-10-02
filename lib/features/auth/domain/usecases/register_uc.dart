@@ -27,6 +27,7 @@ class RegisterUseCase implements UseCase<UserEntity, RegisterParams> {
     final registerResult = await repository.register(
       email: params.email,
       password: params.password,
+      fullName: params.fullName,
     );
 
     return registerResult.fold((failure) => left(failure), (authUserId) async {
