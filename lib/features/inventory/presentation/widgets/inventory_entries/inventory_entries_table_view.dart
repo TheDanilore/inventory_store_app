@@ -221,9 +221,10 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
                   ),
 
                   // --- Filas de Datos ---
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: widget.entries.length,
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: widget.entries.length,
                       separatorBuilder:
                           (_, _) => const Divider(
                             height: 1,
@@ -581,7 +582,6 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
                         );
                       },
                     ),
-                  ),
                 ],
               ),
             ),

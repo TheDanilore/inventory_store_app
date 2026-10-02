@@ -33,6 +33,7 @@ class InventoryEntriesScreen extends StatefulWidget {
 }
 
 class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
+  final _scrollController = ScrollController();
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _screenFocusNode = FocusNode();
@@ -180,6 +181,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _scrollController.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     _screenFocusNode.dispose();
@@ -597,15 +599,6 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                     foregroundColor: Colors.white,
                   )
                   : null,
-          bottomNavigationBar:
-              currentState.entries.isEmpty || currentState.totalPages < 1
-                  ? null
-                  : _buildPagination(
-                    context,
-                    currentState,
-                    isLoading,
-                    isTablet: true,
-                  ),
           body: Focus(
             focusNode: _screenFocusNode,
             autofocus: true,
@@ -614,239 +607,205 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
               builder: (context, constraints) {
                 final isTablet = constraints.maxWidth >= 800;
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // ── 1. Aviso de Borrador ──────────────────────────────
-                    if (_hasDraft)
-                      Container(
-                        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.1),
-                          border: Border.all(
-                            color: AppColors.warning.withValues(alpha: 0.3),
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.edit_document,
-                              color: AppColors.warning,
-                              size: 18,
+                return RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: () async {
+                    context.read<InventoryEntriesCubit>().loadEntries(page: 0);
+                  },
+                  child: CustomScrollView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      // ── 1. Aviso de Borrador ──────────────────────────────
+                      if (_hasDraft)
+                        SliverToBoxAdapter(
+                          child: Container(
+                            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
                             ),
-                            const SizedBox(width: 10),
-                            const Expanded(
-                              child: Text(
-                                'Tienes un borrador de entrada en progreso.',
-                                style: TextStyle(
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withValues(alpha: 0.1),
+                              border: Border.all(
+                                color: AppColors.warning.withValues(alpha: 0.3),
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.edit_document,
                                   color: AppColors.warning,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12.5,
+                                  size: 18,
                                 ),
-                              ),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text(
+                                    'Tienes un borrador de entrada en progreso.',
+                                    style: TextStyle(
+                                      color: AppColors.warning,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12.5,
+                                    ),
+                                  ),
+                                ),
+                                FilledButton.tonal(
+                                  onPressed: _onNewEntry,
+                                  style: FilledButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: AppColors.warning.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    foregroundColor: AppColors.warning,
+                                  ),
+                                  child: const Text('Continuar'),
+                                ),
+                              ],
                             ),
-                            FilledButton.tonal(
-                              onPressed: _onNewEntry,
-                              style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                visualDensity: VisualDensity.compact,
-                                backgroundColor: AppColors.warning.withValues(
-                                  alpha: 0.2,
-                                ),
-                                foregroundColor: AppColors.warning,
-                              ),
-                              child: const Text('Continuar'),
-                            ),
-                          ],
+                          ),
+                        ),
+
+                      // ── 2. Bento KPI Ribbon ───────────────────────────────
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          child: _InventoryEntriesBentoKpiBar(
+                            count: currentState.entries.length,
+                            totalCount: currentState.totalCount,
+                            totalAmount: totalAmount,
+                            warehouseName: currentState.warehouseFilter,
+                            isDesktop: isTablet,
+                          ),
                         ),
                       ),
 
-                    // ── 2. Bento KPI Ribbon ───────────────────────────────
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                      child: _InventoryEntriesBentoKpiBar(
-                        count: currentState.entries.length,
-                        totalCount: currentState.totalCount,
-                        totalAmount: totalAmount,
-                        warehouseName: currentState.warehouseFilter,
-                        isDesktop: isTablet,
-                      ),
-                    ),
-
-                    // ── 3. Toolbar Pro Unificado (Buscador, Almacén, Fecha, Vista, Refresh, Nueva Entrada) ──
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                      child: _InventoryEntriesToolbar(
-                        searchCtrl: _searchCtrl,
-                        searchFocusNode: _searchFocusNode,
-                        onSearchChanged: (v) {
-                          _searchDebounce?.cancel();
-                          _searchDebounce = Timer(
-                            const Duration(milliseconds: 300),
-                            () {
-                              if (mounted) {
-                                context
-                                    .read<InventoryEntriesCubit>()
-                                    .setSearchQuery(v);
-                              }
-                            },
-                          );
-                        },
-                        onClearSearch: () {
-                          _searchDebounce?.cancel();
-                          _searchCtrl.clear();
-                          context.read<InventoryEntriesCubit>().setSearchQuery(
-                            '',
-                          );
-                        },
-                        state: currentState,
-                        isDesktop: isTablet,
-                        isTableView: _isTableView,
-                        hasDraft: _hasDraft,
-                        onToggleTableView:
-                            (val) => setState(() => _isTableView = val),
-                        onRefresh: () {
-                          context.read<InventoryEntriesCubit>().loadEntries(
-                            page: 0,
-                          );
-                        },
-                        onNewEntry: _onNewEntry,
-                      ),
-                    ),
-
-                    // ── 4. Encabezado de Navegación y Contador ────────────
-                    if (!isLoading && currentState.entries.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                        child: Row(
-                          children: [
-                            Text(
-                              '${currentState.entries.length} ${currentState.entries.length == 1 ? "entrada" : "entradas"} en esta página',
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            if (isTablet) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: const Color(0xFFE2E8F0),
-                                  ),
-                                ),
-                                child: const Text(
-                                  '↑ ↓ navegar',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
-                              ),
-                            ],
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: const Color(0xFFE2E8F0),
-                                ),
-                              ),
-                              child: Text(
-                                'Pág. ${currentState.currentPage + 1} / ${currentState.totalPages}',
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                      // ── 3. Toolbar Pro Unificado ─────────────────────────
+                      SliverToBoxAdapter(
+                        child: _InventoryEntriesToolbar(
+                          searchCtrl: _searchCtrl,
+                          searchFocusNode: _searchFocusNode,
+                          onSearchChanged: (v) {
+                            _searchDebounce?.cancel();
+                            _searchDebounce = Timer(
+                              const Duration(milliseconds: 300),
+                              () {
+                                if (mounted) {
+                                  context
+                                      .read<InventoryEntriesCubit>()
+                                      .setSearchQuery(v);
+                                }
+                              },
+                            );
+                          },
+                          onClearSearch: () {
+                            _searchDebounce?.cancel();
+                            _searchCtrl.clear();
+                            context.read<InventoryEntriesCubit>().setSearchQuery(
+                              '',
+                            );
+                          },
+                          state: currentState,
+                          isDesktop: isTablet,
+                          isTableView: _isTableView,
+                          hasDraft: _hasDraft,
+                          onToggleTableView:
+                              (val) => setState(() => _isTableView = val),
+                          onRefresh: () {
+                            context.read<InventoryEntriesCubit>().loadEntries(
+                              page: 0,
+                            );
+                          },
+                          onNewEntry: _onNewEntry,
                         ),
                       ),
 
-                    // ── 5. Contenido Principal: Tabla Pro o Split/Cards ───
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 220),
-                        child:
-                            isLoading
-                                ? (_isTableView && isTablet)
-                                    ? const Padding(
-                                      padding: EdgeInsets.fromLTRB(
-                                        16,
-                                        0,
-                                        16,
-                                        0,
+                      // ── 4. Encabezado de Navegación y Contador ────────────
+                      if (!isLoading && currentState.entries.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                            child: Row(
+                              children: [
+                                Text(
+                                  '${currentState.entries.length} ${currentState.entries.length == 1 ? "entrada" : "entradas"} en esta página',
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (isTablet) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                        color: const Color(0xFFE2E8F0),
                                       ),
-                                      child: AppTableShimmer(),
-                                    )
-                                    : const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 16,
+                                    ),
+                                    child: const Text(
+                                      '↑ ↓ navegar',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textMuted,
                                       ),
-                                      child: _EntriesSkeleton(),
-                                    )
-                                : currentState.entries.isEmpty
-                                ? const AppEmptyState(
-                                  key: ValueKey('empty'),
-                                  icon: Icons.inbox_outlined,
-                                  title: 'Sin Resultados',
-                                  message:
-                                      'Sin resultados para los filtros aplicados',
-                                )
-                                : (_isTableView && isTablet)
-                                ? Padding(
+                                    ),
+                                  ),
+                                ],
+                                const Spacer(),
+                                Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
+                                    horizontal: 8,
+                                    vertical: 3,
                                   ),
-                                  child: InventoryEntriesTableView(
-                                    entries: displayEntries,
-                                    selectedEntry: _selectedEntry,
-                                    onSelectEntry:
-                                        (e) => _openDesktopDetailSheet(e),
-                                    onRefresh: () {
-                                      context
-                                          .read<InventoryEntriesCubit>()
-                                          .loadEntries(page: 0);
-                                    },
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: const Color(0xFFE2E8F0),
+                                    ),
                                   ),
-                                )
-                                : isTablet
-                                ? _buildTabletGridLayout(
-                                  context,
-                                  currentState,
-                                  displayEntries,
-                                )
-                                : _buildMobileCardsLayout(
-                                  context,
-                                  currentState,
-                                  displayEntries,
+                                  child: Text(
+                                    'Pág. ${currentState.currentPage + 1} / ${currentState.totalPages}',
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      // ── 5. Contenido Principal: Tabla Pro o Split/Cards ───
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        sliver: _buildListOrTableSliver(
+                          context: context,
+                          state: currentState,
+                          displayEntries: displayEntries,
+                          isLoading: isLoading,
+                          isTablet: isTablet,
+                        ),
                       ),
-                    ),
-                  ],
+
+                      // ── 6. Paginación Fluida al Pie del Scroll ────────────
+                      _buildPaginationSliver(context, currentState, isLoading),
+                    ],
+                  ),
                 );
               },
             ),
@@ -856,75 +815,115 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     );
   }
 
-  Widget _buildTabletGridLayout(
-    BuildContext context,
-    InventoryEntriesLoaded state,
-    List<InventoryEntryEntity> displayEntries,
-  ) {
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 440,
-        mainAxisExtent: 180,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
-      itemCount: displayEntries.length,
-      itemBuilder: (context, i) {
-        final entry = displayEntries[i];
-        return _EntryCard(
-          entry: entry,
-          isSelected: _selectedEntry?.id == entry.id,
-          onTap: () => _openDesktopDetailSheet(entry),
-        );
-      },
-    );
-  }
-
-  Widget _buildMobileCardsLayout(
-    BuildContext context,
-    InventoryEntriesLoaded state,
-    List<InventoryEntryEntity> displayEntries,
-  ) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-      itemCount: displayEntries.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, i) {
-        final entry = displayEntries[i];
-        return _EntryCard(
-          entry: entry,
-          isSelected: false,
-          onTap: () => _onEntryTapped(context, entry, false),
-        );
-      },
-    );
-  }
-
-  Widget _buildPagination(
-    BuildContext context,
-    InventoryEntriesLoaded state,
-    bool isLoading, {
-    bool isTablet = false,
+  Widget _buildListOrTableSliver({
+    required BuildContext context,
+    required InventoryEntriesLoaded state,
+    required List<InventoryEntryEntity> displayEntries,
+    required bool isLoading,
+    required bool isTablet,
   }) {
-    if (state.totalPages < 1 || state.entries.isEmpty) {
-      return const SizedBox.shrink();
+    if (isLoading) {
+      if (_isTableView && isTablet) {
+        return const SliverToBoxAdapter(
+          child: AppTableShimmer(),
+        );
+      }
+      return const SliverToBoxAdapter(
+        child: _EntriesSkeleton(),
+      );
     }
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
+
+    if (state.entries.isEmpty) {
+      return const SliverFillRemaining(
+        hasScrollBody: false,
+        child: AppEmptyState(
+          key: ValueKey('empty'),
+          icon: Icons.inbox_outlined,
+          title: 'Sin Resultados',
+          message: 'Sin resultados para los filtros aplicados',
+        ),
+      );
+    }
+
+    if (_isTableView && isTablet) {
+      return SliverToBoxAdapter(
+        child: InventoryEntriesTableView(
+          entries: displayEntries,
+          selectedEntry: _selectedEntry,
+          onSelectEntry: (e) => _openDesktopDetailSheet(e),
+          onRefresh: () {
+            context.read<InventoryEntriesCubit>().loadEntries(page: 0);
+          },
+        ),
+      );
+    }
+
+    if (isTablet) {
+      return SliverGrid(
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 440,
+          mainAxisExtent: 180,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, i) {
+            final entry = displayEntries[i];
+            return _EntryCard(
+              entry: entry,
+              isSelected: _selectedEntry?.id == entry.id,
+              onTap: () => _openDesktopDetailSheet(entry),
+            );
+          },
+          childCount: displayEntries.length,
+        ),
+      );
+    }
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, i) {
+          final entry = displayEntries[i];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _EntryCard(
+              entry: entry,
+              isSelected: false,
+              onTap: () => _onEntryTapped(context, entry, false),
+            ),
+          );
+        },
+        childCount: displayEntries.length,
       ),
-      alignment: Alignment.center,
-      child: SafeArea(
-        top: false,
-        bottom: !isTablet,
-        child: AdminPageBlocks(
-          currentPage: state.currentPage,
-          totalPages: state.totalPages,
-          onPageChanged: context.read<InventoryEntriesCubit>().goToPage,
+    );
+  }
+
+  Widget _buildPaginationSliver(
+    BuildContext context,
+    InventoryEntriesLoaded state,
+    bool isLoading,
+  ) {
+    if (state.totalPages <= 1 || isLoading || state.entries.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox(height: 24));
+    }
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppColors.cardShadow(opacity: 0.03),
+          ),
+          child: AdminPageBlocks(
+            currentPage: state.currentPage,
+            totalPages: state.totalPages,
+            onPageChanged: context.read<InventoryEntriesCubit>().goToPage,
+            totalItems: state.totalCount,
+            itemName: 'entradas',
+          ),
         ),
       ),
     );

@@ -34,6 +34,7 @@ class InventoryExitsScreen extends StatefulWidget {
 }
 
 class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
+  final _scrollController = ScrollController();
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _screenFocusNode = FocusNode();
@@ -132,6 +133,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _scrollController.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     _screenFocusNode.dispose();
@@ -457,10 +459,6 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                   )
                   : null,
 
-          bottomNavigationBar: state.exits.isEmpty || state.totalPages < 1
-              ? null
-              : _buildPagination(context, state, cubit, isTablet: true),
-
           body: Focus(
             focusNode: _screenFocusNode,
             autofocus: true,
@@ -483,229 +481,200 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                   }
                 }
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // ── 1. Aviso de Borrador ──────────────────────────────
-                    if (_hasDraft)
-                      Container(
-                        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.1),
-                          border: Border.all(
-                            color: AppColors.warning.withValues(alpha: 0.3),
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.edit_document,
-                              color: AppColors.warning,
-                              size: 18,
+                return RefreshIndicator(
+                  color: AppColors.danger,
+                  onRefresh: () => cubit.loadExits(isRefresh: true),
+                  child: CustomScrollView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      // ── 1. Aviso de Borrador ──────────────────────────────
+                      if (_hasDraft)
+                        SliverToBoxAdapter(
+                          child: Container(
+                            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
                             ),
-                            const SizedBox(width: 10),
-                            const Expanded(
-                              child: Text(
-                                'Tienes un borrador de salida en progreso.',
-                                style: TextStyle(
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withValues(alpha: 0.1),
+                              border: Border.all(
+                                color: AppColors.warning.withValues(alpha: 0.3),
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.edit_document,
                                   color: AppColors.warning,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12.5,
+                                  size: 18,
                                 ),
-                              ),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text(
+                                    'Tienes un borrador de salida en progreso.',
+                                    style: TextStyle(
+                                      color: AppColors.warning,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12.5,
+                                    ),
+                                  ),
+                                ),
+                                FilledButton.tonal(
+                                  onPressed: _onNewExit,
+                                  style: FilledButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor:
+                                        AppColors.warning.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    foregroundColor: AppColors.warning,
+                                  ),
+                                  child: const Text('Continuar'),
+                                ),
+                              ],
                             ),
-                            FilledButton.tonal(
-                              onPressed: _onNewExit,
-                              style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                visualDensity: VisualDensity.compact,
-                                backgroundColor: AppColors.warning.withValues(
-                                  alpha: 0.2,
-                                ),
-                                foregroundColor: AppColors.warning,
-                              ),
-                              child: const Text('Continuar'),
-                            ),
-                          ],
+                          ),
+                        ),
+
+                      // ── 2. Bento KPI Ribbon ───────────────────────────────
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          child: _InventoryExitsBentoKpiBar(
+                            count: state.exits.length,
+                            totalCount: state.totalRecords,
+                            totalCost: totalCost,
+                            totalUnits: totalUnits,
+                            isDesktop: isTablet,
+                          ),
                         ),
                       ),
 
-                    // ── 2. Bento KPI Ribbon ───────────────────────────────
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                      child: _InventoryExitsBentoKpiBar(
-                        count: state.exits.length,
-                        totalCount: state.totalRecords,
-                        totalCost: totalCost,
-                        totalUnits: totalUnits,
-                        isDesktop: isTablet,
-                      ),
-                    ),
-
-                    // ── 3. Toolbar Pro Unificado (Buscador, Fecha, Vista, Refresh, CTA) ──
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                      child: _InventoryExitsToolbar(
-                        searchCtrl: _searchCtrl,
-                        searchFocusNode: _searchFocusNode,
-                        onSearchChanged: (v) {
-                          _searchDebounce?.cancel();
-                          _searchDebounce = Timer(
-                            const Duration(milliseconds: 300),
-                            () {
-                              if (mounted) {
-                                cubit.updateSearch(v);
-                              }
+                      // ── 3. Toolbar Pro Unificado (Buscador, Fecha, Vista, Refresh, CTA) ──
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                          child: _InventoryExitsToolbar(
+                            searchCtrl: _searchCtrl,
+                            searchFocusNode: _searchFocusNode,
+                            onSearchChanged: (v) {
+                              _searchDebounce?.cancel();
+                              _searchDebounce = Timer(
+                                const Duration(milliseconds: 300),
+                                () {
+                                  if (mounted) {
+                                    cubit.updateSearch(v);
+                                  }
+                                },
+                              );
                             },
-                          );
-                        },
-                        onClearSearch: () {
-                          _searchDebounce?.cancel();
-                          _searchCtrl.clear();
-                          cubit.updateSearch('');
-                        },
-                        state: state,
-                        isDesktop: isTablet,
-                        isTableView: _isTableView,
-                        onToggleTableView:
-                            (val) => setState(() => _isTableView = val),
-                        onRefresh: () {
-                          cubit.loadExits(isRefresh: true);
-                        },
-                        hasDraft: _hasDraft,
-                        onNewExit: _onNewExit,
-                      ),
-                    ),
-
-                    // ── 4. Encabezado de Navegación y Contador ────────────
-                    if (!state.isLoading && state.exits.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                        child: Row(
-                          children: [
-                            Text(
-                              '${state.exits.length} ${state.exits.length == 1 ? "salida" : "salidas"} en esta página',
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            if (isTablet) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: const Color(0xFFE2E8F0),
-                                  ),
-                                ),
-                                child: const Text(
-                                  '↑ ↓ navegar',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
-                              ),
-                            ],
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: const Color(0xFFE2E8F0),
-                                ),
-                              ),
-                              child: Text(
-                                'Pág. ${state.currentPage + 1} / ${state.totalPages}',
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                            onClearSearch: () {
+                              _searchDebounce?.cancel();
+                              _searchCtrl.clear();
+                              cubit.updateSearch('');
+                            },
+                            state: state,
+                            isDesktop: isTablet,
+                            isTableView: _isTableView,
+                            onToggleTableView:
+                                (val) => setState(() => _isTableView = val),
+                            onRefresh: () {
+                              cubit.loadExits(isRefresh: true);
+                            },
+                            hasDraft: _hasDraft,
+                            onNewExit: _onNewExit,
+                          ),
                         ),
                       ),
 
-                    // ── 5. Contenido Principal: Tabla Pro o Split/Cards ───
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 220),
-                        child:
-                            (state.isLoading && state.exits.isEmpty)
-                                ? (_isTableView && isTablet)
-                                    ? const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                      ),
-                                      child: AppTableShimmer(),
-                                    )
-                                    : const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                      ),
-                                      child: KardexSkeleton(),
-                                    )
-                                : state.exits.isEmpty
-                                ? AppEmptyState(
-                                  key: const ValueKey('empty_state'),
-                                  icon: Icons.inventory_2_outlined,
-                                  title: 'Sin Resultados',
-                                  message:
-                                      state.searchQuery.isEmpty &&
-                                              state.startDate == null &&
-                                              state.endDate == null
-                                          ? 'No hay salidas registradas'
-                                          : 'Sin resultados para los filtros aplicados',
-                                )
-                                : (_isTableView && isTablet)
-                                ? Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
+                      // ── 4. Encabezado de Navegación y Contador ────────────
+                      if (!state.isLoading && state.exits.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                            child: Row(
+                              children: [
+                                Text(
+                                  '${state.exits.length} ${state.exits.length == 1 ? "salida" : "salidas"} en esta página',
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  child: InventoryExitsTableView(
-                                    exits: state.exits,
-                                    selectedExit: _selectedExit,
-                                    onSelectExit:
-                                        (e) => _openDesktopDetailSheet(e),
-                                    onRefresh:
-                                        () => cubit.loadExits(isRefresh: true),
-                                  ),
-                                )
-                                : isTablet
-                                ? _buildTabletGridLayout(context, state, cubit)
-                                : _buildMobileCardsLayout(
-                                  context,
-                                  state,
-                                  cubit,
                                 ),
-                      ),
-                    ),
+                                if (isTablet) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                        color: const Color(0xFFE2E8F0),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      '↑ ↓ navegar',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: const Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Pág. ${state.currentPage + 1} / ${state.totalPages}',
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
 
-                    // ── 6. Paginación Inferior Fija (AdminPageBlocks) ────────
-                  ],
+                      // ── 5. Contenido Principal: Tabla Pro o Split/Cards ───
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        sliver: _buildListOrTableSliver(
+                          context: context,
+                          state: state,
+                          cubit: cubit,
+                          isTablet: isTablet,
+                        ),
+                      ),
+
+                      // ── 6. Paginación Fluida al Pie del Scroll ────────────
+                      _buildPaginationSliver(context, state, cubit),
+                    ],
+                  ),
                 );
               },
             ),
@@ -715,84 +684,118 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     );
   }
 
-  Widget _buildPagination(
-    BuildContext context,
-    InventoryExitsState state,
-    InventoryExitsCubit cubit, {
-    bool isTablet = false,
+  Widget _buildListOrTableSliver({
+    required BuildContext context,
+    required InventoryExitsState state,
+    required InventoryExitsCubit cubit,
+    required bool isTablet,
   }) {
-    if (state.totalPages < 1 || state.exits.isEmpty) {
-      return const SizedBox.shrink();
+    if (state.isLoading && state.exits.isEmpty) {
+      if (_isTableView && isTablet) {
+        return const SliverToBoxAdapter(
+          child: AppTableShimmer(),
+        );
+      }
+      return const SliverToBoxAdapter(
+        child: KardexSkeleton(),
+      );
     }
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      alignment: Alignment.center,
-      child: SafeArea(
-        top: false,
-        bottom: !isTablet,
-        child: AdminPageBlocks(
-          currentPage: state.currentPage,
-          totalPages: state.totalPages,
-          onPageChanged: (page) => cubit.changePage(page),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildTabletGridLayout(
-    BuildContext context,
-    InventoryExitsState state,
-    InventoryExitsCubit cubit,
-  ) {
-    return RefreshIndicator(
-      color: AppColors.danger,
-      onRefresh: () => cubit.loadExits(isRefresh: true),
-      child: GridView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+    if (state.exits.isEmpty) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: AppEmptyState(
+          key: const ValueKey('empty_state'),
+          icon: Icons.inventory_2_outlined,
+          title: 'Sin Resultados',
+          message:
+              state.searchQuery.isEmpty &&
+                      state.startDate == null &&
+                      state.endDate == null
+                  ? 'No hay salidas registradas'
+                  : 'Sin resultados para los filtros aplicados',
+        ),
+      );
+    }
+
+    if (_isTableView && isTablet) {
+      return SliverToBoxAdapter(
+        child: InventoryExitsTableView(
+          exits: state.exits,
+          selectedExit: _selectedExit,
+          onSelectExit: (e) => _openDesktopDetailSheet(e),
+          onRefresh: () => cubit.loadExits(isRefresh: true),
+        ),
+      );
+    }
+
+    if (isTablet) {
+      return SliverGrid(
         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 440,
           mainAxisExtent: 180,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
-        itemCount: state.exits.length,
-        itemBuilder: (context, i) {
+        delegate: SliverChildBuilderDelegate(
+          (context, i) {
+            final exit = state.exits[i];
+            return _ExitCard(
+              exitData: exit,
+              isSelected: _selectedExit?.id == exit.id,
+              onTap: () => _openDesktopDetailSheet(exit),
+            );
+          },
+          childCount: state.exits.length,
+        ),
+      );
+    }
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, i) {
           final exit = state.exits[i];
-          return _ExitCard(
-            exitData: exit,
-            isSelected: _selectedExit?.id == exit.id,
-            onTap: () => _openDesktopDetailSheet(exit),
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _ExitCard(
+              exitData: exit,
+              isSelected: false,
+              onTap: () => _showDetailBottomSheet(context, exit),
+            ),
           );
         },
+        childCount: state.exits.length,
       ),
     );
   }
 
-  Widget _buildMobileCardsLayout(
+  Widget _buildPaginationSliver(
     BuildContext context,
     InventoryExitsState state,
     InventoryExitsCubit cubit,
   ) {
-    return RefreshIndicator(
-      color: AppColors.danger,
-      onRefresh: () => cubit.loadExits(isRefresh: true),
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-        itemCount: state.exits.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (context, i) {
-          final exit = state.exits[i];
-          return _ExitCard(
-            exitData: exit,
-            isSelected: false,
-            onTap: () => _showDetailBottomSheet(context, exit),
-          );
-        },
+    if (state.totalPages <= 1 || state.isLoading || state.exits.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox(height: 24));
+    }
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppColors.cardShadow(opacity: 0.03),
+          ),
+          child: AdminPageBlocks(
+            currentPage: state.currentPage,
+            totalPages: state.totalPages,
+            onPageChanged: (page) => cubit.changePage(page),
+            totalItems: state.totalRecords,
+            itemName: 'salidas',
+          ),
+        ),
       ),
     );
   }
