@@ -47,7 +47,7 @@
     <application
         android:allowBackup="false"
         android:fullBackupContent="false"
-        android:label="Inventory Store"
+        android:label="Danilore One"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
         tools:replace="android:allowBackup"> <!-- REGLA DE UNIFICACIÓN PARA PROCESAR EL EMBEBIDO -->

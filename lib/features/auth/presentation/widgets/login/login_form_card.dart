@@ -76,7 +76,9 @@ class _LoginFormCardState extends State<LoginFormCard> {
   }
 
   Future<void> _showForgotPasswordDialog() async {
-    final emailCtrl = TextEditingController(text: widget.emailController.text.trim());
+    final emailCtrl = TextEditingController(
+      text: widget.emailController.text.trim(),
+    );
     final cubit = context.read<AuthCubit>();
     final isMobile = MediaQuery.sizeOf(context).width < 600;
 
@@ -127,7 +129,8 @@ class _LoginFormCardState extends State<LoginFormCard> {
                         } else {
                           AppSnackbar.show(
                             context,
-                            message: 'Enlace enviado. Revisa tu bandeja de entrada.',
+                            message:
+                                'Enlace enviado. Revisa tu bandeja de entrada.',
                             type: SnackbarType.success,
                           );
                         }
@@ -167,7 +170,8 @@ class _LoginFormCardState extends State<LoginFormCard> {
                       } else {
                         AppSnackbar.show(
                           context,
-                          message: 'Enlace enviado. Revisa tu bandeja de entrada.',
+                          message:
+                              'Enlace enviado. Revisa tu bandeja de entrada.',
                           type: SnackbarType.success,
                         );
                       }
@@ -243,7 +247,9 @@ class _LoginFormCardState extends State<LoginFormCard> {
                           : AutofillHints.newPassword,
                     ],
                     onFieldSubmitted:
-                        widget.isLoading ? null : (_) => widget.onAuthenticate(),
+                        widget.isLoading
+                            ? null
+                            : (_) => widget.onAuthenticate(),
                     suffixIcon: IconButton(
                       icon: Icon(
                         obscure
@@ -252,8 +258,8 @@ class _LoginFormCardState extends State<LoginFormCard> {
                         color: AppColors.textSecondary,
                         size: 20,
                       ),
-                      onPressed: () =>
-                          _obscurePasswordNotifier.value = !obscure,
+                      onPressed:
+                          () => _obscurePasswordNotifier.value = !obscure,
                     ),
                     obscureText: obscure,
                     validator: _validatePassword,
@@ -325,11 +331,17 @@ class _SubmitButtonState extends State<_SubmitButton> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown:
-          widget.isLoading ? null : (_) => setState(() => _isButtonPressed = true),
+          widget.isLoading
+              ? null
+              : (_) => setState(() => _isButtonPressed = true),
       onTapUp:
-          widget.isLoading ? null : (_) => setState(() => _isButtonPressed = false),
+          widget.isLoading
+              ? null
+              : (_) => setState(() => _isButtonPressed = false),
       onTapCancel:
-          widget.isLoading ? null : () => setState(() => _isButtonPressed = false),
+          widget.isLoading
+              ? null
+              : () => setState(() => _isButtonPressed = false),
       child: AnimatedScale(
         scale: _isButtonPressed ? 0.96 : 1.0,
         duration: const Duration(milliseconds: 150),
@@ -345,23 +357,24 @@ class _SubmitButtonState extends State<_SubmitButton> {
                 borderRadius: BorderRadius.circular(AppColors.radius),
               ),
             ),
-            child: widget.isLoading
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: Colors.white,
+            child:
+                widget.isLoading
+                    ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                    : Text(
+                      widget.isLoginMode ? 'Iniciar sesión' : 'Crear cuenta',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
                     ),
-                  )
-                : Text(
-                    widget.isLoginMode ? 'Iniciar sesión' : 'Crear cuenta',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
           ),
         ),
       ),
@@ -464,19 +477,23 @@ class _ForgotPasswordDialogContentState
                 ),
               ),
               onPressed: _isSending ? null : _handleSubmit,
-              child: _isSending
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+              child:
+                  _isSending
+                      ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                      : const Text(
+                        'Enviar enlace',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    )
-                  : const Text(
-                      'Enviar enlace',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                    ),
             ),
           ],
         ),

@@ -117,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen>
             type: SnackbarType.error,
           );
         } else if (state.viewState == ViewState.success) {
-          // Notifica al gestor de contraseñas del navegador y SO que guarde las credenciales asociadas
+          // Solicita al gestor de contraseñas (Google/Apple/Edge) guardar o actualizar credenciales si el usuario lo desea
           TextInput.finishAutofillContext(shouldSave: true);
           _passwordController.clear();
           _blobCtrl.stop();

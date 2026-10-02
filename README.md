@@ -1,11 +1,11 @@
-# Inventory Store App
+# Danilore One App
 
 ![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/Dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 ![BLoC](https://img.shields.io/badge/BLoC-%23FF6B35.svg?style=for-the-badge&logo=flutter&logoColor=white)
 
-**Inventory Store** es un sistema integral de gestión empresarial (ERP), punto de venta (POS) y tienda en línea (E-commerce) desarrollado en **Flutter**. Funciona en múltiples plataformas (Android, iOS, Web) y ofrece una experiencia completa tanto para administradores de negocios como para clientes finales.
+**Danilore One** es un sistema integral de gestión empresarial (ERP), punto de venta (POS) y tienda en línea (E-commerce) desarrollado en **Flutter**. Funciona en múltiples plataformas (Android, iOS, Web) y ofrece una experiencia completa tanto para administradores de negocios como para clientes finales.
 
 ---
 
