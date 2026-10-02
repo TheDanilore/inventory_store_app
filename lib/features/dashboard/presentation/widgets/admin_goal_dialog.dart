@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
 
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -155,8 +156,10 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
     }
 
     final added = double.tryParse(_addCtrl.text.trim()) ?? 0.0;
-    final baseCurrent = double.parse(_currentCtrl.text.trim());
-    final newTarget = double.parse(_targetCtrl.text.trim());
+    final baseCurrent =
+        double.tryParse(_currentCtrl.text.trim()) ?? widget.currentAmount;
+    final newTarget =
+        double.tryParse(_targetCtrl.text.trim()) ?? widget.targetAmount;
     final newCurrent = baseCurrent + added;
 
     setState(() => _isLoading = true);
@@ -195,7 +198,13 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
         message: '¡Meta actualizada con éxito!',
         type: SnackbarType.success,
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      LoggerService.e(
+        'Error al actualizar meta de ahorro',
+        tag: 'ADMIN_GOAL_DIALOG',
+        error: e,
+        stackTrace: stackTrace,
+      );
       if (mounted) {
         setState(() => _isLoading = false);
         AppSnackbar.show(

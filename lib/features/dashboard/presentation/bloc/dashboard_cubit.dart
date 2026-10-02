@@ -3,8 +3,8 @@ import 'package:injectable/injectable.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
-import 'package:inventory_store_app/features/customers/data/repositories_impl/customers_repository_impl.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/usecases/customer_usecase.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
@@ -18,11 +18,13 @@ class DashboardCubit extends Cubit<DashboardState> {
   final GetInventoryMetricsUseCase getInventoryMetrics;
   final GetSalesMetricsUseCase getSalesMetrics;
   final GetCriticalBatchesUseCase getCriticalBatches;
+  final GetTopCustomersUseCase getTopCustomers;
 
   DashboardCubit({
     required this.getInventoryMetrics,
     required this.getSalesMetrics,
     required this.getCriticalBatches,
+    required this.getTopCustomers,
   }) : super(DashboardInitial());
 
   Future<void> loadDashboardData() async {
@@ -67,17 +69,26 @@ class DashboardCubit extends Cubit<DashboardState> {
         });
       });
     } catch (e, stack) {
-      LoggerService.e('Error cargando dashboard', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error cargando dashboard',
+        tag: 'DASHBOARD_CUBIT',
+        error: e,
+        stackTrace: stack,
+      );
       emit(DashboardError('Error inesperado al cargar el dashboard: $e'));
     }
   }
 
   Future<List<CustomerEntity>> _fetchTopCustomers({int limit = 5}) async {
     try {
-      final repo = CustomersRepositoryImpl();
-      return await repo.getTopCustomers(limit);
-    } catch (e) {
-      LoggerService.e('Error cargando top clientes para dashboard: $e');
+      return await getTopCustomers(limit);
+    } catch (e, stack) {
+      LoggerService.e(
+        'Error cargando top clientes para dashboard',
+        tag: 'DASHBOARD_CUBIT',
+        error: e,
+        stackTrace: stack,
+      );
       return [];
     }
   }
@@ -91,9 +102,11 @@ class DashboardCubit extends Cubit<DashboardState> {
 
       salesResult.fold(
         (failure) {
+          LoggerService.e(
+            'Error al actualizar filtro de ventas en dashboard: ${failure.message}',
+            tag: 'DASHBOARD_CUBIT',
+          );
           emit(currentState.copyWith(isSalesLoading: false));
-          // Podríamos emitir un error temporal, pero para simplificar
-          // solo devolvemos el loading a false.
         },
         (sales) {
           emit(

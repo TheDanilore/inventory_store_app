@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
@@ -23,8 +24,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
             product_variants(id, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active),
             warehouse_stock_batches(variant_id, available_quantity)
           ''')
-          .eq('is_active', true)
-          .order('name');
+          .eq('is_active', true);
 
       final products = List<Map<String, dynamic>>.from(response);
 
@@ -134,7 +134,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
           totalProducts: totalProducts,
         ),
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      LoggerService.e(
+        'Error al obtener métricas de inventario',
+        tag: 'DASHBOARD_REPO',
+        error: e,
+        stackTrace: stackTrace,
+      );
       return left(
         ServerFailure(message: 'Error al obtener métricas de inventario: $e'),
       );
@@ -202,7 +208,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
           salesMargin: salesMargin,
         ),
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      LoggerService.e(
+        'Error al obtener métricas de ventas',
+        tag: 'DASHBOARD_REPO',
+        error: e,
+        stackTrace: stackTrace,
+      );
       return left(
         ServerFailure(message: 'Error al obtener métricas de ventas: $e'),
       );
@@ -212,6 +224,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
   @override
   Future<Either<Failure, List<Map<String, dynamic>>>> getCriticalBatches({
     int daysThreshold = 30,
+    int limit = 15,
   }) async {
     try {
       final now = DateTime.now();
@@ -234,10 +247,17 @@ class DashboardRepositoryImpl implements DashboardRepository {
           .lte('expiry_date', thresholdDate.toIso8601String().substring(0, 10))
           .gte('expiry_date', now.toIso8601String().substring(0, 10))
           .gt('available_quantity', 0)
-          .order('expiry_date');
+          .order('expiry_date')
+          .limit(limit);
 
       return right(List<Map<String, dynamic>>.from(response));
-    } catch (e) {
+    } catch (e, stackTrace) {
+      LoggerService.e(
+        'Error al obtener lotes por vencer',
+        tag: 'DASHBOARD_REPO',
+        error: e,
+        stackTrace: stackTrace,
+      );
       return left(
         ServerFailure(message: 'Error al obtener lotes por vencer: $e'),
       );

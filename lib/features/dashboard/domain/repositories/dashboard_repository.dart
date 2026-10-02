@@ -11,5 +11,7 @@ abstract class DashboardRepository {
   });
   Future<Either<Failure, List<Map<String, dynamic>>>> getCriticalBatches({
     int daysThreshold = 30,
+    int limit = 15,
   });
 }
+

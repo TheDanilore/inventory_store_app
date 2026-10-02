@@ -865,13 +865,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i123.SupplierCreditsRepository>(),
       ),
     );
-    gh.factory<_i58.DashboardCubit>(
-      () => _i58.DashboardCubit(
-        getInventoryMetrics: gh<_i139.GetInventoryMetricsUseCase>(),
-        getSalesMetrics: gh<_i407.GetSalesMetricsUseCase>(),
-        getCriticalBatches: gh<_i622.GetCriticalBatchesUseCase>(),
-      ),
-    );
     gh.factory<_i13.CustomersStatsCubit>(
       () => _i13.CustomersStatsCubit(gh<_i1019.GetGlobalStatsUseCase>()),
     );
@@ -1504,6 +1497,14 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i30.FinancialAccountsCubit(
         getAccounts: gh<_i425.GetFinancialAccountsUseCase>(),
         saveAccount: gh<_i57.SaveFinancialAccountUseCase>(),
+      ),
+    );
+    gh.factory<_i58.DashboardCubit>(
+      () => _i58.DashboardCubit(
+        getInventoryMetrics: gh<_i139.GetInventoryMetricsUseCase>(),
+        getSalesMetrics: gh<_i407.GetSalesMetricsUseCase>(),
+        getCriticalBatches: gh<_i622.GetCriticalBatchesUseCase>(),
+        getTopCustomers: gh<_i1019.GetTopCustomersUseCase>(),
       ),
     );
     gh.factory<_i977.InventoryEntryFormCubit>(

@@ -11,7 +11,12 @@ class GetCriticalBatchesUseCase {
 
   Future<Either<Failure, List<Map<String, dynamic>>>> call({
     int daysThreshold = 30,
+    int limit = 15,
   }) async {
-    return await repository.getCriticalBatches(daysThreshold: daysThreshold);
+    return await repository.getCriticalBatches(
+      daysThreshold: daysThreshold,
+      limit: limit,
+    );
   }
 }
+

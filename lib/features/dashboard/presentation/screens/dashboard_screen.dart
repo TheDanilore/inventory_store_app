@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
@@ -38,7 +39,7 @@ class _DashboardScreenContent extends StatelessWidget {
     return primaryFocus != null && primaryFocus.context?.widget is EditableText;
   }
 
-  void _openGoalDialog(
+  static void _openGoalDialog(
     BuildContext context,
     double currentAmount,
     double targetAmount,
@@ -108,10 +109,6 @@ class _DashboardScreenContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final config = context.watch<AppConfigCubit>();
-    final adminGoalTarget = config.getDouble('admin_goal_target', 2600.0);
-    final adminGoalCurrent = config.getDouble('admin_goal_current', 0.0);
-
     return CallbackShortcuts(
       bindings: {
         // Atajo R: Recargar Dashboard
@@ -139,11 +136,21 @@ class _DashboardScreenContent extends StatelessWidget {
         // Atajo G o M: Abrir meta de ahorro
         const SingleActivator(LogicalKeyboardKey.keyG): () {
           if (_isTextFieldFocused()) return;
-          _openGoalDialog(context, adminGoalCurrent, adminGoalTarget);
+          final cfg = context.read<AppConfigCubit>();
+          _openGoalDialog(
+            context,
+            cfg.getDouble('admin_goal_current', 0.0),
+            cfg.getDouble('admin_goal_target', 2600.0),
+          );
         },
         const SingleActivator(LogicalKeyboardKey.keyM): () {
           if (_isTextFieldFocused()) return;
-          _openGoalDialog(context, adminGoalCurrent, adminGoalTarget);
+          final cfg = context.read<AppConfigCubit>();
+          _openGoalDialog(
+            context,
+            cfg.getDouble('admin_goal_current', 0.0),
+            cfg.getDouble('admin_goal_target', 2600.0),
+          );
         },
       },
       child: Focus(
@@ -238,23 +245,17 @@ class _DashboardScreenContent extends StatelessWidget {
                       if (isDesktop) {
                         return _buildDesktopLayout(
                           context,
-                          adminGoalCurrent,
-                          adminGoalTarget,
                           state,
                         );
                       }
                       if (isTablet) {
                         return _buildTabletLayout(
                           context,
-                          adminGoalCurrent,
-                          adminGoalTarget,
                           state,
                         );
                       }
                       return _buildMobileLayout(
                         context,
-                        adminGoalCurrent,
-                        adminGoalTarget,
                         state,
                       );
                     },
@@ -275,8 +276,6 @@ class _DashboardScreenContent extends StatelessWidget {
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildDesktopLayout(
     BuildContext context,
-    double goalCurrent,
-    double goalTarget,
     DashboardLoaded state,
   ) {
     return CustomScrollView(
@@ -342,16 +341,8 @@ class _DashboardScreenContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Expanded(
-                      child: AdminGoalCard(
-                        currentAmount: goalCurrent,
-                        targetAmount: goalTarget,
-                        onAddPressed: () => _openGoalDialog(
-                          context,
-                          goalCurrent,
-                          goalTarget,
-                        ),
-                      ),
+                    const Expanded(
+                      child: _DashboardAdminGoalCard(),
                     ),
                   ],
                 ),
@@ -432,8 +423,6 @@ class _DashboardScreenContent extends StatelessWidget {
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildTabletLayout(
     BuildContext context,
-    double goalCurrent,
-    double goalTarget,
     DashboardLoaded state,
   ) {
     return CustomScrollView(
@@ -450,15 +439,7 @@ class _DashboardScreenContent extends StatelessWidget {
                   criticalBatchesCount: state.criticalBatches.length,
                 ),
                 const SizedBox(height: 16),
-                AdminGoalCard(
-                  currentAmount: goalCurrent,
-                  targetAmount: goalTarget,
-                  onAddPressed: () => _openGoalDialog(
-                    context,
-                    goalCurrent,
-                    goalTarget,
-                  ),
-                ),
+                const _DashboardAdminGoalCard(),
                 const SizedBox(height: 20),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -520,8 +501,6 @@ class _DashboardScreenContent extends StatelessWidget {
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildMobileLayout(
     BuildContext context,
-    double goalCurrent,
-    double goalTarget,
     DashboardLoaded state,
   ) {
     return CustomScrollView(
@@ -536,11 +515,7 @@ class _DashboardScreenContent extends StatelessWidget {
                 criticalBatchesCount: state.criticalBatches.length,
               ),
               const SizedBox(height: 16),
-              AdminGoalCard(
-                currentAmount: goalCurrent,
-                targetAmount: goalTarget,
-                onAddPressed: () => _openGoalDialog(context, goalCurrent, goalTarget),
-              ),
+              const _DashboardAdminGoalCard(),
               const SizedBox(height: 20),
               if (state.criticalBatches.isNotEmpty) ...[
                 ExpiringBatchesCard(batches: state.criticalBatches),
@@ -996,18 +971,20 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
       ),
       child: Row(
         children: [
-          ScaleTransition(
-            scale: _scaleAnimation,
-            child: Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.warning_rounded,
-                color: AppColors.error,
-                size: 20,
+          RepaintBoundary(
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.warning_rounded,
+                  color: AppColors.error,
+                  size: 20,
+                ),
               ),
             ),
           ),
@@ -1063,7 +1040,7 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
 class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
 
-  _StickyHeaderDelegate({required this.child});
+  const _StickyHeaderDelegate({required this.child});
 
   @override
   Widget build(
@@ -1085,6 +1062,35 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get minExtent => 68.0;
 
   @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
-      true;
+  bool shouldRebuild(covariant _StickyHeaderDelegate oldDelegate) =>
+      oldDelegate.child != child;
 }
+
+class _DashboardAdminGoalCard extends StatelessWidget {
+  const _DashboardAdminGoalCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSelector<AppConfigCubit, AppConfigState, (double, double)>(
+      selector: (_) {
+        final config = context.read<AppConfigCubit>();
+        return (
+          config.getDouble('admin_goal_current', 0.0),
+          config.getDouble('admin_goal_target', 2600.0),
+        );
+      },
+      builder: (context, goal) {
+        return AdminGoalCard(
+          currentAmount: goal.$1,
+          targetAmount: goal.$2,
+          onAddPressed: () => _DashboardScreenContent._openGoalDialog(
+            context,
+            goal.$1,
+            goal.$2,
+          ),
+        );
+      },
+    );
+  }
+}
+

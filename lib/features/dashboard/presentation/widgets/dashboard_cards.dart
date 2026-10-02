@@ -1418,5 +1418,7 @@ class _SparklinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _SparklinePainter old) => false;
+  bool shouldRepaint(covariant _SparklinePainter old) =>
+      old.color != color || !listEquals(old.data, data);
 }
+
