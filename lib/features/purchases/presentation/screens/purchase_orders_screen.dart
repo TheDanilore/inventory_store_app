@@ -559,28 +559,33 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     }
   }
 
-  Widget _buildPagination(
-    _PurchaseOrdersViewModel viewModel, {
-    bool isTablet = false,
-  }) {
-    if (viewModel.totalPages < 1 || viewModel.orders.isEmpty) {
-      return const SizedBox.shrink();
+  Widget _buildPaginationSliver(
+    _PurchaseOrdersViewModel viewModel,
+    BuildContext context,
+  ) {
+    if (viewModel.totalPages <= 1 ||
+        viewModel.isLoading ||
+        viewModel.orders.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox(height: 24));
     }
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      alignment: Alignment.center,
-      child: SafeArea(
-        top: false,
-        bottom: !isTablet,
-        child: AdminPageBlocks(
-          currentPage: viewModel.currentPage,
-          totalPages: viewModel.totalPages,
-          onPageChanged: (p) => viewModel.setPage(p),
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppColors.cardShadow(opacity: 0.03),
+          ),
+          child: AdminPageBlocks(
+            currentPage: viewModel.currentPage,
+            totalPages: viewModel.totalPages,
+            onPageChanged: (p) => viewModel.setPage(p),
+            totalItems: viewModel.totalCount,
+            itemName: 'órdenes',
+          ),
         ),
       ),
     );
@@ -714,75 +719,55 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                 },
               ),
             ],
-      floatingActionButton: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 220),
-        transitionBuilder: (child, animation) => ScaleTransition(
-          scale: animation,
-          child: child,
-        ),
-        child: _fabExtended
-            ? FloatingActionButton.extended(
-                key: const ValueKey('fab_ext'),
-                heroTag: 'po_new_fab',
-                onPressed: () => context.go('/purchase-orders/form'),
-                backgroundColor:
-                    _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                icon: Icon(
-                  _hasDraft
-                      ? Icons.edit_note_rounded
-                      : Icons.add_shopping_cart_rounded,
-                ),
-                label: Text(
-                  _hasDraft ? 'Borrador' : 'Nueva Orden',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
-              )
-            : FloatingActionButton(
-                key: const ValueKey('fab_compact'),
-                heroTag: 'po_new_fab',
-                onPressed: () => context.go('/purchase-orders/form'),
-                backgroundColor:
-                    _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  _hasDraft
-                      ? Icons.edit_note_rounded
-                      : Icons.add_shopping_cart_rounded,
-                ),
+      floatingActionButton: isDesktopOrTablet
+          ? null
+          : AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              transitionBuilder: (child, animation) => ScaleTransition(
+                scale: animation,
+                child: child,
               ),
-      ),
-      bottomNavigationBar: BlocBuilder<PurchaseOrdersCubit, PurchaseOrdersState>(
-        buildWhen: (prev, curr) {
-          if (prev is PurchaseOrdersLoaded && curr is PurchaseOrdersLoaded) {
-            return prev.currentPage != curr.currentPage ||
-                prev.totalPages != curr.totalPages ||
-                prev.orders.isEmpty != curr.orders.isEmpty;
-          }
-          return prev.runtimeType != curr.runtimeType;
-        },
-        builder: (context, state) {
-          if (state is! PurchaseOrdersLoaded ||
-              state.orders.isEmpty ||
-              state.totalPages < 1) {
-            return const SizedBox.shrink();
-          }
-          final vm = _PurchaseOrdersViewModel(
-            context.read<PurchaseOrdersCubit>(),
-            state,
-          );
-          return _buildPagination(vm, isTablet: true);
-        },
-      ),
+              child: _fabExtended
+                  ? FloatingActionButton.extended(
+                      key: const ValueKey('fab_ext'),
+                      heroTag: 'po_new_fab',
+                      onPressed: () => context.go('/purchase-orders/form'),
+                      backgroundColor:
+                          _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      icon: Icon(
+                        _hasDraft
+                            ? Icons.edit_note_rounded
+                            : Icons.add_shopping_cart_rounded,
+                      ),
+                      label: Text(
+                        _hasDraft ? 'Borrador' : 'Nueva Orden',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    )
+                  : FloatingActionButton(
+                      key: const ValueKey('fab_compact'),
+                      heroTag: 'po_new_fab',
+                      onPressed: () => context.go('/purchase-orders/form'),
+                      backgroundColor:
+                          _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        _hasDraft
+                            ? Icons.edit_note_rounded
+                            : Icons.add_shopping_cart_rounded,
+                      ),
+                    ),
+            ),
       body: Focus(
         focusNode: _screenFocusNode,
         autofocus: true,
@@ -1016,7 +1001,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
                           // ── Lista / Tabla de Órdenes en Slivers ─────────────────
                           SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                             sliver: _buildListOrTableSliver(
                               viewModel: viewModel,
                               displayOrders: displayOrders,
@@ -1026,6 +1011,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                               cubit: cubit,
                             ),
                           ),
+
+                          // ── Paginación Fluida al Pie del Scroll ──────────────────
+                          _buildPaginationSliver(viewModel, context),
                         ],
                       ),
                     ),
