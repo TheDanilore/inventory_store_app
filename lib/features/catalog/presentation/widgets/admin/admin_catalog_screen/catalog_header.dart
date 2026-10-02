@@ -268,8 +268,8 @@ class _CatalogHeaderState extends State<CatalogHeader> {
   }
 
   Widget _buildSearchField({bool isDesktop = false}) {
-    const activeBlue = Color(0xFF2563EB);
-    const activeBorderBlue = Color(0xFF3B82F6);
+    const activeBlue = AppColors.teal;
+    const activeBorderBlue = AppColors.teal;
 
     return Row(
       children: [

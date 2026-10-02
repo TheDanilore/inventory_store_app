@@ -805,6 +805,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                 final filtered = viewModel.orders.cast<PurchaseOrderModel>();
                 final totalAmount = viewModel.totalAmountFiltered;
                 final pendingCount = viewModel.pendingCountFiltered;
+                final totalDebt = viewModel.totalDebtFiltered;
 
                 // Sincronizar selección ordinaria SOLO si no hay una orden objetivo pendiente de resolver
                 if (_pendingTargetOrderId == null) {
@@ -903,6 +904,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                 totalRecords: viewModel.totalCount,
                                 totalAmount: totalAmount,
                                 pendingCount: pendingCount,
+                                totalDebt: totalDebt,
                                 isDesktop: isTablet,
                               ),
                             ),
@@ -964,13 +966,29 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                           borderRadius: BorderRadius.circular(4),
                                           border: Border.all(color: const Color(0xFFE2E8F0)),
                                         ),
-                                        child: const Text(
-                                          '↑ ↓ navegar',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.textMuted,
-                                          ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.keyboard_arrow_up_rounded,
+                                              size: 13,
+                                              color: AppColors.textMuted,
+                                            ),
+                                            Icon(
+                                              Icons.keyboard_arrow_down_rounded,
+                                              size: 13,
+                                              color: AppColors.textMuted,
+                                            ),
+                                            SizedBox(width: 2),
+                                            Text(
+                                              'navegar',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.textMuted,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
@@ -1039,6 +1057,7 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
   final int totalRecords;
   final double totalAmount;
   final int pendingCount;
+  final double totalDebt;
   final bool isDesktop;
 
   const _PurchaseOrdersBentoKpiBar({
@@ -1046,6 +1065,7 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
     required this.totalRecords,
     required this.totalAmount,
     required this.pendingCount,
+    required this.totalDebt,
     required this.isDesktop,
   });
 
@@ -1063,18 +1083,26 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
       _BentoPOKpiCard(
         title: 'Monto Compras',
         value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-        subtitle: 'Total de compras',
+        subtitle: 'Total compras',
         icon: Icons.payments_rounded,
         iconColor: AppColors.successDark,
         iconBgColor: AppColors.successLight,
       ),
       _BentoPOKpiCard(
-        title: 'Por Recibir / Pendientes',
+        title: 'Por Recibir / Pend.',
         value: '$pendingCount',
         subtitle: pendingCount > 0 ? 'Requieren atención' : 'Todo al día',
         icon: pendingCount > 0 ? Icons.pending_actions_rounded : Icons.check_circle_outline_rounded,
         iconColor: pendingCount > 0 ? AppColors.warningDark : AppColors.successDark,
         iconBgColor: pendingCount > 0 ? AppColors.warningLight : AppColors.successLight,
+      ),
+      _BentoPOKpiCard(
+        title: 'Saldo por Pagar',
+        value: 'S/ ${totalDebt.toStringAsFixed(2)}',
+        subtitle: totalDebt > 0 ? 'Cuentas pendientes' : 'Sin deudas',
+        icon: Icons.account_balance_wallet_rounded,
+        iconColor: totalDebt > 0 ? AppColors.accent : AppColors.tealDark,
+        iconBgColor: totalDebt > 0 ? AppColors.accent.withValues(alpha: 0.12) : AppColors.tealLight,
       ),
     ];
 
@@ -1086,6 +1114,8 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
           Expanded(child: cards[1]),
           const SizedBox(width: 12),
           Expanded(child: cards[2]),
+          const SizedBox(width: 12),
+          Expanded(child: cards[3]),
         ],
       );
     }
@@ -1745,6 +1775,19 @@ class _PurchaseOrdersViewModel {
       if (o.status == 'PENDING') count++;
     }
     return count;
+  }
+
+  double get totalDebtFiltered {
+    double total = 0;
+    for (final o in orders) {
+      if (o.status != 'CANCELLED') {
+        final amount = (o.totalAmount ?? 0.0) as num;
+        final paid = (o.amountPaid ?? 0.0) as num;
+        final debt = (amount - paid).clamp(0.0, double.infinity);
+        total += debt;
+      }
+    }
+    return total;
   }
 
   void loadOrders({bool reset = false}) => cubit.loadOrders(refresh: reset);

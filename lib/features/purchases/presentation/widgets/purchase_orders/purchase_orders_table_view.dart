@@ -284,19 +284,12 @@ class _PurchaseOrderTableRowState extends State<_PurchaseOrderTableRow> {
   Widget _buildPaymentBadge(PurchaseOrderModel po) {
     final isCancelled = po.status == 'CANCELLED';
     if (isCancelled) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-        decoration: BoxDecoration(
-          color: AppColors.dangerLight,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: const Text(
-          'Anulado',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: AppColors.danger,
-          ),
+      return Text(
+        'Anulado',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textMuted.withValues(alpha: 0.8),
         ),
       );
     }
@@ -308,49 +301,113 @@ class _PurchaseOrderTableRowState extends State<_PurchaseOrderTableRow> {
         (!isCredit && po.status == 'RECEIVED') ||
         (po.amountPaid >= po.totalAmount && po.totalAmount > 0);
 
-    Color bg;
-    Color textColor;
-    String badgeText;
+    Widget badgeWidget;
 
     if (isPaid) {
-      bg = AppColors.successLight;
-      textColor = AppColors.successDark;
-      badgeText = 'Pagado';
+      badgeWidget = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+        decoration: BoxDecoration(
+          color: AppColors.successLight.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: AppColors.success.withValues(alpha: 0.25),
+            width: 1,
+          ),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_circle_rounded, size: 11, color: AppColors.successDark),
+            SizedBox(width: 4),
+            Text(
+              'Pagado',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: AppColors.successDark,
+              ),
+            ),
+          ],
+        ),
+      );
     } else if (isCredit && debt > 0) {
-      bg = AppColors.warningLight;
-      textColor = AppColors.warningDark;
-      badgeText = 'Por Pagar: S/ ${debt.toStringAsFixed(2)}';
+      badgeWidget = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+        decoration: BoxDecoration(
+          color: AppColors.warningLight.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: AppColors.warning.withValues(alpha: 0.35),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 5,
+              height: 5,
+              decoration: const BoxDecoration(
+                color: AppColors.warningDark,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Por Pagar: S/ ${debt.toStringAsFixed(2)}',
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: AppColors.warningDark,
+              ),
+            ),
+          ],
+        ),
+      );
     } else if (po.status == 'PENDING') {
-      bg = const Color(0xFFF1F5F9);
-      textColor = AppColors.textSecondary;
-      badgeText = 'Pendiente';
+      badgeWidget = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+        ),
+        child: const Text(
+          'Pendiente',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      );
     } else {
-      bg = AppColors.warningLight;
-      textColor = AppColors.warningDark;
-      badgeText = debt > 0 ? 'Por Pagar: S/ ${debt.toStringAsFixed(2)}' : 'Pendiente';
+      badgeWidget = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+        decoration: BoxDecoration(
+          color: AppColors.warningLight.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: AppColors.warning.withValues(alpha: 0.35),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          debt > 0 ? 'Por Pagar: S/ ${debt.toStringAsFixed(2)}' : 'Pendiente',
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: AppColors.warningDark,
+          ),
+        ),
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            badgeText,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: textColor,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
+        badgeWidget,
         if (po.paymentMethod.isNotEmpty && po.paymentMethod != 'POR ACORDAR') ...[
           const SizedBox(height: 2),
           Text(

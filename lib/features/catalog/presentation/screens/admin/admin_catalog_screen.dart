@@ -605,11 +605,15 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
           showAppBar: true,
           actions: [
             if (!isMobile)
-              ElevatedButton.icon(
+              OutlinedButton.icon(
                 onPressed: () => context.go('/pos'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.teal,
-                  foregroundColor: Colors.white,
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: AppColors.tealLight.withValues(alpha: 0.5),
+                  foregroundColor: AppColors.tealDark,
+                  side: BorderSide(
+                    color: AppColors.teal.withValues(alpha: 0.4),
+                    width: 1,
+                  ),
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
@@ -619,12 +623,17 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                 ),
-                icon: const Icon(Icons.point_of_sale_rounded, size: 16),
+                icon: const Icon(
+                  Icons.point_of_sale_rounded,
+                  size: 16,
+                  color: AppColors.tealDark,
+                ),
                 label: const Text(
                   'Punto de Venta (POS) [P]',
                   style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
+                    color: AppColors.tealDark,
                   ),
                 ),
               ),
