@@ -5,7 +5,7 @@ import 'package:injectable/injectable.dart';
 
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_entries_repository.dart';
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 
 @LazySingleton(as: InventoryEntriesRepository)
 class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
@@ -51,9 +51,9 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
             .maybeSingle();
         profileId = profile?['id'] as String?;
       } catch (e) {
-        developer.log(
-          '[InventoryEntriesRepo] No se pudo resolver profile_id en cliente: $e',
-          name: 'InventoryEntriesRepositoryImpl',
+        LoggerService.e(
+          'No se pudo resolver profile_id en cliente: $e',
+          tag: 'InventoryEntriesRepositoryImpl',
         );
       }
     }
@@ -77,11 +77,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         },
       );
     } on PostgrestException catch (e, st) {
-      developer.log(
-        '[InventoryEntriesRepo] createInventoryEntry error: ${e.message}',
+      LoggerService.e(
+        'createInventoryEntry error: ${e.message}',
         error: e,
         stackTrace: st,
-        name: 'InventoryEntriesRepositoryImpl',
+        tag: 'InventoryEntriesRepositoryImpl',
       );
       String userFriendlyMessage = e.message;
       if (e.code == '23503' && e.message.contains('account_movements_created_by_fkey')) {
@@ -96,11 +96,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
       }
       throw Exception(userFriendlyMessage);
     } catch (e, st) {
-      developer.log(
-        '[InventoryEntriesRepo] createInventoryEntry unexpected error',
+      LoggerService.e(
+        'createInventoryEntry unexpected error',
         error: e,
         stackTrace: st,
-        name: 'InventoryEntriesRepositoryImpl',
+        tag: 'InventoryEntriesRepositoryImpl',
       );
       rethrow;
     }
@@ -110,9 +110,9 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
     SupabaseClient supabase,
     String purchaseOrderId,
   ) async {
-    developer.log(
+    LoggerService.d(
       '[syncPurchaseOrder] Starting sync for PO: $purchaseOrderId',
-      name: 'InventoryEntriesRepositoryImpl',
+      tag: 'InventoryEntriesRepositoryImpl',
     );
 
     // 0. Nunca recalcular el estado de una orden ya anulada.
@@ -124,18 +124,18 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
               .eq('id', purchaseOrderId)
               .maybeSingle();
       if (currentPo != null && currentPo['status'] == 'CANCELLED') {
-        developer.log(
+        LoggerService.d(
           '[syncPurchaseOrder] PO $purchaseOrderId is CANCELLED, skipping sync.',
-          name: 'InventoryEntriesRepositoryImpl',
+          tag: 'InventoryEntriesRepositoryImpl',
         );
         return;
       }
     } catch (e, st) {
-      developer.log(
+      LoggerService.w(
         '[syncPurchaseOrder] Could not check current status',
         error: e,
         stackTrace: st,
-        name: 'InventoryEntriesRepositoryImpl',
+        tag: 'InventoryEntriesRepositoryImpl',
       );
     }
 
@@ -145,19 +145,19 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         'sync_purchase_order_reception_rpc',
         params: {'p_purchase_order_id': purchaseOrderId},
       );
-      developer.log(
+      LoggerService.d(
         '[syncPurchaseOrder] RPC Result: $rpcResult',
-        name: 'InventoryEntriesRepositoryImpl',
+        tag: 'InventoryEntriesRepositoryImpl',
       );
       if (rpcResult != null && rpcResult['success'] == true) {
         return;
       }
     } catch (e, st) {
-      developer.log(
+      LoggerService.w(
         '[syncPurchaseOrder] RPC failed or not installed. Falling back to direct update...',
         error: e,
         stackTrace: st,
-        name: 'InventoryEntriesRepositoryImpl',
+        tag: 'InventoryEntriesRepositoryImpl',
       );
     }
 
@@ -171,11 +171,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           .select('id, name')
           .eq('is_active', true);
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'getActiveWarehouses error',
         error: e,
         stackTrace: st,
-        name: 'InventoryEntriesRepositoryImpl',
+        tag: 'InventoryEntriesRepositoryImpl',
       );
       rethrow;
     }
@@ -189,11 +189,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           .eq('is_active', true)
           .order('name');
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'getActiveSuppliers error',
         error: e,
         stackTrace: st,
-        name: 'InventoryEntriesRepositoryImpl',
+        tag: 'InventoryEntriesRepositoryImpl',
       );
       rethrow;
     }
@@ -207,11 +207,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           .eq('is_active', true)
           .order('name');
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'getActiveAccounts error',
         error: e,
         stackTrace: st,
-        name: 'InventoryEntriesRepositoryImpl',
+        tag: 'InventoryEntriesRepositoryImpl',
       );
       rethrow;
     }
@@ -286,11 +286,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
               .toList();
       return (data: data, count: resp.count);
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'getEntries error',
         error: e,
         stackTrace: st,
-        name: 'InventoryEntriesRepositoryImpl',
+        tag: 'InventoryEntriesRepositoryImpl',
       );
       rethrow;
     }
@@ -307,11 +307,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
             id,
             name, 
             uses_batches,
-            product_images(*)
+            product_images(id, image_url, is_main, variant_id)
           ),
           product_variants(
             id,
-            product_images(*),
+            product_images(id, image_url, is_main, variant_id),
             variant_attribute_values(
               attribute_values(value)
             )
@@ -320,11 +320,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           .eq('entry_id', entryId);
       return resp as List<dynamic>;
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'getEntryItems error',
         error: e,
         stackTrace: st,
-        name: 'InventoryEntriesRepositoryImpl',
+        tag: 'InventoryEntriesRepositoryImpl',
       );
       rethrow;
     }
@@ -348,11 +348,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
       if (res == null) return null;
       return InventoryEntryModel.fromJson(res).toEntity();
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'getEntryById error',
         error: e,
         stackTrace: st,
-        name: 'InventoryEntriesRepositoryImpl',
+        tag: 'InventoryEntriesRepositoryImpl',
       );
       return null;
     }
@@ -373,11 +373,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
       }
       return shifts;
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'getOpenCashShifts error',
         error: e,
         stackTrace: st,
-        name: 'InventoryEntriesRepositoryImpl',
+        tag: 'InventoryEntriesRepositoryImpl',
       );
       return {};
     }

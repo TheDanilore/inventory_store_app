@@ -25,6 +25,7 @@ import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 
 class PurchaseOrdersScreen extends StatefulWidget {
   final String? targetOrderId;
@@ -700,6 +701,177 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     );
   }
 
+  String _getStatusLabel(String status) {
+    return PurchaseOrdersScreen._statusLabels[status] ?? status;
+  }
+
+  Widget _buildStatusDropdown(
+    BuildContext context,
+    _PurchaseOrdersViewModel viewModel,
+  ) {
+    final isFiltered = viewModel.statusFilter != 'Todos';
+
+    return PopupMenuButton<String>(
+      initialValue: viewModel.statusFilter,
+      offset: const Offset(0, 44),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      onSelected: (val) => viewModel.setStatusFilter(val),
+      itemBuilder:
+          (context) => [
+            const PopupMenuItem(
+              value: 'Todos',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.list_alt_rounded,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                  SizedBox(width: 8),
+                  Text('Todos los estados', style: TextStyle(fontSize: 13)),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'PENDING',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.hourglass_top_rounded,
+                    size: 16,
+                    color: AppColors.warning,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Pendientes',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.warningDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'SENT',
+              child: Row(
+                children: [
+                  Icon(Icons.send_rounded, size: 16, color: Color(0xFF3B82F6)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Enviados',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1D4ED8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'PARTIAL',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.pie_chart_rounded,
+                    size: 16,
+                    color: Colors.amber.shade800,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Parciales',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.amber.shade900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'RECEIVED',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 16,
+                    color: AppColors.teal,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Recibidos',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.tealDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'CANCELLED',
+              child: Row(
+                children: [
+                  Icon(Icons.cancel_rounded, size: 16, color: AppColors.error),
+                  SizedBox(width: 8),
+                  Text(
+                    'Cancelados',
+                    style: TextStyle(fontSize: 13, color: AppColors.error),
+                  ),
+                ],
+              ),
+            ),
+          ],
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color:
+              isFiltered
+                  ? AppColors.teal.withValues(alpha: 0.1)
+                  : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isFiltered ? AppColors.teal : const Color(0xFFE2E8F0),
+            width: isFiltered ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.filter_list_rounded,
+              size: 15,
+              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Estado: ${_getStatusLabel(viewModel.statusFilter)}',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isFiltered ? FontWeight.w800 : FontWeight.w600,
+                color: isFiltered ? AppColors.tealDark : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 800;
@@ -912,29 +1084,59 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
                           // ── 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh, Nueva Orden) ─
                           SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                              child: _PurchaseOrdersToolbar(
-                                searchCtrl: _searchCtrl,
-                                searchFocusNode: _searchFocusNode,
-                                onSearchChanged: (v) {
-                                  _debounce?.cancel();
-                                  _debounce = Timer(
-                                    const Duration(milliseconds: 300),
-                                    () => viewModel.setSearchText(v),
-                                  );
-                                },
-                                viewModel: viewModel,
-                                cubit: cubit,
-                                isDesktop: isTablet,
+                            child: AdminProToolbar(
+                              isDesktop: isTablet,
+                              searchController: _searchCtrl,
+                              searchFocusNode: _searchFocusNode,
+                              searchHint:
+                                  'Buscar por proveedor, documento o ID...',
+                              onSearchChanged: (v) {
+                                _debounce?.cancel();
+                                _debounce = Timer(
+                                  const Duration(milliseconds: 300),
+                                  () => viewModel.setSearchText(v),
+                                );
+                              },
+                              onClearSearch: () {
+                                _searchCtrl.clear();
+                                viewModel.setSearchText('');
+                              },
+                              filterWidgets: [
+                                _buildStatusDropdown(context, viewModel),
+                                DateFilterCalendar(
+                                  height: 40,
+                                  borderRadius: BorderRadius.circular(10),
+                                  dateRange: viewModel.dateRange,
+                                  onDateRangeSelected: (picked) {
+                                    viewModel.setDateRange(picked);
+                                  },
+                                  onClear: () {
+                                    viewModel.setDateRange(null);
+                                  },
+                                ),
+                              ],
+                              viewToggleConfig: AdminProViewToggleConfig(
                                 isTableView: _isTableView,
-                                hasDraft: _hasDraft,
-                                onToggleTableView: (val) => setState(() => _isTableView = val),
-                                onRefresh: () {
-                                  _itemsCache.clear();
-                                  cubit.loadOrders(refresh: true);
-                                },
-                                onNewOrder: () => context.go('/purchase-orders/form'),
+                                onToggleTableView:
+                                    (val) => setState(() => _isTableView = val),
+                              ),
+                              onRefresh: () {
+                                _itemsCache.clear();
+                                cubit.loadOrders(refresh: true);
+                              },
+                              primaryAction: AdminProToolbarAction(
+                                label:
+                                    _hasDraft
+                                        ? 'Continuar Borrador'
+                                        : 'Nueva Orden',
+                                icon:
+                                    _hasDraft
+                                        ? Icons.edit_note_rounded
+                                        : Icons.add_shopping_cart_rounded,
+                                onPressed:
+                                    () => context.go('/purchase-orders/form'),
+                                keyHint: 'N',
+                                isHighlighted: _hasDraft,
                               ),
                             ),
                           ),
@@ -1218,434 +1420,6 @@ class _BentoPOKpiCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Toolbar Unificado de Compras (Buscador, Dropdown Estado, Calendario, Vista, Refresh, CTA)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _PurchaseOrdersToolbar extends StatelessWidget {
-  final TextEditingController searchCtrl;
-  final FocusNode searchFocusNode;
-  final ValueChanged<String> onSearchChanged;
-  final _PurchaseOrdersViewModel viewModel;
-  final PurchaseOrdersCubit cubit;
-  final bool isDesktop;
-  final bool isTableView;
-  final bool hasDraft;
-  final ValueChanged<bool> onToggleTableView;
-  final VoidCallback onRefresh;
-  final VoidCallback onNewOrder;
-
-  const _PurchaseOrdersToolbar({
-    required this.searchCtrl,
-    required this.searchFocusNode,
-    required this.onSearchChanged,
-    required this.viewModel,
-    required this.cubit,
-    required this.isDesktop,
-    required this.isTableView,
-    required this.hasDraft,
-    required this.onToggleTableView,
-    required this.onRefresh,
-    required this.onNewOrder,
-  });
-
-  String _getStatusLabel(String status) {
-    return PurchaseOrdersScreen._statusLabels[status] ?? status;
-  }
-
-  Widget _buildKeyHint(String key) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Text(
-        key,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textMuted,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildButtonKeyHint(String char) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-      ),
-      child: Text(
-        char,
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchField() {
-    return SizedBox(
-      height: 40,
-      child: TextField(
-        controller: searchCtrl,
-        focusNode: searchFocusNode,
-        onChanged: onSearchChanged,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
-        ),
-        decoration: InputDecoration(
-          hintText: 'Buscar por proveedor, documento o ID...',
-          hintStyle: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 12.5,
-          ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: AppColors.teal,
-            size: 19,
-          ),
-          suffixIcon: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: searchCtrl,
-            builder: (context, value, _) {
-              if (value.text.isNotEmpty) {
-                return IconButton(
-                  icon: const Icon(
-                    Icons.cancel_rounded,
-                    color: AppColors.textMuted,
-                    size: 16,
-                  ),
-                  onPressed: () {
-                    searchCtrl.clear();
-                    viewModel.setSearchText('');
-                  },
-                );
-              }
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildKeyHint('/'),
-                  ],
-                ),
-              );
-            },
-          ),
-          filled: true,
-          fillColor: const Color(0xFFF8FAFC),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusDropdown(BuildContext context) {
-    final isFiltered = viewModel.statusFilter != 'Todos';
-
-    return PopupMenuButton<String>(
-      initialValue: viewModel.statusFilter,
-      offset: const Offset(0, 44),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
-      ),
-      onSelected: (val) => viewModel.setStatusFilter(val),
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'Todos',
-          child: Row(
-            children: [
-              Icon(Icons.list_alt_rounded, size: 16, color: AppColors.textSecondary),
-              SizedBox(width: 8),
-              Text('Todos los estados', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'PENDING',
-          child: Row(
-            children: [
-              Icon(Icons.hourglass_top_rounded, size: 16, color: AppColors.warning),
-              SizedBox(width: 8),
-              Text('Pendientes', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.warningDark)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'SENT',
-          child: Row(
-            children: [
-              Icon(Icons.send_rounded, size: 16, color: Color(0xFF3B82F6)),
-              SizedBox(width: 8),
-              Text('Enviados', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1D4ED8))),
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          value: 'PARTIAL',
-          child: Row(
-            children: [
-              Icon(Icons.pie_chart_rounded, size: 16, color: Colors.amber.shade800),
-              const SizedBox(width: 8),
-              Text('Parciales', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.amber.shade900)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'RECEIVED',
-          child: Row(
-            children: [
-              Icon(Icons.check_circle_rounded, size: 16, color: AppColors.teal),
-              SizedBox(width: 8),
-              Text('Recibidos', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.tealDark)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'CANCELLED',
-          child: Row(
-            children: [
-              Icon(Icons.cancel_rounded, size: 16, color: AppColors.error),
-              SizedBox(width: 8),
-              Text('Cancelados', style: TextStyle(fontSize: 13, color: AppColors.error)),
-            ],
-          ),
-        ),
-      ],
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: isFiltered ? AppColors.teal.withValues(alpha: 0.1) : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isFiltered ? AppColors.teal : const Color(0xFFE2E8F0),
-            width: isFiltered ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.filter_list_rounded,
-              size: 15,
-              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Estado: ${_getStatusLabel(viewModel.statusFilter)}',
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: isFiltered ? FontWeight.w800 : FontWeight.w600,
-                color: isFiltered ? AppColors.tealDark : AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 16,
-              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildViewToggle() {
-    return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: 'Vista Tabla Pro [V]',
-            icon: Icon(
-              Icons.table_rows_rounded,
-              size: 16,
-              color: isTableView ? AppColors.tealDark : AppColors.textMuted,
-            ),
-            style: IconButton.styleFrom(
-              backgroundColor: isTableView ? AppColors.surface : Colors.transparent,
-              padding: const EdgeInsets.all(6),
-              elevation: isTableView ? 1 : 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () => onToggleTableView(true),
-          ),
-          IconButton(
-            tooltip: 'Vista Tarjetas [V]',
-            icon: Icon(
-              Icons.grid_view_rounded,
-              size: 16,
-              color: !isTableView ? AppColors.tealDark : AppColors.textMuted,
-            ),
-            style: IconButton.styleFrom(
-              backgroundColor: !isTableView ? AppColors.surface : Colors.transparent,
-              padding: const EdgeInsets.all(6),
-              elevation: !isTableView ? 1 : 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () => onToggleTableView(false),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x050F172A),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: isDesktop
-          ? Row(
-              children: [
-                Expanded(child: _buildSearchField()),
-                const SizedBox(width: 10),
-                _buildStatusDropdown(context),
-                const SizedBox(width: 8),
-                DateFilterCalendar(
-                  height: 40,
-                  borderRadius: BorderRadius.circular(10),
-                  dateRange: viewModel.dateRange,
-                  onDateRangeSelected: (picked) {
-                    viewModel.setDateRange(picked);
-                  },
-                  onClear: () {
-                    viewModel.setDateRange(null);
-                  },
-                ),
-                const SizedBox(width: 10),
-                _buildViewToggle(),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.refresh_rounded, size: 20),
-                  color: AppColors.textSecondary,
-                  tooltip: 'Refrescar órdenes [R]',
-                  onPressed: onRefresh,
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  height: 40,
-                  child: FilledButton.icon(
-                    onPressed: onNewOrder,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    icon: Icon(
-                      hasDraft ? Icons.edit_note_rounded : Icons.add_shopping_cart_rounded,
-                      size: 18,
-                    ),
-                    label: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          hasDraft ? 'Continuar Borrador' : 'Nueva Orden',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12.5,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        _buildButtonKeyHint('N'),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSearchField(),
-                const SizedBox(height: 8),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: [
-                      _buildStatusDropdown(context),
-                      const SizedBox(width: 8),
-                      DateFilterCalendar(
-                        height: 36,
-                        borderRadius: BorderRadius.circular(10),
-                        dateRange: viewModel.dateRange,
-                        onDateRangeSelected: (picked) {
-                          viewModel.setDateRange(picked);
-                        },
-                        onClear: () {
-                          viewModel.setDateRange(null);
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      _buildViewToggle(),
-                      const SizedBox(width: 6),
-                      IconButton(
-                        icon: const Icon(Icons.refresh_rounded, size: 20),
-                        color: AppColors.textSecondary,
-                        tooltip: 'Refrescar órdenes',
-                        onPressed: onRefresh,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
     );
   }
 }

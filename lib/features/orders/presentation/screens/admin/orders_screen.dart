@@ -12,6 +12,7 @@ import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
@@ -510,6 +511,339 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'PENDING':
+        return 'Borradores';
+      case 'COMPLETED':
+        return 'Completados';
+      case 'CANCELLED':
+        return 'Cancelados';
+      case 'RETURNED':
+        return 'Devueltos';
+      default:
+        return 'Todos';
+    }
+  }
+
+  String _getPaymentStatusLabel(String status) {
+    switch (status) {
+      case 'CREDIT':
+        return 'A Crédito';
+      case 'PAID':
+        return 'Pagados';
+      case 'PENDING':
+        return 'Por cobrar';
+      case 'PARTIAL':
+        return 'Parciales';
+      default:
+        return 'Cobros: Todos';
+    }
+  }
+
+  Widget _buildStatusDropdown(
+    BuildContext context,
+    OrdersState state,
+    OrdersCubit cubit,
+  ) {
+    final isFiltered = state.statusFilter != 'ALL';
+
+    return PopupMenuButton<String>(
+      initialValue: state.statusFilter,
+      offset: const Offset(0, 44),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      onSelected: (val) => cubit.setStatusFilter(val),
+      itemBuilder:
+          (context) => [
+            const PopupMenuItem(
+              value: 'ALL',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.list_alt_rounded,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                  SizedBox(width: 8),
+                  Text('Todos los estados', style: TextStyle(fontSize: 13)),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'PENDING',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.hourglass_top_rounded,
+                    size: 16,
+                    color: AppColors.warning,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Borradores',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.warningDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'COMPLETED',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 16,
+                    color: AppColors.teal,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Completados',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.tealDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'CANCELLED',
+              child: Row(
+                children: [
+                  Icon(Icons.cancel_rounded, size: 16, color: AppColors.danger),
+                  SizedBox(width: 8),
+                  Text(
+                    'Cancelados',
+                    style: TextStyle(fontSize: 13, color: AppColors.danger),
+                  ),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'RETURNED',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.assignment_return_rounded,
+                    size: 16,
+                    color: Colors.purple,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Devueltos',
+                    style: TextStyle(fontSize: 13, color: Colors.purple),
+                  ),
+                ],
+              ),
+            ),
+          ],
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color:
+              isFiltered
+                  ? AppColors.tealLight.withValues(alpha: 0.7)
+                  : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isFiltered ? AppColors.teal : const Color(0xFFCBD5E1),
+            width: isFiltered ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.filter_list_rounded,
+              size: 15,
+              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Estado: ${_getStatusLabel(state.statusFilter)}',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isFiltered ? FontWeight.w800 : FontWeight.w600,
+                color: isFiltered ? AppColors.tealDark : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentDropdown(
+    BuildContext context,
+    OrdersState state,
+    OrdersCubit cubit,
+  ) {
+    final bool isPaymentFiltered = state.paymentStatusFilter != 'ALL';
+    final bool isCreditFiltered = state.paymentStatusFilter == 'CREDIT';
+    final Color activePaymentColor =
+        isCreditFiltered ? AppColors.warning : AppColors.teal;
+
+    return PopupMenuButton<String>(
+      initialValue: state.paymentStatusFilter,
+      offset: const Offset(0, 44),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      onSelected: (val) => cubit.setPaymentStatusFilter(val),
+      itemBuilder:
+          (context) => [
+            const PopupMenuItem(
+              value: 'ALL',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.payments_rounded,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                  SizedBox(width: 8),
+                  Text('Cobros: Todos', style: TextStyle(fontSize: 13)),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'CREDIT',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.credit_card_rounded,
+                    size: 16,
+                    color: AppColors.warning,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Solo a crédito',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.warning,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'PAID',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 16,
+                    color: AppColors.teal,
+                  ),
+                  SizedBox(width: 8),
+                  Text('Pagados', style: TextStyle(fontSize: 13)),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'PENDING',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.pending_actions_rounded,
+                    size: 16,
+                    color: AppColors.warning,
+                  ),
+                  SizedBox(width: 8),
+                  Text('Por cobrar', style: TextStyle(fontSize: 13)),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'PARTIAL',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.pie_chart_rounded,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                  SizedBox(width: 8),
+                  Text('Parciales', style: TextStyle(fontSize: 13)),
+                ],
+              ),
+            ),
+          ],
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color:
+              isPaymentFiltered
+                  ? activePaymentColor.withValues(alpha: 0.12)
+                  : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color:
+                isPaymentFiltered
+                    ? activePaymentColor
+                    : const Color(0xFFCBD5E1),
+            width: isPaymentFiltered ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isCreditFiltered
+                  ? Icons.credit_card_rounded
+                  : Icons.payments_rounded,
+              size: 15,
+              color:
+                  isPaymentFiltered
+                      ? activePaymentColor
+                      : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _getPaymentStatusLabel(state.paymentStatusFilter),
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight:
+                    isPaymentFiltered ? FontWeight.w800 : FontWeight.w600,
+                color:
+                    isPaymentFiltered
+                        ? activePaymentColor
+                        : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color:
+                  isPaymentFiltered
+                      ? activePaymentColor
+                      : AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return _buildContent(context);
@@ -620,19 +954,49 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
                             // --- 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh) ---
                             SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                                child: _OrdersToolbar(
-                                  searchCtrl: _searchCtrl,
-                                  searchFocusNode: _searchFocusNode,
-                                  onSearchChanged: _onSearchChanged,
-                                  cubit: cubit,
-                                  state: state,
-                                  isWide: isWide,
+                              child: AdminProToolbar(
+                                isDesktop: isWide,
+                                searchController: _searchCtrl,
+                                searchFocusNode: _searchFocusNode,
+                                searchHint:
+                                    'Buscar por cliente o ID de pedido...',
+                                onSearchChanged: _onSearchChanged,
+                                onClearSearch: () {
+                                  _searchCtrl.clear();
+                                  cubit.setSearchQuery('');
+                                },
+                                filterWidgets: [
+                                  _buildStatusDropdown(context, state, cubit),
+                                  _buildPaymentDropdown(context, state, cubit),
+                                  DateFilterCalendar(
+                                    height: 40,
+                                    borderRadius: BorderRadius.circular(10),
+                                    dateRange:
+                                        state.startDate != null &&
+                                                state.endDate != null
+                                            ? DateTimeRange(
+                                              start: state.startDate!,
+                                              end: state.endDate!,
+                                            )
+                                            : null,
+                                    onDateRangeSelected: (picked) {
+                                      cubit.setDateRange(
+                                        picked.start,
+                                        picked.end,
+                                      );
+                                    },
+                                    onClear: () {
+                                      cubit.setDateRange(null, null);
+                                    },
+                                  ),
+                                ],
+                                viewToggleConfig: AdminProViewToggleConfig(
                                   isTableView: _isTableView,
-                                  onToggleTableView: (val) =>
-                                      setState(() => _isTableView = val),
+                                  onToggleTableView:
+                                      (val) =>
+                                          setState(() => _isTableView = val),
                                 ),
+                                onRefresh: () => cubit.loadOrders(reset: true),
                               ),
                             ),
 
@@ -1119,492 +1483,6 @@ class _BentoOrderKpiCardState extends State<_BentoOrderKpiCard> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _OrdersToolbar extends StatelessWidget {
-  final TextEditingController searchCtrl;
-  final FocusNode searchFocusNode;
-  final ValueChanged<String> onSearchChanged;
-  final OrdersCubit cubit;
-  final OrdersState state;
-  final bool isWide;
-  final bool isTableView;
-  final ValueChanged<bool> onToggleTableView;
-
-  const _OrdersToolbar({
-    required this.searchCtrl,
-    required this.searchFocusNode,
-    required this.onSearchChanged,
-    required this.cubit,
-    required this.state,
-    required this.isWide,
-    required this.isTableView,
-    required this.onToggleTableView,
-  });
-
-  String _getStatusLabel(String status) {
-    switch (status) {
-      case 'PENDING':
-        return 'Borradores';
-      case 'COMPLETED':
-        return 'Completados';
-      case 'CANCELLED':
-        return 'Cancelados';
-      case 'RETURNED':
-        return 'Devueltos';
-      default:
-        return 'Todos';
-    }
-  }
-
-  String _getPaymentStatusLabel(String status) {
-    switch (status) {
-      case 'CREDIT':
-        return 'A Crédito';
-      case 'PAID':
-        return 'Pagados';
-      case 'PENDING':
-        return 'Por cobrar';
-      case 'PARTIAL':
-        return 'Parciales';
-      default:
-        return 'Cobros: Todos';
-    }
-  }
-
-  Widget _buildKeyHint(String key) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Text(
-        key,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textMuted,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchField() {
-    return SizedBox(
-      height: 40,
-      child: TextField(
-        controller: searchCtrl,
-        focusNode: searchFocusNode,
-        onChanged: onSearchChanged,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
-        ),
-        decoration: InputDecoration(
-          hintText: 'Buscar por cliente o ID de pedido...',
-          hintStyle: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 12.5,
-          ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: AppColors.teal,
-            size: 19,
-          ),
-          suffixIcon: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: searchCtrl,
-            builder: (context, value, _) {
-              if (value.text.isNotEmpty) {
-                return IconButton(
-                  icon: const Icon(
-                    Icons.cancel_rounded,
-                    color: AppColors.textMuted,
-                    size: 16,
-                  ),
-                  onPressed: () {
-                    searchCtrl.clear();
-                    cubit.setSearchQuery('');
-                  },
-                );
-              }
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildKeyHint('/'),
-                  ],
-                ),
-              );
-            },
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.teal, width: 1.8),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusDropdown(BuildContext context) {
-    final isFiltered = state.statusFilter != 'ALL';
-
-    return PopupMenuButton<String>(
-      initialValue: state.statusFilter,
-      offset: const Offset(0, 44),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
-      ),
-      onSelected: (val) => cubit.setStatusFilter(val),
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'ALL',
-          child: Row(
-            children: [
-              Icon(Icons.list_alt_rounded, size: 16, color: AppColors.textSecondary),
-              SizedBox(width: 8),
-              Text('Todos los estados', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'PENDING',
-          child: Row(
-            children: [
-              Icon(Icons.hourglass_top_rounded, size: 16, color: AppColors.warning),
-              SizedBox(width: 8),
-              Text('Borradores', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.warningDark)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'COMPLETED',
-          child: Row(
-            children: [
-              Icon(Icons.check_circle_rounded, size: 16, color: AppColors.teal),
-              SizedBox(width: 8),
-              Text('Completados', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.tealDark)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'CANCELLED',
-          child: Row(
-            children: [
-              Icon(Icons.cancel_rounded, size: 16, color: AppColors.danger),
-              SizedBox(width: 8),
-              Text('Cancelados', style: TextStyle(fontSize: 13, color: AppColors.danger)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'RETURNED',
-          child: Row(
-            children: [
-              Icon(Icons.assignment_return_rounded, size: 16, color: Colors.purple),
-              SizedBox(width: 8),
-              Text('Devueltos', style: TextStyle(fontSize: 13, color: Colors.purple)),
-            ],
-          ),
-        ),
-      ],
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: isFiltered ? AppColors.tealLight.withValues(alpha: 0.7) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isFiltered ? AppColors.teal : const Color(0xFFCBD5E1),
-            width: isFiltered ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.filter_list_rounded,
-              size: 15,
-              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Estado: ${_getStatusLabel(state.statusFilter)}',
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: isFiltered ? FontWeight.w800 : FontWeight.w600,
-                color: isFiltered ? AppColors.tealDark : AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 16,
-              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPaymentDropdown(BuildContext context) {
-    final bool isPaymentFiltered = state.paymentStatusFilter != 'ALL';
-    final bool isCreditFiltered = state.paymentStatusFilter == 'CREDIT';
-    final Color activePaymentColor = isCreditFiltered ? AppColors.warning : AppColors.teal;
-
-    return PopupMenuButton<String>(
-      initialValue: state.paymentStatusFilter,
-      offset: const Offset(0, 44),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
-      ),
-      onSelected: (val) => cubit.setPaymentStatusFilter(val),
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'ALL',
-          child: Row(
-            children: [
-              Icon(Icons.payments_rounded, size: 16, color: AppColors.textMuted),
-              SizedBox(width: 8),
-              Text('Cobros: Todos', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'CREDIT',
-          child: Row(
-            children: [
-              Icon(Icons.credit_card_rounded, size: 16, color: AppColors.warning),
-              SizedBox(width: 8),
-              Text('Solo a crédito', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.warning)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'PAID',
-          child: Row(
-            children: [
-              Icon(Icons.check_circle_rounded, size: 16, color: AppColors.teal),
-              SizedBox(width: 8),
-              Text('Pagados', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'PENDING',
-          child: Row(
-            children: [
-              Icon(Icons.pending_actions_rounded, size: 16, color: AppColors.warning),
-              SizedBox(width: 8),
-              Text('Por cobrar', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'PARTIAL',
-          child: Row(
-            children: [
-              Icon(Icons.pie_chart_rounded, size: 16, color: AppColors.primary),
-              SizedBox(width: 8),
-              Text('Parciales', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-      ],
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: isPaymentFiltered ? activePaymentColor.withValues(alpha: 0.12) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isPaymentFiltered ? activePaymentColor : const Color(0xFFCBD5E1),
-            width: isPaymentFiltered ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isCreditFiltered ? Icons.credit_card_rounded : Icons.payments_rounded,
-              size: 15,
-              color: isPaymentFiltered ? activePaymentColor : AppColors.textSecondary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              _getPaymentStatusLabel(state.paymentStatusFilter),
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: isPaymentFiltered ? FontWeight.w800 : FontWeight.w600,
-                color: isPaymentFiltered ? activePaymentColor : AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 16,
-              color: isPaymentFiltered ? activePaymentColor : AppColors.textSecondary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildViewToggle() {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFCBD5E1)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: 'Vista Tabla Pro [V]',
-            icon: Icon(
-              Icons.table_rows_rounded,
-              size: 16,
-              color: isTableView ? AppColors.tealDark : AppColors.textSecondary,
-            ),
-            style: IconButton.styleFrom(
-              backgroundColor: isTableView ? Colors.white : Colors.transparent,
-              padding: const EdgeInsets.all(6),
-              elevation: isTableView ? 1 : 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () => onToggleTableView(true),
-          ),
-          IconButton(
-            tooltip: 'Vista Tarjetas [V]',
-            icon: Icon(
-              Icons.grid_view_rounded,
-              size: 16,
-              color: !isTableView ? AppColors.tealDark : AppColors.textSecondary,
-            ),
-            style: IconButton.styleFrom(
-              backgroundColor: !isTableView ? Colors.white : Colors.transparent,
-              padding: const EdgeInsets.all(6),
-              elevation: !isTableView ? 1 : 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () => onToggleTableView(false),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border, width: 1.2),
-        boxShadow: AppColors.cardShadow(opacity: 0.04),
-      ),
-      child: isWide
-          ? Row(
-              children: [
-                Expanded(child: _buildSearchField()),
-                const SizedBox(width: 10),
-                _buildStatusDropdown(context),
-                const SizedBox(width: 8),
-                _buildPaymentDropdown(context),
-                const SizedBox(width: 8),
-                DateFilterCalendar(
-                  height: 40,
-                  borderRadius: BorderRadius.circular(10),
-                  dateRange: state.startDate != null && state.endDate != null
-                      ? DateTimeRange(start: state.startDate!, end: state.endDate!)
-                      : null,
-                  onDateRangeSelected: (picked) {
-                    cubit.setDateRange(picked.start, picked.end);
-                  },
-                  onClear: () {
-                    cubit.setDateRange(null, null);
-                  },
-                ),
-                const SizedBox(width: 10),
-                _buildViewToggle(),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.refresh_rounded, size: 20),
-                  color: AppColors.textSecondary,
-                  tooltip: 'Refrescar pedidos [R]',
-                  onPressed: () => cubit.loadOrders(reset: true),
-                ),
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSearchField(),
-                const SizedBox(height: 8),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: [
-                      _buildStatusDropdown(context),
-                      const SizedBox(width: 8),
-                      _buildPaymentDropdown(context),
-                      const SizedBox(width: 8),
-                      DateFilterCalendar(
-                        height: 36,
-                        borderRadius: BorderRadius.circular(10),
-                        dateRange: state.startDate != null && state.endDate != null
-                            ? DateTimeRange(start: state.startDate!, end: state.endDate!)
-                            : null,
-                        onDateRangeSelected: (picked) {
-                          cubit.setDateRange(picked.start, picked.end);
-                        },
-                        onClear: () {
-                          cubit.setDateRange(null, null);
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      _buildViewToggle(),
-                      const SizedBox(width: 6),
-                      IconButton(
-                        icon: const Icon(Icons.refresh_rounded, size: 20),
-                        color: AppColors.textSecondary,
-                        tooltip: 'Refrescar pedidos',
-                        onPressed: () => cubit.loadOrders(reset: true),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
     );
   }
 }

@@ -2845,8 +2845,9 @@ DECLARE
     v_batch_id uuid;
     v_batch record;
     v_take integer;
+    v_old_stock numeric;
 BEGIN
-    -- 1. Extract payload fields
+    -- 1. Extraer campos del payload
     v_order_id := (payload->>'order_id')::uuid;
     v_payment_method := payload->>'payment_method';
     v_customer_id := (payload->>'selected_customer_id')::uuid;
@@ -2859,13 +2860,13 @@ BEGIN
     v_items := payload->'items';
     v_overrides := payload->'batch_overrides';
 
-    -- Fetch warehouse_id from order
+    -- Obtener almacén asignado a la orden
     SELECT warehouse_id INTO v_warehouse_id FROM orders WHERE id = v_order_id;
     IF v_warehouse_id IS NULL THEN
         RAISE EXCEPTION 'El pedido no tiene almacén asignado.';
     END IF;
 
-    -- OPTIMIZACIÓN DE DATA EGRESS: Si no vienen ítems del UI, tomarlos de la BD.
+    -- Optimización: Obtener ítems directamente de BD si el payload no los envía
     IF v_items IS NULL OR jsonb_array_length(v_items) = 0 THEN
         SELECT COALESCE(jsonb_agg(
             jsonb_build_object(
@@ -2878,16 +2879,15 @@ BEGIN
         FROM order_items
         WHERE order_id = v_order_id;
         
-        -- Si no vienen del UI, también recalcular montos (seguridad anti-tampering)
         SELECT total_amount INTO v_total_amount FROM orders WHERE id = v_order_id;
     END IF;
 
-    -- 2. Validate Payment Method for Completion
+    -- Validar método de pago
     IF v_payment_method = 'POR ACORDAR' OR TRIM(v_payment_method) = '' THEN
         RAISE EXCEPTION '__PAYMENT_METHOD_REQUIRED__';
     END IF;
 
-    -- 3. Validate Credit (If Credit Payment)
+    -- Validar línea de crédito si aplica
     IF v_payment_method = 'CRÉDITO' THEN
         IF v_customer_id IS NULL THEN
             RAISE EXCEPTION 'No hay cliente asignado para validar el crédito.';
@@ -2907,13 +2907,13 @@ BEGIN
         END IF;
     END IF;
 
-    -- 4. Process Inventory Items & Stock Deduction
+    -- 4. Procesar deducción de inventario y registrar movimientos (previous_stock & new_stock blindados)
     FOR v_item IN SELECT * FROM jsonb_array_elements(v_items)
     LOOP
         v_qty_needed := (v_item->>'quantity')::integer;
         v_remaining := v_qty_needed;
         
-        -- Check if we have overrides for this item id
+        -- Escenario A: Overrides manuales de lotes
         IF v_overrides IS NOT NULL AND v_overrides ? (v_item->>'id') THEN
             FOR v_override IN SELECT * FROM jsonb_array_elements(v_overrides->(v_item->>'id'))
             LOOP
@@ -2921,22 +2921,25 @@ BEGIN
                 v_batch_id := (v_override->>'batch_id')::uuid;
                 
                 IF v_take > 0 THEN
-                    -- Deduct from specific batch
-                    UPDATE warehouse_stock_batches
-                    SET available_quantity = available_quantity - v_take
-                    WHERE id = v_batch_id AND available_quantity >= v_take
-                    RETURNING available_quantity INTO v_take; -- dummy check
-                    
-                    IF NOT FOUND THEN
+                    SELECT available_quantity INTO v_old_stock
+                    FROM warehouse_stock_batches
+                    WHERE id = v_batch_id FOR UPDATE;
+
+                    IF v_old_stock IS NULL OR v_old_stock < v_take THEN
                         RAISE EXCEPTION 'Stock insuficiente en el lote asignado (override).';
                     END IF;
 
-                    INSERT INTO inventory_movements 
-                        (variant_id, warehouse_id, stock_batch_id, order_id, quantity, unit_cost, reason, notes, created_by)
-                    VALUES 
-                        ((v_item->>'variant_id')::uuid, v_warehouse_id, v_batch_id, v_order_id, -v_take, (v_item->>'unit_cost')::numeric, 'SALE', 'Pedido completado desde detalles', v_current_profile_id);
+                    UPDATE warehouse_stock_batches
+                    SET available_quantity = available_quantity - v_take
+                    WHERE id = v_batch_id;
+
+                    INSERT INTO inventory_movements (
+                        variant_id, warehouse_id, stock_batch_id, order_id, quantity, previous_stock, new_stock, unit_cost, reason, notes, created_by
+                    ) VALUES (
+                        (v_item->>'variant_id')::uuid, v_warehouse_id, v_batch_id, v_order_id, -v_take, v_old_stock, v_old_stock - v_take, (v_item->>'unit_cost')::numeric, 'SALE', 'Pedido completado desde detalles', v_current_profile_id
+                    );
                         
-                    v_remaining := v_remaining - (v_override->>'assigned')::integer;
+                    v_remaining := v_remaining - v_take;
                 END IF;
             END LOOP;
             
@@ -2944,7 +2947,7 @@ BEGIN
                 RAISE EXCEPTION 'Asignación de lotes inválida para producto.';
             END IF;
         ELSE
-            -- FEFO Automatic Allocation
+            -- Escenario B: FEFO Automático por fecha de vencimiento
             FOR v_batch IN 
                 SELECT id, available_quantity, batch_number
                 FROM warehouse_stock_batches
@@ -2952,6 +2955,7 @@ BEGIN
                   AND variant_id = (v_item->>'variant_id')::uuid 
                   AND available_quantity > 0
                 ORDER BY expiry_date ASC NULLS LAST
+                FOR UPDATE
             LOOP
                 IF v_remaining <= 0 THEN EXIT; END IF;
                 
@@ -2965,10 +2969,11 @@ BEGIN
                 SET available_quantity = available_quantity - v_take
                 WHERE id = v_batch.id;
 
-                INSERT INTO inventory_movements 
-                    (variant_id, warehouse_id, stock_batch_id, order_id, quantity, unit_cost, reason, notes, created_by)
-                VALUES 
-                    ((v_item->>'variant_id')::uuid, v_warehouse_id, v_batch.id, v_order_id, -v_take, (v_item->>'unit_cost')::numeric, 'SALE', 'Pedido completado (FEFO) · Lote: ' || v_batch.batch_number, v_current_profile_id);
+                INSERT INTO inventory_movements (
+                    variant_id, warehouse_id, stock_batch_id, order_id, quantity, previous_stock, new_stock, unit_cost, reason, notes, created_by
+                ) VALUES (
+                    (v_item->>'variant_id')::uuid, v_warehouse_id, v_batch.id, v_order_id, -v_take, v_batch.available_quantity, v_batch.available_quantity - v_take, (v_item->>'unit_cost')::numeric, 'SALE', 'Pedido completado (FEFO) · Lote: ' || v_batch.batch_number, v_current_profile_id
+                );
 
                 v_remaining := v_remaining - v_take;
             END LOOP;
@@ -2977,103 +2982,101 @@ BEGIN
                 RAISE EXCEPTION 'Stock insuficiente para aplicar FEFO automático.';
             END IF;
         END IF;
-        
-        -- Update the individual order item ONLY if applied_price is provided (came from UI Edit)
-        IF v_item ? 'applied_price' THEN
-            UPDATE order_items
-            SET quantity = (v_item->>'quantity')::integer,
-                unit_cost = (v_item->>'unit_cost')::numeric,
-                net_profit = ((v_item->>'applied_price')::numeric - (v_item->>'unit_cost')::numeric) * (v_item->>'quantity')::integer
-            WHERE id = (v_item->>'id')::uuid;
-        END IF;
-
     END LOOP;
 
-    -- 5. Register Payment or Debt
-    IF v_payment_method = 'CRÉDITO' THEN
-        -- Add Debt
-        v_new_debt := v_current_debt + v_total_amount;
-        
-        UPDATE customer_credits 
-        SET current_debt = v_new_debt, updated_at = NOW()
-        WHERE id = v_credit_id;
-        
-        INSERT INTO customer_credit_movements 
-            (customer_credit_id, order_id, movement_type, amount, notes, created_by)
-        VALUES 
-            (v_credit_id, v_order_id, 'CHARGE', v_total_amount, 'Activación de pedido completado', v_current_profile_id);
-    ELSE
-        -- Find Financial Account matching payment method
-        SELECT id, type, balance INTO v_account_id, v_account_type, v_account_balance
+    -- 5. Flujos Financieros
+    IF v_payment_method != 'CRÉDITO' THEN
+        SELECT id INTO v_shift_id
+        FROM cash_shifts
+        WHERE status = 'OPEN' AND closed_at IS NULL
+        ORDER BY opened_at DESC LIMIT 1;
+
+        SELECT id, current_balance, type INTO v_account_id, v_account_balance, v_account_type
         FROM financial_accounts
-        WHERE is_active = true 
-          AND (UPPER(name) LIKE '%' || UPPER(v_payment_method) || '%' OR UPPER(v_payment_method) LIKE '%' || UPPER(name) || '%')
-        LIMIT 1;
-        
-        IF v_account_id IS NULL THEN
-            -- Fallback to the first active account if not found
-            SELECT id, type, balance INTO v_account_id, v_account_type, v_account_balance
-            FROM financial_accounts
-            WHERE is_active = true LIMIT 1;
-        END IF;
+        WHERE (
+            (v_payment_method = 'EFECTIVO' AND type = 'CASH') OR
+            (v_payment_method = 'TRANSFERENCIA' AND type = 'BANK') OR
+            (v_payment_method IN ('YAPE', 'PLIN') AND type = 'WALLET')
+        )
+        ORDER BY created_at ASC LIMIT 1;
 
         IF v_account_id IS NOT NULL THEN
-            IF v_account_type = 'CAJA' THEN
-                SELECT id INTO v_shift_id
-                FROM cash_shifts
-                WHERE account_id = v_account_id AND status = 'OPEN'
-                LIMIT 1;
-            END IF;
-            
-            INSERT INTO account_movements 
-                (account_id, movement_type, amount, description, reference_type, reference_id, shift_id, created_by)
-            VALUES 
-                (v_account_id, 'INCOME', v_total_amount, 'Cobro de venta — Pedido #' || v_order_id, 'orders', v_order_id, v_shift_id, v_current_profile_id);
-                
-            UPDATE financial_accounts
-            SET balance = balance + v_total_amount
+            UPDATE financial_accounts 
+            SET current_balance = current_balance + v_total_amount, updated_at = NOW()
             WHERE id = v_account_id;
+
+            INSERT INTO account_movements (
+                account_id, movement_type, amount, reference_type, reference_id, notes, shift_id, created_by
+            ) VALUES (
+                v_account_id, 'INCOME', v_total_amount, 'orders', v_order_id, 
+                'Ingreso por Pedido #' || SUBSTRING(v_order_id::text, 1, 8), 
+                v_shift_id, v_current_profile_id
+            );
         END IF;
+    ELSE
+        UPDATE customer_credits
+        SET current_debt = current_debt + v_total_amount, updated_at = NOW()
+        WHERE id = v_credit_id;
+
+        INSERT INTO customer_credit_movements (
+            customer_credit_id, order_id, movement_type, amount, notes, created_by
+        ) VALUES (
+            v_credit_id, v_order_id, 'CHARGE', v_total_amount,
+            'Cargo a crédito por Pedido #' || SUBSTRING(v_order_id::text, 1, 8), v_current_profile_id
+        );
     END IF;
 
-    -- 6. Loyalty Points Logic
+    -- 6. Fidelización (Puntos)
     IF v_customer_id IS NOT NULL THEN
-        SELECT wallet_balance INTO v_wallet_balance FROM profiles WHERE id = v_customer_id;
-        
-        IF v_points_earned > 0 AND v_payment_method != 'CRÉDITO' THEN
-            IF NOT EXISTS (SELECT 1 FROM wallet_movements WHERE order_id = v_order_id AND movement_type = 'EARNED') THEN
-                UPDATE profiles SET wallet_balance = COALESCE(wallet_balance, 0) + v_points_earned WHERE id = v_customer_id;
-                INSERT INTO wallet_movements (profile_id, order_id, points, movement_type, description)
-                VALUES (v_customer_id, v_order_id, v_points_earned, 'EARNED', 'Monedas obtenidas al completar pedido');
-            END IF;
-        END IF;
+        SELECT current_points INTO v_wallet_balance FROM customer_loyalty_wallets WHERE profile_id = v_customer_id;
+        IF FOUND THEN
+            IF v_points_used > 0 THEN
+                UPDATE customer_loyalty_wallets
+                SET current_points = GREATEST(current_points - v_points_used, 0),
+                    lifetime_redeemed = lifetime_redeemed + v_points_used,
+                    updated_at = NOW()
+                WHERE profile_id = v_customer_id;
 
-        IF v_points_used > 0 THEN
-            IF NOT EXISTS (SELECT 1 FROM wallet_movements WHERE order_id = v_order_id AND movement_type = 'REDEEMED') THEN
-                UPDATE profiles SET wallet_balance = GREATEST(COALESCE(wallet_balance, 0) - v_points_used, 0) WHERE id = v_customer_id;
-                INSERT INTO wallet_movements (profile_id, order_id, points, movement_type, description)
-                VALUES (v_customer_id, v_order_id, -v_points_used, 'REDEEMED', 'Canje aplicado al completar pedido');
+                INSERT INTO customer_loyalty_movements (
+                    wallet_id, movement_type, points, order_id, reason, created_by
+                ) VALUES (
+                    (SELECT id FROM customer_loyalty_wallets WHERE profile_id = v_customer_id),
+                    'REDEEM', -v_points_used, v_order_id, 'Puntos canjeados en Pedido', v_current_profile_id
+                );
+            END IF;
+
+            IF v_points_earned > 0 AND v_payment_method != 'CRÉDITO' THEN
+                UPDATE customer_loyalty_wallets
+                SET current_points = current_points + v_points_earned,
+                    lifetime_earned = lifetime_earned + v_points_earned,
+                    updated_at = NOW()
+                WHERE profile_id = v_customer_id;
+
+                INSERT INTO customer_loyalty_movements (
+                    wallet_id, movement_type, points, order_id, reason, created_by
+                ) VALUES (
+                    (SELECT id FROM customer_loyalty_wallets WHERE profile_id = v_customer_id),
+                    'EARN', v_points_earned, v_order_id, 'Puntos ganados por compra', v_current_profile_id
+                );
             END IF;
         END IF;
     END IF;
 
-    -- 7. Update the Order
-    UPDATE orders
-    SET customer_id = COALESCE(v_customer_id, customer_id),
-        customer_name = COALESCE(v_customer_name, customer_name),
+    -- 7. Actualización del registro del pedido
+    UPDATE orders SET
         status = 'COMPLETED',
         payment_method = v_payment_method,
         payment_status = CASE WHEN v_payment_method = 'CRÉDITO' THEN 'PENDING' ELSE 'PAID' END,
         amount_paid = CASE WHEN v_payment_method = 'CRÉDITO' THEN 0 ELSE v_total_amount END,
         total_amount = v_total_amount,
-        total_profit = GREATEST(v_total_profit, total_profit),
+        total_profit = v_total_profit,
         points_used = CASE WHEN v_payment_method = 'CRÉDITO' THEN 0 ELSE v_points_used END,
         points_earned = CASE WHEN v_payment_method = 'CRÉDITO' THEN 0 ELSE v_points_earned END,
-        updated_by = COALESCE(v_current_profile_id, updated_by),
+        updated_by = v_current_profile_id,
         updated_at = NOW()
     WHERE id = v_order_id;
 
-    RETURN jsonb_build_object('success', true);
+    RETURN jsonb_build_object('success', true, 'order_id', v_order_id);
 END;
 $$;
 
@@ -3290,11 +3293,9 @@ DECLARE
     v_ingredient jsonb;
     v_removed_id text;
     v_attr_id text;
-    
-    -- Variables para la sincronización eficiente de imágenes
     v_incoming_image_ids uuid[];
 BEGIN
-    -- 1. BLINDAJE DE SEGURIDAD: Resolver perfil estrictamente desde el token de autenticación seguro
+    -- 1. Resolver perfil de usuario autenticado
     SELECT id INTO v_profile_id FROM profiles WHERE auth_user_id = v_auth_user_id LIMIT 1;
     IF v_profile_id IS NULL THEN
         RAISE EXCEPTION 'Operación rechazada: El usuario autenticado no posee un perfil válido en el sistema.';
@@ -3302,7 +3303,7 @@ BEGIN
 
     v_is_updating := COALESCE((payload->>'is_updating')::boolean, false);
 
-    -- 2. UPSERT DEL PRODUCTO MAESTRO
+    -- 2. UPSERT del Producto Maestro (con brand_id)
     IF v_is_updating THEN
         v_product_id := (payload->'product'->>'id')::uuid;
         IF v_product_id IS NULL THEN
@@ -3312,7 +3313,8 @@ BEGIN
         UPDATE products SET
             name = payload->'product'->>'name',
             description = payload->'product'->>'description',
-            category_id = (payload->'product'->>'category_id')::uuid,
+            category_id = (NULLIF(payload->'product'->>'category_id', ''))::uuid,
+            brand_id = (NULLIF(payload->'product'->>'brand_id', ''))::uuid,
             is_active = COALESCE((payload->'product'->>'is_active')::boolean, true),
             details = payload->'product'->'details',
             product_type = payload->'product'->>'product_type',
@@ -3323,11 +3325,12 @@ BEGIN
         WHERE id = v_product_id;
     ELSE
         INSERT INTO products (
-            name, description, category_id, is_active, details, product_type, stock_control, uses_batches, created_by
+            name, description, category_id, brand_id, is_active, details, product_type, stock_control, uses_batches, created_by
         ) VALUES (
             payload->'product'->>'name',
             payload->'product'->>'description',
-            (payload->'product'->>'category_id')::uuid,
+            (NULLIF(payload->'product'->>'category_id', ''))::uuid,
+            (NULLIF(payload->'product'->>'brand_id', ''))::uuid,
             COALESCE((payload->'product'->>'is_active')::boolean, true),
             payload->'product'->'details',
             payload->'product'->>'product_type',
@@ -3337,20 +3340,17 @@ BEGIN
         ) RETURNING id INTO v_product_id;
     END IF;
 
-    -- 3. MANEJO OPTIMIZADO DE IMÁGENES DEL PRODUCTO
+    -- 3. Manejo de imágenes del producto
     IF payload ? 'images' AND jsonb_typeof(payload->'images') = 'array' THEN
-        -- Recolectamos los IDs de imágenes que vienen en el payload para no borrarlas si ya existen
         SELECT array_agg((elem->>'id')::uuid) INTO v_incoming_image_ids
         FROM jsonb_array_elements(payload->'images') AS elem
         WHERE (elem->>'id') IS NOT NULL;
 
-        -- Borramos únicamente las imágenes del producto que ya no están en el nuevo listado (huérfanas)
         DELETE FROM product_images 
         WHERE product_id = v_product_id 
           AND variant_id IS NULL 
           AND (id <> ALL(v_incoming_image_ids) OR v_incoming_image_ids IS NULL);
 
-        -- Ejecutamos Upsert inteligente de las imágenes vigentes o nuevas
         FOR v_image IN SELECT * FROM jsonb_array_elements(payload->'images')
         LOOP
             INSERT INTO product_images (id, product_id, image_url, display_order, is_main)
@@ -3367,11 +3367,10 @@ BEGIN
                 is_main = EXCLUDED.is_main;
         END LOOP;
     ELSE
-        -- Si no envían array de imágenes, se eliminan todas las asociadas
         DELETE FROM product_images WHERE product_id = v_product_id AND variant_id IS NULL;
     END IF;
 
-    -- 4. DESACTIVAR VARIANTES ELIMINADAS DESDE LA UI
+    -- 4. Desactivar variantes eliminadas
     IF payload ? 'removed_variant_ids' THEN
         FOR v_removed_id IN SELECT * FROM jsonb_array_elements_text(payload->'removed_variant_ids')
         LOOP
@@ -3379,7 +3378,7 @@ BEGIN
         END LOOP;
     END IF;
 
-    -- 5. UPSERT DE VARIANTES
+    -- 5. UPSERT de Variantes
     IF payload ? 'variants' AND jsonb_typeof(payload->'variants') = 'array' THEN
         FOR v_variant IN SELECT * FROM jsonb_array_elements(payload->'variants')
         LOOP
@@ -3412,39 +3411,38 @@ BEGIN
                 ) RETURNING id INTO v_variant_id;
             END IF;
 
-            -- Control optimizado de imágenes de variantes (Limpieza)
             IF COALESCE((v_variant->>'clear_images')::boolean, false) THEN
                 DELETE FROM product_images WHERE variant_id = v_variant_id;
             END IF;
             
-            -- Inserción segura previniendo duplicados exactos en la misma variante
-            IF (v_variant->>'new_image_url') IS NOT NULL AND (v_variant->>'new_image_url') <> '' THEN
-                INSERT INTO product_images (product_id, variant_id, image_url, display_order, is_main)
-                SELECT v_product_id, v_variant_id, v_variant->>'new_image_url', 0, false
-                WHERE NOT EXISTS (
+            IF (v_variant->>'new_image_url') IS NOT NULL AND (v_variant->>'new_image_url') != '' THEN
+                IF NOT EXISTS (
                     SELECT 1 FROM product_images 
-                    WHERE variant_id = v_variant_id AND image_url = v_variant->>'new_image_url'
-                );
+                    WHERE variant_id = v_variant_id AND image_url = (v_variant->>'new_image_url')
+                ) THEN
+                    INSERT INTO product_images (product_id, variant_id, image_url, is_main, display_order)
+                    VALUES (v_product_id, v_variant_id, v_variant->>'new_image_url', true, 0);
+                END IF;
             END IF;
 
-            -- Sincronización limpia de atributos de la variante
-            DELETE FROM variant_attribute_values WHERE variant_id = v_variant_id;
-            IF v_variant ? 'attribute_value_ids' THEN
+            IF v_variant ? 'attribute_value_ids' AND jsonb_typeof(v_variant->'attribute_value_ids') = 'array' THEN
+                DELETE FROM variant_attribute_values WHERE variant_id = v_variant_id;
                 FOR v_attr_id IN SELECT * FROM jsonb_array_elements_text(v_variant->'attribute_value_ids')
                 LOOP
                     INSERT INTO variant_attribute_values (variant_id, attribute_value_id)
-                    VALUES (v_variant_id, v_attr_id::uuid);
+                    VALUES (v_variant_id, v_attr_id::uuid)
+                    ON CONFLICT DO NOTHING;
                 END LOOP;
             END IF;
         END LOOP;
     END IF;
 
-    -- 6. MANEJO EFICIENTE DE INGREDIENTES ACTIVOS
-    DELETE FROM product_active_ingredients WHERE product_id = v_product_id;
-    IF COALESCE((payload->>'ingredients_enabled')::boolean, false) AND payload ? 'ingredients' AND jsonb_typeof(payload->'ingredients') = 'array' THEN
+    -- 6. Manejo de Ingredientes
+    IF COALESCE((payload->>'ingredients_enabled')::boolean, false) AND payload ? 'ingredients' THEN
+        DELETE FROM product_ingredients WHERE product_id = v_product_id;
         FOR v_ingredient IN SELECT * FROM jsonb_array_elements(payload->'ingredients')
         LOOP
-            INSERT INTO product_active_ingredients (product_id, ingredient_id, concentration, unit)
+            INSERT INTO product_ingredients (product_id, ingredient_id, concentration, unit)
             VALUES (
                 v_product_id,
                 (v_ingredient->>'ingredient_id')::uuid,
@@ -3452,8 +3450,9 @@ BEGIN
                 v_ingredient->>'unit'
             );
         END LOOP;
+    ELSE
+        DELETE FROM product_ingredients WHERE product_id = v_product_id;
     END IF;
-
 END;
 $$;
 

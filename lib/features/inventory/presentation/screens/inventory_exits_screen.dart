@@ -13,6 +13,7 @@ import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_item_model.dart';
 import 'package:inventory_store_app/features/inventory/data/utils/inventory_exits_pdf_generator.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
@@ -559,37 +560,63 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 
                       // ── 3. Toolbar Pro Unificado (Buscador, Fecha, Vista, Refresh, CTA) ──
                       SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                          child: _InventoryExitsToolbar(
-                            searchCtrl: _searchCtrl,
-                            searchFocusNode: _searchFocusNode,
-                            onSearchChanged: (v) {
-                              _searchDebounce?.cancel();
-                              _searchDebounce = Timer(
-                                const Duration(milliseconds: 300),
-                                () {
-                                  if (mounted) {
-                                    cubit.updateSearch(v);
-                                  }
-                                },
-                              );
-                            },
-                            onClearSearch: () {
-                              _searchDebounce?.cancel();
-                              _searchCtrl.clear();
-                              cubit.updateSearch('');
-                            },
-                            state: state,
-                            isDesktop: isTablet,
+                        child: AdminProToolbar(
+                          isDesktop: isTablet,
+                          searchController: _searchCtrl,
+                          searchFocusNode: _searchFocusNode,
+                          searchHint: 'Buscar motivo o notas... [/]',
+                          onSearchChanged: (v) {
+                            _searchDebounce?.cancel();
+                            _searchDebounce = Timer(
+                              const Duration(milliseconds: 300),
+                              () {
+                                if (mounted) {
+                                  cubit.updateSearch(v);
+                                }
+                              },
+                            );
+                          },
+                          onClearSearch: () {
+                            _searchDebounce?.cancel();
+                            _searchCtrl.clear();
+                            cubit.updateSearch('');
+                          },
+                          filterWidgets: [
+                            DateFilterCalendar(
+                              height: 40,
+                              borderRadius: BorderRadius.circular(10),
+                              dateRange:
+                                  state.startDate != null &&
+                                          state.endDate != null
+                                      ? DateTimeRange(
+                                        start: state.startDate!,
+                                        end: state.endDate!,
+                                      )
+                                      : null,
+                              onDateRangeSelected: (picked) {
+                                cubit.updateDateRange(picked.start, picked.end);
+                              },
+                              onClear: () => cubit.updateDateRange(null, null),
+                            ),
+                          ],
+                          viewToggleConfig: AdminProViewToggleConfig(
                             isTableView: _isTableView,
                             onToggleTableView:
                                 (val) => setState(() => _isTableView = val),
-                            onRefresh: () {
-                              cubit.loadExits(isRefresh: true);
-                            },
-                            hasDraft: _hasDraft,
-                            onNewExit: _onNewExit,
+                          ),
+                          onRefresh: () => cubit.loadExits(isRefresh: true),
+                          primaryAction: AdminProToolbarAction(
+                            label:
+                                _hasDraft
+                                    ? 'Continuar Borrador'
+                                    : 'Nueva Salida',
+                            icon:
+                                _hasDraft
+                                    ? Icons.edit_note_rounded
+                                    : Icons.remove_circle_outline_rounded,
+                            onPressed: _onNewExit,
+                            keyHint: 'N',
+                            isHighlighted: _hasDraft,
                           ),
                         ),
                       ),
@@ -961,355 +988,6 @@ class _BentoExitKpiCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// TOOLBAR PRO UNIFICADO
-// ══════════════════════════════════════════════════════════════════════════════
-
-class _InventoryExitsToolbar extends StatelessWidget {
-  final TextEditingController searchCtrl;
-  final FocusNode searchFocusNode;
-  final ValueChanged<String> onSearchChanged;
-  final VoidCallback onClearSearch;
-  final InventoryExitsState state;
-  final bool isDesktop;
-  final bool isTableView;
-  final ValueChanged<bool> onToggleTableView;
-  final VoidCallback onRefresh;
-  final bool hasDraft;
-  final VoidCallback onNewExit;
-
-  const _InventoryExitsToolbar({
-    required this.searchCtrl,
-    required this.searchFocusNode,
-    required this.onSearchChanged,
-    required this.onClearSearch,
-    required this.state,
-    required this.isDesktop,
-    required this.isTableView,
-    required this.onToggleTableView,
-    required this.onRefresh,
-    required this.hasDraft,
-    required this.onNewExit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cubit = context.read<InventoryExitsCubit>();
-
-    Widget datePicker = DateFilterCalendar(
-      height: 40,
-      borderRadius: BorderRadius.circular(10),
-      dateRange:
-          state.startDate != null && state.endDate != null
-              ? DateTimeRange(start: state.startDate!, end: state.endDate!)
-              : null,
-      onDateRangeSelected: (picked) {
-        cubit.updateDateRange(picked.start, picked.end);
-      },
-      onClear: () => cubit.updateDateRange(null, null),
-    );
-
-    Widget viewToggle = Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: 'Vista en Tabla Pro [V]',
-            icon: Icon(
-              Icons.table_rows_rounded,
-              size: 18,
-              color: isTableView ? AppColors.dangerDark : AppColors.textMuted,
-            ),
-            style: IconButton.styleFrom(
-              backgroundColor:
-                  isTableView ? AppColors.surface : Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.all(6),
-              fixedSize: const Size(32, 32),
-            ),
-            onPressed: () => onToggleTableView(true),
-          ),
-          IconButton(
-            tooltip: 'Vista en Tarjetas [V]',
-            icon: Icon(
-              Icons.grid_view_rounded,
-              size: 18,
-              color: !isTableView ? AppColors.dangerDark : AppColors.textMuted,
-            ),
-            style: IconButton.styleFrom(
-              backgroundColor:
-                  !isTableView ? AppColors.surface : Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.all(6),
-              fixedSize: const Size(32, 32),
-            ),
-            onPressed: () => onToggleTableView(false),
-          ),
-        ],
-      ),
-    );
-
-    if (isDesktop) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x050F172A),
-              blurRadius: 4,
-              offset: Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _SearchField(
-                controller: searchCtrl,
-                focusNode: searchFocusNode,
-                hint: 'Buscar motivo o notas... [/]',
-                onChanged: onSearchChanged,
-                onSubmitted: onSearchChanged,
-                onClear: onClearSearch,
-              ),
-            ),
-            const SizedBox(width: 8),
-            datePicker,
-            const SizedBox(width: 10),
-            viewToggle,
-            const SizedBox(width: 8),
-            SizedBox(
-              height: 40,
-              width: 40,
-              child: IconButton(
-                icon: const Icon(Icons.refresh_rounded, size: 20),
-                color: AppColors.textSecondary,
-                tooltip: 'Refrescar salidas [R]',
-                style: IconButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
-                  ),
-                ),
-                onPressed: onRefresh,
-              ),
-            ),
-            const SizedBox(width: 12),
-            SizedBox(
-              height: 40,
-              child: FilledButton.icon(
-                onPressed: onNewExit,
-                style: FilledButton.styleFrom(
-                  backgroundColor:
-                      hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                icon: Icon(
-                  hasDraft
-                      ? Icons.edit_note_rounded
-                      : Icons.remove_circle_outline_rounded,
-                  size: 18,
-                ),
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      hasDraft ? 'Continuar Borrador' : 'Nueva Salida',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 1.5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.35),
-                        ),
-                      ),
-                      child: const Text(
-                        'N',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Móvil
-    return Column(
-      children: [
-        _SearchField(
-          controller: searchCtrl,
-          focusNode: searchFocusNode,
-          hint: 'Buscar motivo o notas...',
-          onChanged: onSearchChanged,
-          onSubmitted: onSearchChanged,
-          onClear: onClearSearch,
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: datePicker),
-            const SizedBox(width: 8),
-            IconButton.filledTonal(
-              onPressed: onRefresh,
-              style: IconButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// AUXILIAR WIDGETS
-// ══════════════════════════════════════════════════════════════════════════════
-
-class _SearchField extends StatelessWidget {
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final String hint;
-  final ValueChanged<String> onChanged;
-  final ValueChanged<String>? onSubmitted;
-  final VoidCallback onClear;
-
-  const _SearchField({
-    required this.controller,
-    required this.focusNode,
-    required this.hint,
-    required this.onChanged,
-    this.onSubmitted,
-    required this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 40,
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        onChanged: onChanged,
-        onSubmitted: onSubmitted,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
-        ),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 12.5,
-          ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: AppColors.textMuted,
-            size: 19,
-          ),
-          suffixIcon: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: controller,
-            builder: (context, val, _) {
-              if (val.text.isNotEmpty) {
-                return IconButton(
-                  icon: const Icon(
-                    Icons.cancel_rounded,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
-                  onPressed: onClear,
-                );
-              }
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: const Text(
-                        '/',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          filled: true,
-          fillColor: const Color(0xFFF8FAFC),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
-          ),
-        ),
       ),
     );
   }

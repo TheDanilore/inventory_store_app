@@ -4,7 +4,7 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_warehouses_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_inventory_entries_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entries/inventory_entries_state.dart';
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/services/logger_service.dart';
 
 @injectable
 class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
@@ -25,11 +25,11 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
       final whList = await getActiveWarehouses.call();
       warehouses.addAll(whList.map((w) => w.name).toList());
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error cargando almacenes',
         error: e,
         stackTrace: st,
-        name: 'InventoryEntriesCubit',
+        tag: 'InventoryEntriesCubit',
       );
     }
 
@@ -101,11 +101,11 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
         ),
       );
     } catch (e, st) {
-      developer.log(
+      LoggerService.e(
         'Error loading inventory entries',
         error: e,
         stackTrace: st,
-        name: 'InventoryEntriesCubit',
+        tag: 'InventoryEntriesCubit',
       );
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
