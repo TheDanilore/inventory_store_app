@@ -6,6 +6,7 @@ abstract class InventoryRepository {
   Future<int> getTotalGeneralStockCount({
     String search = '',
     String categoryName = 'Todos',
+    String stockStatus = 'all',
     String? warehouseId,
   });
 
@@ -14,6 +15,7 @@ abstract class InventoryRepository {
     required int pageSize,
     String search = '',
     String categoryName = 'Todos',
+    String stockStatus = 'all',
     String? warehouseId,
   });
 

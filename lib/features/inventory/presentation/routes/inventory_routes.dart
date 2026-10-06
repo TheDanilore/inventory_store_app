@@ -82,9 +82,19 @@ class InventoryRoutes {
       path: '/inventory',
       builder: (context, state) {
         final search = state.uri.queryParameters['search'];
+        final filter = state.uri.queryParameters['filter'];
+        final tabStr = state.uri.queryParameters['tab'];
+        final tabIndex = tabStr == 'batches' || tabStr == '1' ? 1 : 0;
         return BlocProvider(
-          create: (_) => sl<InventoryCubit>()..initStockTab(initialSearch: search),
-          child: InventoryScreen(initialSearch: search),
+          create: (_) => sl<InventoryCubit>()..initStockTab(
+            initialSearch: search,
+            initialStatusFilter: filter,
+          ),
+          child: InventoryScreen(
+            initialSearch: search,
+            initialStatusFilter: filter,
+            initialTabIndex: tabIndex,
+          ),
         );
       },
     ),

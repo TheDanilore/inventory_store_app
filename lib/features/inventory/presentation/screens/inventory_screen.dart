@@ -22,11 +22,15 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 ///   targets táctiles mínimos de 48x48dp, bordes curvos (16-24dp) y optimización estricta del pulgar.
 class InventoryScreen extends StatefulWidget {
   final String? initialSearch;
+  final String? initialStatusFilter;
+  final int? initialTabIndex;
   final bool isEmbedded;
 
   const InventoryScreen({
     super.key,
     this.initialSearch,
+    this.initialStatusFilter,
+    this.initialTabIndex,
     this.isEmbedded = false,
   });
 
@@ -42,11 +46,23 @@ class _InventoryScreenState extends State<InventoryScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    final startIdx = (widget.initialTabIndex != null &&
+            widget.initialTabIndex! >= 0 &&
+            widget.initialTabIndex! < 2)
+        ? widget.initialTabIndex!
+        : 0;
+    _tabController = TabController(length: 2, vsync: this, initialIndex: startIdx);
     _tabController.addListener(_handleTabSelection);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _screenFocusNode.requestFocus();
+        if (startIdx == 1) {
+          final cubit = context.read<InventoryCubit>();
+          final state = cubit.state;
+          if (state is InventoryLoaded && state.batchItems.isEmpty) {
+            cubit.initBatchesTab();
+          }
+        }
       }
     });
   }
@@ -107,6 +123,27 @@ class _InventoryScreenState extends State<InventoryScreen>
     if (key == LogicalKeyboardKey.digit2 || key == LogicalKeyboardKey.numpad2) {
       if (_tabController.index != 1) {
         _tabController.animateTo(1);
+        return KeyEventResult.handled;
+      }
+    }
+
+    // Atajo [B] o [Alt+B] -> Alternar filtro de Bajo Stock (cuando foco no está en input)
+    if ((key == LogicalKeyboardKey.keyB && !isModifier) ||
+        (HardwareKeyboard.instance.isAltPressed && key == LogicalKeyboardKey.keyB)) {
+      final cubit = context.read<InventoryCubit>();
+      final state = cubit.state;
+      if (state is InventoryLoaded) {
+        final isLowStock = state.stockStatusFilter == 'low_stock' ||
+            state.stockStatusFilter == 'bajo_stock';
+        cubit.setStockStatusFilter(isLowStock ? 'all' : 'low_stock');
+        AppSnackbar.show(
+          context,
+          message: isLowStock
+              ? 'Mostrando todo el inventario'
+              : 'Filtrando: Solo productos con bajo stock',
+          type: SnackbarType.info,
+          duration: const Duration(seconds: 2),
+        );
         return KeyEventResult.handled;
       }
     }
@@ -186,7 +223,10 @@ class _InventoryScreenState extends State<InventoryScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  InventoryStockTab(initialSearch: widget.initialSearch),
+                  InventoryStockTab(
+                    initialSearch: widget.initialSearch,
+                    initialStatusFilter: widget.initialStatusFilter,
+                  ),
                   const InventoryBatchesTab(),
                 ],
               ),

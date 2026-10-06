@@ -25,6 +25,7 @@ class InventoryLoaded extends InventoryState {
   final int totalStockPages;
   final String stockSearchText;
   final String stockCategoryFilter;
+  final String stockStatusFilter; // 'all', 'low_stock', 'out_of_stock', 'in_stock'
   final List<String> categories;
 
   final List<WarehouseEntity> warehouses;
@@ -57,6 +58,7 @@ class InventoryLoaded extends InventoryState {
     required this.totalStockPages,
     required this.stockSearchText,
     required this.stockCategoryFilter,
+    this.stockStatusFilter = 'all',
     required this.categories,
     this.warehouses = const [],
     this.selectedWarehouseId,
@@ -84,6 +86,7 @@ class InventoryLoaded extends InventoryState {
     int? totalStockPages,
     String? stockSearchText,
     String? stockCategoryFilter,
+    String? stockStatusFilter,
     List<String>? categories,
     List<WarehouseEntity>? warehouses,
     String? selectedWarehouseId,
@@ -111,6 +114,7 @@ class InventoryLoaded extends InventoryState {
       totalStockPages: totalStockPages ?? this.totalStockPages,
       stockSearchText: stockSearchText ?? this.stockSearchText,
       stockCategoryFilter: stockCategoryFilter ?? this.stockCategoryFilter,
+      stockStatusFilter: stockStatusFilter ?? this.stockStatusFilter,
       categories: categories ?? this.categories,
       warehouses: warehouses ?? this.warehouses,
       selectedWarehouseId:
@@ -144,6 +148,7 @@ class InventoryLoaded extends InventoryState {
     totalStockPages,
     stockSearchText,
     stockCategoryFilter,
+    stockStatusFilter,
     categories,
     warehouses,
     selectedWarehouseId,

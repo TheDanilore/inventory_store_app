@@ -65,6 +65,9 @@ class AdminProToolbar extends StatelessWidget {
   final AdminProToolbarAction? primaryAction;
   final List<Widget>? trailingActions;
 
+  /// Fila secundaria opcional para interfaces densas de dos niveles (ej. Catálogo de Productos)
+  final Widget? secondaryRow;
+
   final bool? isDesktop;
   final EdgeInsetsGeometry margin;
   final EdgeInsetsGeometry padding;
@@ -85,6 +88,7 @@ class AdminProToolbar extends StatelessWidget {
     this.refreshTooltip = 'Refrescar [R]',
     this.primaryAction,
     this.trailingActions,
+    this.secondaryRow,
     this.isDesktop,
     this.margin = const EdgeInsets.fromLTRB(16, 10, 16, 8),
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -337,7 +341,7 @@ class AdminProToolbar extends StatelessWidget {
   }
 
   Widget _buildDesktopLayout() {
-    return Row(
+    final primaryRow = Row(
       children: [
         // 1. Buscador expandido
         Expanded(
@@ -377,6 +381,20 @@ class AdminProToolbar extends StatelessWidget {
           ],
       ],
     );
+
+    if (secondaryRow == null) {
+      return primaryRow;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        primaryRow,
+        const SizedBox(height: 12),
+        secondaryRow!,
+      ],
+    );
   }
 
   Widget _buildMobileLayout() {
@@ -388,6 +406,7 @@ class AdminProToolbar extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         _buildSearchField(),
         if (hasMiddleOrEndItems) ...[
@@ -421,6 +440,10 @@ class AdminProToolbar extends StatelessWidget {
               ],
             ),
           ),
+        ],
+        if (secondaryRow != null) ...[
+          const SizedBox(height: 10),
+          secondaryRow!,
         ],
       ],
     );

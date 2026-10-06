@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
@@ -46,264 +47,147 @@ class ProductsDesktopCommandBar extends StatelessWidget {
     );
     final selectedBrandName = selectedBrand?.name ?? 'Marca';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusSm + 4),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Nivel 1: Buscador + Principio Activo + Ordenamiento + Actualizar
-          Row(
-            children: [
-              // Buscador compacto Pro
-              Expanded(
-                child: Container(
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                    border: Border.all(color: AppColors.border),
+    return AdminProToolbar(
+      isDesktop: true,
+      searchController: searchCtrl,
+      searchFocusNode: searchFocusNode,
+      searchHint: state.searchByIngredient
+          ? 'Buscar por principio activo / fórmula farmacéutica...'
+          : 'Buscar por nombre, código o SKU...',
+      onSearchChanged: cubit.setSearchTerm,
+      onClearSearch: () {
+        searchCtrl.clear();
+        cubit.clearSearch();
+      },
+      onSearchSubmitted: (val) => cubit.submitSearch(val),
+      searchKeyHint: '/',
+      searchFlex: 5,
+      onRefresh: () => cubit.refreshProducts(),
+      refreshTooltip: 'Recargar catálogo [R]',
+      filterWidgets: [
+        // Chip Conmutador de Búsqueda por Principio Activo
+        Tooltip(
+          message:
+              'Conmutar para buscar por componente, fórmula o principio activo',
+          child: FilterChip(
+            selected: state.searchByIngredient,
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.science_outlined,
+                  size: 15,
+                  color:
+                      state.searchByIngredient
+                          ? AppColors.accent
+                          : AppColors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Principio Activo',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color:
+                        state.searchByIngredient
+                            ? AppColors.accent
+                            : AppColors.textSecondary,
                   ),
-                  child: TextField(
-                    controller: searchCtrl,
-                    focusNode: searchFocusNode,
-                    onChanged: cubit.setSearchTerm,
-                    textInputAction: TextInputAction.search,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textPrimary,
-                    ),
-                    decoration: InputDecoration(
-                      hintText:
-                          state.searchByIngredient
-                              ? 'Buscar por principio activo / fórmula farmacéutica...'
-                              : 'Buscar por nombre, código o SKU...',
-                      hintStyle: const TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 13,
-                      ),
-                      prefixIcon: const Icon(
-                        Icons.search_rounded,
-                        color: AppColors.textMuted,
-                        size: 18,
-                      ),
-                      suffixIcon: Row(
-                        mainAxisSize: MainAxisSize.min,
+                ),
+              ],
+            ),
+            selectedColor: AppColors.accentLight.withValues(alpha: 0.2),
+            backgroundColor: AppColors.background,
+            side: BorderSide(
+              color:
+                  state.searchByIngredient
+                      ? AppColors.accent.withValues(alpha: 0.6)
+                      : AppColors.border,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 6,
+              vertical: 3,
+            ),
+            onSelected: (val) => cubit.toggleSearchByIngredient(val),
+          ),
+        ),
+
+        // Selector de Ordenamiento
+        PopupMenuButton<CatalogSortOption>(
+          tooltip: 'Ordenar productos',
+          initialValue: state.sortOption,
+          onSelected: cubit.setSortOption,
+          itemBuilder:
+              (context) =>
+                  CatalogSortOption.values.map((opt) {
+                    final isSelected = state.sortOption == opt;
+                    return PopupMenuItem(
+                      value: opt,
+                      child: Row(
                         children: [
-                          if (searchCtrl.text.isNotEmpty)
-                            IconButton(
-                              icon: const Icon(
-                                Icons.close_rounded,
-                                size: 16,
-                                color: AppColors.textMuted,
-                              ),
-                              onPressed: () {
-                                searchCtrl.clear();
-                                cubit.setSearchTerm('');
-                              },
-                              tooltip: 'Limpiar búsqueda',
-                            ),
-                          Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.slateLight.withValues(
-                                alpha: 0.5,
-                              ),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: const Text(
-                              '/',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.slate,
-                              ),
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_rounded,
+                              size: 16,
+                              color: AppColors.primary,
+                            )
+                          else
+                            const SizedBox(width: 16),
+                          const SizedBox(width: 8),
+                          Text(
+                            opt.label,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight:
+                                  isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
                             ),
                           ),
                         ],
                       ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 11,
-                      ),
-                    ),
+                    );
+                  }).toList(),
+          child: Container(
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.sort_rounded,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  state.sortOption.label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-
-              // Chip Conmutador de Búsqueda por Principio Activo
-              Tooltip(
-                message:
-                    'Conmutar para buscar por componente, fórmula o principio activo',
-                child: FilterChip(
-                  selected: state.searchByIngredient,
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.science_outlined,
-                        size: 15,
-                        color:
-                            state.searchByIngredient
-                                ? AppColors.accent
-                                : AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Principio Activo',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color:
-                              state.searchByIngredient
-                                  ? AppColors.accent
-                                  : AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  selectedColor: AppColors.accentLight.withValues(alpha: 0.2),
-                  backgroundColor: AppColors.background,
-                  side: BorderSide(
-                    color:
-                        state.searchByIngredient
-                            ? AppColors.accent.withValues(alpha: 0.6)
-                            : AppColors.border,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 3,
-                  ),
-                  onSelected: (val) => cubit.toggleSearchByIngredient(val),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 16,
+                  color: AppColors.textMuted,
                 ),
-              ),
-              const SizedBox(width: 10),
-
-              // Selector de Ordenamiento
-              PopupMenuButton<CatalogSortOption>(
-                tooltip: 'Ordenar productos',
-                initialValue: state.sortOption,
-                onSelected: cubit.setSortOption,
-                itemBuilder:
-                    (context) =>
-                        CatalogSortOption.values.map((opt) {
-                          final isSelected = state.sortOption == opt;
-                          return PopupMenuItem(
-                            value: opt,
-                            child: Row(
-                              children: [
-                                if (isSelected)
-                                  const Icon(
-                                    Icons.check_rounded,
-                                    size: 16,
-                                    color: AppColors.primary,
-                                  )
-                                else
-                                  const SizedBox(width: 16),
-                                const SizedBox(width: 8),
-                                Text(
-                                  opt.label,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight:
-                                        isSelected
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                child: Container(
-                  height: 40,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.sort_rounded,
-                        size: 16,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        state.sortOption.label,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 16,
-                        color: AppColors.textMuted,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-
-              // Botón Actualizar
-              Tooltip(
-                message: 'Recargar catálogo [R]',
-                child: OutlinedButton.icon(
-                  onPressed: () => cubit.refreshProducts(),
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
-                  label: const Text(
-                    'Actualizar',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    side: const BorderSide(color: AppColors.border),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                    ),
-                    backgroundColor: AppColors.background,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-
-          const SizedBox(height: 12),
-
-          // Nivel 2: Filtros Segmentados de Stock + Categorías + Estado + Limpiar
-          Row(
+        ),
+      ],
+      secondaryRow: Row(
             children: [
               // Chips Segmentados de Stock
               ProductSegmentChip(
@@ -736,8 +620,8 @@ class ProductsDesktopCommandBar extends StatelessWidget {
               ),
             ],
           ),
-        ],
-      ),
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(14),
     );
   }
 }

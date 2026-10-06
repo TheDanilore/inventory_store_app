@@ -74,6 +74,63 @@ class InventoryRepositoryImpl implements InventoryRepository {
     return ['Todos', ...cats];
   }
 
+  /// Retorna los IDs de variantes que cumplen con el estado de stock solicitado
+  Future<List<String>?> _getVariantIdsForStockStatus({
+    required String stockStatus,
+    String? warehouseId,
+  }) async {
+    final status = stockStatus.toLowerCase();
+    if (status == 'all' || status == 'todos') return null;
+
+    try {
+      final response = await _supabase
+          .from('product_variants')
+          .select('''
+        id, reorder_point,
+        products!inner(stock_control, is_active),
+        warehouse_stock_batches(available_quantity, warehouse_id)
+      ''')
+          .eq('is_active', true)
+          .eq('products.is_active', true);
+
+      final List<String> matchingIds = [];
+
+      for (final raw in (response as List)) {
+        final variantId = raw['id'] as String;
+        final stockControl = raw['products']['stock_control'] as bool? ?? true;
+        final reorderPoint = raw['reorder_point'] as int? ?? 3;
+
+        int variantStock = 0;
+        final batches = raw['warehouse_stock_batches'] as List? ?? [];
+        for (final b in batches) {
+          if (warehouseId != null && warehouseId.isNotEmpty) {
+            if (b['warehouse_id'] != warehouseId) continue;
+          }
+          variantStock += (b['available_quantity'] as num?)?.toInt() ?? 0;
+        }
+
+        if (status == 'low_stock' || status == 'bajo_stock' || status == 'bajo stock') {
+          if (stockControl && variantStock <= reorderPoint) {
+            matchingIds.add(variantId);
+          }
+        } else if (status == 'out_of_stock' || status == 'agotado' || status == 'agotados') {
+          if (stockControl && variantStock <= 0) {
+            matchingIds.add(variantId);
+          }
+        } else if (status == 'in_stock' || status == 'con_stock' || status == 'disponible') {
+          if (!stockControl || variantStock > reorderPoint) {
+            matchingIds.add(variantId);
+          }
+        }
+      }
+
+      return matchingIds;
+    } catch (e, stack) {
+      LoggerService.e('Error obteniendo IDs para filtro de stock: $stockStatus', error: e, stackTrace: stack);
+      return [];
+    }
+  }
+
   /// Pagina las variantes de producto aplicando filtros en la DB.
   @override
   Future<List<InventoryStockItem>> getGeneralStockPaginated({
@@ -81,6 +138,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     required int pageSize,
     String search = '',
     String categoryName = 'Todos',
+    String stockStatus = 'all',
     String? warehouseId,
   }) async {
     final from = page * pageSize;
@@ -134,6 +192,18 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
     if (catId != null) {
       query = query.eq('products.category_id', catId);
+    }
+
+    final matchingStatusIds = await _getVariantIdsForStockStatus(
+      stockStatus: stockStatus,
+      warehouseId: warehouseId,
+    );
+    if (matchingStatusIds != null) {
+      if (matchingStatusIds.isEmpty) {
+        query = query.inFilter('id', const ['00000000-0000-0000-0000-000000000000']);
+      } else {
+        query = query.inFilter('id', matchingStatusIds);
+      }
     }
 
     final response = await query
@@ -496,6 +566,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
   Future<int> getTotalGeneralStockCount({
     String search = '',
     String categoryName = 'Todos',
+    String stockStatus = 'all',
     String? warehouseId,
   }) async {
     var query = _supabase
@@ -537,6 +608,17 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
     if (catId != null) {
       query = query.eq('products.category_id', catId);
+    }
+
+    final matchingStatusIds = await _getVariantIdsForStockStatus(
+      stockStatus: stockStatus,
+      warehouseId: warehouseId,
+    );
+    if (matchingStatusIds != null) {
+      if (matchingStatusIds.isEmpty) {
+        return 0;
+      }
+      query = query.inFilter('id', matchingStatusIds);
     }
 
     try {

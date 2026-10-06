@@ -38,7 +38,7 @@ class InventoryCubit extends Cubit<InventoryState> {
        _getWarehouses = getWarehouses,
        super(const InventoryInitial());
 
-  InventoryLoaded _getLoadedState({String? defaultSearchText}) {
+  InventoryLoaded _getLoadedState({String? defaultSearchText, String? defaultStatusFilter}) {
     if (state is InventoryLoaded) {
       return state as InventoryLoaded;
     }
@@ -49,6 +49,7 @@ class InventoryCubit extends Cubit<InventoryState> {
       totalStockPages: 1,
       stockSearchText: defaultSearchText ?? '',
       stockCategoryFilter: 'Todos',
+      stockStatusFilter: defaultStatusFilter ?? 'all',
       categories: const ['Todos'],
       warehouses: const [],
       selectedWarehouseId: null,
@@ -68,23 +69,34 @@ class InventoryCubit extends Cubit<InventoryState> {
     );
   }
 
-  Future<void> initStockTab({String? initialSearch}) async {
+  Future<void> initStockTab({String? initialSearch, String? initialStatusFilter}) async {
     final sanitizedSearch = initialSearch?.trim() ?? '';
+    final sanitizedStatus = initialStatusFilter?.trim() ?? '';
     final isInitial = state is! InventoryLoaded;
     if (isInitial) {
       emit(const InventoryLoading());
     } else {
-      final currentState = _getLoadedState(defaultSearchText: sanitizedSearch);
+      final currentState = _getLoadedState(
+        defaultSearchText: sanitizedSearch,
+        defaultStatusFilter: sanitizedStatus.isNotEmpty ? sanitizedStatus : null,
+      );
       emit(currentState.copyWith(
         isSearchingStock: true,
         stockSearchText: sanitizedSearch.isNotEmpty ? sanitizedSearch : currentState.stockSearchText,
+        stockStatusFilter: sanitizedStatus.isNotEmpty ? sanitizedStatus : currentState.stockStatusFilter,
       ));
     }
 
     try {
-      var currentState = _getLoadedState(defaultSearchText: sanitizedSearch);
+      var currentState = _getLoadedState(
+        defaultSearchText: sanitizedSearch,
+        defaultStatusFilter: sanitizedStatus.isNotEmpty ? sanitizedStatus : null,
+      );
       if (sanitizedSearch.isNotEmpty) {
         currentState = currentState.copyWith(stockSearchText: sanitizedSearch);
+      }
+      if (sanitizedStatus.isNotEmpty) {
+        currentState = currentState.copyWith(stockStatusFilter: sanitizedStatus);
       }
 
       final warehousesFuture = currentState.warehouses.isEmpty
@@ -116,6 +128,7 @@ class InventoryCubit extends Cubit<InventoryState> {
       final totalCountFuture = _getGeneralStockPaginated.getTotalCount(
         search: currentState.stockSearchText,
         categoryName: currentState.stockCategoryFilter,
+        stockStatus: currentState.stockStatusFilter,
         warehouseId: currentState.selectedWarehouseId,
       );
 
@@ -124,6 +137,7 @@ class InventoryCubit extends Cubit<InventoryState> {
         pageSize: _stockPageSize,
         search: currentState.stockSearchText,
         categoryName: currentState.stockCategoryFilter,
+        stockStatus: currentState.stockStatusFilter,
         warehouseId: currentState.selectedWarehouseId,
       );
 
@@ -156,6 +170,7 @@ class InventoryCubit extends Cubit<InventoryState> {
           totalStockPages: totalPages,
           stockItems: stockItems,
           stockSearchText: currentState.stockSearchText,
+          stockStatusFilter: currentState.stockStatusFilter,
           isSearchingStock: false,
         ),
       );
@@ -180,6 +195,7 @@ class InventoryCubit extends Cubit<InventoryState> {
         _getGeneralStockPaginated.getTotalCount(
           search: currentState.stockSearchText,
           categoryName: currentState.stockCategoryFilter,
+          stockStatus: currentState.stockStatusFilter,
           warehouseId: currentState.selectedWarehouseId,
         ),
         _getGeneralStockPaginated(
@@ -187,6 +203,7 @@ class InventoryCubit extends Cubit<InventoryState> {
           pageSize: _stockPageSize,
           search: currentState.stockSearchText,
           categoryName: currentState.stockCategoryFilter,
+          stockStatus: currentState.stockStatusFilter,
           warehouseId: currentState.selectedWarehouseId,
         ),
       ]);
@@ -233,6 +250,14 @@ class InventoryCubit extends Cubit<InventoryState> {
     final currentState = _getLoadedState();
     if (currentState.stockCategoryFilter == category) return;
     emit(currentState.copyWith(stockCategoryFilter: category));
+    fetchStockPage(page: 0);
+  }
+
+  void setStockStatusFilter(String status) {
+    final cleanStatus = status.trim().isEmpty ? 'all' : status.trim();
+    final currentState = _getLoadedState();
+    if (currentState.stockStatusFilter == cleanStatus) return;
+    emit(currentState.copyWith(stockStatusFilter: cleanStatus));
     fetchStockPage(page: 0);
   }
 
@@ -436,6 +461,7 @@ class InventoryCubit extends Cubit<InventoryState> {
       final totalStockCountFuture = _getGeneralStockPaginated.getTotalCount(
         search: currentState.stockSearchText,
         categoryName: currentState.stockCategoryFilter,
+        stockStatus: currentState.stockStatusFilter,
         warehouseId: warehouseId,
       );
       final stockItemsFuture = _getGeneralStockPaginated(
@@ -443,6 +469,7 @@ class InventoryCubit extends Cubit<InventoryState> {
         pageSize: _stockPageSize,
         search: currentState.stockSearchText,
         categoryName: currentState.stockCategoryFilter,
+        stockStatus: currentState.stockStatusFilter,
         warehouseId: warehouseId,
       );
 

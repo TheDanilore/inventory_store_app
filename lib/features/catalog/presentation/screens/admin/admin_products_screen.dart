@@ -277,7 +277,12 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
           onKeyEvent: _handleKeyEvent,
           child: BlocListener<AdminCatalogCubit, AdminCatalogState>(
             listenWhen: (previous, current) =>
-                previous.actionState != current.actionState,
+                previous.actionState != current.actionState ||
+                previous.currentPage != current.currentPage ||
+                previous.searchTerm != current.searchTerm ||
+                previous.selectedCategoryId != current.selectedCategoryId ||
+                previous.selectedBrandId != current.selectedBrandId ||
+                previous.stockFilter != current.stockFilter,
             listener: (context, state) {
               if (state.actionState == ViewState.error) {
                 AppSnackbar.show(
@@ -285,6 +290,10 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                   message: state.errorMessage ?? 'Ocurrió un error',
                   type: SnackbarType.error,
                 );
+              }
+              // Limpiar selecciones huérfanas al navegar entre páginas o cambiar filtros
+              if (_selectedProductIdsNotifier.value.isNotEmpty) {
+                _selectedProductIdsNotifier.value = {};
               }
             },
             child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
@@ -587,6 +596,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         state.products.where((p) => p.totalStock <= 0).length;
     final totalUnits =
         state.products.fold<int>(0, (sum, p) => sum + p.totalStock);
+    final isMultiPage = state.totalPages > 1;
 
     final cards = [
       _ProductMetricCard(
@@ -598,21 +608,25 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         iconBg: AppColors.primaryLight,
       ),
       _ProductMetricCard(
-        title: 'EN STOCK DISPONIBLE',
+        title: isMultiPage ? 'EN STOCK (PÁG)' : 'EN STOCK DISPONIBLE',
         value: '$inStockCount',
-        subtitle: totalCount > 0
-            ? '${((inStockCount / (totalCount > 0 ? totalCount : 1)) * 100).toStringAsFixed(0)}% disponible para venta'
-            : 'Listo para despacho',
+        subtitle: isMultiPage
+            ? '$inStockCount en pág. actual'
+            : (totalCount > 0
+                ? '${((inStockCount / (totalCount > 0 ? totalCount : 1)) * 100).toStringAsFixed(0)}% disponible para venta'
+                : 'Listo para despacho'),
         icon: Icons.check_circle_outline_rounded,
         iconColor: AppColors.successDark,
         iconBg: AppColors.successLight,
       ),
       _ProductMetricCard(
-        title: 'AGOTADOS / CRÍTICOS',
+        title: isMultiPage ? 'AGOTADOS (PÁG)' : 'AGOTADOS / CRÍTICOS',
         value: '$outOfStockCount',
-        subtitle: outOfStockCount > 0
-            ? 'Requieren reposición'
-            : 'Sin quiebres de inventario',
+        subtitle: isMultiPage
+            ? '$outOfStockCount en pág. actual'
+            : (outOfStockCount > 0
+                ? 'Requieren reposición'
+                : 'Sin quiebres de inventario'),
         icon: Icons.warning_amber_rounded,
         iconColor: outOfStockCount > 0 ? AppColors.danger : AppColors.tealDark,
         iconBg:
@@ -622,7 +636,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       _ProductMetricCard(
         title: 'UNIDADES EN ALMACÉN',
         value: '$totalUnits unid.',
-        subtitle: 'Existencias consolidadas',
+        subtitle: isMultiPage ? 'En pág. actual' : 'Existencias consolidadas',
         icon: Icons.all_inbox_rounded,
         iconColor: AppColors.info,
         iconBg: AppColors.infoLight,

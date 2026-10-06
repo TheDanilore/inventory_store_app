@@ -295,21 +295,25 @@ class InventoryStockCard extends StatelessWidget {
                     const Spacer(),
                     InkWell(
                       onTap: onTap,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: [
+                          children: const [
                             Icon(
                               Icons.visibility_outlined,
-                              size: 14,
+                              size: 13,
                               color: AppColors.primary,
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Text(
                               'Variantes',
                               style: TextStyle(
@@ -322,34 +326,38 @@ class InventoryStockCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 6),
                     InkWell(
                       onTap: () {
                         context.push(
                           '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
                         );
                       },
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: [
+                          children: const [
                             Icon(
                               Icons.receipt_long_rounded,
-                              size: 14,
-                              color: AppColors.primary,
+                              size: 13,
+                              color: AppColors.textSecondary,
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Text(
                               'Kárdex',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
+                                color: AppColors.textSecondary,
                               ),
                             ),
                           ],

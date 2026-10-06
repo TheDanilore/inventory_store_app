@@ -955,8 +955,17 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
       );
     }
 
+    void onReview() {
+      if (widget.lowStockCount > 0) {
+        context.go('/inventory?filter=low_stock');
+      } else if (widget.criticalBatchesCount > 0) {
+        context.go('/inventory?tab=batches&filter=critico');
+      } else {
+        context.go('/inventory');
+      }
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -969,69 +978,80 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
           ),
         ],
       ),
-      child: Row(
-        children: [
-          RepaintBoundary(
-            child: ScaleTransition(
-              scale: _scaleAnimation,
-              child: Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.warning_rounded,
-                  color: AppColors.error,
-                  size: 20,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onReview,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
               children: [
-                const Text(
-                  'Atención requerida en almacén',
-                  style: TextStyle(
-                    color: AppColors.error,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
+                RepaintBoundary(
+                  child: ScaleTransition(
+                    scale: _scaleAnimation,
+                    child: Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.warning_rounded,
+                        color: AppColors.error,
+                        size: 20,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  [
-                    if (widget.lowStockCount > 0)
-                      '${widget.lowStockCount} productos bajo stock',
-                    if (widget.criticalBatchesCount > 0)
-                      '${widget.criticalBatchesCount} lotes próximos a vencer',
-                  ].join(' · '),
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Atención requerida en almacén',
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        [
+                          if (widget.lowStockCount > 0)
+                            '${widget.lowStockCount} productos bajo stock',
+                          if (widget.criticalBatchesCount > 0)
+                            '${widget.criticalBatchesCount} lotes próximos a vencer',
+                        ].join(' · '),
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: onReview,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    minimumSize: const Size(48, 48),
+                  ),
+                  icon: const Icon(Icons.chevron_right_rounded, size: 18),
+                  label: const Text(
+                    'Revisar',
+                    style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
             ),
           ),
-          TextButton.icon(
-            onPressed: () => context.go('/inventory'),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.error,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              minimumSize: const Size(48, 48),
-            ),
-            icon: const Icon(Icons.chevron_right_rounded, size: 18),
-            label: const Text(
-              'Revisar',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -148,21 +148,27 @@ class ProductsRepositoryImpl implements ProductsRepository {
       } else if (stockFilter == CatalogStockFilter.outOfStock) {
         final summaryRes = await _supabase
             .from('product_stock_summary')
-            .select('product_id')
-            .eq('total_stock', 0)
-            .limit(200);
+            .select('product_id, total_stock');
 
-        final matchingIds = <String>{};
+        final stockByProduct = <String, num>{};
         for (final row in List<Map<String, dynamic>>.from(summaryRes)) {
           final pid = row['product_id'] as String?;
           if (pid != null && pid.isNotEmpty) {
-            matchingIds.add(pid);
+            stockByProduct[pid] =
+                (stockByProduct[pid] ?? 0) +
+                ((row['total_stock'] as num?) ?? 0);
           }
         }
-        if (matchingIds.isEmpty) {
+
+        final outOfStockIds = stockByProduct.entries
+            .where((e) => e.value <= 0)
+            .map((e) => e.key)
+            .toList();
+
+        if (outOfStockIds.isEmpty) {
           return right((products: <ProductEntity>[], totalCount: 0));
         }
-        query = query.inFilter('id', matchingIds.toList());
+        query = query.inFilter('id', outOfStockIds);
       }
 
       var transformQuery = query.order('is_active', ascending: false); // Productos activos primero

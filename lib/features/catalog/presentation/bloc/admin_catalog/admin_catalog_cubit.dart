@@ -27,6 +27,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   final GetProductStockUC getProductStockUC;
 
   Timer? _debounce;
+  int _loadRequestId = 0;
   static const int _maxCacheEntries = 10;
   final Map<String, ({List<ProductEntity> products, int totalCount})> _productsCache = {};
 
@@ -87,20 +88,30 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   // Filters
 
   void submitSearch(String term, {bool force = false}) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
     final cleaned = term.trim();
     if (!force && state.searchTerm == cleaned) return;
 
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
     emit(state.copyWith(searchTerm: cleaned, currentPage: 0));
     refreshProducts();
   }
 
   void clearSearch() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
     submitSearch('', force: true);
   }
 
   void setSearchTerm(String term) {
-    submitSearch(term);
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    final cleaned = term.trim();
+    if (state.searchTerm == cleaned) return;
+
+    // Debounce de 350ms para evitar saturación de red y costos innecesarios en Supabase
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      if (isClosed) return;
+      emit(state.copyWith(searchTerm: cleaned, currentPage: 0));
+      refreshProducts();
+    });
   }
 
   void setCategory(String? categoryId) {
@@ -205,6 +216,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   }
 
   Future<void> _loadProducts() async {
+    final currentRequestId = ++_loadRequestId;
     final cacheKey = _buildCacheKey();
     if (_productsCache.containsKey(cacheKey)) {
       final cached = _productsCache[cacheKey]!;
@@ -250,6 +262,8 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       stockFilter: state.stockFilter,
       sortOption: state.sortOption,
     );
+
+    if (currentRequestId != _loadRequestId || isClosed) return;
 
     result.fold(
       (failure) {
