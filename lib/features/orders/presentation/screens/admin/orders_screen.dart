@@ -261,7 +261,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.digit2 || key == LogicalKeyboardKey.numpad2) {
-      context.read<OrdersCubit>().setStatusFilter('DRAFT');
+      context.read<OrdersCubit>().setStatusFilter('PENDING');
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.digit3 || key == LogicalKeyboardKey.numpad3) {
@@ -372,7 +372,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
           type: SnackbarType.success,
         );
       } else {
-        final errorMsg = context.read<OrdersCubit>().state.errorMessage;
+        final state = context.read<OrdersCubit>().state;
+        final errorMsg =
+            (state.actionError != null && state.actionError!.isNotEmpty)
+                ? state.actionError!
+                : state.errorMessage;
         AppSnackbar.show(
           context,
           message:
@@ -752,7 +756,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
       );
     }
 
-    if (state.errorMessage.isNotEmpty) {
+    if (state.errorMessage.isNotEmpty && pageItems.isEmpty) {
       return SliverFillRemaining(
         hasScrollBody: false,
         child: AppEmptyState(

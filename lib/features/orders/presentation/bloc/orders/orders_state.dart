@@ -16,6 +16,7 @@ class OrdersState extends Equatable {
   final String searchQuery;
   final int currentPage;
   final String? customerIdFilter;
+  final String? actionError;
 
   const OrdersState({
     this.orders = const [],
@@ -23,6 +24,7 @@ class OrdersState extends Equatable {
     this.isLoading = false,
     this.isBackgroundLoading = false,
     this.errorMessage = '',
+    this.actionError,
     this.processingOrders = const {},
     this.generatingPdfOrderId,
     this.statusFilter = 'ALL',
@@ -40,6 +42,8 @@ class OrdersState extends Equatable {
     bool? isLoading,
     bool? isBackgroundLoading,
     String? errorMessage,
+    String? actionError,
+    bool clearActionError = false,
     Set<String>? processingOrders,
     String? generatingPdfOrderId,
     bool clearPdfOrderId = false,
@@ -59,6 +63,7 @@ class OrdersState extends Equatable {
       isLoading: isLoading ?? this.isLoading,
       isBackgroundLoading: isBackgroundLoading ?? this.isBackgroundLoading,
       errorMessage: errorMessage ?? this.errorMessage,
+      actionError: clearActionError ? null : (actionError ?? this.actionError),
       processingOrders: processingOrders ?? this.processingOrders,
       generatingPdfOrderId:
           clearPdfOrderId
@@ -82,6 +87,7 @@ class OrdersState extends Equatable {
     isLoading,
     isBackgroundLoading,
     errorMessage,
+    actionError,
     processingOrders,
     generatingPdfOrderId,
     statusFilter,

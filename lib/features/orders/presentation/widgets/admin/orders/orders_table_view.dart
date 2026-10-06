@@ -522,7 +522,7 @@ class _OrderTableRowState extends State<_OrderTableRow> {
                       hoverColor: const Color(0xFFF1F5F9),
                       onPressed: widget.onPrintTicket,
                     ),
-                    if (order.status == 'DRAFT')
+                    if (order.status == 'DRAFT' || order.status == 'PENDING')
                       IconButton(
                         icon: const Icon(
                           Icons.payments_rounded,

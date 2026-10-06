@@ -1346,6 +1346,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
           'name': payload.product.name,
           'description': payload.product.description,
           'category_id': payload.product.categoryId,
+          'brand_id': payload.product.brandId,
           'is_active': payload.product.isActive,
           'details': payload.product.details,
           'product_type': payload.product.productType,

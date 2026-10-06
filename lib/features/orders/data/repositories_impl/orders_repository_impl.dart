@@ -540,7 +540,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
     required String? currentProfileId,
   }) async {
     try {
-      if (newStatus == 'COMPLETED' && order.status == 'PENDING') {
+      if (newStatus == 'COMPLETED' &&
+          (order.status == 'PENDING' || order.status == 'DRAFT')) {
         // [OPTIMIZACIÓN DATA EGRESS] No se descarga la lista de items al cliente solo
         // para reenviarlos. El RPC rpc_complete_order los lee directamente de la BD
         // cuando items es null/vacío, evitando un round-trip innecesario Flutter→DB→Flutter→DB.

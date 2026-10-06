@@ -179,7 +179,7 @@ class OrdersCubit extends Cubit<OrdersState> {
     if (state.isOrderProcessing(order.id)) return false;
 
     final processing = Set<String>.from(state.processingOrders)..add(order.id);
-    emit(state.copyWith(processingOrders: processing, errorMessage: ''));
+    emit(state.copyWith(processingOrders: processing, clearActionError: true));
 
     try {
       final result = await _updateOrderStatusUc(
@@ -196,7 +196,7 @@ class OrdersCubit extends Cubit<OrdersState> {
             'Error actualizando estado: ${failure.message}',
             tag: 'OrdersCubit',
           );
-          emit(state.copyWith(errorMessage: failure.message));
+          emit(state.copyWith(actionError: failure.message));
           return false;
         },
         (_) {
@@ -213,7 +213,7 @@ class OrdersCubit extends Cubit<OrdersState> {
       );
       emit(
         state.copyWith(
-          errorMessage: 'Ocurrió un error inesperado al actualizar la orden.',
+          actionError: 'Ocurrió un error inesperado al actualizar la orden.',
         ),
       );
       return false;
