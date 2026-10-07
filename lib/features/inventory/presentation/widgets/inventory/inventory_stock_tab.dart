@@ -1228,13 +1228,15 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                             _selectedItem!.variantId == item.variantId) ||
                         (_selectedItem!.productId == item.productId &&
                             _selectedItem!.variantId == item.variantId));
-                return InventoryStockCard(
-                  item: item,
-                  isSelected: isItemSelected,
-                  onTap: () {
-                    setState(() => _selectedItem = item);
-                    _showQuickView(item, state);
-                  },
+                return RepaintBoundary(
+                  child: InventoryStockCard(
+                    item: item,
+                    isSelected: isItemSelected,
+                    onTap: () {
+                      setState(() => _selectedItem = item);
+                      _showQuickView(item, state);
+                    },
+                  ),
                 );
               }, childCount: state.stockItems.length),
             ),
@@ -1257,13 +1259,15 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                             _selectedItem!.variantId == item.variantId));
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: InventoryStockCard(
-                    item: item,
-                    isSelected: isItemSelected,
-                    onTap: () {
-                      setState(() => _selectedItem = item);
-                      _showQuickView(item, state);
-                    },
+                  child: RepaintBoundary(
+                    child: InventoryStockCard(
+                      item: item,
+                      isSelected: isItemSelected,
+                      onTap: () {
+                        setState(() => _selectedItem = item);
+                        _showQuickView(item, state);
+                      },
+                    ),
                   ),
                 );
               }, childCount: state.stockItems.length),
@@ -1912,11 +1916,12 @@ class _InventoryStockTableRowState extends State<_InventoryStockTableRow> {
                 ? Icons.warning_amber_rounded
                 : Icons.check_circle_outline_rounded);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: InkWell(
+    return RepaintBoundary(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: InkWell(
         onTap: widget.onQuickView,
         hoverColor: Colors.transparent,
         splashColor: Colors.transparent,
@@ -2160,6 +2165,7 @@ class _InventoryStockTableRowState extends State<_InventoryStockTableRow> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }

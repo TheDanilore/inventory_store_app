@@ -500,10 +500,12 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                   final isSelected = activeBatchId == batch.id;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: InventoryBatchCard(
-                      batch: batch,
-                      isSelected: isSelected,
-                      onTap: () => _selectBatch(batch, isTablet: isTablet),
+                    child: RepaintBoundary(
+                      child: InventoryBatchCard(
+                        batch: batch,
+                        isSelected: isSelected,
+                        onTap: () => _selectBatch(batch, isTablet: isTablet),
+                      ),
                     ),
                   );
                 }, childCount: state.batchItems.length),

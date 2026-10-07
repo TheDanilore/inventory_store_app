@@ -80,6 +80,7 @@ class _InventoryScreenState extends State<InventoryScreen>
   }
 
   void _openExportModal(InventoryLoaded? loadedState) {
+    FocusManager.instance.primaryFocus?.unfocus();
     InventoryExportSheet.show(
       context,
       selectedWarehouseId: loadedState?.selectedWarehouseId,
@@ -176,7 +177,16 @@ class _InventoryScreenState extends State<InventoryScreen>
     BuildContext context,
     InventoryLoaded? state,
   ) {
-    _WarehousePickerBottomSheet.show(context, state);
+    FocusManager.instance.primaryFocus?.unfocus();
+    final cubit = context.read<InventoryCubit>();
+    _WarehousePickerBottomSheet.show(
+      context,
+      state: state,
+      cubit: cubit,
+      onWarehouseSelected: (id, name) {
+        cubit.setWarehouseFilter(id, name);
+      },
+    );
   }
 
   @override
@@ -783,15 +793,31 @@ class _MobileWarehouseSelectorButton extends StatelessWidget {
 
 class _WarehousePickerBottomSheet extends StatelessWidget {
   final InventoryLoaded? state;
+  final void Function(String? warehouseId, String warehouseName) onWarehouseSelected;
 
-  const _WarehousePickerBottomSheet({required this.state});
+  const _WarehousePickerBottomSheet({
+    required this.state,
+    required this.onWarehouseSelected,
+  });
 
-  static Future<void> show(BuildContext context, InventoryLoaded? state) {
+  static Future<void> show(
+    BuildContext context, {
+    required InventoryLoaded? state,
+    required InventoryCubit cubit,
+    required void Function(String? warehouseId, String warehouseName) onWarehouseSelected,
+  }) {
+    FocusManager.instance.primaryFocus?.unfocus();
     return showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => _WarehousePickerBottomSheet(state: state),
+      builder: (ctx) => BlocProvider.value(
+        value: cubit,
+        child: _WarehousePickerBottomSheet(
+          state: state,
+          onWarehouseSelected: onWarehouseSelected,
+        ),
+      ),
     );
   }
 
@@ -891,10 +917,7 @@ class _WarehousePickerBottomSheet extends StatelessWidget {
                     subtitle: 'Mostrar existencias consolidadas de la empresa',
                     isSelected: selectedId == null || selectedId.isEmpty,
                     onTap: () {
-                      context.read<InventoryCubit>().setWarehouseFilter(
-                            null,
-                            'Todos los almacenes',
-                          );
+                      onWarehouseSelected(null, 'Todos los almacenes');
                       Navigator.of(context).pop();
                     },
                   ),
@@ -908,10 +931,7 @@ class _WarehousePickerBottomSheet extends StatelessWidget {
                       subtitle: address,
                       isSelected: isSelected,
                       onTap: () {
-                        context.read<InventoryCubit>().setWarehouseFilter(
-                              wh.id,
-                              wh.name,
-                            );
+                        onWarehouseSelected(wh.id, wh.name);
                         Navigator.of(context).pop();
                       },
                     );
