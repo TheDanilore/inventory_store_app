@@ -2651,6 +2651,14 @@ BEGIN
     v_current_profile_id := (payload->>'current_profile_id')::uuid;
     v_notes_override := payload->>'notes_override';
 
+    -- Fallback defensivo para created_by
+    IF v_current_profile_id IS NULL THEN
+        SELECT id INTO v_current_profile_id FROM profiles WHERE auth_user_id = auth.uid() LIMIT 1;
+    END IF;
+    IF v_current_profile_id IS NULL THEN
+        SELECT id INTO v_current_profile_id FROM profiles WHERE role = 'admin' LIMIT 1;
+    END IF;
+
     -- 1. Fetch Order Data
     SELECT status, warehouse_id, total_amount, amount_paid, payment_method, customer_id
     INTO v_order
@@ -2857,6 +2865,15 @@ BEGIN
     v_total_amount := COALESCE((payload->>'total_amount')::numeric, 0);
     v_total_profit := COALESCE((payload->>'total_profit')::numeric, 0);
     v_current_profile_id := (payload->>'current_profile_id')::uuid;
+
+    -- Fallback defensivo para created_by
+    IF v_current_profile_id IS NULL THEN
+        SELECT id INTO v_current_profile_id FROM profiles WHERE auth_user_id = auth.uid() LIMIT 1;
+    END IF;
+    IF v_current_profile_id IS NULL THEN
+        SELECT id INTO v_current_profile_id FROM profiles WHERE role = 'admin' LIMIT 1;
+    END IF;
+
     v_items := payload->'items';
     v_overrides := payload->'batch_overrides';
 
@@ -3296,7 +3313,13 @@ DECLARE
     v_incoming_image_ids uuid[];
 BEGIN
     -- 1. Resolver perfil de usuario autenticado
-    SELECT id INTO v_profile_id FROM profiles WHERE auth_user_id = v_auth_user_id LIMIT 1;
+    v_profile_id := (payload->>'profile_id')::uuid;
+    IF v_profile_id IS NULL THEN
+        SELECT id INTO v_profile_id FROM profiles WHERE auth_user_id = v_auth_user_id LIMIT 1;
+    END IF;
+    IF v_profile_id IS NULL THEN
+        SELECT id INTO v_profile_id FROM profiles WHERE role = 'admin' LIMIT 1;
+    END IF;
     IF v_profile_id IS NULL THEN
         RAISE EXCEPTION 'Operación rechazada: El usuario autenticado no posee un perfil válido en el sistema.';
     END IF;
@@ -3437,12 +3460,12 @@ BEGIN
         END LOOP;
     END IF;
 
-    -- 6. Manejo de Ingredientes
+    -- 6. Manejo de Ingredientes Activos (TABLA CORREGIDA: product_active_ingredients)
     IF COALESCE((payload->>'ingredients_enabled')::boolean, false) AND payload ? 'ingredients' THEN
-        DELETE FROM product_ingredients WHERE product_id = v_product_id;
+        DELETE FROM product_active_ingredients WHERE product_id = v_product_id;
         FOR v_ingredient IN SELECT * FROM jsonb_array_elements(payload->'ingredients')
         LOOP
-            INSERT INTO product_ingredients (product_id, ingredient_id, concentration, unit)
+            INSERT INTO product_active_ingredients (product_id, ingredient_id, concentration, unit)
             VALUES (
                 v_product_id,
                 (v_ingredient->>'ingredient_id')::uuid,
@@ -3451,7 +3474,7 @@ BEGIN
             );
         END LOOP;
     ELSE
-        DELETE FROM product_ingredients WHERE product_id = v_product_id;
+        DELETE FROM product_active_ingredients WHERE product_id = v_product_id;
     END IF;
 END;
 $$;

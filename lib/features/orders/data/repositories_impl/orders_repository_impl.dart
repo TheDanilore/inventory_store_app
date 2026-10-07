@@ -533,6 +533,31 @@ class OrdersRepositoryImpl implements OrdersRepository {
     }
   }
 
+  // ─── RESOLUCIÓN DEFENSIVA DE PERFIL ─────────────────────────────────────────
+  Future<String?> _resolveCurrentProfileId(String? passedProfileId) async {
+    if (passedProfileId != null && passedProfileId.trim().isNotEmpty) {
+      return passedProfileId.trim();
+    }
+    final authUserId = _supabase.auth.currentUser?.id;
+    if (authUserId == null) return null;
+
+    try {
+      final res = await _supabase
+          .from('profiles')
+          .select('id')
+          .eq('auth_user_id', authUserId)
+          .maybeSingle();
+
+      return res?['id'] as String?;
+    } catch (e) {
+      LoggerService.w(
+        'No se pudo resolver profile_id desde auth_user_id: $e',
+        tag: 'ORDERS_REPO',
+      );
+      return null;
+    }
+  }
+
   @override
   Future<Either<Failure, void>> updateOrderStatus({
     required OrderEntity order,
@@ -540,6 +565,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
     required String? currentProfileId,
   }) async {
     try {
+      final effectiveProfileId =
+          await _resolveCurrentProfileId(currentProfileId);
+
       if (newStatus == 'COMPLETED' &&
           (order.status == 'PENDING' || order.status == 'DRAFT')) {
         // [OPTIMIZACIÓN DATA EGRESS] No se descarga la lista de items al cliente solo
@@ -558,19 +586,23 @@ class OrdersRepositoryImpl implements OrdersRepository {
           totalAmount: order.totalAmount,
           totalProfit: order.totalProfit,
           batchOverrides: {},
-          currentProfileId: currentProfileId,
+          currentProfileId: effectiveProfileId,
         );
       } else if (newStatus == 'CANCELLED' || newStatus == 'RETURNED') {
         return await cancelOrder(
           orderId: order.id,
           customerId: order.customerId,
-          currentProfileId: currentProfileId,
+          currentProfileId: effectiveProfileId,
         );
       } else {
         // Actualización simple de estado en BD
         await _supabase
             .from('orders')
-            .update({'status': newStatus})
+            .update({
+              'status': newStatus,
+              if (effectiveProfileId != null) 'updated_by': effectiveProfileId,
+              'updated_at': DateTime.now().toUtc().toIso8601String(),
+            })
             .eq('id', order.id);
         return const Right(null);
       }
@@ -625,6 +657,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
     String? notesOverride,
   }) async {
     try {
+      final effectiveProfileId =
+          await _resolveCurrentProfileId(currentProfileId);
       final wasCompleted = originalStatus.toUpperCase() == 'COMPLETED';
       final isNowCompleted = newStatus.toUpperCase() == 'COMPLETED';
       final isNowCancelled = newStatus.toUpperCase() == 'CANCELLED';
@@ -647,7 +681,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
         'points_earned': pointsEarned,
         'total_amount': totalAmount,
         'total_profit': totalProfit,
-        'current_profile_id': currentProfileId,
+        'current_profile_id': effectiveProfileId,
         'items':
             items
                 .map(
@@ -680,7 +714,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
         return cancelOrder(
           orderId: orderId,
           customerId: selectedCustomerId,
-          currentProfileId: currentProfileId,
+          currentProfileId: effectiveProfileId,
           notesOverride: notesOverride,
         );
       }
@@ -707,7 +741,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
             'total_profit': totalProfit,
             'points_used': finalPointsUsed,
             'points_earned': finalPointsEarned,
-            'updated_by': currentProfileId,
+            'updated_by': effectiveProfileId,
             'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', orderId);
@@ -804,10 +838,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
     String? notesOverride,
   }) async {
     try {
+      final effectiveProfileId =
+          await _resolveCurrentProfileId(currentProfileId);
       final payload = {
         'order_id': orderId,
         'selected_customer_id': customerId,
-        'current_profile_id': currentProfileId,
+        'current_profile_id': effectiveProfileId,
         'notes_override': notesOverride,
       };
 

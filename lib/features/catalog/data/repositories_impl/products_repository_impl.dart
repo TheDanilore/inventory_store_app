@@ -1344,9 +1344,29 @@ class ProductsRepositoryImpl implements ProductsRepository {
                   .toList()
               : [];
 
+      var effectiveProfileId = payload.profileId;
+      if (effectiveProfileId == null || effectiveProfileId.trim().isEmpty) {
+        final authUserId = _supabase.auth.currentUser?.id;
+        if (authUserId != null) {
+          try {
+            final pRes = await _supabase
+                .from('profiles')
+                .select('id')
+                .eq('auth_user_id', authUserId)
+                .maybeSingle();
+            effectiveProfileId = pRes?['id'] as String?;
+          } catch (e) {
+            LoggerService.w(
+              'No se pudo resolver profile_id en saveProductComplete: $e',
+              tag: 'PRODUCTS_REPO',
+            );
+          }
+        }
+      }
+
       final jsonPayload = {
         'is_updating': payload.isUpdating,
-        'profile_id': payload.profileId,
+        'profile_id': effectiveProfileId,
         'product': {
           'id': payload.product.id,
           'name': payload.product.name,
