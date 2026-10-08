@@ -347,11 +347,12 @@ class _OrderTableRowState extends State<_OrderTableRow> {
     final dateFormatted = DateFormat('dd MMM, hh:mm a', 'es').format(date);
     final pending = order.totalAmount - order.amountPaid;
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: InkWell(
+    return RepaintBoundary(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: InkWell(
         onTap: widget.onSelect,
         hoverColor: Colors.transparent,
         splashColor: Colors.transparent,
@@ -549,6 +550,7 @@ class _OrderTableRowState extends State<_OrderTableRow> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }

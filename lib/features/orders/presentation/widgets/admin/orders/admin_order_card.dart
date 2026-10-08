@@ -70,11 +70,12 @@ class _AdminOrderCardState extends State<AdminOrderCard> {
         paymentStatus != 'PAID' &&
         order.pointsEarned > 0;
 
-    return MouseRegion(
-      cursor:
-          isProcessing ? SystemMouseCursors.basic : SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+    return RepaintBoundary(
+      child: MouseRegion(
+        cursor:
+            isProcessing ? SystemMouseCursors.basic : SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
@@ -502,7 +503,8 @@ class _AdminOrderCardState extends State<AdminOrderCard> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

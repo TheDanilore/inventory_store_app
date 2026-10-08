@@ -326,7 +326,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
         address: config.businessAddress,
         phone: config.businessPhone,
       );
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al generar ticket para pedido ${order.id}',
+        error: e,
+        stackTrace: st,
+        tag: 'OrdersScreen',
+      );
       if (mounted) {
         AppSnackbar.show(
           context,
@@ -387,7 +393,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
           type: SnackbarType.error,
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al actualizar estado del pedido ${order.id}',
+        error: e,
+        stackTrace: st,
+        tag: 'OrdersScreen',
+      );
       if (mounted) {
         AppSnackbar.show(
           context,
@@ -401,6 +413,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   bool _isSideSheetOpen = false;
 
   Future<void> _openDesktopDetailSheet(OrderEntity order) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     if (!mounted || _isSideSheetOpen) return;
     _isSideSheetOpen = true;
     _selectOrder(order, updateUrl: true);
@@ -448,7 +461,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   onOrderUpdated: (updated) {
                     if (mounted) {
                       cubit.updateOrderInList(updated);
-                      cubit.loadOrders(background: true);
+                      if (cubit.state.statusFilter != 'ALL' &&
+                          updated.status != cubit.state.statusFilter) {
+                        cubit.loadOrders(background: true);
+                      }
                     }
                   },
                 ),
@@ -485,29 +501,45 @@ class _OrdersScreenState extends State<OrdersScreen> {
       return;
     }
 
+    FocusManager.instance.primaryFocus?.unfocus();
+    final cubit = context.read<OrdersCubit>();
+    final configCubit = context.read<AppConfigCubit>();
+
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (context) => Container(
-            decoration: const BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: OrderDetailSheet(
-              order: order,
-              onOrderUpdated: (updated) {
-                if (mounted) {
-                  context.read<OrdersCubit>().updateOrderInList(updated);
-                }
-              },
+          (sheetCtx) => MultiBlocProvider(
+            providers: [
+              BlocProvider.value(value: cubit),
+              BlocProvider.value(value: configCubit),
+            ],
+            child: Container(
+              decoration: const BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: OrderDetailSheet(
+                order: order,
+                onOrderUpdated: (updated) {
+                  if (mounted) {
+                    cubit.updateOrderInList(updated);
+                    if (cubit.state.statusFilter != 'ALL' &&
+                        updated.status != cubit.state.statusFilter) {
+                      cubit.loadOrders(background: true);
+                    }
+                  }
+                },
+              ),
             ),
           ),
     );
 
     if (result == true && mounted) {
-      context.read<OrdersCubit>().loadOrders(background: true);
+      if (cubit.state.statusFilter != 'ALL') {
+        cubit.loadOrders(background: true);
+      }
     }
   }
 
@@ -888,6 +920,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       p.isLoading != c.isLoading ||
                       p.errorMessage != c.errorMessage ||
                       p.isBackgroundLoading != c.isBackgroundLoading ||
+                      p.processingOrders != c.processingOrders ||
+                      p.generatingPdfOrderId != c.generatingPdfOrderId ||
                       p.statusFilter != c.statusFilter ||
                       p.paymentStatusFilter != c.paymentStatusFilter ||
                       p.startDate != c.startDate ||
