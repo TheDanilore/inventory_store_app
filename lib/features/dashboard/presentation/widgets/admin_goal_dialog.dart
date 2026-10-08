@@ -220,238 +220,282 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AlertDialog(
-      title: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.savings_rounded,
-              color: AppColors.success,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Expanded(child: Text('Meta de Ahorro')),
-        ],
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
       ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Acción primaria: abonar ──────────────────────────────
-            Text(
-              'Abonar a la meta',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.success,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header: Title, Icon and Close Button ─────────────────────
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.savings_rounded,
+                  color: AppColors.success,
+                  size: 20,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _addCtrl,
-              focusNode: _addFocusNode,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              textInputAction: TextInputAction.done,
-              inputFormatters: [_decimalFormatter],
-              onSubmitted: (_) => _saveGoal(),
-              decoration: InputDecoration(
-                labelText: 'Monto a sumar (S/.)',
-                hintText: 'Ej. 100',
-                helperText:
-                    'Se sumará al saldo actual de S/ ${widget.currentAmount.toStringAsFixed(2)}',
-                helperMaxLines: 2,
-                errorText: _addError,
-                prefixIcon: Semantics(
-                  label: 'Sumar monto',
-                  child: const Icon(
-                    Icons.add_circle_outline,
-                    color: AppColors.success,
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Meta de Ahorro',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-            // Chips de monto rápido — definidos en kQuickAddAmounts arriba.
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children:
-                  kQuickAddAmounts.map((amount) {
-                    final label =
-                        amount == amount.roundToDouble()
-                            ? amount.toStringAsFixed(0)
-                            : amount.toStringAsFixed(2);
-                    return ActionChip(
-                      label: Text('+S/$label'),
-                      labelStyle: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                      backgroundColor: AppColors.success.withValues(alpha: 0.1),
-                      side: BorderSide(
-                        color: AppColors.success.withValues(alpha: 0.3),
-                      ),
-                      visualDensity: VisualDensity.comfortable,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 4,
-                      ),
-                      onPressed: () => _applyQuickAdd(amount),
-                    );
-                  }).toList(),
-            ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 20),
+                color: const Color(0xFF64748B),
+                splashRadius: 18,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
 
-            const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 4),
-
-            // ── Sección avanzada (colapsable) ────────────────────────
-            InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () {
-                setState(() => _advancedExpanded = !_advancedExpanded);
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.tune_rounded,
-                      size: 18,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Ajustes avanzados',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                    AnimatedRotation(
-                      turns: _advancedExpanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
+          // ── Acción primaria: abonar ──────────────────────────────────
+          Text(
+            'Abonar a la meta',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.success,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _addCtrl,
+            focusNode: _addFocusNode,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
+            ),
+            textInputAction: TextInputAction.done,
+            inputFormatters: [_decimalFormatter],
+            onSubmitted: (_) => _saveGoal(),
+            decoration: InputDecoration(
+              labelText: 'Monto a sumar (S/.)',
+              hintText: 'Ej. 100',
+              helperText:
+                  'Se sumará al saldo actual de S/ ${widget.currentAmount.toStringAsFixed(2)}',
+              helperMaxLines: 1,
+              errorText: _addError,
+              prefixIcon: Semantics(
+                label: 'Sumar monto',
+                child: const Icon(
+                  Icons.add_circle_outline,
+                  color: AppColors.success,
                 ),
               ),
             ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeInOut,
-              child:
-                  _advancedExpanded
-                      ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 8),
-                          Text(
-                            'Saldo actual exacto',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
+          ),
+          const SizedBox(height: 10),
+
+          // Chips de monto rápido
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children:
+                kQuickAddAmounts.map((amount) {
+                  final label =
+                      amount == amount.roundToDouble()
+                          ? amount.toStringAsFixed(0)
+                          : amount.toStringAsFixed(2);
+                  return ActionChip(
+                    label: Text('+S/$label'),
+                    labelStyle: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12.5,
+                      color: Color(0xFF15803D),
+                    ),
+                    backgroundColor: const Color(0xFFDCFCE7),
+                    side: const BorderSide(
+                      color: Color(0xFF86EFAC),
+                      width: 0.8,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    onPressed: () => _applyQuickAdd(amount),
+                  );
+                }).toList(),
+          ),
+
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          const SizedBox(height: 4),
+
+          // ── Sección avanzada (colapsable) ────────────────────────────
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () {
+              setState(() => _advancedExpanded = !_advancedExpanded);
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.tune_rounded,
+                    size: 16,
+                    color: Color(0xFF64748B),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Ajustes avanzados',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF64748B),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: _advancedExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Color(0xFF64748B),
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            child:
+                _advancedExpanded
+                    ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
+                        Text(
+                          'Saldo actual exacto',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _currentCtrl,
+                          focusNode: _currentFocusNode,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          textInputAction: TextInputAction.next,
+                          inputFormatters: [_decimalFormatter],
+                          onSubmitted: (_) => _targetFocusNode.requestFocus(),
+                          decoration: InputDecoration(
+                            labelText: 'Corregir saldo (S/.)',
+                            helperText:
+                                'Usa esto solo para corregir un error, no para abonar.',
+                            helperMaxLines: 1,
+                            errorText: _currentError,
+                            prefixIcon: const Icon(
+                              Icons.edit_note,
                               color: Colors.blue,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _currentCtrl,
-                            focusNode: _currentFocusNode,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            textInputAction: TextInputAction.next,
-                            inputFormatters: [_decimalFormatter],
-                            onSubmitted: (_) => _targetFocusNode.requestFocus(),
-                            decoration: InputDecoration(
-                              labelText: 'Corregir saldo (S/.)',
-                              helperText:
-                                  'Usa esto solo para corregir un error, no para abonar.',
-                              helperMaxLines: 2,
-                              errorText: _currentError,
-                              prefixIcon: Semantics(
-                                label: 'Editar saldo actual',
-                                child: const Icon(
-                                  Icons.edit_note,
-                                  color: Colors.blue,
-                                ),
-                              ),
-                            ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          'Modificar meta total',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.warning,
+                            fontSize: 12.5,
                           ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Modificar meta total',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _targetCtrl,
+                          focusNode: _targetFocusNode,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          textInputAction: TextInputAction.done,
+                          inputFormatters: [_decimalFormatter],
+                          onSubmitted: (_) => _saveGoal(),
+                          decoration: InputDecoration(
+                            labelText: 'Nueva meta total (S/.)',
+                            helperText: 'El objetivo final de ahorro.',
+                            errorText: _targetError,
+                            prefixIcon: const Icon(
+                              Icons.flag_outlined,
                               color: AppColors.warning,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _targetCtrl,
-                            focusNode: _targetFocusNode,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            textInputAction: TextInputAction.done,
-                            inputFormatters: [_decimalFormatter],
-                            onSubmitted: (_) => _saveGoal(),
-                            decoration: InputDecoration(
-                              labelText: 'Nueva meta total (S/.)',
-                              helperText: 'El objetivo final de ahorro.',
-                              errorText: _targetError,
-                              prefixIcon: Semantics(
-                                label: 'Editar meta total',
-                                child: const Icon(
-                                  Icons.flag_outlined,
-                                  color: AppColors.warning,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                      : const SizedBox.shrink(),
-            ),
-          ],
-        ),
+                        ),
+                      ],
+                    )
+                    : const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Actions: Cancelar & Guardar ──────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(90, 42),
+                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: _isLoading ? null : () => Navigator.pop(context),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(
+                    color: Color(0xFF475569),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryDark,
+                  minimumSize: const Size(100, 42),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: _isLoading || _justSaved ? null : _saveGoal,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: _buildActionButtonContent(),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
-          onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: Text(
-            'Cancelar',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryDark,
-            minimumSize: const Size(64, 48),
-          ),
-          onPressed: _isLoading || _justSaved ? null : _saveGoal,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: _buildActionButtonContent(),
-          ),
-        ),
-      ],
     );
   }
 

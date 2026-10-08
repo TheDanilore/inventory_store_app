@@ -9,11 +9,13 @@ enum TopCustomersDisplayMode { desktop, tablet, mobile }
 class TopCustomersCard extends StatelessWidget {
   final List<CustomerEntity> customers;
   final TopCustomersDisplayMode displayMode;
+  final VoidCallback? onHide;
 
   const TopCustomersCard({
     super.key,
     required this.customers,
     required this.displayMode,
+    this.onHide,
   });
 
   @override
@@ -131,6 +133,59 @@ class TopCustomersCard extends StatelessWidget {
             ),
             label: const Icon(Icons.arrow_forward_rounded, size: 16),
           ),
+          if (onHide != null) ...[
+            const SizedBox(width: 6),
+            PopupMenuButton<String>(
+              tooltip: 'Opciones de Segmentación de Clientes',
+              icon: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const Icon(
+                  Icons.more_horiz_rounded,
+                  size: 16,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 150),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 4,
+              onSelected: (val) {
+                if (val == 'hide') onHide!();
+              },
+              itemBuilder: (ctx) => [
+                const PopupMenuItem(
+                  value: 'hide',
+                  height: 38,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.visibility_off_outlined,
+                        size: 16,
+                        color: Color(0xFFE11D48),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Ocultar widget',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFE11D48),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

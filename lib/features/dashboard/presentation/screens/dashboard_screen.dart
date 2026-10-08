@@ -49,12 +49,12 @@ class _DashboardScreenContent extends StatefulWidget {
         builder: (context) {
           return Dialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
             ),
-            backgroundColor: AppColors.surface,
-            elevation: 16,
+            backgroundColor: Colors.white,
+            elevation: 12,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
+              constraints: const BoxConstraints(maxWidth: 480),
               child: AdminGoalDialog(
                 currentAmount: currentAmount,
                 targetAmount: targetAmount,
@@ -86,7 +86,7 @@ class _DashboardScreenContent extends StatefulWidget {
                     width: 38,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: AppColors.border,
+                      color: const Color(0xFFE2E8F0),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -288,21 +288,6 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
           showBackButton: false,
           showDrawerButton: true,
           showProfileButton: true,
-          actions: [
-            // Botón rápido de recarga en el header con tooltip de atajo [R]
-            Tooltip(
-              message: 'Recargar métricas (Atajo: R)',
-              child: IconButton(
-                icon: const Icon(Icons.refresh_rounded),
-                onPressed: () async {
-                  if (!kIsWeb) {
-                    Vibration.vibrate(duration: 40, amplitude: 90);
-                  }
-                  await context.read<DashboardCubit>().loadDashboardData();
-                },
-              ),
-            ),
-          ],
           body: RefreshIndicator(
             color: AppColors.primary,
             onRefresh: () async {
@@ -919,87 +904,66 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
   Widget _buildDesktopBentoGrid(BuildContext context, DashboardLoaded state) {
     final leftWidgets = <Widget>[
       if (_visibleWidgets.contains('profit_spline'))
-        _ModularCardWrapper(
-          id: 'profit_spline',
-          title: 'Curva de Utilidad y Ventas',
+        DashboardSplineChartCard(
+          sales: state.sales,
+          inventory: state.inventory,
           onHide: () => _removeWidget(
             'profit_spline',
             'Curva de Utilidad y Ventas',
           ),
-          child: DashboardSplineChartCard(
-            sales: state.sales,
-            inventory: state.inventory,
-          ),
         ),
       if (_visibleWidgets.contains('best_sellers'))
-        _ModularCardWrapper(
-          id: 'best_sellers',
-          title: 'Productos de Mayor Rotación',
+        DashboardBestSellersTable(
+          bestSellers: state.sales.bestSellers,
+          criticalBatches: state.criticalBatches,
           onHide: () => _removeWidget(
             'best_sellers',
             'Productos de Mayor Rotación',
           ),
-          child: DashboardBestSellersTable(
-            criticalBatches: state.criticalBatches,
-          ),
         ),
       if (_visibleWidgets.contains('customer_segments') &&
           state.topCustomers.isNotEmpty)
-        _ModularCardWrapper(
-          id: 'customer_segments',
-          title: 'Segmentación de Clientes',
+        TopCustomersCard(
+          customers: state.topCustomers,
+          displayMode: TopCustomersDisplayMode.desktop,
           onHide: () => _removeWidget(
             'customer_segments',
             'Segmentación de Clientes',
-          ),
-          child: TopCustomersCard(
-            customers: state.topCustomers,
-            displayMode: TopCustomersDisplayMode.desktop,
           ),
         ),
     ];
 
     final rightWidgets = <Widget>[
       if (_visibleWidgets.contains('weekly_activity'))
-        _ModularCardWrapper(
-          id: 'weekly_activity',
-          title: 'Días de Mayor Actividad',
+        DashboardWeeklyActivityCard(
+          sales: state.sales,
           onHide: () => _removeWidget(
             'weekly_activity',
             'Días de Mayor Actividad',
           ),
-          child: const DashboardWeeklyActivityCard(),
         ),
       if (_visibleWidgets.contains('radial_goal'))
-        _ModularCardWrapper(
-          id: 'radial_goal',
-          title: 'Meta Financiera de Ahorro',
+        _DashboardAdminGoalCard(
           onHide: () => _removeWidget(
             'radial_goal',
             'Meta Financiera de Ahorro',
           ),
-          child: const _DashboardAdminGoalCard(),
         ),
       if (_visibleWidgets.contains('ai_assistant'))
-        _ModularCardWrapper(
-          id: 'ai_assistant',
-          title: 'Asistente IA Predictivo',
+        DashboardAiAssistantCard(
           onHide: () => _removeWidget(
             'ai_assistant',
             'Asistente IA Predictivo',
           ),
-          child: const DashboardAiAssistantCard(),
         ),
       if (_visibleWidgets.contains('expiring_batches') &&
           state.criticalBatches.isNotEmpty)
-        _ModularCardWrapper(
-          id: 'expiring_batches',
-          title: 'Lotes Críticos por Vencer',
+        ExpiringBatchesCard(
+          batches: state.criticalBatches,
           onHide: () => _removeWidget(
             'expiring_batches',
             'Lotes Críticos por Vencer',
           ),
-          child: ExpiringBatchesCard(batches: state.criticalBatches),
         ),
     ];
 
@@ -1178,84 +1142,63 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
       if (_visibleWidgets.contains('kpi_strip'))
         _buildTabletKpiGrid(context, state),
       if (_visibleWidgets.contains('profit_spline'))
-        _ModularCardWrapper(
-          id: 'profit_spline',
-          title: 'Curva de Utilidad y Ventas',
+        DashboardSplineChartCard(
+          sales: state.sales,
+          inventory: state.inventory,
           onHide: () => _removeWidget(
             'profit_spline',
             'Curva de Utilidad y Ventas',
           ),
-          child: DashboardSplineChartCard(
-            sales: state.sales,
-            inventory: state.inventory,
-          ),
         ),
       if (_visibleWidgets.contains('customer_segments') &&
           state.topCustomers.isNotEmpty)
-        _ModularCardWrapper(
-          id: 'customer_segments',
-          title: 'Segmentación de Clientes',
+        TopCustomersCard(
+          customers: state.topCustomers,
+          displayMode: TopCustomersDisplayMode.mobile,
           onHide: () => _removeWidget(
             'customer_segments',
             'Segmentación de Clientes',
           ),
-          child: TopCustomersCard(
-            customers: state.topCustomers,
-            displayMode: TopCustomersDisplayMode.mobile,
-          ),
         ),
       if (_visibleWidgets.contains('weekly_activity'))
-        _ModularCardWrapper(
-          id: 'weekly_activity',
-          title: 'Días de Mayor Actividad',
+        DashboardWeeklyActivityCard(
+          sales: state.sales,
           onHide: () => _removeWidget(
             'weekly_activity',
             'Días de Mayor Actividad',
           ),
-          child: const DashboardWeeklyActivityCard(),
         ),
       if (_visibleWidgets.contains('radial_goal'))
-        _ModularCardWrapper(
-          id: 'radial_goal',
-          title: 'Meta Financiera de Ahorro',
+        _DashboardAdminGoalCard(
           onHide: () => _removeWidget(
             'radial_goal',
             'Meta Financiera de Ahorro',
           ),
-          child: const _DashboardAdminGoalCard(),
         ),
       if (_visibleWidgets.contains('ai_assistant'))
-        _ModularCardWrapper(
-          id: 'ai_assistant',
-          title: 'Asistente IA Predictivo',
+        DashboardAiAssistantCard(
           onHide: () => _removeWidget(
             'ai_assistant',
             'Asistente IA Predictivo',
           ),
-          child: const DashboardAiAssistantCard(),
         ),
       if (_visibleWidgets.contains('best_sellers'))
-        _ModularCardWrapper(
-          id: 'best_sellers',
-          title: 'Productos de Mayor Rotación',
+        DashboardBestSellersTable(
+          bestSellers: state.sales.bestSellers,
+          criticalBatches: state.criticalBatches,
           onHide: () => _removeWidget(
             'best_sellers',
             'Productos de Mayor Rotación',
           ),
-          child: DashboardBestSellersTable(
-            criticalBatches: state.criticalBatches,
-          ),
         ),
       if (_visibleWidgets.contains('expiring_batches') &&
           state.criticalBatches.isNotEmpty)
-        _ModularCardWrapper(
-          id: 'expiring_batches',
-          title: 'Lotes Críticos por Vencer',
+        ExpiringBatchesCard(
+          batches: state.criticalBatches,
           onHide: () => _removeWidget(
             'expiring_batches',
             'Lotes Críticos por Vencer',
           ),
-          child: ExpiringBatchesCard(batches: state.criticalBatches),
         ),
       if (!_hasAnyWidgetsVisible(state))
         _buildEmptyWidgetsPlaceholder(),
@@ -1299,22 +1242,22 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         segments: [
           ButtonSegment(
             value: SalesTimeFilter.today,
-            label: Text(isDesktop ? 'Hoy [1]' : 'Hoy'),
+            label: const Text('Hoy'),
             tooltip: isDesktop ? 'Filtrar por hoy (Atajo: 1)' : null,
           ),
           ButtonSegment(
             value: SalesTimeFilter.thisWeek,
-            label: Text(isDesktop ? 'Sem [2]' : 'Sem'),
+            label: Text(isDesktop ? 'Semana' : 'Sem'),
             tooltip: isDesktop ? 'Filtrar por semana (Atajo: 2)' : null,
           ),
           ButtonSegment(
             value: SalesTimeFilter.thisMonth,
-            label: Text(isDesktop ? 'Mes [3]' : 'Mes'),
+            label: const Text('Mes'),
             tooltip: isDesktop ? 'Filtrar por mes (Atajo: 3)' : null,
           ),
           ButtonSegment(
             value: SalesTimeFilter.allTime,
-            label: Text(isDesktop ? 'Hist [4]' : 'Hist'),
+            label: Text(isDesktop ? 'Histórico' : 'Hist'),
             tooltip: isDesktop ? 'Filtrar histórico (Atajo: 4)' : null,
           ),
         ],
@@ -1356,88 +1299,6 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Envoltorio modular para tarjetas del Dashboard con menú contextual de 3 puntos (Shopeers Style)
-class _ModularCardWrapper extends StatelessWidget {
-  final String id;
-  final String title;
-  final Widget child;
-  final VoidCallback onHide;
-
-  const _ModularCardWrapper({
-    required this.id,
-    required this.title,
-    required this.child,
-    required this.onHide,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        child,
-        Positioned(
-          top: 10,
-          right: 10,
-          child: Material(
-            color: Colors.transparent,
-            child: PopupMenuButton<String>(
-              tooltip: 'Opciones de $title',
-              icon: Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.85),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.more_horiz_rounded,
-                  size: 16,
-                  color: Color(0xFF94A3B8),
-                ),
-              ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 150),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              elevation: 3,
-              onSelected: (val) {
-                if (val == 'hide') {
-                  onHide();
-                }
-              },
-              itemBuilder: (ctx) => [
-                PopupMenuItem(
-                  value: 'hide',
-                  height: 36,
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.visibility_off_outlined,
-                        size: 15,
-                        color: Color(0xFFE11D48),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Ocultar widget',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFFE11D48),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1618,8 +1479,9 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
 
 class ExpiringBatchesCard extends StatelessWidget {
   final List<Map<String, dynamic>> batches;
+  final VoidCallback? onHide;
 
-  const ExpiringBatchesCard({super.key, required this.batches});
+  const ExpiringBatchesCard({super.key, required this.batches, this.onHide});
 
   @override
   Widget build(BuildContext context) {
@@ -1676,6 +1538,13 @@ class ExpiringBatchesCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onHide != null) ...[
+                const SizedBox(width: 6),
+                DashboardCardOptionsMenu(
+                  title: 'Lotes Críticos por Vencer',
+                  onHide: onHide!,
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 16),
@@ -1773,7 +1642,8 @@ class ExpiringBatchesCard extends StatelessWidget {
 }
 
 class _DashboardAdminGoalCard extends StatelessWidget {
-  const _DashboardAdminGoalCard();
+  final VoidCallback? onHide;
+  const _DashboardAdminGoalCard({this.onHide});
 
   @override
   Widget build(BuildContext context) {
@@ -1789,6 +1659,7 @@ class _DashboardAdminGoalCard extends StatelessWidget {
         return DashboardRadialGoalCard(
           currentAmount: goal.$1,
           targetAmount: goal.$2,
+          onHide: onHide,
           onConfigure:
               () => _DashboardScreenContent._openGoalDialog(
                 context,

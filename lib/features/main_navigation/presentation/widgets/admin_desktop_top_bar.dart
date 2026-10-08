@@ -53,60 +53,43 @@ class AdminDesktopTopBar extends StatelessWidget {
             const SizedBox(width: 14),
           ],
 
-          // ── Omnipresent Command Search Bar (Shopeers / Apple Style) ─
-          InkWell(
-            onTap: () => AdminCommandPaletteDialog.show(context),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              height: 38,
-              width: 320,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFFE2E8F0),
-                  width: 1,
+          Tooltip(
+            message: 'Buscar en el ERP (Atajo: ⌘K / /)',
+            child: InkWell(
+              onTap: () => AdminCommandPaletteDialog.show(context),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                height: 38,
+                width: 320,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.search_rounded,
-                    size: 18,
-                    color: Color(0xFF94A3B8),
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Buscar en el ERP...',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF94A3B8),
-                        fontWeight: FontWeight.w400,
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.search_rounded,
+                      size: 18,
+                      color: Color(0xFF94A3B8),
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Buscar en el ERP...',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF94A3B8),
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: const Text(
-                      '⌘ K',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

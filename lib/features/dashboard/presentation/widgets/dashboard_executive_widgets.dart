@@ -188,17 +188,88 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
   }
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE REUTILIZABLE: MENÚ DE OPCIONES CONTEXTUALES DE TARJETA
+// ─────────────────────────────────────────────────────────────────────────────
+class DashboardCardOptionsMenu extends StatelessWidget {
+  final String title;
+  final VoidCallback onHide;
+
+  const DashboardCardOptionsMenu({
+    super.key,
+    required this.title,
+    required this.onHide,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      tooltip: 'Opciones de $title',
+      icon: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: const Icon(
+          Icons.more_horiz_rounded,
+          size: 16,
+          color: Color(0xFF64748B),
+        ),
+      ),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 150),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      elevation: 4,
+      onSelected: (val) {
+        if (val == 'hide') onHide();
+      },
+      itemBuilder: (ctx) => [
+        const PopupMenuItem(
+          value: 'hide',
+          height: 38,
+          child: Row(
+            children: [
+              Icon(
+                Icons.visibility_off_outlined,
+                size: 16,
+                color: Color(0xFFE11D48),
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Ocultar widget',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFFE11D48),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. DASHBOARD SPLINE REVENUE CHART CARD (SHOPEERS TOTAL PROFIT CURVE)
 // ─────────────────────────────────────────────────────────────────────────────
 class DashboardSplineChartCard extends StatefulWidget {
   final SalesMetricsEntity sales;
   final InventoryMetricsEntity inventory;
+  final VoidCallback? onHide;
 
   const DashboardSplineChartCard({
     super.key,
     required this.sales,
     required this.inventory,
+    this.onHide,
   });
 
   @override
@@ -214,16 +285,19 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
     final revenue = widget.sales.totalRevenue;
     final totalSales = widget.sales.totalSales;
 
-    // Simulated spline data points for smooth curved rendering
-    final dataPoints = [
-      revenue * 0.45,
-      revenue * 0.60,
-      revenue * 0.52,
-      revenue * 0.85,
-      revenue * 0.70,
-      revenue * 0.95,
-      revenue > 0 ? revenue : 12450.0,
-    ];
+    final dataPoints = widget.sales.revenueTrendPoints.isNotEmpty
+        ? widget.sales.revenueTrendPoints
+        : (revenue > 0
+            ? [
+                revenue * 0.15,
+                revenue * 0.28,
+                revenue * 0.42,
+                revenue * 0.58,
+                revenue * 0.72,
+                revenue * 0.88,
+                revenue,
+              ]
+            : [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
 
     final dates = [
       '1 Ene',
@@ -252,96 +326,160 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Title, Metric and Badge
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          // Header: Adaptativo móvil / escritorio sin desborde
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isMobileHeader = constraints.maxWidth < 580;
+
+              final badgeAndMenu = Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'Ingresos & Ganancia Total',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF64748B),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 4.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.insights_rounded,
+                          size: 14,
+                          color: Color(0xFF2563EB),
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          'En Tiempo Real',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1D4ED8),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Text(
-                        'S/ ${revenue.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF0F172A),
-                          letterSpacing: -0.7,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFDCFCE7),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.arrow_drop_up_rounded,
-                              size: 16,
-                              color: Color(0xFF16A34A),
-                            ),
-                            Text(
-                              '▲ 24.4% vs anterior',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF15803D),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                  if (widget.onHide != null) ...[
+                    const SizedBox(width: 6),
+                    DashboardCardOptionsMenu(
+                      title: 'Ingresos & Ganancia Total',
+                      onHide: widget.onHide!,
+                    ),
+                  ],
                 ],
-              ),
-              Container(
+              );
+
+              final deltaPill = Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
+                  horizontal: 8,
+                  vertical: 3,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  color: const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.insights_rounded,
-                      size: 15,
-                      color: Color(0xFF2563EB),
+                      Icons.arrow_drop_up_rounded,
+                      size: 16,
+                      color: Color(0xFF16A34A),
                     ),
-                    SizedBox(width: 6),
                     Text(
-                      'En Tiempo Real',
+                      '▲ 24.4% vs anterior',
                       style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1E40AF),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF15803D),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              );
+
+              if (isMobileHeader) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Ingresos & Ganancia Total',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF64748B),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        badgeAndMenu,
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          'S/ ${revenue.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF0F172A),
+                            letterSpacing: -0.6,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        deltaPill,
+                      ],
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Ingresos & Ganancia Total',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Text(
+                            'S/ ${revenue.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF0F172A),
+                              letterSpacing: -0.7,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          deltaPill,
+                        ],
+                      ),
+                    ],
+                  ),
+                  badgeAndMenu,
+                ],
+              );
+            },
           ),
           const SizedBox(height: 24),
 
@@ -645,22 +783,34 @@ class _SplineAreaChartPainter extends CustomPainter {
 // 3. DASHBOARD WEEKLY ACTIVITY BAR CARD (SHOPEERS MOST DAY ACTIVE)
 // ─────────────────────────────────────────────────────────────────────────────
 class DashboardWeeklyActivityCard extends StatelessWidget {
-  const DashboardWeeklyActivityCard({super.key});
+  final SalesMetricsEntity? sales;
+  final VoidCallback? onHide;
+
+  const DashboardWeeklyActivityCard({
+    super.key,
+    this.sales,
+    this.onHide,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Days and representative activity counts
-    final days = [
-      {'day': 'Dom', 'val': 3240, 'active': false},
-      {'day': 'Lun', 'val': 5120, 'active': false},
-      {'day': 'Mar', 'val': 8162, 'active': true}, // Peak day
-      {'day': 'Mié', 'val': 4680, 'active': false},
-      {'day': 'Jue', 'val': 3910, 'active': false},
-      {'day': 'Vie', 'val': 5890, 'active': false},
-      {'day': 'Sáb', 'val': 4200, 'active': false},
-    ];
+    final days = (sales != null && sales!.weeklyActivity.isNotEmpty)
+        ? sales!.weeklyActivity
+        : [
+            {'day': 'Dom', 'val': 0.0, 'orders': 0, 'active': false},
+            {'day': 'Lun', 'val': 0.0, 'orders': 0, 'active': false},
+            {'day': 'Mar', 'val': 0.0, 'orders': 0, 'active': false},
+            {'day': 'Mié', 'val': 0.0, 'orders': 0, 'active': false},
+            {'day': 'Jue', 'val': 0.0, 'orders': 0, 'active': false},
+            {'day': 'Vie', 'val': 0.0, 'orders': 0, 'active': false},
+            {'day': 'Sáb', 'val': 0.0, 'orders': 0, 'active': false},
+          ];
 
-    const double maxVal = 8162;
+    double maxVal = 1.0;
+    for (var d in days) {
+      final v = (d['val'] as num?)?.toDouble() ?? 0.0;
+      if (v > maxVal) maxVal = v;
+    }
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -690,20 +840,32 @@ class DashboardWeeklyActivityCard extends StatelessWidget {
                   color: Color(0xFF0F172A),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'Martes pico',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF2563EB),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      sales?.peakDayLabel ?? 'Semana activa',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
                   ),
-                ),
+                  if (onHide != null) ...[
+                    const SizedBox(width: 6),
+                    DashboardCardOptionsMenu(
+                      title: 'Actividad Semanal',
+                      onHide: onHide!,
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
@@ -724,7 +886,7 @@ class DashboardWeeklyActivityCard extends StatelessWidget {
                     return Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        if (isActive)
+                        if (isActive && val > 0)
                           Container(
                             margin: const EdgeInsets.only(bottom: 6),
                             padding: const EdgeInsets.symmetric(
@@ -735,9 +897,9 @@ class DashboardWeeklyActivityCard extends StatelessWidget {
                               color: const Color(0xFF2563EB),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text(
-                              '8,162',
-                              style: TextStyle(
+                            child: Text(
+                              val >= 1000 ? '${(val / 1000).toStringAsFixed(1)}k' : val.toStringAsFixed(0),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -791,12 +953,14 @@ class DashboardRadialGoalCard extends StatelessWidget {
   final double currentAmount;
   final double targetAmount;
   final VoidCallback onConfigure;
+  final VoidCallback? onHide;
 
   const DashboardRadialGoalCard({
     super.key,
     required this.currentAmount,
     required this.targetAmount,
     required this.onConfigure,
+    this.onHide,
   });
 
   @override
@@ -1022,8 +1186,9 @@ class _AppleRadialGaugePainter extends CustomPainter {
 // ─────────────────────────────────────────────────────────────────────────────
 class DashboardAiAssistantCard extends StatelessWidget {
   final VoidCallback? onQuerySubmit;
+  final VoidCallback? onHide;
 
-  const DashboardAiAssistantCard({super.key, this.onQuerySubmit});
+  const DashboardAiAssistantCard({super.key, this.onQuerySubmit, this.onHide});
 
   @override
   Widget build(BuildContext context) {
@@ -1054,20 +1219,32 @@ class DashboardAiAssistantCard extends StatelessWidget {
                   color: Color(0xFF0F172A),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'IA Beta',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF2563EB),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'IA Beta',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
                   ),
-                ),
+                  if (onHide != null) ...[
+                    const SizedBox(width: 6),
+                    DashboardCardOptionsMenu(
+                      title: 'Asistente ERP Inteligente',
+                      onHide: onHide!,
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
@@ -1152,55 +1329,22 @@ class DashboardAiAssistantCard extends StatelessWidget {
 // 6. DASHBOARD BEST SELLING PRODUCTS TABLE (SHOPEERS DATA TABLE PRO)
 // ─────────────────────────────────────────────────────────────────────────────
 class DashboardBestSellersTable extends StatelessWidget {
+  final List<Map<String, dynamic>>? bestSellers;
   final List<Map<String, dynamic>> criticalBatches;
+  final VoidCallback? onHide;
 
-  const DashboardBestSellersTable({super.key, required this.criticalBatches});
+  const DashboardBestSellersTable({
+    super.key,
+    this.bestSellers,
+    required this.criticalBatches,
+    this.onHide,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Representative top performance products data
-    final products = [
-      {
-        'id': '#83009',
-        'name': 'Gaseosa Inka Cola 3L Retornable',
-        'category': 'Bebidas',
-        'sold': '2,310 unid.',
-        'revenue': 'S/ 18,480.00',
-        'rating': '★ 5.0',
-        'status': 'Alta Rotación',
-        'statusColor': const Color(0xFF16A34A),
-      },
-      {
-        'id': '#83001',
-        'name': 'Arroz Costeño Extra 50kg',
-        'category': 'Abarrotes',
-        'sold': '1,230 unid.',
-        'revenue': 'S/ 14,760.00',
-        'rating': '★ 4.8',
-        'status': 'Alta Rotación',
-        'statusColor': const Color(0xFF16A34A),
-      },
-      {
-        'id': '#83004',
-        'name': 'Aceite Primor Premium 1L',
-        'category': 'Abarrotes',
-        'sold': '812 unid.',
-        'revenue': 'S/ 7,308.00',
-        'rating': '★ 4.7',
-        'status': 'Estable',
-        'statusColor': const Color(0xFF2563EB),
-      },
-      {
-        'id': '#83002',
-        'name': 'Leche Gloria Azul 400g Caja x24',
-        'category': 'Lácteos',
-        'sold': '645 unid.',
-        'revenue': 'S/ 5,805.00',
-        'rating': '★ 4.5',
-        'status': 'Estable',
-        'statusColor': const Color(0xFF2563EB),
-      },
-    ];
+    final products = (bestSellers != null && bestSellers!.isNotEmpty)
+        ? bestSellers!
+        : <Map<String, dynamic>>[];
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1254,30 +1398,57 @@ class DashboardBestSellersTable extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                  if (onHide != null)
+                    DashboardCardOptionsMenu(
+                      title: 'Productos con Mayor Rotación',
+                      onHide: onHide!,
                     ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: const Text(
-                      'Top 4',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(height: 14),
 
-              if (isMobile)
+              if (products.isEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
+                  alignment: Alignment.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF1F5F9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.inventory_2_outlined,
+                          color: Color(0xFF94A3B8),
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Sin ventas en este período',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF334155),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Registra ventas en el POS para ver la rotación de artículos en tiempo real.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (isMobile)
                 // ── VISTA MÓVIL: APPLE HIG / SHOPEERS LIST CARDS ──────────
                 ListView.separated(
                   shrinkWrap: true,
@@ -1376,7 +1547,7 @@ class DashboardBestSellersTable extends StatelessWidget {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: (p['statusColor'] as Color).withValues(
+                                  color: ((p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB)))).withValues(
                                     alpha: 0.12,
                                   ),
                                   borderRadius: BorderRadius.circular(12),
@@ -1386,7 +1557,7 @@ class DashboardBestSellersTable extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
-                                    color: p['statusColor'] as Color,
+                                    color: (p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB))),
                                   ),
                                 ),
                               ),
@@ -1562,7 +1733,7 @@ class DashboardBestSellersTable extends StatelessWidget {
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: (p['statusColor'] as Color).withValues(
+                                color: ((p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB)))).withValues(
                                   alpha: 0.12,
                                 ),
                                 borderRadius: BorderRadius.circular(20),
@@ -1572,7 +1743,7 @@ class DashboardBestSellersTable extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w700,
-                                  color: p['statusColor'] as Color,
+                                  color: (p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB))),
                                 ),
                                 textAlign: TextAlign.center,
                               ),
