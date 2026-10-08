@@ -11,6 +11,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_state.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_settings_dialog.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_help_dialog.dart';
 
 // ---------------------------------------------------------------------------
 // Modelo de datos para los ítems del drawer
@@ -129,8 +131,8 @@ class _AppDrawerState extends State<AppDrawer> {
                   _buildItem(
                     context,
                     _DrawerItem(
-                      icon: Icons.grid_view_rounded,
-                      title: 'Catálogo',
+                      icon: Icons.bar_chart_rounded,
+                      title: 'Dashboard',
                       routePath: '/',
                       onTap: () {
                         Navigator.pop(context);
@@ -141,12 +143,12 @@ class _AppDrawerState extends State<AppDrawer> {
                   _buildItem(
                     context,
                     _DrawerItem(
-                      icon: Icons.bar_chart_rounded,
-                      title: 'Dashboard',
-                      routePath: '/dashboard',
+                      icon: Icons.grid_view_rounded,
+                      title: 'Catálogo',
+                      routePath: '/catalog',
                       onTap: () {
                         Navigator.pop(context);
-                        context.go('/dashboard');
+                        context.go('/catalog');
                       },
                     ),
                   ),
@@ -434,6 +436,34 @@ class _AppDrawerState extends State<AppDrawer> {
                       );
                     },
                   ),
+
+                  // ── SISTEMA & SOPORTE ──────────────────────────────
+                  const _SectionDivider(),
+                  _buildSectionTitle('SISTEMA & SOPORTE'),
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.settings_outlined,
+                      title: 'Configuraciones',
+                      routePath: '__settings__',
+                      onTap: () {
+                        Navigator.pop(context);
+                        AdminSettingsDialog.show(context);
+                      },
+                    ),
+                  ),
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.help_outline_rounded,
+                      title: 'Ayuda y Soporte',
+                      routePath: '__help__',
+                      onTap: () {
+                        Navigator.pop(context);
+                        AdminHelpDialog.show(context);
+                      },
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -524,6 +554,15 @@ class _AppDrawerState extends State<AppDrawer> {
   bool _isItemActive(String routePath, String currentPath) {
     if (routePath.isEmpty) return false;
     if (currentPath == routePath) return true;
+    if (routePath == '/' && (currentPath == '/dashboard' || currentPath == '/')) {
+      return true;
+    }
+    if (routePath == '/catalog' &&
+        (currentPath == '/catalog' ||
+            currentPath == '/products' ||
+            currentPath.startsWith('/products/'))) {
+      return true;
+    }
     if (routePath != '/' && currentPath.startsWith('$routePath/')) {
       return true;
     }

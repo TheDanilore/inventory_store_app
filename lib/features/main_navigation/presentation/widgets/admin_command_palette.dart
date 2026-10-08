@@ -57,14 +57,14 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
     AdminCommandPaletteItem(
       title: 'Dashboard General',
       subtitle: 'Métricas de ventas, inventario y meta',
-      routePath: '/dashboard',
+      routePath: '/',
       icon: Icons.bar_chart_rounded,
       category: 'Navegación Rápida',
     ),
     AdminCommandPaletteItem(
       title: 'Catálogo de Productos',
       subtitle: 'Exploración y vista comercial de productos',
-      routePath: '/',
+      routePath: '/catalog',
       icon: Icons.grid_view_rounded,
       category: 'Navegación Rápida',
     ),

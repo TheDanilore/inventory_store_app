@@ -113,7 +113,8 @@ class AdminShellHelper {
     '/inventory-exits': 'Inicio  ›  Salidas de Inventario',
     '/products/product-form': 'Inicio  ›  Productos  ›  Formulario',
     '/products': 'Inicio  ›  Productos',
-    '/': 'Inicio  ›  Catálogo',
+    '/catalog': 'Inicio  ›  Catálogo',
+    '/': 'Inicio  ›  Dashboard',
     '/users/form': 'Inicio  ›  Usuarios  ›  Formulario Usuario',
     '/users': 'Inicio  ›  Usuarios',
     '/customer-credit-movements':
@@ -150,7 +151,8 @@ class AdminShellHelper {
     '/inventory-exits': 'Salidas de Inventario',
     '/products/product-form': 'Formulario de Producto',
     '/products': 'Catálogo de Productos',
-    '/': 'Catálogo de Productos',
+    '/catalog': 'Catálogo de Productos',
+    '/': 'Dashboard General',
     '/users/form': 'Formulario de Usuario',
     '/users': 'Gestión de Usuarios',
     '/customer-credit-movements': 'Movimientos de Crédito Clientes',
@@ -177,7 +179,7 @@ class AdminShellHelper {
   };
 
   static String resolveBreadcrumb(String path) {
-    if (path.isEmpty || path == '/') return 'Panel de Administración ERP';
+    if (path.isEmpty || path == '/') return 'Inicio  ›  Dashboard';
     for (final entry in breadcrumbMap.entries) {
       if (entry.key == '/') continue;
       if (path == entry.key || path.startsWith('${entry.key}/')) {
@@ -188,7 +190,7 @@ class AdminShellHelper {
   }
 
   static String resolveTitle(String path) {
-    if (path.isEmpty || path == '/') return 'Catálogo de Productos';
+    if (path.isEmpty || path == '/') return 'Dashboard General';
     for (final entry in titleMap.entries) {
       if (entry.key == '/') continue;
       if (path == entry.key || path.startsWith('${entry.key}/')) {

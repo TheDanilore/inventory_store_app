@@ -6,6 +6,8 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/app_co
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_state.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_settings_dialog.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_help_dialog.dart';
 
 class AdminSidebarItem {
   final IconData icon;
@@ -106,17 +108,17 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   _buildSidebarTile(
                     context,
                     const AdminSidebarItem(
-                      icon: Icons.grid_view_rounded,
-                      title: 'Catálogo',
+                      icon: Icons.bar_chart_rounded,
+                      title: 'Dashboard',
                       routePath: '/',
                     ),
                   ),
                   _buildSidebarTile(
                     context,
                     const AdminSidebarItem(
-                      icon: Icons.bar_chart_rounded,
-                      title: 'Dashboard',
-                      routePath: '/dashboard',
+                      icon: Icons.grid_view_rounded,
+                      title: 'Catálogo',
+                      routePath: '/catalog',
                     ),
                   ),
 
@@ -334,123 +336,135 @@ class _AdminSidebarState extends State<AdminSidebar> {
             ),
           ),
 
-          // ── DANILORE Cloud / Pro Status Card (Shopeers / Apple Style) ─
-          if (!widget.isCollapsed) _buildCloudStatusCard(),
-
-          // ── Collapse / Expand Footer Action ────────────────────────
+          // ── Pinned Bottom Actions: Settings & Help (Shopeers Style) ──
           const Divider(height: 1, color: AppColors.sidebarBorder),
-          InkWell(
-            onTap: widget.onToggleCollapse,
-            hoverColor: const Color(0xFFF1F5F9),
-            child: Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment:
-                    widget.isCollapsed
-                        ? MainAxisAlignment.center
-                        : MainAxisAlignment.spaceBetween,
-                children: [
-                  if (!widget.isCollapsed)
-                    const Text(
-                      'Colapsar menú',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                  Icon(
-                    widget.isCollapsed
-                        ? Icons.chevron_right_rounded
-                        : Icons.chevron_left_rounded,
-                    color: const Color(0xFF64748B),
-                    size: 20,
-                  ),
-                ],
-              ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              children: [
+                _buildActionTile(
+                  context,
+                  icon: Icons.settings_outlined,
+                  title: 'Configuraciones',
+                  onTap: () => AdminSettingsDialog.show(context),
+                ),
+                _buildActionTile(
+                  context,
+                  icon: Icons.help_outline_rounded,
+                  title: 'Ayuda y Soporte',
+                  onTap: () => AdminHelpDialog.show(context),
+                ),
+              ],
             ),
           ),
+
+          // ── Minimalist Cloud Connection Status Micro-Footer ──────────
+          const Divider(height: 1, color: AppColors.sidebarBorder),
+          _buildConnectionStatusFooter(),
         ],
       ),
     );
   }
 
-  Widget _buildCloudStatusCard() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1E3A8A), // Navy 900
-            Color(0xFF2563EB), // Blue 600
-          ],
+  Widget _buildActionTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          hoverColor: const Color(0xFFF1F5F9),
+          child: Container(
+            height: 38,
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.isCollapsed ? 0 : 10,
+            ),
+            child: ClipRect(
+              child: Row(
+                mainAxisAlignment:
+                    widget.isCollapsed
+                        ? MainAxisAlignment.center
+                        : MainAxisAlignment.start,
+                children: [
+                  Icon(icon, size: 19, color: const Color(0xFF64748B)),
+                  if (!widget.isCollapsed) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF475569),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2563EB).withValues(alpha: 0.22),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  Widget _buildConnectionStatusFooter() {
+    if (widget.isCollapsed) {
+      return Container(
+        height: 36,
+        alignment: Alignment.center,
+        child: Tooltip(
+          message: 'Cloud Sync: En línea · v1.4',
+          child: Container(
+            width: 7,
+            height: 7,
+            decoration: const BoxDecoration(
+              color: Color(0xFF10B981),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.cloud_done_rounded,
-                  color: Colors.white,
-                  size: 13,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'DANILORE Cloud',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          Text(
-            'ERP activo con sincronización de inventario en tiempo real.',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 10.5,
-              height: 1.25,
-            ),
-          ),
-          const SizedBox(height: 8),
           Container(
-            width: double.infinity,
-            height: 24,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(6),
+            width: 7,
+            height: 7,
+            decoration: const BoxDecoration(
+              color: Color(0xFF10B981),
+              shape: BoxShape.circle,
             ),
-            child: const Text(
-              'Servidor En Línea',
-              style: TextStyle(
-                color: Color(0xFF1E3A8A),
-                fontSize: 10.5,
-                fontWeight: FontWeight.w700,
-              ),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'Cloud Sync · v1.4',
+            style: TextStyle(
+              fontSize: 11,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const Spacer(),
+          const Text(
+            '24ms',
+            style: TextStyle(
+              fontSize: 10,
+              color: Color(0xFF94A3B8),
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -469,16 +483,26 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   ? MainAxisAlignment.center
                   : MainAxisAlignment.start,
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFDBEAFE), width: 1),
+            Tooltip(
+              message: widget.isCollapsed ? 'Expandir menú' : 'DANILORE ONE ERP',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: widget.isCollapsed ? widget.onToggleCollapse : null,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFDBEAFE), width: 1),
+                    ),
+                    child: Image.asset('assets/logo_icon.png', fit: BoxFit.contain),
+                  ),
+                ),
               ),
-              child: Image.asset('assets/logo_icon.png', fit: BoxFit.contain),
             ),
             if (!widget.isCollapsed) ...[
               const SizedBox(width: 12),
@@ -550,6 +574,32 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   },
                 ),
               ),
+              const SizedBox(width: 4),
+              Tooltip(
+                message: 'Colapsar menú',
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: widget.onToggleCollapse,
+                    borderRadius: BorderRadius.circular(8),
+                    hoverColor: const Color(0xFFF1F5F9),
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: const Icon(
+                        Icons.view_sidebar_outlined,
+                        size: 16,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ],
         ),
@@ -575,6 +625,15 @@ class _AdminSidebarState extends State<AdminSidebar> {
   bool _isItemActive(String routePath, String currentPath) {
     if (routePath.isEmpty) return false;
     if (currentPath == routePath) return true;
+    if (routePath == '/' && (currentPath == '/dashboard' || currentPath == '/')) {
+      return true;
+    }
+    if (routePath == '/catalog' &&
+        (currentPath == '/catalog' ||
+            currentPath == '/products' ||
+            currentPath.startsWith('/products/'))) {
+      return true;
+    }
     if (routePath != '/' && currentPath.startsWith('$routePath/')) {
       return true;
     }

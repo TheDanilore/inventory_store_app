@@ -43,114 +43,75 @@ class AdminDesktopTopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // ── Toggle Sidebar Button ─────────────────────────────────
-          _TopBarIconButton(
-            icon:
-                isSidebarCollapsed
-                    ? Icons.menu_open_rounded
-                    : Icons.menu_rounded,
-            tooltip: isSidebarCollapsed ? 'Expandir menú' : 'Colapsar menú',
-            onTap: onToggleSidebar,
-          ),
+          // ── Sub-page Back Button (Only when explicitly enabled for non-root views) ──
           if (showBackButton) ...[
-            const SizedBox(width: 8),
             _TopBarIconButton(
               icon: Icons.arrow_back_rounded,
               tooltip: 'Volver atrás',
               onTap: onBack,
             ),
+            const SizedBox(width: 14),
           ],
-          const SizedBox(width: 16),
-
-          // ── Title & Breadcrumbs ───────────────────────────────────
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0F172A),
-                  letterSpacing: -0.3,
-                ),
-              ),
-              Text(
-                breadcrumbText,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF64748B),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(width: 32),
 
           // ── Omnipresent Command Search Bar (Shopeers / Apple Style) ─
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: InkWell(
-                onTap: () => AdminCommandPaletteDialog.show(context),
+          InkWell(
+            onTap: () => AdminCommandPaletteDialog.show(context),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              height: 38,
+              width: 320,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  height: 38,
-                  constraints: const BoxConstraints(maxWidth: 380),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFFE2E8F0),
-                      width: 1,
+                border: Border.all(
+                  color: const Color(0xFFE2E8F0),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.search_rounded,
+                    size: 18,
+                    color: Color(0xFF94A3B8),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Buscar en el ERP...',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF94A3B8),
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.search_rounded,
-                        size: 18,
-                        color: Color(0xFF94A3B8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Text(
+                      '⌘ K',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
                       ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'Buscar en el ERP...',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF94A3B8),
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: const Text(
-                          '⌘ K',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
+
+          const Spacer(),
 
           // ── Quick Custom Actions ──────────────────────────────────
           if (actions != null)

@@ -27,6 +27,7 @@ import 'package:inventory_store_app/features/users/presentation/routes/users_rou
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/admin_catalog_screen.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_shell_layout.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/screens/dashboard_screen.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
@@ -248,6 +249,10 @@ class AppRouter {
                   routes: [
                     GoRoute(
                       path: '/',
+                      builder: (context, state) => const DashboardScreen(),
+                    ),
+                    GoRoute(
+                      path: '/catalog',
                       builder:
                           (context, state) => AdminCatalogScreen(
                             floatingActionButton: const PosCartFab(),

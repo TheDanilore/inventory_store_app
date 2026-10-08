@@ -171,7 +171,7 @@ class _DashboardScreenContent extends StatelessWidget {
         autofocus: true,
         child: AdminLayout(
           title: 'Dashboard',
-          showBackButton: true,
+          showBackButton: false,
           showDrawerButton: true,
           showProfileButton: true,
           actions: [
