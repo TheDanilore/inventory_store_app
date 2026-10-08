@@ -157,7 +157,7 @@ class _AdminSettingsDialogState extends State<AdminSettingsDialog>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'DANILORE Cloud Sync · Cambios persistidos',
+                    'Preferencias del Sistema',
                     style: TextStyle(
                       fontSize: 11.5,
                       color: Color(0xFF94A3B8),

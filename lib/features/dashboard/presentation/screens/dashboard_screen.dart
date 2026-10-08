@@ -289,51 +289,80 @@ class _DashboardScreenContent extends StatelessWidget {
     final now = DateTime.now();
     final dateStr = DateFormat('d MMM, yyyy', 'es').format(now);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 16,
-        runSpacing: 12,
+    if (!isDesktop) {
+      // ── MÓVIL: DISEÑO SIMÉTRICO EN 2 FILAS SHOPEERS ─────────────────────────
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Left: Screen Title & Subtitle
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          // Fila 1: Título y Botón Exportar (ambos con balance perfecto)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text(
-                'Dashboard',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF0F172A),
-                  letterSpacing: -0.6,
-                ),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Dashboard',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Métricas en tiempo real',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 2),
-              Text(
-                'Métricas clave de rendimiento y control en tiempo real',
-                style: TextStyle(
-                  fontSize: isDesktop ? 13 : 12,
-                  color: const Color(0xFF64748B),
-                  fontWeight: FontWeight.w500,
+              SizedBox(
+                height: 34,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Generando reporte consolidado del dashboard...',
+                        ),
+                        duration: Duration(seconds: 2),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 34),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  icon: const Icon(Icons.arrow_downward_rounded, size: 14),
+                  label: const Text('Exportar'),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
 
-          // Right: Date Range + Filters + Actions
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 10,
-            runSpacing: 8,
+          // Fila 2: Indicador de Fecha (34dp) + Segmentador de Tiempo (34dp)
+          Row(
             children: [
-              // Date Range Indicator Pill
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
+                height: 34,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(10),
@@ -344,14 +373,14 @@ class _DashboardScreenContent extends StatelessWidget {
                   children: [
                     const Icon(
                       Icons.calendar_today_outlined,
-                      size: 14,
+                      size: 13,
                       color: Color(0xFF64748B),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Text(
                       dateStr,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF0F172A),
                       ),
@@ -359,59 +388,133 @@ class _DashboardScreenContent extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 34,
+                  child: _buildSalesFilters(context, state, isDesktop: false),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
 
-              // Filter Segmented Pill
-              _buildSalesFilters(context, state, isDesktop: isDesktop),
+    // ── DESKTOP / TABLET: FILA ÚNICA CON ALTURA 38DP Y RADIO 10DP ─────────────
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Left: Screen Title & Subtitle
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Dashboard',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF0F172A),
+                letterSpacing: -0.6,
+              ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              'Métricas clave de rendimiento y control en tiempo real',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
 
-              // Reload Button with Shortcut Hint
-              Tooltip(
-                message: 'Recargar métricas (Atajo: R)',
-                child: Material(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(10),
-                    onTap: () {
-                      if (!kIsWeb) {
-                        Vibration.vibrate(duration: 30, amplitude: 60);
-                      }
-                      context.read<DashboardCubit>().loadDashboardData();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.refresh_rounded,
-                            size: 15,
-                            color: Color(0xFF475569),
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'Actualizar',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF475569),
-                            ),
-                          ),
-                        ],
-                      ),
+        // Right: Date Range + Filters + Actions (Exact 38dp height)
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Date Range Indicator Pill
+            Container(
+              height: 38,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.calendar_today_outlined,
+                    size: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    dateStr,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+
+            // Filter Segmented Pill
+            SizedBox(
+              height: 38,
+              child: _buildSalesFilters(context, state, isDesktop: true),
+            ),
+            const SizedBox(width: 10),
+
+            // Reload Button with Shortcut Hint
+            Tooltip(
+              message: 'Recargar métricas (Atajo: R)',
+              child: SizedBox(
+                height: 38,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    if (!kIsWeb) {
+                      Vibration.vibrate(duration: 30, amplitude: 60);
+                    }
+                    context.read<DashboardCubit>().loadDashboardData();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF475569),
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  icon: const Icon(
+                    Icons.refresh_rounded,
+                    size: 15,
+                    color: Color(0xFF475569),
+                  ),
+                  label: const Text(
+                    'Actualizar',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
+            ),
+            const SizedBox(width: 10),
 
-              // Export Button
-              FilledButton.icon(
+            // Export Button
+            SizedBox(
+              height: 38,
+              child: FilledButton.icon(
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -426,10 +529,7 @@ class _DashboardScreenContent extends StatelessWidget {
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF2563EB),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -441,10 +541,10 @@ class _DashboardScreenContent extends StatelessWidget {
                 icon: const Icon(Icons.arrow_downward_rounded, size: 15),
                 label: const Text('Exportar'),
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -796,10 +896,10 @@ class _DashboardScreenContent extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(2),
       child: SegmentedButton<SalesTimeFilter>(
         segments: [
           ButtonSegment(
@@ -832,9 +932,8 @@ class _DashboardScreenContent extends StatelessWidget {
           context.read<DashboardCubit>().updateSalesFilter(set.first);
         },
         style: ButtonStyle(
-          visualDensity:
-              isDesktop ? VisualDensity.compact : VisualDensity.comfortable,
-          tapTargetSize: MaterialTapTargetSize.padded,
+          visualDensity: VisualDensity.compact,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           backgroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
               return AppColors.primary;
@@ -849,10 +948,16 @@ class _DashboardScreenContent extends StatelessWidget {
           }),
           side: WidgetStateProperty.all(BorderSide.none),
           shape: WidgetStateProperty.all(
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          padding: WidgetStateProperty.all(
+            EdgeInsets.symmetric(horizontal: isDesktop ? 8 : 4, vertical: 0),
           ),
           textStyle: WidgetStateProperty.all(
-            const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+            TextStyle(
+              fontSize: isDesktop ? 12 : 11,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),

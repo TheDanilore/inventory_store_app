@@ -73,49 +73,19 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               // Header: Title and Icon Container
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    widget.title,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: widget.accentColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      widget.icon,
-                      size: 19,
-                      color: widget.accentColor,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Main Metric Value + Delta Pill
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
                   Expanded(
                     child: Text(
-                      widget.value,
+                      widget.title,
                       style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                        letterSpacing: -0.6,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -123,16 +93,50 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                   ),
                   const SizedBox(width: 8),
                   Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: widget.accentColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      widget.icon,
+                      size: 18,
+                      color: widget.accentColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Main Metric Value (Dedicated full width row -> NEVER truncated)
+              Text(
+                widget.value,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: -0.6,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+
+              // Bottom Row: Delta Pill + Subtitle
+              Row(
+                children: [
+                  Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
+                      horizontal: 6,
+                      vertical: 2.5,
                     ),
                     decoration: BoxDecoration(
                       color:
                           widget.isPositiveDelta
                               ? const Color(0xFFDCFCE7)
                               : const Color(0xFFFFE4E6),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -141,7 +145,7 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                           widget.isPositiveDelta
                               ? Icons.arrow_drop_up_rounded
                               : Icons.arrow_drop_down_rounded,
-                          size: 16,
+                          size: 15,
                           color:
                               widget.isPositiveDelta
                                   ? const Color(0xFF16A34A)
@@ -150,7 +154,7 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                         Text(
                           widget.deltaText,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 10.5,
                             fontWeight: FontWeight.w700,
                             color:
                                 widget.isPositiveDelta
@@ -161,20 +165,20 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      widget.subtitle,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF94A3B8),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
-              ),
-              const SizedBox(height: 6),
-
-              // Subtitle
-              Text(
-                widget.subtitle,
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF94A3B8),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -1198,251 +1202,392 @@ class DashboardBestSellersTable extends StatelessWidget {
       },
     ];
 
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Productos con Mayor Rotación',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Artículos más despachados y rendimiento financiero',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: const Text(
-                  'Top 4 Productos',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 650;
+
+        return Container(
+          padding: EdgeInsets.all(isMobile ? 16 : 22),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-
-          // Table Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Row(
-              children: [
-                SizedBox(
-                  width: 70,
-                  child: Text(
-                    'CÓDIGO',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'NOMBRE DEL PRODUCTO',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'DESPACHADOS',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'FACTURACIÓN',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 100,
-                  child: Text(
-                    'ESTADO',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
-
-          // Table Rows
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: products.length,
-            separatorBuilder:
-                (context, index) =>
-                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
-            itemBuilder: (context, index) {
-              final p = products[index];
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 70,
-                      child: Text(
-                        p['id'] as String,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF64748B),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Productos con Mayor Rotación',
+                          style: TextStyle(
+                            fontSize: isMobile ? 15 : 16,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF0F172A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Artículos más despachados y rendimiento financiero',
+                          style: TextStyle(
+                            fontSize: isMobile ? 11 : 12,
+                            color: const Color(0xFF64748B),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Text(
+                      'Top 4',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
                       ),
                     ),
-                    Expanded(
-                      flex: 3,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              if (isMobile)
+                // ── VISTA MÓVIL: APPLE HIG / SHOPEERS LIST CARDS ──────────
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: products.length,
+                  separatorBuilder:
+                      (context, index) =>
+                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                  itemBuilder: (context, index) {
+                    final p = products[index];
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Row(
                         children: [
                           Container(
-                            width: 32,
-                            height: 32,
+                            width: 36,
+                            height: 36,
                             decoration: BoxDecoration(
                               color: const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(
-                              Icons.inventory_2_outlined,
-                              size: 16,
-                              color: Color(0xFF2563EB),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
+                            alignment: Alignment.center,
                             child: Text(
-                              p['name'] as String,
+                              '#${index + 1}',
                               style: const TextStyle(
                                 fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF0F172A),
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF475569),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  p['name'] as String,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 3),
+                                Row(
+                                  children: [
+                                    Text(
+                                      p['category'] as String,
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        color: Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const Text(
+                                      '•',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Color(0xFFCBD5E1),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      p['sold'] as String,
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                p['revenue'] as String,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF10B981),
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: (p['statusColor'] as Color).withValues(
+                                    alpha: 0.12,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  p['status'] as String,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: p['statusColor'] as Color,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                )
+              else ...[
+                // ── VISTA DESKTOP: TABLA COMPLETA CON ENCABEZADOS ────────
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Row(
+                    children: [
+                      SizedBox(
+                        width: 70,
+                        child: Text(
+                          'CÓDIGO',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          'NOMBRE DEL PRODUCTO',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'DESPACHADOS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'FACTURACIÓN',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 100,
+                        child: Text(
+                          'ESTADO',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                // Table Rows
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: products.length,
+                  separatorBuilder:
+                      (context, index) =>
+                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                  itemBuilder: (context, index) {
+                    final p = products[index];
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 70,
+                            child: Text(
+                              p['id'] as String,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.inventory_2_outlined,
+                                    size: 16,
+                                    color: Color(0xFF2563EB),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    p['name'] as String,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              p['sold'] as String,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              p['revenue'] as String,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF10B981),
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 100,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: (p['statusColor'] as Color).withValues(
+                                  alpha: 0.12,
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                p['status'] as String,
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: p['statusColor'] as Color,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        p['sold'] as String,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        p['revenue'] as String,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF10B981),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 100,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: (p['statusColor'] as Color).withValues(
-                            alpha: 0.12,
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          p['status'] as String,
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: p['statusColor'] as Color,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              );
-            },
+              ],
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

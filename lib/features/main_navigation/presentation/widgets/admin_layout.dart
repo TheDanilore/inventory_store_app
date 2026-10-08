@@ -247,59 +247,88 @@ class _AdminLayoutState extends State<AdminLayout> {
                       shadowColor: Colors.black.withValues(alpha: 0.06),
                       surfaceTintColor: Colors.transparent,
                       titleSpacing: 0,
-                      title: Padding(
-                        padding: const EdgeInsets.only(left: 4),
-                        child: Text(
-                          widget.title,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ),
-                      leadingWidth:
-                          (widget.showBackButton && widget.showProfileButton)
-                              ? 104
-                              : 60,
+                      leadingWidth: widget.showBackButton ? 52 : 46,
                       leading:
-                          (!widget.showBackButton && !widget.showProfileButton)
-                              ? const SizedBox.shrink()
-                              : Align(
+                          widget.showBackButton
+                              ? Align(
                                 alignment: Alignment.centerLeft,
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const SizedBox(width: 12),
-                                      if (widget.showBackButton)
-                                        AdminAppBarIconButton(
-                                          icon:
-                                              Icons.arrow_back_ios_new_rounded,
-                                          tooltip: 'Volver',
-                                          onTap:
-                                              () =>
-                                                  _handleBackButton(context),
-                                        ),
-                                      if (widget.showBackButton &&
-                                          widget.showProfileButton)
-                                        const SizedBox(width: 8),
-                                      if (widget.showProfileButton)
-                                        AdminProfileAvatar(
-                                          onTap: () => _openProfile(context),
-                                        ),
-                                    ],
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 12),
+                                  child: AdminAppBarIconButton(
+                                    icon: Icons.arrow_back_ios_new_rounded,
+                                    tooltip: 'Volver',
+                                    onTap: () => _handleBackButton(context),
                                   ),
+                                ),
+                              )
+                              : Padding(
+                                padding: const EdgeInsets.only(left: 14),
+                                child: Center(
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEFF6FF),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: const Color(0xFFDBEAFE),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Image.asset(
+                                      'assets/logo_icon.png',
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                      title:
+                          widget.showBackButton
+                              ? Padding(
+                                padding: const EdgeInsets.only(left: 4),
+                                child: Text(
+                                  widget.title,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              )
+                              : const Padding(
+                                padding: EdgeInsets.only(left: 4),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'DANILORE',
+                                      style: TextStyle(
+                                        fontSize: 16.5,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF0F172A),
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'ONE',
+                                      style: TextStyle(
+                                        fontSize: 16.5,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF2563EB),
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                       actions: [
                         if (widget.actions != null) ...widget.actions!,
                         if (widget.actions != null &&
                             widget.actions!.isNotEmpty)
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
 
                         if (widget.showSettingsButton &&
                             widget.settingsActions != null &&
@@ -308,7 +337,7 @@ class _AdminLayoutState extends State<AdminLayout> {
                             items: widget.settingsActions!,
                             onSelected: widget.onSettingsSelected,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                         ],
 
                         if (widget.showDrawerButton)
@@ -323,10 +352,16 @@ class _AdminLayoutState extends State<AdminLayout> {
                                 ),
                           ),
 
+                        if (widget.showProfileButton) ...[
+                          const SizedBox(width: 6),
+                          AdminProfileAvatar(
+                            onTap: () => _openProfile(context),
+                          ),
+                        ],
+
                         const SizedBox(width: 12),
                       ],
-                    )
-                    : null,
+                    )                    : null,
             body: SafeArea(
               top: !widget.showAppBar,
               bottom: false,

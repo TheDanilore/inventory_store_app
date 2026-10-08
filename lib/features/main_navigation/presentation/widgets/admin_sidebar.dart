@@ -358,9 +358,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
             ),
           ),
 
-          // ── Minimalist Cloud Connection Status Micro-Footer ──────────
-          const Divider(height: 1, color: AppColors.sidebarBorder),
-          _buildConnectionStatusFooter(),
         ],
       ),
     );
@@ -417,60 +414,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
     );
   }
 
-  Widget _buildConnectionStatusFooter() {
-    if (widget.isCollapsed) {
-      return Container(
-        height: 36,
-        alignment: Alignment.center,
-        child: Tooltip(
-          message: 'Cloud Sync: En línea · v1.4',
-          child: Container(
-            width: 7,
-            height: 7,
-            decoration: const BoxDecoration(
-              color: Color(0xFF10B981),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: const BoxDecoration(
-              color: Color(0xFF10B981),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          const Text(
-            'Cloud Sync · v1.4',
-            style: TextStyle(
-              fontSize: 11,
-              color: Color(0xFF64748B),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const Spacer(),
-          const Text(
-            '24ms',
-            style: TextStyle(
-              fontSize: 10,
-              color: Color(0xFF94A3B8),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildBrandHeader(BuildContext context) {
     return Container(
