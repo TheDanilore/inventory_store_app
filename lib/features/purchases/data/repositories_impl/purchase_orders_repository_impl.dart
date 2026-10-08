@@ -71,7 +71,7 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
             id, created_at, supplier_id, supplier_name, warehouse_id,
             status, total_amount, payment_method, payment_status,
             amount_paid, due_date, discount_amount, tax_amount,
-            document_type, document_number, notes,
+            document_date, document_type, document_number, notes,
             suppliers!left(name),
             warehouses!left(name),
             purchase_order_items(count)
@@ -188,6 +188,16 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           }).toList();
 
       return Right(list);
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'fetchOrderItems PostgrestException: ${e.message}',
+        tag: 'PURCHASE_ORDERS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
       LoggerService.e(
         'fetchOrderItems fatal error: $e',
@@ -243,6 +253,16 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           })
           .eq('id', poId);
       return const Right(null);
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'updateOrderStatus PostgrestException: ${e.message}',
+        tag: 'PURCHASE_ORDERS_REPO',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(
+        ServerFailure(message: 'Error de base de datos: ${e.message}'),
+      );
     } catch (e, st) {
       LoggerService.e(
         'updateOrderStatus error: $e',
@@ -373,13 +393,14 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
   }) async {
     try {
       // 1. Validar que la orden exista y esté en estado PENDIENTE sin pagos
-      final currentPo = await _supabase
-          .from('purchase_orders')
-          .select(
-            'id, status, amount_paid, payment_method, supplier_id, total_amount',
-          )
-          .eq('id', orderId)
-          .maybeSingle();
+      final currentPo =
+          await _supabase
+              .from('purchase_orders')
+              .select(
+                'id, status, amount_paid, payment_method, supplier_id, total_amount',
+              )
+              .eq('id', orderId)
+              .maybeSingle();
 
       if (currentPo == null) {
         return Left(ServerFailure(message: 'La orden de compra no existe.'));
@@ -438,11 +459,12 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           if (oldSupplierId == supplierId) {
             final diff = totalAmount - oldTotal;
             if (diff != 0) {
-              final creditRes = await _supabase
-                  .from('supplier_credits')
-                  .select('id, current_debt, credit_limit, is_active')
-                  .eq('supplier_id', supplierId)
-                  .maybeSingle();
+              final creditRes =
+                  await _supabase
+                      .from('supplier_credits')
+                      .select('id, current_debt, credit_limit, is_active')
+                      .eq('supplier_id', supplierId)
+                      .maybeSingle();
               if (creditRes != null) {
                 final currentDebt =
                     (creditRes['current_debt'] as num?)?.toDouble() ?? 0.0;
@@ -479,11 +501,12 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
             }
           } else {
             if (oldSupplierId != null) {
-              final oldCredit = await _supabase
-                  .from('supplier_credits')
-                  .select('id, current_debt')
-                  .eq('supplier_id', oldSupplierId)
-                  .maybeSingle();
+              final oldCredit =
+                  await _supabase
+                      .from('supplier_credits')
+                      .select('id, current_debt')
+                      .eq('supplier_id', oldSupplierId)
+                      .maybeSingle();
               if (oldCredit != null) {
                 final curDebt =
                     (oldCredit['current_debt'] as num?)?.toDouble() ?? 0.0;
@@ -499,11 +522,12 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
                     .eq('id', oldCredit['id']);
               }
             }
-            final newCredit = await _supabase
-                .from('supplier_credits')
-                .select('id, current_debt, credit_limit, is_active')
-                .eq('supplier_id', supplierId)
-                .maybeSingle();
+            final newCredit =
+                await _supabase
+                    .from('supplier_credits')
+                    .select('id, current_debt, credit_limit, is_active')
+                    .eq('supplier_id', supplierId)
+                    .maybeSingle();
             if (newCredit != null) {
               final currentDebt =
                   (newCredit['current_debt'] as num?)?.toDouble() ?? 0.0;
@@ -529,11 +553,12 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           }
         } else {
           if (oldSupplierId != null) {
-            final oldCredit = await _supabase
-                .from('supplier_credits')
-                .select('id, current_debt')
-                .eq('supplier_id', oldSupplierId)
-                .maybeSingle();
+            final oldCredit =
+                await _supabase
+                    .from('supplier_credits')
+                    .select('id, current_debt')
+                    .eq('supplier_id', oldSupplierId)
+                    .maybeSingle();
             if (oldCredit != null) {
               final curDebt =
                   (oldCredit['current_debt'] as num?)?.toDouble() ?? 0.0;
@@ -551,11 +576,12 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           }
         }
       } else if (paymentMode == 'CRÉDITO') {
-        final newCredit = await _supabase
-            .from('supplier_credits')
-            .select('id, current_debt, credit_limit, is_active')
-            .eq('supplier_id', supplierId)
-            .maybeSingle();
+        final newCredit =
+            await _supabase
+                .from('supplier_credits')
+                .select('id, current_debt, credit_limit, is_active')
+                .eq('supplier_id', supplierId)
+                .maybeSingle();
         if (newCredit != null) {
           final currentDebt =
               (newCredit['current_debt'] as num?)?.toDouble() ?? 0.0;

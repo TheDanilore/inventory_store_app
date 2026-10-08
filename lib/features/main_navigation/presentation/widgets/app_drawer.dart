@@ -125,314 +125,314 @@ class _AppDrawerState extends State<AppDrawer> {
                 controller: _scrollController,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 children: [
-                _buildSectionTitle('MENÚ PRINCIPAL'),
-                _buildItem(
-                  context,
-                  _DrawerItem(
-                    icon: Icons.grid_view_rounded,
-                    title: 'Catálogo',
-                    routePath: '/',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/');
-                    },
+                  _buildSectionTitle('MENÚ PRINCIPAL'),
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.grid_view_rounded,
+                      title: 'Catálogo',
+                      routePath: '/',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/');
+                      },
+                    ),
                   ),
-                ),
-                _buildItem(
-                  context,
-                  _DrawerItem(
-                    icon: Icons.bar_chart_rounded,
-                    title: 'Dashboard',
-                    routePath: '/dashboard',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/dashboard');
-                    },
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.bar_chart_rounded,
+                      title: 'Dashboard',
+                      routePath: '/dashboard',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/dashboard');
+                      },
+                    ),
                   ),
-                ),
 
-                // ── GESTIÓN COMERCIAL ──────────────────────────────
-                const _SectionDivider(),
-                _buildSectionTitle('GESTIÓN COMERCIAL'),
+                  // ── GESTIÓN COMERCIAL ──────────────────────────────
+                  const _SectionDivider(),
+                  _buildSectionTitle('GESTIÓN COMERCIAL'),
 
-                // Pedidos (con badge dinámico consumido directamente desde el Cubit)
-                BlocBuilder<SidebarBadgeCubit, SidebarBadgeState>(
-                  builder: (ctx, state) {
-                    Widget? badge;
-                    if (state is SidebarBadgeLoaded && state.count > 0) {
-                      badge = _buildBadge(state.count);
-                    } else if (state is SidebarBadgeError) {
-                      badge = const Icon(
-                        Icons.warning_rounded,
-                        color: AppColors.error,
-                        size: 14,
+                  // Pedidos (con badge dinámico consumido directamente desde el Cubit)
+                  BlocBuilder<SidebarBadgeCubit, SidebarBadgeState>(
+                    builder: (ctx, state) {
+                      Widget? badge;
+                      if (state is SidebarBadgeLoaded && state.count > 0) {
+                        badge = _buildBadge(state.count);
+                      } else if (state is SidebarBadgeError) {
+                        badge = const Icon(
+                          Icons.warning_rounded,
+                          color: AppColors.error,
+                          size: 14,
+                        );
+                      }
+                      return _buildItem(
+                        context,
+                        _DrawerItem(
+                          icon: Icons.receipt_long_rounded,
+                          title: 'Pedidos',
+                          routePath: '/orders',
+                          trailing: badge,
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/orders');
+                          },
+                        ),
                       );
-                    }
-                    return _buildItem(
-                      context,
-                      _DrawerItem(
-                        icon: Icons.receipt_long_rounded,
-                        title: 'Pedidos',
-                        routePath: '/orders',
-                        trailing: badge,
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/orders');
-                        },
-                      ),
-                    );
-                  },
-                ),
-
-                // ── Compras (con sub-ítems) ─────────────────────────
-                _ExpandableDrawerGroup(
-                  _DrawerItem(
-                    icon: Icons.shopping_bag_outlined,
-                    title: 'Compras',
-                    routePath: '',
-                    children: [
-                      _DrawerSubItem(
-                        icon: Icons.receipt_long_rounded,
-                        title: 'Órdenes de compra',
-                        routePath: '/purchase-orders',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/purchase-orders');
-                        },
-                      ),
-                      _DrawerSubItem(
-                        icon: Icons.add_rounded,
-                        title: 'Entradas inventario',
-                        routePath: '/inventory-entries',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/inventory-entries');
-                        },
-                      ),
-                      _DrawerSubItem(
-                        icon: Icons.credit_score_rounded,
-                        title: 'Créditos proveedores',
-                        routePath: '/supplier-credits',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/supplier-credits');
-                        },
-                      ),
-                      _DrawerSubItem(
-                        icon: Icons.local_shipping_outlined,
-                        title: 'Proveedores',
-                        routePath: '/suppliers',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/suppliers');
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                // ── Inventario (con sub-ítems) ─────────────────────────
-                _ExpandableDrawerGroup(
-                  _DrawerItem(
-                    icon: Icons.inventory_2_outlined,
-                    title: 'Inventario',
-                    routePath: '',
-                    children: [
-                      _DrawerSubItem(
-                        icon: Icons.category_outlined,
-                        title: 'Productos',
-                        routePath: '/products',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/products');
-                        },
-                      ),
-                      _DrawerSubItem(
-                        icon: Icons.grid_view_rounded,
-                        title: 'Stock inventario',
-                        routePath: '/inventory',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/inventory');
-                        },
-                      ),
-                      _DrawerSubItem(
-                        icon: Icons.article_outlined,
-                        title: 'Kardex',
-                        routePath: '/kardex',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/kardex');
-                        },
-                      ),
-                      _DrawerSubItem(
-                        icon: Icons.remove_rounded,
-                        title: 'Salidas inventario',
-                        routePath: '/inventory-exits',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/inventory-exits');
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                // ── Clientes y Créditos (con sub-ítems) ─────────────────
-                _ExpandableDrawerGroup(
-                  _DrawerItem(
-                    icon: Icons.people_outline_rounded,
-                    title: 'Clientes y Créditos',
-                    routePath: '',
-                    children: [
-                      _DrawerSubItem(
-                        icon: Icons.person_outline_rounded,
-                        title: 'Clientes',
-                        routePath: '/customers',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/customers');
-                        },
-                      ),
-                      _DrawerSubItem(
-                        icon: Icons.credit_score_rounded,
-                        title: 'Créditos clientes',
-                        routePath: '/customer-credits',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/customer-credits');
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                // ── CONFIGURACIÓN ERP ──────────────────────────────
-                const _SectionDivider(),
-                _buildSectionTitle('CONFIGURACIÓN ERP'),
-
-                _buildItem(
-                  context,
-                  _DrawerItem(
-                    icon: Icons.account_balance_wallet_outlined,
-                    title: 'Cuentas',
-                    routePath: '/financial-accounts',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/financial-accounts');
                     },
                   ),
-                ),
 
-                _buildItem(
-                  context,
-                  _DrawerItem(
-                    icon: Icons.category_outlined,
-                    title: 'Categorías',
-                    routePath: '/categories',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/categories');
-                    },
+                  // ── Compras (con sub-ítems) ─────────────────────────
+                  _ExpandableDrawerGroup(
+                    _DrawerItem(
+                      icon: Icons.shopping_bag_outlined,
+                      title: 'Compras',
+                      routePath: '',
+                      children: [
+                        _DrawerSubItem(
+                          icon: Icons.receipt_long_rounded,
+                          title: 'Órdenes de compra',
+                          routePath: '/purchase-orders',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/purchase-orders');
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.add_rounded,
+                          title: 'Entradas inventario',
+                          routePath: '/inventory-entries',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/inventory-entries');
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.credit_score_rounded,
+                          title: 'Créditos proveedores',
+                          routePath: '/supplier-credits',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/supplier-credits');
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.local_shipping_outlined,
+                          title: 'Proveedores',
+                          routePath: '/suppliers',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/suppliers');
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                _buildItem(
-                  context,
-                  _DrawerItem(
-                    icon: Icons.branding_watermark_outlined,
-                    title: 'Marcas',
-                    routePath: '/brands',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/brands');
-                    },
+                  // ── Inventario (con sub-ítems) ─────────────────────────
+                  _ExpandableDrawerGroup(
+                    _DrawerItem(
+                      icon: Icons.inventory_2_outlined,
+                      title: 'Inventario',
+                      routePath: '',
+                      children: [
+                        _DrawerSubItem(
+                          icon: Icons.category_outlined,
+                          title: 'Productos',
+                          routePath: '/products',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/products');
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.grid_view_rounded,
+                          title: 'Stock inventario',
+                          routePath: '/inventory',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/inventory');
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.article_outlined,
+                          title: 'Kardex',
+                          routePath: '/kardex',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/kardex');
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.remove_rounded,
+                          title: 'Salidas inventario',
+                          routePath: '/inventory-exits',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/inventory-exits');
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                _buildItem(
-                  context,
-                  _DrawerItem(
-                    icon: Icons.warehouse_outlined,
-                    title: 'Almacenes',
-                    routePath: '/warehouses',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/warehouses');
-                    },
+                  // ── Clientes y Créditos (con sub-ítems) ─────────────────
+                  _ExpandableDrawerGroup(
+                    _DrawerItem(
+                      icon: Icons.people_outline_rounded,
+                      title: 'Clientes y Créditos',
+                      routePath: '',
+                      children: [
+                        _DrawerSubItem(
+                          icon: Icons.person_outline_rounded,
+                          title: 'Clientes',
+                          routePath: '/customers',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/customers');
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.credit_score_rounded,
+                          title: 'Créditos clientes',
+                          routePath: '/customer-credits',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/customer-credits');
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                _buildItem(
-                  context,
-                  _DrawerItem(
-                    icon: Icons.tune_rounded,
-                    title: 'Atributos',
-                    routePath: '/attributes',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/attributes');
-                    },
+                  // ── CONFIGURACIÓN ERP ──────────────────────────────
+                  const _SectionDivider(),
+                  _buildSectionTitle('CONFIGURACIÓN ERP'),
+
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.account_balance_wallet_outlined,
+                      title: 'Cuentas',
+                      routePath: '/financial-accounts',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/financial-accounts');
+                      },
+                    ),
                   ),
-                ),
 
-                _buildItem(
-                  context,
-                  _DrawerItem(
-                    icon: Icons.science_rounded,
-                    title: 'Ingredientes Activos',
-                    routePath: '/active-ingredients',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/active-ingredients');
-                    },
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.category_outlined,
+                      title: 'Categorías',
+                      routePath: '/categories',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/categories');
+                      },
+                    ),
                   ),
-                ),
 
-                _buildItem(
-                  context,
-                  _DrawerItem(
-                    icon: Icons.people_outline_rounded,
-                    title: 'Usuarios',
-                    routePath: '/users',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/users');
-                    },
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.branding_watermark_outlined,
+                      title: 'Marcas',
+                      routePath: '/brands',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/brands');
+                      },
+                    ),
                   ),
-                ),
 
-                _buildItem(
-                  context,
-                  _DrawerItem(
-                    icon: Icons.storefront_rounded,
-                    title: 'Negocio',
-                    routePath: '/business-info',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/business-info');
-                    },
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.warehouse_outlined,
+                      title: 'Almacenes',
+                      routePath: '/warehouses',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/warehouses');
+                      },
+                    ),
                   ),
-                ),
 
-                BlocSelector<AppConfigCubit, AppConfigState, bool>(
-                  selector:
-                      (s) => s.businessInfo?.loyaltyGlobalEnabled ?? false,
-                  builder: (context, loyaltyEnabled) {
-                    if (!loyaltyEnabled) return const SizedBox.shrink();
-                    return _buildItem(
-                      context,
-                      _DrawerItem(
-                        icon: Icons.stars_rounded,
-                        title: 'Puntos y Monedas',
-                        routePath: '/points-settings',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/points-settings');
-                        },
-                      ),
-                    );
-                  },
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.tune_rounded,
+                      title: 'Atributos',
+                      routePath: '/attributes',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/attributes');
+                      },
+                    ),
+                  ),
+
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.science_rounded,
+                      title: 'Ingredientes Activos',
+                      routePath: '/active-ingredients',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/active-ingredients');
+                      },
+                    ),
+                  ),
+
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.people_outline_rounded,
+                      title: 'Usuarios',
+                      routePath: '/users',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/users');
+                      },
+                    ),
+                  ),
+
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.storefront_rounded,
+                      title: 'Negocio',
+                      routePath: '/business-info',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/business-info');
+                      },
+                    ),
+                  ),
+
+                  BlocSelector<AppConfigCubit, AppConfigState, bool>(
+                    selector:
+                        (s) => s.businessInfo?.loyaltyGlobalEnabled ?? false,
+                    builder: (context, loyaltyEnabled) {
+                      if (!loyaltyEnabled) return const SizedBox.shrink();
+                      return _buildItem(
+                        context,
+                        _DrawerItem(
+                          icon: Icons.stars_rounded,
+                          title: 'Puntos y Monedas',
+                          routePath: '/points-settings',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/points-settings');
+                          },
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -460,16 +460,13 @@ class _AppDrawerState extends State<AppDrawer> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       child: Material(
-        color:
-            active
-                ? AppColors.primary.withValues(alpha: 0.09)
-                : Colors.transparent,
+        color: active ? const Color(0xFFEFF6FF) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: item.onTap,
-          splashColor: AppColors.primary.withValues(alpha: 0.12),
-          hoverColor: AppColors.primaryLight.withValues(alpha: 0.4),
+          splashColor: const Color(0xFFDBEAFE),
+          hoverColor: const Color(0xFFF1F5F9),
           child: Container(
             constraints: const BoxConstraints(minHeight: 46),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -477,10 +474,7 @@ class _AppDrawerState extends State<AppDrawer> {
               borderRadius: BorderRadius.circular(12),
               border:
                   active
-                      ? Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.18),
-                        width: 1,
-                      )
+                      ? Border.all(color: const Color(0xFFDBEAFE), width: 1)
                       : Border.all(color: Colors.transparent, width: 1),
             ),
             child: Row(
@@ -491,13 +485,16 @@ class _AppDrawerState extends State<AppDrawer> {
                     height: 18,
                     margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: const Color(0xFF2563EB),
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
                 Icon(
                   item.icon,
-                  color: active ? AppColors.primary : AppColors.textSecondary,
+                  color:
+                      active
+                          ? const Color(0xFF2563EB)
+                          : const Color(0xFF64748B),
                   size: 21,
                 ),
                 const SizedBox(width: 12),
@@ -505,7 +502,10 @@ class _AppDrawerState extends State<AppDrawer> {
                   child: Text(
                     item.title,
                     style: TextStyle(
-                      color: active ? AppColors.primary : AppColors.textPrimary,
+                      color:
+                          active
+                              ? const Color(0xFF1E40AF)
+                              : const Color(0xFF0F172A),
                       fontSize: 14,
                       letterSpacing: -0.2,
                       fontWeight: active ? FontWeight.w700 : FontWeight.w500,
@@ -589,7 +589,10 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
               hoverColor: AppColors.primaryLight.withValues(alpha: 0.4),
               child: Container(
                 constraints: const BoxConstraints(minHeight: 46),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 child: Row(
                   children: [
                     Icon(
@@ -612,7 +615,9 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
                           fontSize: 14,
                           letterSpacing: -0.2,
                           fontWeight:
-                              hasActiveChild ? FontWeight.w700 : FontWeight.w500,
+                              hasActiveChild
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                         ),
                       ),
                     ),
@@ -621,7 +626,10 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
                       duration: const Duration(milliseconds: 220),
                       child: Icon(
                         Icons.keyboard_arrow_down_rounded,
-                        color: isOpen ? AppColors.primary : AppColors.textSecondary,
+                        color:
+                            isOpen
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
                         size: 20,
                       ),
                     ),
@@ -806,46 +814,67 @@ class _DrawerHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 24,
-        bottom: 24,
-        left: 24,
-        right: 24,
+        top: MediaQuery.of(context).padding.top + 20,
+        bottom: 20,
+        left: 20,
+        right: 20,
       ),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryDark.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.35),
-                width: 1.5,
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFDBEAFE), width: 1),
+                ),
+                child: Image.asset('assets/logo_icon.png', fit: BoxFit.contain),
               ),
-            ),
-            child: Image.asset(
-              'assets/logo_icon.png',
-              fit: BoxFit.contain,
-            ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFDBEAFE), width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isAdmin
+                          ? Icons.admin_panel_settings_rounded
+                          : Icons.person_rounded,
+                      color: const Color(0xFF2563EB),
+                      size: 13,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      isAdmin ? 'Administrador' : 'Cliente',
+                      style: const TextStyle(
+                        color: Color(0xFF1E40AF),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           BlocSelector<
             AppConfigCubit,
             AppConfigState,
@@ -853,7 +882,8 @@ class _DrawerHeader extends StatelessWidget {
           >(
             selector:
                 (state) => (
-                  businessName: state.businessInfo?.businessName ?? 'Mi Tienda',
+                  businessName:
+                      state.businessInfo?.businessName ?? 'DANILORE ONE',
                   businessAddress: state.businessInfo?.address ?? '',
                 ),
             builder: (context, data) {
@@ -863,56 +893,23 @@ class _DrawerHeader extends StatelessWidget {
                   Text(
                     data.businessName,
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
+                      color: Color(0xFF0F172A),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.4,
                     ),
                   ),
                   if (data.businessAddress.isNotEmpty) ...[
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 3),
                     Text(
                       data.businessAddress,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
                         fontSize: 12,
                         height: 1.3,
                       ),
                     ),
                   ],
-                  const SizedBox(height: 6),
-                  // Chip de rol
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isAdmin
-                              ? Icons.admin_panel_settings_rounded
-                              : Icons.person_rounded,
-                          color: Colors.white,
-                          size: 13,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          isAdmin ? 'Administrador' : 'Cliente',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.95),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               );
             },

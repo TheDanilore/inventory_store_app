@@ -33,6 +33,7 @@ class AdminProViewToggleConfig {
   final Color? activeColor;
   final IconData tableIcon;
   final IconData cardsIcon;
+  final bool showOnMobile;
 
   const AdminProViewToggleConfig({
     required this.isTableView,
@@ -42,6 +43,7 @@ class AdminProViewToggleConfig {
     this.activeColor,
     this.tableIcon = Icons.table_rows_rounded,
     this.cardsIcon = Icons.grid_view_rounded,
+    this.showOnMobile = false,
   });
 }
 
@@ -204,7 +206,10 @@ class AdminProToolbar extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 0,
+          ),
         ),
       ),
     );
@@ -253,7 +258,9 @@ class AdminProToolbar extends StatelessWidget {
               ),
               style: IconButton.styleFrom(
                 backgroundColor:
-                    !config.isTableView ? AppColors.surface : Colors.transparent,
+                    !config.isTableView
+                        ? AppColors.surface
+                        : Colors.transparent,
                 elevation: !config.isTableView ? 1 : 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -278,9 +285,10 @@ class AdminProToolbar extends StatelessWidget {
   }
 
   Widget _buildPrimaryActionButton(AdminProToolbarAction action) {
-    final effectiveBgColor = action.isHighlighted
-        ? (action.highlightColor ?? const Color(0xFFF59E0B))
-        : (action.backgroundColor ?? AppColors.primary);
+    final effectiveBgColor =
+        action.isHighlighted
+            ? (action.highlightColor ?? const Color(0xFFF59E0B))
+            : (action.backgroundColor ?? AppColors.primary);
     final effectiveFgColor = action.foregroundColor ?? Colors.white;
 
     return SizedBox(
@@ -344,10 +352,7 @@ class AdminProToolbar extends StatelessWidget {
     final primaryRow = Row(
       children: [
         // 1. Buscador expandido
-        Expanded(
-          flex: searchFlex,
-          child: _buildSearchField(),
-        ),
+        Expanded(flex: searchFlex, child: _buildSearchField()),
 
         // 2. Filtros centrales modulares
         for (final filter in filterWidgets) ...[
@@ -389,17 +394,16 @@ class AdminProToolbar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
-      children: [
-        primaryRow,
-        const SizedBox(height: 12),
-        secondaryRow!,
-      ],
+      children: [primaryRow, const SizedBox(height: 12), secondaryRow!],
     );
   }
 
   Widget _buildMobileLayout() {
-    final hasMiddleOrEndItems = filterWidgets.isNotEmpty ||
-        viewToggleConfig != null ||
+    final showToggleOnMobile =
+        viewToggleConfig != null && viewToggleConfig!.showOnMobile;
+    final hasMiddleOrEndItems =
+        filterWidgets.isNotEmpty ||
+        showToggleOnMobile ||
         onRefresh != null ||
         primaryAction != null ||
         (trailingActions != null && trailingActions!.isNotEmpty);
@@ -420,7 +424,7 @@ class AdminProToolbar extends StatelessWidget {
                   filter,
                   const SizedBox(width: 8),
                 ],
-                if (viewToggleConfig != null) ...[
+                if (showToggleOnMobile) ...[
                   _buildViewModeToggle(viewToggleConfig!),
                   const SizedBox(width: 8),
                 ],

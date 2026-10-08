@@ -101,244 +101,249 @@ class _AdminSidebarState extends State<AdminSidebar> {
                 controller: _scrollController,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 children: [
-                if (!widget.isCollapsed) _buildSectionHeader('MENÚ PRINCIPAL'),
-                _buildSidebarTile(
-                  context,
-                  const AdminSidebarItem(
-                    icon: Icons.grid_view_rounded,
-                    title: 'Catálogo',
-                    routePath: '/',
+                  if (!widget.isCollapsed)
+                    _buildSectionHeader('MENÚ PRINCIPAL'),
+                  _buildSidebarTile(
+                    context,
+                    const AdminSidebarItem(
+                      icon: Icons.grid_view_rounded,
+                      title: 'Catálogo',
+                      routePath: '/',
+                    ),
                   ),
-                ),
-                _buildSidebarTile(
-                  context,
-                  const AdminSidebarItem(
-                    icon: Icons.bar_chart_rounded,
-                    title: 'Dashboard',
-                    routePath: '/dashboard',
+                  _buildSidebarTile(
+                    context,
+                    const AdminSidebarItem(
+                      icon: Icons.bar_chart_rounded,
+                      title: 'Dashboard',
+                      routePath: '/dashboard',
+                    ),
                   ),
-                ),
 
-                if (!widget.isCollapsed) ...[
-                  const SizedBox(height: 12),
-                  const Divider(
-                    height: 1,
-                    indent: 16,
-                    endIndent: 16,
-                    color: AppColors.sidebarBorder,
-                  ),
-                  _buildSectionHeader('GESTIÓN COMERCIAL'),
-                ],
+                  if (!widget.isCollapsed) ...[
+                    const SizedBox(height: 12),
+                    const Divider(
+                      height: 1,
+                      indent: 16,
+                      endIndent: 16,
+                      color: AppColors.sidebarBorder,
+                    ),
+                    _buildSectionHeader('GESTIÓN COMERCIAL'),
+                  ],
 
-                BlocBuilder<SidebarBadgeCubit, SidebarBadgeState>(
-                  builder: (ctx, state) {
-                    Widget? badge;
-                    if (state is SidebarBadgeLoaded && state.count > 0) {
-                      badge = _buildBadge(state.count);
-                    } else if (state is SidebarBadgeError) {
-                      badge = const Icon(
-                        Icons.warning_rounded,
-                        color: AppColors.error,
-                        size: 14,
+                  BlocBuilder<SidebarBadgeCubit, SidebarBadgeState>(
+                    builder: (ctx, state) {
+                      Widget? badge;
+                      if (state is SidebarBadgeLoaded && state.count > 0) {
+                        badge = _buildBadge(state.count);
+                      } else if (state is SidebarBadgeError) {
+                        badge = const Icon(
+                          Icons.warning_rounded,
+                          color: AppColors.error,
+                          size: 14,
+                        );
+                      }
+
+                      return _buildSidebarTile(
+                        context,
+                        AdminSidebarItem(
+                          icon: Icons.receipt_long_rounded,
+                          title: 'Pedidos',
+                          routePath: '/orders',
+                          trailing: badge,
+                        ),
                       );
-                    }
-
-                    return _buildSidebarTile(
-                      context,
-                      AdminSidebarItem(
-                        icon: Icons.receipt_long_rounded,
-                        title: 'Pedidos',
-                        routePath: '/orders',
-                        trailing: badge,
-                      ),
-                    );
-                  },
-                ),
-
-                _ExpandableSidebarGroup(
-                  isCollapsed: widget.isCollapsed,
-                  item: const AdminSidebarItem(
-                    icon: Icons.shopping_bag_outlined,
-                    title: 'Compras',
-                    routePath: '',
-                    children: [
-                      AdminSidebarItem(
-                        icon: Icons.receipt_long_rounded,
-                        title: 'Órdenes de compra',
-                        routePath: '/purchase-orders',
-                      ),
-                      AdminSidebarItem(
-                        icon: Icons.add_rounded,
-                        title: 'Entradas inventario',
-                        routePath: '/inventory-entries',
-                      ),
-                      AdminSidebarItem(
-                        icon: Icons.credit_score_rounded,
-                        title: 'Créditos proveedores',
-                        routePath: '/supplier-credits',
-                      ),
-                      AdminSidebarItem(
-                        icon: Icons.local_shipping_outlined,
-                        title: 'Proveedores',
-                        routePath: '/suppliers',
-                      ),
-                    ],
+                    },
                   ),
-                ),
 
-                _ExpandableSidebarGroup(
-                  isCollapsed: widget.isCollapsed,
-                  item: const AdminSidebarItem(
-                    icon: Icons.inventory_2_outlined,
-                    title: 'Inventario',
-                    routePath: '',
-                    children: [
-                      AdminSidebarItem(
-                        icon: Icons.category_outlined,
-                        title: 'Productos',
-                        routePath: '/products',
-                      ),
-                      AdminSidebarItem(
-                        icon: Icons.grid_view_rounded,
-                        title: 'Stock inventario',
-                        routePath: '/inventory',
-                      ),
-                      AdminSidebarItem(
-                        icon: Icons.article_outlined,
-                        title: 'Kardex',
-                        routePath: '/kardex',
-                      ),
-                      AdminSidebarItem(
-                        icon: Icons.remove_rounded,
-                        title: 'Salidas inventario',
-                        routePath: '/inventory-exits',
-                      ),
-                    ],
+                  _ExpandableSidebarGroup(
+                    isCollapsed: widget.isCollapsed,
+                    item: const AdminSidebarItem(
+                      icon: Icons.shopping_bag_outlined,
+                      title: 'Compras',
+                      routePath: '',
+                      children: [
+                        AdminSidebarItem(
+                          icon: Icons.receipt_long_rounded,
+                          title: 'Órdenes de compra',
+                          routePath: '/purchase-orders',
+                        ),
+                        AdminSidebarItem(
+                          icon: Icons.add_rounded,
+                          title: 'Entradas inventario',
+                          routePath: '/inventory-entries',
+                        ),
+                        AdminSidebarItem(
+                          icon: Icons.credit_score_rounded,
+                          title: 'Créditos proveedores',
+                          routePath: '/supplier-credits',
+                        ),
+                        AdminSidebarItem(
+                          icon: Icons.local_shipping_outlined,
+                          title: 'Proveedores',
+                          routePath: '/suppliers',
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                _ExpandableSidebarGroup(
-                  isCollapsed: widget.isCollapsed,
-                  item: const AdminSidebarItem(
-                    icon: Icons.people_outline_rounded,
-                    title: 'Clientes y Créditos',
-                    routePath: '',
-                    children: [
-                      AdminSidebarItem(
-                        icon: Icons.person_outline_rounded,
-                        title: 'Clientes',
-                        routePath: '/customers',
-                      ),
-                      AdminSidebarItem(
-                        icon: Icons.credit_score_rounded,
-                        title: 'Créditos clientes',
-                        routePath: '/customer-credits',
-                      ),
-                    ],
+                  _ExpandableSidebarGroup(
+                    isCollapsed: widget.isCollapsed,
+                    item: const AdminSidebarItem(
+                      icon: Icons.inventory_2_outlined,
+                      title: 'Inventario',
+                      routePath: '',
+                      children: [
+                        AdminSidebarItem(
+                          icon: Icons.category_outlined,
+                          title: 'Productos',
+                          routePath: '/products',
+                        ),
+                        AdminSidebarItem(
+                          icon: Icons.grid_view_rounded,
+                          title: 'Stock inventario',
+                          routePath: '/inventory',
+                        ),
+                        AdminSidebarItem(
+                          icon: Icons.article_outlined,
+                          title: 'Kardex',
+                          routePath: '/kardex',
+                        ),
+                        AdminSidebarItem(
+                          icon: Icons.remove_rounded,
+                          title: 'Salidas inventario',
+                          routePath: '/inventory-exits',
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                if (!widget.isCollapsed) ...[
-                  const SizedBox(height: 12),
-                  const Divider(
-                    height: 1,
-                    indent: 16,
-                    endIndent: 16,
-                    color: AppColors.sidebarBorder,
+                  _ExpandableSidebarGroup(
+                    isCollapsed: widget.isCollapsed,
+                    item: const AdminSidebarItem(
+                      icon: Icons.people_outline_rounded,
+                      title: 'Clientes y Créditos',
+                      routePath: '',
+                      children: [
+                        AdminSidebarItem(
+                          icon: Icons.person_outline_rounded,
+                          title: 'Clientes',
+                          routePath: '/customers',
+                        ),
+                        AdminSidebarItem(
+                          icon: Icons.credit_score_rounded,
+                          title: 'Créditos clientes',
+                          routePath: '/customer-credits',
+                        ),
+                      ],
+                    ),
                   ),
-                  _buildSectionHeader('CONFIGURACIÓN ERP'),
+
+                  if (!widget.isCollapsed) ...[
+                    const SizedBox(height: 12),
+                    const Divider(
+                      height: 1,
+                      indent: 16,
+                      endIndent: 16,
+                      color: AppColors.sidebarBorder,
+                    ),
+                    _buildSectionHeader('CONFIGURACIÓN ERP'),
+                  ],
+
+                  _buildSidebarTile(
+                    context,
+                    const AdminSidebarItem(
+                      icon: Icons.account_balance_wallet_outlined,
+                      title: 'Cuentas',
+                      routePath: '/financial-accounts',
+                    ),
+                  ),
+                  _buildSidebarTile(
+                    context,
+                    const AdminSidebarItem(
+                      icon: Icons.category_outlined,
+                      title: 'Categorías',
+                      routePath: '/categories',
+                    ),
+                  ),
+                  _buildSidebarTile(
+                    context,
+                    const AdminSidebarItem(
+                      icon: Icons.branding_watermark_outlined,
+                      title: 'Marcas',
+                      routePath: '/brands',
+                    ),
+                  ),
+                  _buildSidebarTile(
+                    context,
+                    const AdminSidebarItem(
+                      icon: Icons.warehouse_outlined,
+                      title: 'Almacenes',
+                      routePath: '/warehouses',
+                    ),
+                  ),
+                  _buildSidebarTile(
+                    context,
+                    const AdminSidebarItem(
+                      icon: Icons.tune_rounded,
+                      title: 'Atributos',
+                      routePath: '/attributes',
+                    ),
+                  ),
+                  _buildSidebarTile(
+                    context,
+                    const AdminSidebarItem(
+                      icon: Icons.science_rounded,
+                      title: 'Ingredientes Activos',
+                      routePath: '/active-ingredients',
+                    ),
+                  ),
+                  _buildSidebarTile(
+                    context,
+                    const AdminSidebarItem(
+                      icon: Icons.people_outline_rounded,
+                      title: 'Usuarios',
+                      routePath: '/users',
+                    ),
+                  ),
+                  _buildSidebarTile(
+                    context,
+                    const AdminSidebarItem(
+                      icon: Icons.storefront_rounded,
+                      title: 'Negocio',
+                      routePath: '/business-info',
+                    ),
+                  ),
+                  BlocSelector<AppConfigCubit, AppConfigState, bool>(
+                    selector:
+                        (s) => s.businessInfo?.loyaltyGlobalEnabled ?? false,
+                    builder: (context, loyaltyEnabled) {
+                      if (!loyaltyEnabled) return const SizedBox.shrink();
+                      return _buildSidebarTile(
+                        context,
+                        const AdminSidebarItem(
+                          icon: Icons.stars_rounded,
+                          title: 'Puntos y Monedas',
+                          routePath: '/points-settings',
+                        ),
+                      );
+                    },
+                  ),
                 ],
-
-                _buildSidebarTile(
-                  context,
-                  const AdminSidebarItem(
-                    icon: Icons.account_balance_wallet_outlined,
-                    title: 'Cuentas',
-                    routePath: '/financial-accounts',
-                  ),
-                ),
-                _buildSidebarTile(
-                  context,
-                  const AdminSidebarItem(
-                    icon: Icons.category_outlined,
-                    title: 'Categorías',
-                    routePath: '/categories',
-                  ),
-                ),
-                _buildSidebarTile(
-                  context,
-                  const AdminSidebarItem(
-                    icon: Icons.branding_watermark_outlined,
-                    title: 'Marcas',
-                    routePath: '/brands',
-                  ),
-                ),
-                _buildSidebarTile(
-                  context,
-                  const AdminSidebarItem(
-                    icon: Icons.warehouse_outlined,
-                    title: 'Almacenes',
-                    routePath: '/warehouses',
-                  ),
-                ),
-                _buildSidebarTile(
-                  context,
-                  const AdminSidebarItem(
-                    icon: Icons.tune_rounded,
-                    title: 'Atributos',
-                    routePath: '/attributes',
-                  ),
-                ),
-                _buildSidebarTile(
-                  context,
-                  const AdminSidebarItem(
-                    icon: Icons.science_rounded,
-                    title: 'Ingredientes Activos',
-                    routePath: '/active-ingredients',
-                  ),
-                ),
-                _buildSidebarTile(
-                  context,
-                  const AdminSidebarItem(
-                    icon: Icons.people_outline_rounded,
-                    title: 'Usuarios',
-                    routePath: '/users',
-                  ),
-                ),
-                _buildSidebarTile(
-                  context,
-                  const AdminSidebarItem(
-                    icon: Icons.storefront_rounded,
-                    title: 'Negocio',
-                    routePath: '/business-info',
-                  ),
-                ),
-                BlocSelector<AppConfigCubit, AppConfigState, bool>(
-                  selector: (s) => s.businessInfo?.loyaltyGlobalEnabled ?? false,
-                  builder: (context, loyaltyEnabled) {
-                    if (!loyaltyEnabled) return const SizedBox.shrink();
-                    return _buildSidebarTile(
-                      context,
-                      const AdminSidebarItem(
-                        icon: Icons.stars_rounded,
-                        title: 'Puntos y Monedas',
-                        routePath: '/points-settings',
-                      ),
-                    );
-                  },
-                ),
-              ],
+              ),
             ),
           ),
-          ),
+
+          // ── DANILORE Cloud / Pro Status Card (Shopeers / Apple Style) ─
+          if (!widget.isCollapsed) _buildCloudStatusCard(),
 
           // ── Collapse / Expand Footer Action ────────────────────────
           const Divider(height: 1, color: AppColors.sidebarBorder),
           InkWell(
             onTap: widget.onToggleCollapse,
-            hoverColor: AppColors.sidebarActiveBg.withValues(alpha: 0.6),
+            hoverColor: const Color(0xFFF1F5F9),
             child: Container(
-              height: 52,
+              height: 48,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 mainAxisAlignment:
@@ -350,19 +355,101 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     const Text(
                       'Colapsar menú',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.sidebarText,
+                        color: Color(0xFF64748B),
                       ),
                     ),
                   Icon(
                     widget.isCollapsed
                         ? Icons.chevron_right_rounded
                         : Icons.chevron_left_rounded,
-                    color: AppColors.sidebarText,
+                    color: const Color(0xFF64748B),
                     size: 20,
                   ),
                 ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCloudStatusCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1E3A8A), // Navy 900
+            Color(0xFF2563EB), // Blue 600
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2563EB).withValues(alpha: 0.22),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.cloud_done_rounded,
+                  color: Colors.white,
+                  size: 13,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'DANILORE Cloud',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'ERP activo con sincronización de inventario en tiempo real.',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 10.5,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            height: 24,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text(
+              'Servidor En Línea',
+              style: TextStyle(
+                color: Color(0xFF1E3A8A),
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -387,17 +474,11 @@ class _AdminSidebarState extends State<AdminSidebar> {
               height: 38,
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
+                color: const Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: const Color(0xFF0284C7).withValues(alpha: 0.35),
-                  width: 1,
-                ),
+                border: Border.all(color: const Color(0xFFDBEAFE), width: 1),
               ),
-              child: Image.asset(
-                'assets/logo_icon.png',
-                fit: BoxFit.contain,
-              ),
+              child: Image.asset('assets/logo_icon.png', fit: BoxFit.contain),
             ),
             if (!widget.isCollapsed) ...[
               const SizedBox(width: 12),
@@ -407,7 +488,8 @@ class _AdminSidebarState extends State<AdminSidebar> {
                       (state) =>
                           state.businessInfo?.businessName ?? 'DANILORE ONE',
                   builder: (context, name) {
-                    final isDefault = name.trim().isEmpty ||
+                    final isDefault =
+                        name.trim().isEmpty ||
                         name == 'ERP Tienda' ||
                         name == 'Mi Tienda' ||
                         name.toUpperCase().contains('DANILORE');
@@ -424,7 +506,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                                 style: TextStyle(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w800,
-                                  color: Colors.white,
+                                  color: Color(0xFF0F172A),
                                   letterSpacing: 0.3,
                                 ),
                               ),
@@ -433,7 +515,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                                 style: TextStyle(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF0284C7),
+                                  color: Color(0xFF2563EB),
                                   letterSpacing: 0.3,
                                 ),
                               ),
@@ -447,7 +529,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: Color(0xFF0F172A),
                             ),
                           ),
                         Text(
@@ -455,9 +537,9 @@ class _AdminSidebarState extends State<AdminSidebar> {
                               ? 'Todo tu negocio en un solo lugar'
                               : 'DANILORE ONE ERP',
                           style: const TextStyle(
-                            fontSize: 10,
+                            fontSize: 10.5,
                             fontWeight: FontWeight.w500,
-                            color: AppColors.sidebarText,
+                            color: Color(0xFF64748B),
                             letterSpacing: 0.1,
                           ),
                           maxLines: 1,
@@ -483,7 +565,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
         style: const TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w800,
-          color: AppColors.sidebarSectionHeader,
+          color: Color(0xFF94A3B8),
           letterSpacing: 1.2,
         ),
       ),
@@ -512,23 +594,18 @@ class _AdminSidebarState extends State<AdminSidebar> {
             child: InkWell(
               borderRadius: BorderRadius.circular(10),
               onTap: () => context.go(item.routePath),
-              hoverColor: AppColors.sidebarActiveBg.withValues(alpha: 0.6),
+              hoverColor: const Color(0xFFF1F5F9),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOutCubic,
                 height: 40,
                 decoration: BoxDecoration(
                   color:
-                      isActive
-                          ? AppColors.sidebarActiveBg
-                          : Colors.transparent,
+                      isActive ? const Color(0xFFEFF6FF) : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   border:
                       isActive
-                          ? Border.all(
-                            color: AppColors.sidebarActiveIndicator.withValues(alpha: 0.35),
-                            width: 1,
-                          )
+                          ? Border.all(color: const Color(0xFFDBEAFE), width: 1)
                           : Border.all(color: Colors.transparent, width: 1),
                 ),
                 padding: EdgeInsets.symmetric(
@@ -548,12 +625,14 @@ class _AdminSidebarState extends State<AdminSidebar> {
                           height: 18,
                           margin: const EdgeInsets.only(right: 8),
                           decoration: BoxDecoration(
-                            color: AppColors.sidebarActiveIndicator,
+                            color: const Color(0xFF2563EB),
                             borderRadius: BorderRadius.circular(3),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.sidebarActiveIndicator.withValues(alpha: 0.5),
-                                blurRadius: 6,
+                                color: const Color(
+                                  0xFF2563EB,
+                                ).withValues(alpha: 0.4),
+                                blurRadius: 4,
                               ),
                             ],
                           ),
@@ -563,8 +642,8 @@ class _AdminSidebarState extends State<AdminSidebar> {
                         size: 20,
                         color:
                             isActive
-                                ? AppColors.sidebarActiveIndicator
-                                : AppColors.sidebarText,
+                                ? const Color(0xFF2563EB)
+                                : const Color(0xFF64748B),
                       ),
                       if (!widget.isCollapsed) ...[
                         const SizedBox(width: 10),
@@ -580,8 +659,8 @@ class _AdminSidebarState extends State<AdminSidebar> {
                                   isActive ? FontWeight.w700 : FontWeight.w500,
                               color:
                                   isActive
-                                      ? AppColors.sidebarTextActive
-                                      : const Color(0xFFCBD5E1),
+                                      ? const Color(0xFF1E40AF)
+                                      : const Color(0xFF475569),
                             ),
                           ),
                         ),
@@ -678,23 +757,17 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
           onTap: () => context.go(item.routePath),
-          hoverColor: AppColors.sidebarActiveBg.withValues(alpha: 0.6),
+          hoverColor: const Color(0xFFF1F5F9),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
             height: 38,
             decoration: BoxDecoration(
-              color:
-                  isActive
-                      ? AppColors.sidebarActiveBg
-                      : Colors.transparent,
+              color: isActive ? const Color(0xFFEFF6FF) : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
               border:
                   isActive
-                      ? Border.all(
-                        color: AppColors.sidebarActiveIndicator.withValues(alpha: 0.35),
-                        width: 1,
-                      )
+                      ? Border.all(color: const Color(0xFFDBEAFE), width: 1)
                       : Border.all(color: Colors.transparent, width: 1),
             ),
             padding: EdgeInsets.symmetric(
@@ -713,12 +786,14 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                       height: 16,
                       margin: const EdgeInsets.only(right: 8),
                       decoration: BoxDecoration(
-                        color: AppColors.sidebarActiveIndicator,
+                        color: const Color(0xFF2563EB),
                         borderRadius: BorderRadius.circular(3),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.sidebarActiveIndicator.withValues(alpha: 0.5),
-                            blurRadius: 6,
+                            color: const Color(
+                              0xFF2563EB,
+                            ).withValues(alpha: 0.4),
+                            blurRadius: 4,
                           ),
                         ],
                       ),
@@ -727,7 +802,9 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                     item.icon,
                     size: 19,
                     color:
-                        isActive ? AppColors.sidebarActiveIndicator : AppColors.sidebarText,
+                        isActive
+                            ? const Color(0xFF2563EB)
+                            : const Color(0xFF64748B),
                   ),
                   if (!widget.isCollapsed) ...[
                     const SizedBox(width: 10),
@@ -743,8 +820,8 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                               isActive ? FontWeight.w700 : FontWeight.w500,
                           color:
                               isActive
-                                  ? AppColors.sidebarTextActive
-                                  : const Color(0xFFCBD5E1),
+                                  ? const Color(0xFF1E40AF)
+                                  : const Color(0xFF475569),
                         ),
                       ),
                     ),
@@ -794,7 +871,7 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                             Icon(
                               sub.icon,
                               size: 18,
-                              color: AppColors.textSecondary,
+                              color: const Color(0xFF64748B),
                             ),
                             const SizedBox(width: 10),
                             Text(sub.title),
@@ -810,22 +887,20 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color:
-                  hasActiveChild
-                      ? AppColors.sidebarActiveBg
-                      : Colors.transparent,
+                  hasActiveChild ? const Color(0xFFEFF6FF) : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
-              border: hasActiveChild
-                  ? Border.all(
-                      color: AppColors.sidebarActiveIndicator.withValues(alpha: 0.35),
-                      width: 1,
-                    )
-                  : null,
+              border:
+                  hasActiveChild
+                      ? Border.all(color: const Color(0xFFDBEAFE), width: 1)
+                      : null,
             ),
             child: Icon(
               widget.item.icon,
               size: 20,
               color:
-                  hasActiveChild ? AppColors.sidebarActiveIndicator : AppColors.sidebarText,
+                  hasActiveChild
+                      ? const Color(0xFF2563EB)
+                      : const Color(0xFF64748B),
             ),
           ),
         ),
@@ -857,7 +932,7 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                   }
                 });
               },
-              hoverColor: AppColors.sidebarActiveBg.withValues(alpha: 0.6),
+              hoverColor: const Color(0xFFF1F5F9),
               child: Container(
                 height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -868,8 +943,8 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                       size: 20,
                       color:
                           hasActiveChild
-                              ? AppColors.sidebarActiveIndicator
-                              : AppColors.sidebarText,
+                              ? const Color(0xFF2563EB)
+                              : const Color(0xFF64748B),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -881,11 +956,13 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                           fontSize: 13,
                           letterSpacing: -0.2,
                           fontWeight:
-                              hasActiveChild ? FontWeight.w700 : FontWeight.w500,
+                              hasActiveChild
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                           color:
                               hasActiveChild
-                                  ? Colors.white
-                                  : const Color(0xFFCBD5E1),
+                                  ? const Color(0xFF1E40AF)
+                                  : const Color(0xFF475569),
                         ),
                       ),
                     ),
@@ -895,7 +972,7 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                       child: const Icon(
                         Icons.keyboard_arrow_down_rounded,
                         size: 18,
-                        color: AppColors.sidebarText,
+                        color: Color(0xFF94A3B8),
                       ),
                     ),
                   ],
@@ -914,7 +991,7 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
             padding: const EdgeInsets.only(left: 8),
             decoration: const BoxDecoration(
               border: Border(
-                left: BorderSide(color: AppColors.sidebarBorder, width: 2),
+                left: BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
               ),
             ),
             child: Column(

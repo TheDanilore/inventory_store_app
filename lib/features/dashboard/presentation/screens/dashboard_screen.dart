@@ -4,19 +4,20 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
-import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_state.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_cards.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_executive_widgets.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_skeleton.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/admin_goal_dialog.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/top_customers_card.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -119,19 +120,27 @@ class _DashboardScreenContent extends StatelessWidget {
         // Atajos 1-4: Filtros temporales de ventas
         const SingleActivator(LogicalKeyboardKey.digit1): () {
           if (_isTextFieldFocused()) return;
-          context.read<DashboardCubit>().updateSalesFilter(SalesTimeFilter.today);
+          context.read<DashboardCubit>().updateSalesFilter(
+            SalesTimeFilter.today,
+          );
         },
         const SingleActivator(LogicalKeyboardKey.digit2): () {
           if (_isTextFieldFocused()) return;
-          context.read<DashboardCubit>().updateSalesFilter(SalesTimeFilter.thisWeek);
+          context.read<DashboardCubit>().updateSalesFilter(
+            SalesTimeFilter.thisWeek,
+          );
         },
         const SingleActivator(LogicalKeyboardKey.digit3): () {
           if (_isTextFieldFocused()) return;
-          context.read<DashboardCubit>().updateSalesFilter(SalesTimeFilter.thisMonth);
+          context.read<DashboardCubit>().updateSalesFilter(
+            SalesTimeFilter.thisMonth,
+          );
         },
         const SingleActivator(LogicalKeyboardKey.digit4): () {
           if (_isTextFieldFocused()) return;
-          context.read<DashboardCubit>().updateSalesFilter(SalesTimeFilter.allTime);
+          context.read<DashboardCubit>().updateSalesFilter(
+            SalesTimeFilter.allTime,
+          );
         },
         // Atajo G o M: Abrir meta de ahorro
         const SingleActivator(LogicalKeyboardKey.keyG): () {
@@ -151,6 +160,11 @@ class _DashboardScreenContent extends StatelessWidget {
             cfg.getDouble('admin_goal_current', 0.0),
             cfg.getDouble('admin_goal_target', 2600.0),
           );
+        },
+        // Atajo / : Abrir barra de comandos global
+        const SingleActivator(LogicalKeyboardKey.slash): () {
+          if (_isTextFieldFocused()) return;
+          AdminCommandPaletteDialog.show(context);
         },
       },
       child: Focus(
@@ -224,9 +238,11 @@ class _DashboardScreenContent extends StatelessWidget {
                           ),
                           const SizedBox(height: 20),
                           FilledButton.icon(
-                            onPressed: () => context
-                                .read<DashboardCubit>()
-                                .loadDashboardData(),
+                            onPressed:
+                                () =>
+                                    context
+                                        .read<DashboardCubit>()
+                                        .loadDashboardData(),
                             icon: const Icon(Icons.refresh_rounded),
                             label: const Text('Reintentar conexión'),
                           ),
@@ -243,21 +259,12 @@ class _DashboardScreenContent extends StatelessWidget {
                       final isTablet = constraints.maxWidth >= 720;
 
                       if (isDesktop) {
-                        return _buildDesktopLayout(
-                          context,
-                          state,
-                        );
+                        return _buildDesktopLayout(context, state);
                       }
                       if (isTablet) {
-                        return _buildTabletLayout(
-                          context,
-                          state,
-                        );
+                        return _buildTabletLayout(context, state);
                       }
-                      return _buildMobileLayout(
-                        context,
-                        state,
-                      );
+                      return _buildMobileLayout(context, state);
                     },
                   );
                 }
@@ -272,12 +279,307 @@ class _DashboardScreenContent extends StatelessWidget {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // DESKTOP: PRO POWER-USER ERP TOOL (HERO 4-KPIS + BALANCED 2-COL + TOP CLIENTS)
+  // SUB-HEADER: CONTEXT BAR (SHOPEERS / APPLE STYLE FECHA + FILTROS + ACCIONES)
   // ─────────────────────────────────────────────────────────────────────────────
-  Widget _buildDesktopLayout(
+  Widget _buildExecutiveSubheader(
     BuildContext context,
-    DashboardLoaded state,
-  ) {
+    DashboardLoaded state, {
+    required bool isDesktop,
+  }) {
+    final now = DateTime.now();
+    final dateStr = DateFormat('d MMM, yyyy', 'es').format(now);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 16,
+        runSpacing: 12,
+        children: [
+          // Left: Screen Title & Subtitle
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Dashboard',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: -0.6,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Métricas clave de rendimiento y control en tiempo real',
+                style: TextStyle(
+                  fontSize: isDesktop ? 13 : 12,
+                  color: const Color(0xFF64748B),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+
+          // Right: Date Range + Filters + Actions
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              // Date Range Indicator Pill
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      dateStr,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Filter Segmented Pill
+              _buildSalesFilters(context, state, isDesktop: isDesktop),
+
+              // Reload Button with Shortcut Hint
+              Tooltip(
+                message: 'Recargar métricas (Atajo: R)',
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () {
+                      if (!kIsWeb) {
+                        Vibration.vibrate(duration: 30, amplitude: 60);
+                      }
+                      context.read<DashboardCubit>().loadDashboardData();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.refresh_rounded,
+                            size: 15,
+                            color: Color(0xFF475569),
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Actualizar',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF475569),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Export Button
+              FilledButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Generando reporte consolidado del dashboard...',
+                      ),
+                      duration: Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                icon: const Icon(Icons.arrow_downward_rounded, size: 15),
+                label: const Text('Exportar'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // TOP 4 KPIS UNIFORM STRIP (SHOPEERS / APPLE STYLE)
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildTopKpiStrip(BuildContext context, DashboardLoaded state) {
+    return Row(
+      children: [
+        Expanded(
+          child: DashboardKpiStripCard(
+            title: 'Ventas Totales',
+            value: 'S/ ${state.sales.totalRevenue.toStringAsFixed(2)}',
+            deltaText: '15.5%',
+            isPositiveDelta: true,
+            subtitle: '${state.sales.totalSales} órdenes en período',
+            icon: Icons.point_of_sale_rounded,
+            accentColor: const Color(0xFF2563EB),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: DashboardKpiStripCard(
+            title: 'Ticket Promedio',
+            value: 'S/ ${state.sales.averageTicket.toStringAsFixed(2)}',
+            deltaText: '8.4%',
+            isPositiveDelta: true,
+            subtitle: 'Gasto medio por orden',
+            icon: Icons.calculate_rounded,
+            accentColor: const Color(0xFF0D9488),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: DashboardKpiStripCard(
+            title: 'Stock Total',
+            value: '${state.inventory.totalStock} unid.',
+            deltaText:
+                state.inventory.lowStockProducts > 0
+                    ? '${state.inventory.lowStockProducts} alertas'
+                    : 'Óptimo',
+            isPositiveDelta: state.inventory.lowStockProducts == 0,
+            subtitle: '${state.inventory.totalProducts} productos registrados',
+            icon: Icons.inventory_2_rounded,
+            accentColor: const Color(0xFF0EA5E9),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: DashboardKpiStripCard(
+            title: 'Ganancia Bruta',
+            value: 'S/ ${state.sales.totalProfit.toStringAsFixed(2)}',
+            deltaText: '${state.sales.salesMargin.toStringAsFixed(1)}%',
+            isPositiveDelta: true,
+            subtitle:
+                'Reposición: S/ ${state.sales.replacementFund.toStringAsFixed(2)}',
+            icon: Icons.trending_up_rounded,
+            accentColor: const Color(0xFF10B981),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabletKpiGrid(BuildContext context, DashboardLoaded state) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: DashboardKpiStripCard(
+                title: 'Ventas Totales',
+                value: 'S/ ${state.sales.totalRevenue.toStringAsFixed(2)}',
+                deltaText: '15.5%',
+                isPositiveDelta: true,
+                subtitle: '${state.sales.totalSales} órdenes en período',
+                icon: Icons.point_of_sale_rounded,
+                accentColor: const Color(0xFF2563EB),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DashboardKpiStripCard(
+                title: 'Ticket Promedio',
+                value: 'S/ ${state.sales.averageTicket.toStringAsFixed(2)}',
+                deltaText: '8.4%',
+                isPositiveDelta: true,
+                subtitle: 'Gasto promedio por orden',
+                icon: Icons.calculate_rounded,
+                accentColor: const Color(0xFF0D9488),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: DashboardKpiStripCard(
+                title: 'Stock Total',
+                value: '${state.inventory.totalStock} unid.',
+                deltaText:
+                    state.inventory.lowStockProducts > 0
+                        ? '${state.inventory.lowStockProducts} alertas'
+                        : 'Óptimo',
+                isPositiveDelta: state.inventory.lowStockProducts == 0,
+                subtitle:
+                    '${state.inventory.totalProducts} productos registrados',
+                icon: Icons.inventory_2_rounded,
+                accentColor: const Color(0xFF0EA5E9),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DashboardKpiStripCard(
+                title: 'Ganancia Bruta',
+                value: 'S/ ${state.sales.totalProfit.toStringAsFixed(2)}',
+                deltaText: '${state.sales.salesMargin.toStringAsFixed(1)}%',
+                isPositiveDelta: true,
+                subtitle:
+                    'Reposición: S/ ${state.sales.replacementFund.toStringAsFixed(2)}',
+                icon: Icons.trending_up_rounded,
+                accentColor: const Color(0xFF10B981),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // DESKTOP: BENTO GRID INTERNACIONAL (SPLINE PROFIT + ACTIVITY + RADIAL GOAL)
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildDesktopLayout(BuildContext context, DashboardLoaded state) {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -287,202 +589,68 @@ class _DashboardScreenContent extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _HealthSummaryBar(
-                  lowStockCount: state.inventory.lowStockProducts,
-                  criticalBatchesCount: state.criticalBatches.length,
-                ),
+                if (state.inventory.lowStockProducts > 0 ||
+                    state.criticalBatches.isNotEmpty) ...[
+                  _HealthSummaryBar(
+                    lowStockCount: state.inventory.lowStockProducts,
+                    criticalBatchesCount: state.criticalBatches.length,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Subheader con selector de fecha y acciones rápidas
+                _buildExecutiveSubheader(context, state, isDesktop: true),
                 const SizedBox(height: 20),
 
-                // FILA HERO SUPERIOR (4 KPIs ejecutivos con balance visual)
-                Row(
-                  children: [
-                    Expanded(
-                      child: KpiCard(
-                        title: 'Ventas Totales',
-                        value: state.sales.totalSales.toString(),
-                        subtitle: 'Órdenes en período',
-                        icon: Icons.receipt_long_rounded,
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primary,
-                            AppColors.primary.withValues(alpha: 0.8),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: KpiCard(
-                        title: 'Ticket Promedio',
-                        value: 'S/ ${state.sales.averageTicket.toStringAsFixed(2)}',
-                        subtitle: 'Gasto medio por orden',
-                        icon: Icons.calculate_rounded,
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.teal,
-                            AppColors.teal.withValues(alpha: 0.8),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: KpiCard(
-                        title: 'Stock Total',
-                        value: state.inventory.totalStock.toString(),
-                        subtitle: '${state.inventory.totalProducts} productos activos',
-                        icon: Icons.inventory_2_rounded,
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.info,
-                            AppColors.info.withValues(alpha: 0.85),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    const Expanded(
-                      child: _DashboardAdminGoalCard(),
-                    ),
-                  ],
-                ),
+                // Strip superior de 4 KPIs ejecutivos simétricos
+                _buildTopKpiStrip(context, state),
                 const SizedBox(height: 24),
 
-                // CUERPO PRINCIPAL (Simetría balanceada 6:6)
+                // Bento Grid Principal (60% / 40% Split)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Columna Izquierda: Tracción de Ventas y Clientes VIP
+                    // Columna Izquierda (Flex 7): Spline Chart + Best Sellers Table + Clientes Top
                     Expanded(
-                      flex: 6,
+                      flex: 7,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const SectionHeader(
-                                icon: Icons.point_of_sale_rounded,
-                                title: 'Ventas Registradas',
-                                subtitle: 'Facturación con estado COMPLETADO',
-                              ),
-                              _buildSalesFilters(context, state, isDesktop: true),
-                            ],
+                          DashboardSplineChartCard(
+                            sales: state.sales,
+                            inventory: state.inventory,
                           ),
-                          const SizedBox(height: 14),
-                          _buildSalesContent(
-                            state.sales,
-                            state.isSalesLoading,
-                            showKpiRow: false,
-                          ),
-                          const SizedBox(height: 24),
-                          // NUEVA SECCIÓN ESTELAR: CLIENTES QUE MÁS COMPRAN
-                          TopCustomersCard(
-                            customers: state.topCustomers,
-                            displayMode: TopCustomersDisplayMode.desktop,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-                    // Columna Derecha: Inventario, Lotes y Proyecciones de Margen
-                    Expanded(
-                      flex: 6,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (state.criticalBatches.isNotEmpty) ...[
-                            ExpiringBatchesCard(batches: state.criticalBatches),
-                            const SizedBox(height: 20),
-                          ],
-                          const SectionHeader(
-                            icon: Icons.bar_chart_rounded,
-                            title: 'Inventario & Proyecciones',
-                            subtitle: 'Valorización y margen bruto estimado',
-                          ),
-                          const SizedBox(height: 14),
-                          _buildInventoryContent(
-                            state.inventory,
-                            showKpiRow: false,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // TABLET: HYBRID EFFICIENCY (BALANCED 2-COL + MODALS CONSTRAINED)
-  // ─────────────────────────────────────────────────────────────────────────────
-  Widget _buildTabletLayout(
-    BuildContext context,
-    DashboardLoaded state,
-  ) {
-    return CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          sliver: SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _HealthSummaryBar(
-                  lowStockCount: state.inventory.lowStockProducts,
-                  criticalBatchesCount: state.criticalBatches.length,
-                ),
-                const SizedBox(height: 16),
-                const _DashboardAdminGoalCard(),
-                const SizedBox(height: 20),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 5,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const SectionHeader(
-                            icon: Icons.point_of_sale_rounded,
-                            title: 'Ventas',
-                            subtitle: 'Órdenes completadas',
-                          ),
-                          const SizedBox(height: 12),
-                          _buildSalesFilters(context, state),
-                          const SizedBox(height: 14),
-                          _buildSalesContent(state.sales, state.isSalesLoading),
                           const SizedBox(height: 20),
-                          TopCustomersCard(
-                            customers: state.topCustomers,
-                            displayMode: TopCustomersDisplayMode.tablet,
+                          DashboardBestSellersTable(
+                            criticalBatches: state.criticalBatches,
                           ),
+                          if (state.topCustomers.isNotEmpty) ...[
+                            const SizedBox(height: 20),
+                            TopCustomersCard(
+                              customers: state.topCustomers,
+                              displayMode: TopCustomersDisplayMode.desktop,
+                            ),
+                          ],
                         ],
                       ),
                     ),
                     const SizedBox(width: 20),
+
+                    // Columna Derecha (Flex 5): Actividad Semanal + Radial Goal + Asistente IA + Lotes
                     Expanded(
                       flex: 5,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          const DashboardWeeklyActivityCard(),
+                          const SizedBox(height: 20),
+                          const _DashboardAdminGoalCard(),
+                          const SizedBox(height: 20),
+                          const DashboardAiAssistantCard(),
                           if (state.criticalBatches.isNotEmpty) ...[
-                            ExpiringBatchesCard(batches: state.criticalBatches),
                             const SizedBox(height: 20),
+                            ExpiringBatchesCard(batches: state.criticalBatches),
                           ],
-                          const SectionHeader(
-                            icon: Icons.inventory_2_rounded,
-                            title: 'Inventario',
-                            subtitle: 'Stock y márgenes',
-                          ),
-                          const SizedBox(height: 12),
-                          _buildInventoryContent(state.inventory),
                         ],
                       ),
                     ),
@@ -497,86 +665,119 @@ class _DashboardScreenContent extends StatelessWidget {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // MOBILE: APPLE HIG / IOS PREMIUM (THUMB-ZONE FIRST + BOTTOMSHEET GESTURES)
+  // TABLET: HYBRID EFFICIENCY (2-COLUMN RESPONSIVE)
   // ─────────────────────────────────────────────────────────────────────────────
-  Widget _buildMobileLayout(
-    BuildContext context,
-    DashboardLoaded state,
-  ) {
+  Widget _buildTabletLayout(BuildContext context, DashboardLoaded state) {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate([
-              _HealthSummaryBar(
-                lowStockCount: state.inventory.lowStockProducts,
-                criticalBatchesCount: state.criticalBatches.length,
-              ),
-              const SizedBox(height: 16),
-              const _DashboardAdminGoalCard(),
-              const SizedBox(height: 20),
-              if (state.criticalBatches.isNotEmpty) ...[
-                ExpiringBatchesCard(batches: state.criticalBatches),
-                const SizedBox(height: 20),
-              ],
-              const SectionHeader(
-                icon: Icons.inventory_2_rounded,
-                title: 'Inventario',
-                subtitle: 'Valorización y proyecciones de stock',
-              ),
-              const SizedBox(height: 12),
-              _buildInventoryContent(state.inventory),
-            ]),
-          ),
-        ),
-        // Sticky Header de Ventas con Filtros táctiles optimizados
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: _StickyHeaderDelegate(
-            child: Row(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Ventas',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        'Órdenes COMPLETADAS',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                if (state.inventory.lowStockProducts > 0 ||
+                    state.criticalBatches.isNotEmpty) ...[
+                  _HealthSummaryBar(
+                    lowStockCount: state.inventory.lowStockProducts,
+                    criticalBatchesCount: state.criticalBatches.length,
                   ),
+                  const SizedBox(height: 14),
+                ],
+                _buildExecutiveSubheader(context, state, isDesktop: false),
+                const SizedBox(height: 16),
+                _buildTabletKpiGrid(context, state),
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          DashboardSplineChartCard(
+                            sales: state.sales,
+                            inventory: state.inventory,
+                          ),
+                          const SizedBox(height: 20),
+                          DashboardBestSellersTable(
+                            criticalBatches: state.criticalBatches,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const DashboardWeeklyActivityCard(),
+                          const SizedBox(height: 16),
+                          const _DashboardAdminGoalCard(),
+                          if (state.criticalBatches.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            ExpiringBatchesCard(batches: state.criticalBatches),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                _buildSalesFilters(context, state),
               ],
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // MOBILE: APPLE HIG / IOS PREMIUM (THUMB-ZONE FIRST + FLUID SCROLL)
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildMobileLayout(BuildContext context, DashboardLoaded state) {
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              _buildSalesContent(state.sales, state.isSalesLoading),
-              const SizedBox(height: 24),
-              // Clientes destacados en móvil
-              TopCustomersCard(
-                customers: state.topCustomers,
-                displayMode: TopCustomersDisplayMode.mobile,
+              if (state.inventory.lowStockProducts > 0 ||
+                  state.criticalBatches.isNotEmpty) ...[
+                _HealthSummaryBar(
+                  lowStockCount: state.inventory.lowStockProducts,
+                  criticalBatchesCount: state.criticalBatches.length,
+                ),
+                const SizedBox(height: 14),
+              ],
+              _buildExecutiveSubheader(context, state, isDesktop: false),
+              const SizedBox(height: 16),
+              _buildTabletKpiGrid(context, state),
+              const SizedBox(height: 16),
+              DashboardSplineChartCard(
+                sales: state.sales,
+                inventory: state.inventory,
               ),
+              const SizedBox(height: 16),
+              const _DashboardAdminGoalCard(),
+              const SizedBox(height: 16),
+              const DashboardWeeklyActivityCard(),
+              const SizedBox(height: 16),
+              DashboardBestSellersTable(criticalBatches: state.criticalBatches),
+              if (state.criticalBatches.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                ExpiringBatchesCard(batches: state.criticalBatches),
+              ],
+              if (state.topCustomers.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                TopCustomersCard(
+                  customers: state.topCustomers,
+                  displayMode: TopCustomersDisplayMode.mobile,
+                ),
+              ],
             ]),
           ),
         ),
@@ -631,7 +832,8 @@ class _DashboardScreenContent extends StatelessWidget {
           context.read<DashboardCubit>().updateSalesFilter(set.first);
         },
         style: ButtonStyle(
-          visualDensity: isDesktop ? VisualDensity.compact : VisualDensity.comfortable,
+          visualDensity:
+              isDesktop ? VisualDensity.compact : VisualDensity.comfortable,
           tapTargetSize: MaterialTapTargetSize.padded,
           backgroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
@@ -654,200 +856,6 @@ class _DashboardScreenContent extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildSalesContent(
-    SalesMetricsEntity sales,
-    bool isSalesLoading, {
-    bool showKpiRow = true,
-  }) {
-    if (isSalesLoading) {
-      return Container(
-        height: 240,
-        alignment: Alignment.center,
-        child: const CircularProgressIndicator(),
-      );
-    }
-    return Column(
-      children: [
-        if (showKpiRow) ...[
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: KpiCard(
-                  title: 'Ventas Totales',
-                  value: sales.totalSales.toString(),
-                  subtitle: 'Órdenes despachadas',
-                  icon: Icons.receipt_long_rounded,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.primary,
-                      AppColors.primary.withValues(alpha: 0.8),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 3,
-                child: KpiCard(
-                  title: 'Ticket Promedio',
-                  value: 'S/ ${sales.averageTicket.toStringAsFixed(2)}',
-                  subtitle: 'Gasto por cliente',
-                  icon: Icons.calculate_rounded,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.teal,
-                      AppColors.teal.withValues(alpha: 0.8),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-        ],
-        Row(
-          children: [
-            Expanded(
-              child: KpiCardWide(
-                title: 'Ingresos Netos',
-                value: 'S/ ${sales.totalRevenue.toStringAsFixed(2)}',
-                subtitle: 'Total facturado en el periodo',
-                icon: Icons.attach_money_rounded,
-                color: AppColors.success,
-                rightLabel: 'Fondo Reposición',
-                rightValue: 'S/ ${sales.replacementFund.toStringAsFixed(2)}',
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        GananciaBrutaCard(
-          gananciaBruta: sales.totalProfit,
-          inversion: sales.replacementFund,
-          margenPct: sales.salesMargin,
-          sparklineData: const [],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInventoryContent(
-    InventoryMetricsEntity inventory, {
-    bool showKpiRow = true,
-  }) {
-    return Column(
-      children: [
-        if (showKpiRow) ...[
-          Row(
-            children: [
-              Expanded(
-                child: KpiCard(
-                  title: 'Catálogo',
-                  value: inventory.totalProducts.toString(),
-                  subtitle: 'Productos activos',
-                  icon: Icons.category_rounded,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.primary,
-                      AppColors.primary.withValues(alpha: 0.8),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: KpiCard(
-                  title: 'Stock Total',
-                  value: inventory.totalStock.toString(),
-                  subtitle: 'Unidades en tiendas',
-                  icon: Icons.widgets_rounded,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.teal,
-                      AppColors.teal.withValues(alpha: 0.8),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-        ],
-        KpiCardWide(
-          title: 'Valorización al Público',
-          value: 'S/ ${inventory.retailValue.toStringAsFixed(2)}',
-          subtitle: 'Precio total del stock actual',
-          icon: Icons.storefront_rounded,
-          color: AppColors.info,
-          rightLabel: 'Inversión Total',
-          rightValue: 'S/ ${inventory.totalInvestment.toStringAsFixed(2)}',
-        ),
-        const SizedBox(height: 10),
-        GananciaBrutaCard(
-          gananciaBruta: inventory.expectedMaxProfit,
-          inversion: inventory.totalInvestment,
-          margenPct: inventory.grossMargin,
-          sparklineData: const [
-            1.0,
-            1.5,
-            1.2,
-            2.0,
-            2.8,
-            2.4,
-            3.5,
-            4.0,
-            3.8,
-            5.0,
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: KpiCard(
-                title: 'G. Público',
-                value: 'S/ ${inventory.expectedMaxProfit.toStringAsFixed(2)}',
-                subtitle: 'Aplicando precio al público',
-                icon: Icons.trending_up_rounded,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.teal,
-                    AppColors.teal.withValues(alpha: 0.8),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: KpiCard(
-                title: 'G. Mayorista',
-                value: 'S/ ${inventory.expectedMinProfit.toStringAsFixed(2)}',
-                subtitle: 'Aplicando precio por mayor',
-                icon: Icons.people_alt_rounded,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.primary, AppColors.primaryDark],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }
@@ -1057,35 +1065,6 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
   }
 }
 
-class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final Widget child;
-
-  const _StickyHeaderDelegate({required this.child});
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: child,
-    );
-  }
-
-  @override
-  double get maxExtent => 68.0;
-
-  @override
-  double get minExtent => 68.0;
-
-  @override
-  bool shouldRebuild(covariant _StickyHeaderDelegate oldDelegate) =>
-      oldDelegate.child != child;
-}
-
 class _DashboardAdminGoalCard extends StatelessWidget {
   const _DashboardAdminGoalCard();
 
@@ -1100,17 +1079,17 @@ class _DashboardAdminGoalCard extends StatelessWidget {
         );
       },
       builder: (context, goal) {
-        return AdminGoalCard(
+        return DashboardRadialGoalCard(
           currentAmount: goal.$1,
           targetAmount: goal.$2,
-          onAddPressed: () => _DashboardScreenContent._openGoalDialog(
-            context,
-            goal.$1,
-            goal.$2,
-          ),
+          onConfigure:
+              () => _DashboardScreenContent._openGoalDialog(
+                context,
+                goal.$1,
+                goal.$2,
+              ),
         );
       },
     );
   }
 }
-

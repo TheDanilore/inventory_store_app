@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_sidebar.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_desktop_top_bar.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_offline_banner.dart';
 import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 
@@ -345,88 +346,99 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
           headerNotifier: _headerNotifier,
           isDesktop: true,
           updateHeader: _updateHeader,
-          child: AppPopScope(
-            onCustomBack: _headerNotifier.value.onBack,
-            child: AnnotatedRegion<SystemUiOverlayStyle>(
-              value: const SystemUiOverlayStyle(
-                statusBarColor: Colors.transparent,
-                statusBarIconBrightness: Brightness.dark,
-                statusBarBrightness: Brightness.light,
-              ),
-              child: Scaffold(
-                backgroundColor: AppColors.background,
-                body: Row(
-                children: [
-                  // ── Left Sidebar (Desktop, MONTADO UNA SOLA VEZ) ─────────
-                  RepaintBoundary(
-                    child: AdminSidebar(
-                      isCollapsed: _isSidebarCollapsed,
-                      onToggleCollapse: _toggleSidebar,
-                    ),
+          child: CallbackShortcuts(
+            bindings: {
+              const SingleActivator(
+                LogicalKeyboardKey.keyK,
+                control: true,
+              ): () {
+                AdminCommandPaletteDialog.show(context);
+              },
+              const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () {
+                AdminCommandPaletteDialog.show(context);
+              },
+            },
+            child: AppPopScope(
+              onCustomBack: _headerNotifier.value.onBack,
+              child: AnnotatedRegion<SystemUiOverlayStyle>(
+                value: const SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: Brightness.dark,
+                  statusBarBrightness: Brightness.light,
+                ),
+                child: Scaffold(
+                  backgroundColor: AppColors.background,
+                  body: Row(
+                    children: [
+                      // ── Left Sidebar (Desktop, MONTADO UNA SOLA VEZ) ─────────
+                      RepaintBoundary(
+                        child: AdminSidebar(
+                          isCollapsed: _isSidebarCollapsed,
+                          onToggleCollapse: _toggleSidebar,
+                        ),
+                      ),
+
+                      // ── Right Main Area (TopBar + Banner + Child) ───────────
+                      Expanded(
+                        child: Column(
+                          children: [
+                            // ── Persistent TopBar Reactiva ───────────────────
+                            RepaintBoundary(
+                              child: ValueListenableBuilder<AdminHeaderConfig>(
+                                valueListenable: _headerNotifier,
+                                builder: (context, header, _) {
+                                  final displayTitle =
+                                      header.title.isNotEmpty
+                                          ? header.title
+                                          : AdminShellHelper.resolveTitle(
+                                            _currentPath,
+                                          );
+                                  final displayBreadcrumb =
+                                      (header.breadcrumb != null &&
+                                              header.breadcrumb!.isNotEmpty)
+                                          ? header.breadcrumb!
+                                          : AdminShellHelper.resolveBreadcrumb(
+                                            _currentPath,
+                                          );
+
+                                  return AdminDesktopTopBar(
+                                    isSidebarCollapsed: _isSidebarCollapsed,
+                                    onToggleSidebar: _toggleSidebar,
+                                    showBackButton: header.showBackButton,
+                                    onBack:
+                                        header.onBack ??
+                                        () => _handleDefaultBack(context),
+                                    title: displayTitle,
+                                    breadcrumbText: displayBreadcrumb,
+                                    actions: header.actions,
+                                    showSettingsButton:
+                                        header.showSettingsButton,
+                                    settingsActions: header.settingsActions,
+                                    onSettingsSelected:
+                                        header.onSettingsSelected,
+                                  );
+                                },
+                              ),
+                            ),
+
+                            // ── Persistent Offline Banner ────────────────────
+                            const RepaintBoundary(child: AdminOfflineBanner()),
+
+                            // ── Content View (Swapped reactively by GoRouter) ─
+                            Expanded(
+                              child: RepaintBoundary(child: widget.child),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-
-                  // ── Right Main Area (TopBar + Banner + Child) ───────────
-                  Expanded(
-                    child: Column(
-                      children: [
-                        // ── Persistent TopBar Reactiva ───────────────────
-                        RepaintBoundary(
-                          child: ValueListenableBuilder<AdminHeaderConfig>(
-                            valueListenable: _headerNotifier,
-                            builder: (context, header, _) {
-                              final displayTitle =
-                                  header.title.isNotEmpty
-                                      ? header.title
-                                      : AdminShellHelper.resolveTitle(
-                                        _currentPath,
-                                      );
-                              final displayBreadcrumb =
-                                  (header.breadcrumb != null &&
-                                          header.breadcrumb!.isNotEmpty)
-                                      ? header.breadcrumb!
-                                      : AdminShellHelper.resolveBreadcrumb(
-                                        _currentPath,
-                                      );
-
-                              return AdminDesktopTopBar(
-                                isSidebarCollapsed: _isSidebarCollapsed,
-                                onToggleSidebar: _toggleSidebar,
-                                showBackButton: header.showBackButton,
-                                onBack:
-                                    header.onBack ??
-                                    () => _handleDefaultBack(context),
-                                title: displayTitle,
-                                breadcrumbText: displayBreadcrumb,
-                                actions: header.actions,
-                                showSettingsButton: header.showSettingsButton,
-                                settingsActions: header.settingsActions,
-                                onSettingsSelected: header.onSettingsSelected,
-                              );
-                            },
-                          ),
-                        ),
-
-                        // ── Persistent Offline Banner ────────────────────
-                        const RepaintBoundary(
-                          child: AdminOfflineBanner(),
-                        ),
-
-                        // ── Content View (Swapped reactively by GoRouter) ─
-                        Expanded(
-                          child: RepaintBoundary(
-                            child: widget.child,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-      );
-    },
+        );
+      },
     );
   }
 }

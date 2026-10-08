@@ -105,7 +105,13 @@ class _PODetailSheetState extends State<PODetailSheet> {
           _isLoadingItems = false;
         });
       }
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al cargar detalles de la orden ${widget.po.id}',
+        tag: 'PO_DETAIL_SHEET',
+        error: e,
+        stackTrace: st,
+      );
       if (mounted) {
         setState(() => _isLoadingItems = false);
         AppSnackbar.show(
@@ -134,7 +140,13 @@ class _PODetailSheetState extends State<PODetailSheet> {
           Navigator.pop(context, true);
         }
       }
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al actualizar estado a $newStatus para la orden ${widget.po.id}',
+        tag: 'PO_DETAIL_SHEET',
+        error: e,
+        stackTrace: st,
+      );
       if (mounted) {
         AppSnackbar.show(
           context,
@@ -462,7 +474,13 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
           );
         }
       }
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error al abrir WhatsApp para la orden ${widget.po.id}',
+        tag: 'PO_DETAIL_SHEET',
+        error: e,
+        stackTrace: st,
+      );
       if (mounted) {
         AppSnackbar.show(
           context,
@@ -477,10 +495,13 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
     if (!widget.isDialog && context.canPop()) {
       Navigator.pop(context);
     }
-    await context.push(
+    final edited = await context.push<bool>(
       '/purchase-orders/form?editOrderId=${widget.po.id}',
     );
-    widget.onPaymentSuccess?.call();
+    if (edited == true && mounted) {
+      widget.onPaymentSuccess?.call();
+      context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
+    }
   }
 
   @override
@@ -560,16 +581,15 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                   horizontal: 20,
                   vertical: 12,
                 ),
-                decoration: widget.isDialog
-                    ? const BoxDecoration(
-                        color: Colors.white,
-                        border: Border(
-                          bottom: BorderSide(
-                            color: Color(0xFFE2E8F0),
+                decoration:
+                    widget.isDialog
+                        ? const BoxDecoration(
+                          color: Colors.white,
+                          border: Border(
+                            bottom: BorderSide(color: Color(0xFFE2E8F0)),
                           ),
-                        ),
-                      )
-                    : null,
+                        )
+                        : null,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final isNarrow = constraints.maxWidth < 600;
@@ -598,8 +618,7 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                               );
                               AppSnackbar.show(
                                 context,
-                                message:
-                                    'ID de orden copiado: ${widget.po.id}',
+                                message: 'ID de orden copiado: ${widget.po.id}',
                                 type: SnackbarType.info,
                               );
                             },
@@ -1454,17 +1473,19 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
     super.dispose();
   }
 
+  int _shiftRequestId = 0;
+
   Future<void> _checkActiveShift(String accountId) async {
+    final currentReqId = ++_shiftRequestId;
     setState(() => _checkingShift = true);
     try {
       final shiftResult = await sl<GetActiveCashShiftUseCase>().call(accountId);
+      if (currentReqId != _shiftRequestId || !mounted) return;
       final shift = shiftResult.fold((l) => null, (r) => r);
-      if (mounted) {
-        setState(() {
-          _activeShift = (shift != null && shift.isNotEmpty) ? shift : null;
-          _checkingShift = false;
-        });
-      }
+      setState(() {
+        _activeShift = (shift != null && shift.isNotEmpty) ? shift : null;
+        _checkingShift = false;
+      });
     } catch (e, st) {
       LoggerService.e(
         'Error verificando turno activo para la cuenta $accountId',
@@ -1472,7 +1493,7 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
         error: e,
         stackTrace: st,
       );
-      if (mounted) {
+      if (currentReqId == _shiftRequestId && mounted) {
         setState(() {
           _activeShift = null;
           _checkingShift = false;
@@ -1485,7 +1506,11 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
     final val = widget.pending * fraction;
     setState(() {
       _amountCtrl.text = val.toStringAsFixed(2);
+      _amountCtrl.selection = TextSelection.fromPosition(
+        TextPosition(offset: _amountCtrl.text.length),
+      );
     });
+    _formKey.currentState?.validate();
   }
 
   void _submit() {
@@ -1535,9 +1560,10 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
       return;
     }
 
-    final shiftId = (selAcc.type == 'CAJA' && _activeShift != null)
-        ? _activeShift!['id']?.toString()
-        : null;
+    final shiftId =
+        (selAcc.type == 'CAJA' && _activeShift != null)
+            ? _activeShift!['id']?.toString()
+            : null;
 
     Navigator.pop(
       context,
@@ -1806,7 +1832,11 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.lock_rounded, size: 13, color: AppColors.danger),
+                        Icon(
+                          Icons.lock_rounded,
+                          size: 13,
+                          color: AppColors.danger,
+                        ),
                         SizedBox(width: 6),
                         Expanded(
                           child: Text(

@@ -3,22 +3,38 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // --- 1. COLORES DE FONDO Y SUPERFICIES (Look Premium Estilo Stripe & Linear) ---
-  static const Color background = Color(0xFFF1F5F9); // Slate 100: contraste nítido con tarjetas blancas
+  // --- 1. COLORES DE FONDO Y SUPERFICIES (Look Premium Estilo Apple HIG, Stripe & Linear) ---
+  static const Color background = Color(
+    0xFFF8FAFC,
+  ); // Slate 50: canvas limpio, descansa la vista
   static const Color surface = Colors.white; // Tarjetas y contenedores
-  static const Color surfaceDark = Color(0xFFF4F6F9);
+  static const Color surfaceDark = Color(0xFFF1F5F9);
   static const Color border = Color(0xFFE2E8F0); // Bordes limpios definidos
   static const Color divider = Color(0xFFE2E8F0); // Separadores sutiles
 
-  // --- 1.1 SIDEBAR EXECUTIVE DARK NAVY (Anclaje de Autoridad y Contraste) ---
-  static const Color sidebarBg = Color(0xFF0F172A); // Slate 900 Ejecutivo Profundo
-  static const Color sidebarBorder = Color(0xFF1E293B); // Slate 800
-  static const Color sidebarText = Color(0xFF94A3B8); // Slate 400 (Inactivo)
-  static const Color sidebarTextActive = Colors.white; // Blanco puro (Activo)
-  static const Color sidebarActiveBg = Color(0xFF1E293B); // Slate 800
-  static const Color sidebarActiveIndicator = Color(0xFF14B8A6); // Teal 500 Eléctrico
-  static const Color sidebarHover = Color(0x661E293B);
-  static const Color sidebarSectionHeader = Color(0xFF64748B); // Slate 500
+  // --- 1.1 SIDEBAR EXECUTIVE LIGHT / APPLE DESIGN (Shopeers / Linear Aesthetic) ---
+  static const Color sidebarBg = Color(
+    0xFFFFFFFF,
+  ); // Blanco puro / Light clean surface
+  static const Color sidebarBorder = Color(
+    0xFFE2E8F0,
+  ); // Borde fino Slate 200 (1px)
+  static const Color sidebarText = Color(
+    0xFF64748B,
+  ); // Slate 500 elegante inactivo
+  static const Color sidebarTextActive = Color(
+    0xFF1E40AF,
+  ); // Blue 800 texto activo
+  static const Color sidebarActiveBg = Color(
+    0xFFEFF6FF,
+  ); // Blue 50 cápsula activa suave
+  static const Color sidebarActiveIndicator = Color(
+    0xFF2563EB,
+  ); // Blue 600 vibrante
+  static const Color sidebarHover = Color(0xFFF8FAFC); // Slate 50 hover sutil
+  static const Color sidebarSectionHeader = Color(
+    0xFF94A3B8,
+  ); // Slate 400 encabezados en mayúscula
 
   // --- 2. TIPOGRAFÍA REFINADA (Slate Palette) ---
   static const slate = Color(0xFF3D5168);

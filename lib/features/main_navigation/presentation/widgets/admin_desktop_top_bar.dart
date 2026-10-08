@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class AdminDesktopTopBar extends StatelessWidget {
@@ -37,13 +38,13 @@ class AdminDesktopTopBar extends StatelessWidget {
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
       ),
       child: Row(
         children: [
           // ── Toggle Sidebar Button ─────────────────────────────────
-          AdminAppBarIconButton(
+          _TopBarIconButton(
             icon:
                 isSidebarCollapsed
                     ? Icons.menu_open_rounded
@@ -53,7 +54,7 @@ class AdminDesktopTopBar extends StatelessWidget {
           ),
           if (showBackButton) ...[
             const SizedBox(width: 8),
-            AdminAppBarIconButton(
+            _TopBarIconButton(
               icon: Icons.arrow_back_rounded,
               tooltip: 'Volver atrás',
               onTap: onBack,
@@ -71,7 +72,7 @@ class AdminDesktopTopBar extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: Color(0xFF0F172A),
                   letterSpacing: -0.3,
                 ),
               ),
@@ -79,51 +80,164 @@ class AdminDesktopTopBar extends StatelessWidget {
                 breadcrumbText,
                 style: const TextStyle(
                   fontSize: 11,
-                  color: AppColors.textSecondary,
+                  color: Color(0xFF64748B),
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
 
-          const Spacer(),
+          const SizedBox(width: 32),
+
+          // ── Omnipresent Command Search Bar (Shopeers / Apple Style) ─
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: InkWell(
+                onTap: () => AdminCommandPaletteDialog.show(context),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  height: 38,
+                  constraints: const BoxConstraints(maxWidth: 380),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFE2E8F0),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.search_rounded,
+                        size: 18,
+                        color: Color(0xFF94A3B8),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Buscar en el ERP...',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF94A3B8),
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: const Text(
+                          '⌘ K',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
 
           // ── Quick Custom Actions ──────────────────────────────────
-          if (actions != null) ...actions!.map(
-            (action) => SizedBox(height: 40, child: action),
-          ),
+          if (actions != null)
+            ...actions!.map((action) => SizedBox(height: 38, child: action)),
           if (actions != null && actions!.isNotEmpty) const SizedBox(width: 12),
 
-          // ── Notifications Icon ────────────────────────────────────
-          AdminAppBarIconButton(
-            icon: Icons.notifications_none_rounded,
-            tooltip: 'Notificaciones',
+          // ── Theme Mode Indicator Toggle ───────────────────────────
+          _TopBarIconButton(
+            icon: Icons.light_mode_outlined,
+            tooltip: 'Modo Claro Ejecutivo',
             onTap: () {
-              showDialog(
-                context: context,
-                builder:
-                    (ctx) => AlertDialog(
-                      title: const Row(
-                        children: [
-                          Icon(Icons.notifications_outlined, size: 20),
-                          SizedBox(width: 8),
-                          Text('Notificaciones'),
-                        ],
-                      ),
-                      content: const Text(
-                        'No tienes notificaciones pendientes.\n\nEste módulo estará disponible próximamente.',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(ctx).pop(),
-                          child: const Text('Entendido'),
-                        ),
-                      ],
-                    ),
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Tema ejecutivo claro activo'),
+                  duration: Duration(seconds: 1),
+                  behavior: SnackBarBehavior.floating,
+                ),
               );
             },
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
+
+          // ── Notifications Icon with Unread Dot ────────────────────
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              _TopBarIconButton(
+                icon: Icons.notifications_none_rounded,
+                tooltip: 'Notificaciones',
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder:
+                        (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          title: const Row(
+                            children: [
+                              Icon(
+                                Icons.notifications_active_outlined,
+                                size: 22,
+                                color: Color(0xFF2563EB),
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                'Centro de Notificaciones',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                            ],
+                          ),
+                          content: const Text(
+                            'Todas tus alertas de inventario y pedidos están al día.\n\nEl sistema monitoriza en tiempo real el stock crítico.',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text('Entendido'),
+                            ),
+                          ],
+                        ),
+                  );
+                },
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 10),
 
           // ── Settings Dropdown ─────────────────────────────────────
           if (showSettingsButton &&
@@ -133,7 +247,7 @@ class AdminDesktopTopBar extends StatelessWidget {
               items: settingsActions!,
               onSelected: onSettingsSelected,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
           ],
 
           // ── Admin Profile Dropdown Avatar ─────────────────────────
@@ -189,6 +303,43 @@ class AdminDesktopTopBar extends StatelessWidget {
             child: const AdminProfileAvatar(),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TopBarIconButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _TopBarIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          hoverColor: const Color(0xFFF1F5F9),
+          child: Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 19, color: const Color(0xFF475569)),
+          ),
+        ),
       ),
     );
   }

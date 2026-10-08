@@ -61,7 +61,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   final Map<String, List<PurchaseOrderItemEntity>> _itemsCache = {};
   static const int _maxCachedOrderItems = 20;
   late final ScrollController _listScrollController;
-  bool _fabExtended = true;
+  final ValueNotifier<bool> _fabExtended = ValueNotifier<bool>(true);
 
   // --- REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) ---
   bool get _isInputFieldFocused {
@@ -94,8 +94,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   void _onListScrolled() {
     if (!_listScrollController.hasClients) return;
     final shouldExtend = _listScrollController.offset <= 60;
-    if (shouldExtend != _fabExtended) {
-      setState(() => _fabExtended = shouldExtend);
+    if (shouldExtend != _fabExtended.value) {
+      _fabExtended.value = shouldExtend;
     }
   }
 
@@ -183,6 +183,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   void dispose() {
     _debounce?.cancel();
     _listScrollController.dispose();
+    _fabExtended.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     _screenFocusNode.dispose();
@@ -201,7 +202,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       return KeyEventResult.ignored;
     }
 
-    final isControlOrMeta = HardwareKeyboard.instance.isControlPressed ||
+    final isControlOrMeta =
+        HardwareKeyboard.instance.isControlPressed ||
         HardwareKeyboard.instance.isMetaPressed;
     final key = event.logicalKey;
 
@@ -299,18 +301,25 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               : -1;
 
       if (key == LogicalKeyboardKey.arrowDown) {
-        final nextIndex = currentIndex == -1 ? 0 : (currentIndex + 1).clamp(0, displayOrders.length - 1);
+        final nextIndex =
+            currentIndex == -1
+                ? 0
+                : (currentIndex + 1).clamp(0, displayOrders.length - 1);
         _selectOrder(displayOrders[nextIndex], updateUrl: true);
         return KeyEventResult.handled;
       }
 
       if (key == LogicalKeyboardKey.arrowUp) {
-        final prevIndex = currentIndex == -1 ? 0 : (currentIndex - 1).clamp(0, displayOrders.length - 1);
+        final prevIndex =
+            currentIndex == -1
+                ? 0
+                : (currentIndex - 1).clamp(0, displayOrders.length - 1);
         _selectOrder(displayOrders[prevIndex], updateUrl: true);
         return KeyEventResult.handled;
       }
 
-      if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
+      if (key == LogicalKeyboardKey.enter ||
+          key == LogicalKeyboardKey.numpadEnter) {
         final po = _selectedOrder ?? displayOrders.first;
         final isTablet = MediaQuery.sizeOf(context).width >= 800;
         if (isTablet) {
@@ -326,6 +335,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   }
 
   void _showDetail(BuildContext context, PurchaseOrderModel po) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final cubit = context.read<PurchaseOrdersCubit>();
     await showModalBottomSheet(
       context: context,
@@ -338,9 +348,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               po: po,
               onPaymentSuccess: () {
                 _itemsCache.remove(po.id);
-                if (context.mounted) {
-                  context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
-                }
+                // Zero-Egress: El Cubit ya muta la orden en memoria RAM.
+                // No se fuerza loadOrders(refresh: true) para evitar peticiones redundantes.
               },
               loadItems: () => _loadOrderItems(po.id),
               onReceive: () => _handleReceiveOrder(context, po),
@@ -356,6 +365,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
   Future<void> _openDesktopDetailSheet(PurchaseOrderModel po) async {
     if (!mounted || _isSideSheetOpen) return;
+    FocusManager.instance.primaryFocus?.unfocus();
     _isSideSheetOpen = true;
     _selectOrder(po, updateUrl: true);
 
@@ -396,17 +406,12 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   isDialog: true,
                   onPaymentSuccess: () {
                     _itemsCache.remove(po.id);
-                    if (context.mounted) {
-                      cubit.loadOrders(refresh: true);
-                    }
+                    // Zero-Egress: El Cubit ya muta la orden en memoria RAM.
                   },
                   loadItems: () => _loadOrderItems(po.id),
                   onReceive: () => _handleReceiveOrder(dialogContext, po),
                   onUpdateStatus: (status) async {
                     await viewModel.updateOrderStatus(po.id, status);
-                    if (mounted) {
-                      cubit.loadOrders(refresh: true);
-                    }
                   },
                 ),
               ),
@@ -420,10 +425,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
             begin: const Offset(1, 0),
             end: Offset.zero,
           ).animate(
-            CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            ),
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
           ),
           child: child,
         );
@@ -602,9 +604,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   }) {
     if (viewModel.isLoading) {
       if (_isTableView && isTablet) {
-        return const SliverToBoxAdapter(
-          child: AppTableShimmer(),
-        );
+        return const SliverToBoxAdapter(child: AppTableShimmer());
       }
       return SliverList(
         delegate: SliverChildBuilderDelegate(
@@ -663,30 +663,29 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final po = displayOrders[index];
-            final isSel = _selectedOrder?.id == po.id;
-            return POCard(
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final po = displayOrders[index];
+          final isSel = _selectedOrder?.id == po.id;
+          return RepaintBoundary(
+            child: POCard(
               po: po,
               isSelected: isSel,
               onTap: () {
                 _openDesktopDetailSheet(po);
               },
-            );
-          },
-          childCount: displayOrders.length,
-        ),
+            ),
+          );
+        }, childCount: displayOrders.length),
       );
     }
 
     return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          final po = displayOrders[index];
-          final isSel = isTablet && _selectedOrder?.id == po.id;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+      delegate: SliverChildBuilderDelegate((context, index) {
+        final po = displayOrders[index];
+        final isSel = isTablet && _selectedOrder?.id == po.id;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: RepaintBoundary(
             child: POCard(
               po: po,
               isSelected: isSel,
@@ -694,10 +693,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                 _showDetail(context, po);
               },
             ),
-          );
-        },
-        childCount: displayOrders.length,
-      ),
+          ),
+        );
+      }, childCount: displayOrders.length),
     );
   }
 
@@ -879,67 +877,82 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     return AdminLayout(
       title: 'Órdenes de Compra',
       showBackButton: true,
-      actions: isDesktopOrTablet
-          ? null
-          : [
-              IconButton(
-                icon: const Icon(Icons.refresh_rounded),
-                tooltip: 'Actualizar órdenes',
-                onPressed: () {
-                  _itemsCache.clear();
-                  context.read<PurchaseOrdersCubit>().loadOrders(refresh: true);
+      actions:
+          isDesktopOrTablet
+              ? null
+              : [
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded),
+                  tooltip: 'Actualizar órdenes',
+                  onPressed: () {
+                    _itemsCache.clear();
+                    context.read<PurchaseOrdersCubit>().loadOrders(
+                      refresh: true,
+                    );
+                  },
+                ),
+              ],
+      floatingActionButton:
+          isDesktopOrTablet
+              ? null
+              : ValueListenableBuilder<bool>(
+                valueListenable: _fabExtended,
+                builder: (context, isExtended, _) {
+                  return AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    transitionBuilder:
+                        (child, animation) =>
+                            ScaleTransition(scale: animation, child: child),
+                    child:
+                        isExtended
+                            ? FloatingActionButton.extended(
+                              key: const ValueKey('fab_ext'),
+                              heroTag: 'po_new_fab',
+                              onPressed:
+                                  () => context.go('/purchase-orders/form'),
+                              backgroundColor:
+                                  _hasDraft
+                                      ? const Color(0xFFF59E0B)
+                                      : AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              icon: Icon(
+                                _hasDraft
+                                    ? Icons.edit_note_rounded
+                                    : Icons.add_shopping_cart_rounded,
+                              ),
+                              label: Text(
+                                _hasDraft ? 'Borrador' : 'Nueva Orden',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            )
+                            : FloatingActionButton(
+                              key: const ValueKey('fab_compact'),
+                              heroTag: 'po_new_fab',
+                              onPressed:
+                                  () => context.go('/purchase-orders/form'),
+                              backgroundColor:
+                                  _hasDraft
+                                      ? const Color(0xFFF59E0B)
+                                      : AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Icon(
+                                _hasDraft
+                                    ? Icons.edit_note_rounded
+                                    : Icons.add_shopping_cart_rounded,
+                              ),
+                            ),
+                  );
                 },
               ),
-            ],
-      floatingActionButton: isDesktopOrTablet
-          ? null
-          : AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              transitionBuilder: (child, animation) => ScaleTransition(
-                scale: animation,
-                child: child,
-              ),
-              child: _fabExtended
-                  ? FloatingActionButton.extended(
-                      key: const ValueKey('fab_ext'),
-                      heroTag: 'po_new_fab',
-                      onPressed: () => context.go('/purchase-orders/form'),
-                      backgroundColor:
-                          _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      icon: Icon(
-                        _hasDraft
-                            ? Icons.edit_note_rounded
-                            : Icons.add_shopping_cart_rounded,
-                      ),
-                      label: Text(
-                        _hasDraft ? 'Borrador' : 'Nueva Orden',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    )
-                  : FloatingActionButton(
-                      key: const ValueKey('fab_compact'),
-                      heroTag: 'po_new_fab',
-                      onPressed: () => context.go('/purchase-orders/form'),
-                      backgroundColor:
-                          _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Icon(
-                        _hasDraft
-                            ? Icons.edit_note_rounded
-                            : Icons.add_shopping_cart_rounded,
-                      ),
-                    ),
-            ),
       body: Focus(
         focusNode: _screenFocusNode,
         autofocus: true,
@@ -949,6 +962,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
             final isTablet = constraints.maxWidth >= 800;
 
             return BlocConsumer<PurchaseOrdersCubit, PurchaseOrdersState>(
+              buildWhen:
+                  (previous, current) =>
+                      current is PurchaseOrdersLoaded ||
+                      current is PurchaseOrdersLoading ||
+                      current is PurchaseOrdersError,
               listener: (context, state) {
                 if (state is PurchaseOrdersLoaded &&
                     _pendingTargetOrderId != null) {
@@ -1015,15 +1033,24 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                           if (_hasDraft)
                             SliverToBoxAdapter(
                               child: Container(
-                                margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                                margin: const EdgeInsets.fromLTRB(
+                                  16,
+                                  14,
+                                  16,
+                                  0,
+                                ),
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 14,
                                   vertical: 10,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.warning.withValues(alpha: 0.1),
+                                  color: AppColors.warning.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   border: Border.all(
-                                    color: AppColors.warning.withValues(alpha: 0.3),
+                                    color: AppColors.warning.withValues(
+                                      alpha: 0.3,
+                                    ),
                                   ),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -1055,9 +1082,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                           vertical: 6,
                                         ),
                                         visualDensity: VisualDensity.compact,
-                                        backgroundColor: AppColors.warning.withValues(
-                                          alpha: 0.2,
-                                        ),
+                                        backgroundColor: AppColors.warning
+                                            .withValues(alpha: 0.2),
                                         foregroundColor: AppColors.warning,
                                       ),
                                       child: const Text('Continuar'),
@@ -1145,7 +1171,12 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                           if (!viewModel.isLoading && filtered.isNotEmpty)
                             SliverToBoxAdapter(
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  4,
+                                  16,
+                                  10,
+                                ),
                                 child: Row(
                                   children: [
                                     Text(
@@ -1165,8 +1196,12 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: AppColors.surface,
-                                          borderRadius: BorderRadius.circular(4),
-                                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                          border: Border.all(
+                                            color: const Color(0xFFE2E8F0),
+                                          ),
                                         ),
                                         child: const Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -1203,7 +1238,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                       decoration: BoxDecoration(
                                         color: AppColors.surface,
                                         borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                                        border: Border.all(
+                                          color: const Color(0xFFE2E8F0),
+                                        ),
                                       ),
                                       child: Text(
                                         'Pág. ${viewModel.currentPage + 1} / ${viewModel.totalPages}',
@@ -1294,9 +1331,14 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
         title: 'Por Recibir / Pend.',
         value: '$pendingCount',
         subtitle: pendingCount > 0 ? 'Requieren atención' : 'Todo al día',
-        icon: pendingCount > 0 ? Icons.pending_actions_rounded : Icons.check_circle_outline_rounded,
-        iconColor: pendingCount > 0 ? AppColors.warningDark : AppColors.successDark,
-        iconBgColor: pendingCount > 0 ? AppColors.warningLight : AppColors.successLight,
+        icon:
+            pendingCount > 0
+                ? Icons.pending_actions_rounded
+                : Icons.check_circle_outline_rounded,
+        iconColor:
+            pendingCount > 0 ? AppColors.warningDark : AppColors.successDark,
+        iconBgColor:
+            pendingCount > 0 ? AppColors.warningLight : AppColors.successLight,
       ),
       _BentoPOKpiCard(
         title: 'Saldo por Pagar',
@@ -1304,7 +1346,10 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
         subtitle: totalDebt > 0 ? 'Cuentas pendientes' : 'Sin deudas',
         icon: Icons.account_balance_wallet_rounded,
         iconColor: totalDebt > 0 ? AppColors.accent : AppColors.tealDark,
-        iconBgColor: totalDebt > 0 ? AppColors.accent.withValues(alpha: 0.12) : AppColors.tealLight,
+        iconBgColor:
+            totalDebt > 0
+                ? AppColors.accent.withValues(alpha: 0.12)
+                : AppColors.tealLight,
       ),
     ];
 
