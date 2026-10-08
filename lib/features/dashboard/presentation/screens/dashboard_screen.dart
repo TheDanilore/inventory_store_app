@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -12,11 +13,11 @@ import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_state.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_cards.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_executive_widgets.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_skeleton.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/admin_goal_dialog.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/top_customers_card.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_add_widget_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
@@ -32,13 +33,8 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
-class _DashboardScreenContent extends StatelessWidget {
+class _DashboardScreenContent extends StatefulWidget {
   const _DashboardScreenContent();
-
-  bool _isTextFieldFocused() {
-    final primaryFocus = FocusManager.instance.primaryFocus;
-    return primaryFocus != null && primaryFocus.context?.widget is EditableText;
-  }
 
   static void _openGoalDialog(
     BuildContext context,
@@ -86,7 +82,6 @@ class _DashboardScreenContent extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 10),
-                  // Drag handle
                   Container(
                     width: 38,
                     height: 4,
@@ -109,6 +104,120 @@ class _DashboardScreenContent extends StatelessWidget {
   }
 
   @override
+  State<_DashboardScreenContent> createState() =>
+      _DashboardScreenContentState();
+}
+
+class _DashboardScreenContentState extends State<_DashboardScreenContent> {
+  static const String _prefsKey = 'dashboard_visible_widget_ids';
+
+  Set<String> _visibleWidgets = {
+    'kpi_strip',
+    'profit_spline',
+    'best_sellers',
+    'customer_segments',
+    'weekly_activity',
+    'radial_goal',
+    'ai_assistant',
+    'expiring_batches',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVisibleWidgets();
+  }
+
+  Future<void> _loadVisibleWidgets() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_prefsKey);
+      if (list != null && list.isNotEmpty && mounted) {
+        setState(() {
+          _visibleWidgets = list.toSet();
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveVisibleWidgets() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_prefsKey, _visibleWidgets.toList());
+    } catch (_) {}
+  }
+
+  void _toggleWidget(String id, bool isVisible) {
+    setState(() {
+      if (isVisible) {
+        _visibleWidgets.add(id);
+      } else {
+        _visibleWidgets.remove(id);
+      }
+    });
+    _saveVisibleWidgets();
+  }
+
+  void _removeWidget(String id, String widgetName) {
+    if (!kIsWeb) {
+      Vibration.vibrate(duration: 30, amplitude: 80);
+    }
+    setState(() {
+      _visibleWidgets.remove(id);
+    });
+    _saveVisibleWidgets();
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Widget "$widgetName" ocultado'),
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'Deshacer',
+          textColor: const Color(0xFF60A5FA),
+          onPressed: () {
+            setState(() {
+              _visibleWidgets.add(id);
+            });
+            _saveVisibleWidgets();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _resetWidgetsToDefault() {
+    setState(() {
+      _visibleWidgets = {
+        'kpi_strip',
+        'profit_spline',
+        'best_sellers',
+        'customer_segments',
+        'weekly_activity',
+        'radial_goal',
+        'ai_assistant',
+        'expiring_batches',
+      };
+    });
+    _saveVisibleWidgets();
+  }
+
+  void _openAddWidgetSheet() {
+    DashboardAddWidgetSheet.show(
+      context,
+      visibleWidgetIds: _visibleWidgets,
+      onToggleWidget: _toggleWidget,
+      onResetDefaults: _resetWidgetsToDefault,
+    );
+  }
+
+  bool _isTextFieldFocused() {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    return primaryFocus != null && primaryFocus.context?.widget is EditableText;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return CallbackShortcuts(
       bindings: {
@@ -116,6 +225,11 @@ class _DashboardScreenContent extends StatelessWidget {
         const SingleActivator(LogicalKeyboardKey.keyR): () {
           if (_isTextFieldFocused()) return;
           context.read<DashboardCubit>().loadDashboardData();
+        },
+        // Atajo W: Abrir panel Add Widget (Shopeers Style)
+        const SingleActivator(LogicalKeyboardKey.keyW): () {
+          if (_isTextFieldFocused()) return;
+          _openAddWidgetSheet();
         },
         // Atajos 1-4: Filtros temporales de ventas
         const SingleActivator(LogicalKeyboardKey.digit1): () {
@@ -146,7 +260,7 @@ class _DashboardScreenContent extends StatelessWidget {
         const SingleActivator(LogicalKeyboardKey.keyG): () {
           if (_isTextFieldFocused()) return;
           final cfg = context.read<AppConfigCubit>();
-          _openGoalDialog(
+          _DashboardScreenContent._openGoalDialog(
             context,
             cfg.getDouble('admin_goal_current', 0.0),
             cfg.getDouble('admin_goal_target', 2600.0),
@@ -155,7 +269,7 @@ class _DashboardScreenContent extends StatelessWidget {
         const SingleActivator(LogicalKeyboardKey.keyM): () {
           if (_isTextFieldFocused()) return;
           final cfg = context.read<AppConfigCubit>();
-          _openGoalDialog(
+          _DashboardScreenContent._openGoalDialog(
             context,
             cfg.getDouble('admin_goal_current', 0.0),
             cfg.getDouble('admin_goal_target', 2600.0),
@@ -357,7 +471,7 @@ class _DashboardScreenContent extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Fila 2: Indicador de Fecha (34dp) + Segmentador de Tiempo (34dp)
+          // Fila 2: Fecha (34dp) + Botón +Widget (34dp) + Segmentador (34dp)
           Row(
             children: [
               Container(
@@ -389,6 +503,42 @@ class _DashboardScreenContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
+
+              // Botón Añadir Widget en móvil (Shopeers exact match)
+              InkWell(
+                onTap: _openAddWidgetSheet,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  height: 34,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.add_rounded,
+                        size: 15,
+                        color: Color(0xFF2563EB),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Widget (${_visibleWidgets.length})',
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
               Expanded(
                 child: SizedBox(
                   height: 34,
@@ -470,6 +620,39 @@ class _DashboardScreenContent extends StatelessWidget {
             SizedBox(
               height: 38,
               child: _buildSalesFilters(context, state, isDesktop: true),
+            ),
+            const SizedBox(width: 10),
+
+            // Botón Añadir Widget (Shopeers Style)
+            Tooltip(
+              message: 'Personalizar widgets del dashboard (Atajo: W)',
+              child: SizedBox(
+                height: 38,
+                child: OutlinedButton.icon(
+                  onPressed: _openAddWidgetSheet,
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF0F172A),
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  icon: const Icon(
+                    Icons.widgets_outlined,
+                    size: 15,
+                    color: Color(0xFF2563EB),
+                  ),
+                  label: Text(
+                    'Widgets (${_visibleWidgets.length}/8)',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(width: 10),
 
@@ -703,64 +886,240 @@ class _DashboardScreenContent extends StatelessWidget {
                 const SizedBox(height: 20),
 
                 // Strip superior de 4 KPIs ejecutivos simétricos
-                _buildTopKpiStrip(context, state),
-                const SizedBox(height: 24),
+                if (_visibleWidgets.contains('kpi_strip')) ...[
+                  _buildTopKpiStrip(context, state),
+                  const SizedBox(height: 24),
+                ],
 
-                // Bento Grid Principal (60% / 40% Split)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Columna Izquierda (Flex 7): Spline Chart + Best Sellers Table + Clientes Top
-                    Expanded(
-                      flex: 7,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          DashboardSplineChartCard(
-                            sales: state.sales,
-                            inventory: state.inventory,
-                          ),
-                          const SizedBox(height: 20),
-                          DashboardBestSellersTable(
-                            criticalBatches: state.criticalBatches,
-                          ),
-                          if (state.topCustomers.isNotEmpty) ...[
-                            const SizedBox(height: 20),
-                            TopCustomersCard(
-                              customers: state.topCustomers,
-                              displayMode: TopCustomersDisplayMode.desktop,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-
-                    // Columna Derecha (Flex 5): Actividad Semanal + Radial Goal + Asistente IA + Lotes
-                    Expanded(
-                      flex: 5,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const DashboardWeeklyActivityCard(),
-                          const SizedBox(height: 20),
-                          const _DashboardAdminGoalCard(),
-                          const SizedBox(height: 20),
-                          const DashboardAiAssistantCard(),
-                          if (state.criticalBatches.isNotEmpty) ...[
-                            const SizedBox(height: 20),
-                            ExpiringBatchesCard(batches: state.criticalBatches),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                // Bento Grid Principal Modulado
+                if (!_hasAnyBodyWidgets(state))
+                  _buildEmptyWidgetsPlaceholder()
+                else
+                  _buildDesktopBentoGrid(context, state),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  bool _hasAnyBodyWidgets(DashboardLoaded state) {
+    return _visibleWidgets.contains('profit_spline') ||
+        _visibleWidgets.contains('best_sellers') ||
+        (_visibleWidgets.contains('customer_segments') &&
+            state.topCustomers.isNotEmpty) ||
+        _visibleWidgets.contains('weekly_activity') ||
+        _visibleWidgets.contains('radial_goal') ||
+        _visibleWidgets.contains('ai_assistant') ||
+        (_visibleWidgets.contains('expiring_batches') &&
+            state.criticalBatches.isNotEmpty);
+  }
+
+  Widget _buildDesktopBentoGrid(BuildContext context, DashboardLoaded state) {
+    final leftWidgets = <Widget>[
+      if (_visibleWidgets.contains('profit_spline'))
+        _ModularCardWrapper(
+          id: 'profit_spline',
+          title: 'Curva de Utilidad y Ventas',
+          onHide: () => _removeWidget(
+            'profit_spline',
+            'Curva de Utilidad y Ventas',
+          ),
+          child: DashboardSplineChartCard(
+            sales: state.sales,
+            inventory: state.inventory,
+          ),
+        ),
+      if (_visibleWidgets.contains('best_sellers'))
+        _ModularCardWrapper(
+          id: 'best_sellers',
+          title: 'Productos de Mayor Rotación',
+          onHide: () => _removeWidget(
+            'best_sellers',
+            'Productos de Mayor Rotación',
+          ),
+          child: DashboardBestSellersTable(
+            criticalBatches: state.criticalBatches,
+          ),
+        ),
+      if (_visibleWidgets.contains('customer_segments') &&
+          state.topCustomers.isNotEmpty)
+        _ModularCardWrapper(
+          id: 'customer_segments',
+          title: 'Segmentación de Clientes',
+          onHide: () => _removeWidget(
+            'customer_segments',
+            'Segmentación de Clientes',
+          ),
+          child: TopCustomersCard(
+            customers: state.topCustomers,
+            displayMode: TopCustomersDisplayMode.desktop,
+          ),
+        ),
+    ];
+
+    final rightWidgets = <Widget>[
+      if (_visibleWidgets.contains('weekly_activity'))
+        _ModularCardWrapper(
+          id: 'weekly_activity',
+          title: 'Días de Mayor Actividad',
+          onHide: () => _removeWidget(
+            'weekly_activity',
+            'Días de Mayor Actividad',
+          ),
+          child: const DashboardWeeklyActivityCard(),
+        ),
+      if (_visibleWidgets.contains('radial_goal'))
+        _ModularCardWrapper(
+          id: 'radial_goal',
+          title: 'Meta Financiera de Ahorro',
+          onHide: () => _removeWidget(
+            'radial_goal',
+            'Meta Financiera de Ahorro',
+          ),
+          child: const _DashboardAdminGoalCard(),
+        ),
+      if (_visibleWidgets.contains('ai_assistant'))
+        _ModularCardWrapper(
+          id: 'ai_assistant',
+          title: 'Asistente IA Predictivo',
+          onHide: () => _removeWidget(
+            'ai_assistant',
+            'Asistente IA Predictivo',
+          ),
+          child: const DashboardAiAssistantCard(),
+        ),
+      if (_visibleWidgets.contains('expiring_batches') &&
+          state.criticalBatches.isNotEmpty)
+        _ModularCardWrapper(
+          id: 'expiring_batches',
+          title: 'Lotes Críticos por Vencer',
+          onHide: () => _removeWidget(
+            'expiring_batches',
+            'Lotes Críticos por Vencer',
+          ),
+          child: ExpiringBatchesCard(batches: state.criticalBatches),
+        ),
+    ];
+
+    if (leftWidgets.isEmpty && rightWidgets.isEmpty) {
+      return _buildEmptyWidgetsPlaceholder();
+    }
+
+    if (leftWidgets.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: _withSpacers(rightWidgets, 20),
+      );
+    }
+
+    if (rightWidgets.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: _withSpacers(leftWidgets, 20),
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 7,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: _withSpacers(leftWidgets, 20),
+          ),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          flex: 5,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: _withSpacers(rightWidgets, 20),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _withSpacers(List<Widget> list, double spacing) {
+    if (list.isEmpty) return [];
+    final res = <Widget>[];
+    for (int i = 0; i < list.length; i++) {
+      res.add(list[i]);
+      if (i < list.length - 1) {
+        res.add(SizedBox(height: spacing));
+      }
+    }
+    return res;
+  }
+
+  Widget _buildEmptyWidgetsPlaceholder() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(
+                Icons.dashboard_customize_outlined,
+                size: 28,
+                color: Color(0xFF2563EB),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Lienzo de Dashboard Vacío',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Has ocultado los componentes del lienzo. Personaliza tu vista añadiendo widgets clave.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: _openAddWidgetSheet,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
+              ),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text(
+                'Añadir Widgets (Atajo: W)',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -787,45 +1146,14 @@ class _DashboardScreenContent extends StatelessWidget {
                 ],
                 _buildExecutiveSubheader(context, state, isDesktop: false),
                 const SizedBox(height: 16),
-                _buildTabletKpiGrid(context, state),
-                const SizedBox(height: 20),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 6,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          DashboardSplineChartCard(
-                            sales: state.sales,
-                            inventory: state.inventory,
-                          ),
-                          const SizedBox(height: 20),
-                          DashboardBestSellersTable(
-                            criticalBatches: state.criticalBatches,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 5,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const DashboardWeeklyActivityCard(),
-                          const SizedBox(height: 16),
-                          const _DashboardAdminGoalCard(),
-                          if (state.criticalBatches.isNotEmpty) ...[
-                            const SizedBox(height: 16),
-                            ExpiringBatchesCard(batches: state.criticalBatches),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                if (_visibleWidgets.contains('kpi_strip')) ...[
+                  _buildTabletKpiGrid(context, state),
+                  const SizedBox(height: 20),
+                ],
+                if (!_hasAnyBodyWidgets(state))
+                  _buildEmptyWidgetsPlaceholder()
+                else
+                  _buildDesktopBentoGrid(context, state),
               ],
             ),
           ),
@@ -838,51 +1166,118 @@ class _DashboardScreenContent extends StatelessWidget {
   // MOBILE: APPLE HIG / IOS PREMIUM (THUMB-ZONE FIRST + FLUID SCROLL)
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildMobileLayout(BuildContext context, DashboardLoaded state) {
+    final mobileWidgets = <Widget>[
+      if (state.inventory.lowStockProducts > 0 ||
+          state.criticalBatches.isNotEmpty) ...[
+        _HealthSummaryBar(
+          lowStockCount: state.inventory.lowStockProducts,
+          criticalBatchesCount: state.criticalBatches.length,
+        ),
+      ],
+      _buildExecutiveSubheader(context, state, isDesktop: false),
+      if (_visibleWidgets.contains('kpi_strip'))
+        _buildTabletKpiGrid(context, state),
+      if (_visibleWidgets.contains('profit_spline'))
+        _ModularCardWrapper(
+          id: 'profit_spline',
+          title: 'Curva de Utilidad y Ventas',
+          onHide: () => _removeWidget(
+            'profit_spline',
+            'Curva de Utilidad y Ventas',
+          ),
+          child: DashboardSplineChartCard(
+            sales: state.sales,
+            inventory: state.inventory,
+          ),
+        ),
+      if (_visibleWidgets.contains('customer_segments') &&
+          state.topCustomers.isNotEmpty)
+        _ModularCardWrapper(
+          id: 'customer_segments',
+          title: 'Segmentación de Clientes',
+          onHide: () => _removeWidget(
+            'customer_segments',
+            'Segmentación de Clientes',
+          ),
+          child: TopCustomersCard(
+            customers: state.topCustomers,
+            displayMode: TopCustomersDisplayMode.mobile,
+          ),
+        ),
+      if (_visibleWidgets.contains('weekly_activity'))
+        _ModularCardWrapper(
+          id: 'weekly_activity',
+          title: 'Días de Mayor Actividad',
+          onHide: () => _removeWidget(
+            'weekly_activity',
+            'Días de Mayor Actividad',
+          ),
+          child: const DashboardWeeklyActivityCard(),
+        ),
+      if (_visibleWidgets.contains('radial_goal'))
+        _ModularCardWrapper(
+          id: 'radial_goal',
+          title: 'Meta Financiera de Ahorro',
+          onHide: () => _removeWidget(
+            'radial_goal',
+            'Meta Financiera de Ahorro',
+          ),
+          child: const _DashboardAdminGoalCard(),
+        ),
+      if (_visibleWidgets.contains('ai_assistant'))
+        _ModularCardWrapper(
+          id: 'ai_assistant',
+          title: 'Asistente IA Predictivo',
+          onHide: () => _removeWidget(
+            'ai_assistant',
+            'Asistente IA Predictivo',
+          ),
+          child: const DashboardAiAssistantCard(),
+        ),
+      if (_visibleWidgets.contains('best_sellers'))
+        _ModularCardWrapper(
+          id: 'best_sellers',
+          title: 'Productos de Mayor Rotación',
+          onHide: () => _removeWidget(
+            'best_sellers',
+            'Productos de Mayor Rotación',
+          ),
+          child: DashboardBestSellersTable(
+            criticalBatches: state.criticalBatches,
+          ),
+        ),
+      if (_visibleWidgets.contains('expiring_batches') &&
+          state.criticalBatches.isNotEmpty)
+        _ModularCardWrapper(
+          id: 'expiring_batches',
+          title: 'Lotes Críticos por Vencer',
+          onHide: () => _removeWidget(
+            'expiring_batches',
+            'Lotes Críticos por Vencer',
+          ),
+          child: ExpiringBatchesCard(batches: state.criticalBatches),
+        ),
+      if (!_hasAnyWidgetsVisible(state))
+        _buildEmptyWidgetsPlaceholder(),
+    ];
+
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
           sliver: SliverList(
-            delegate: SliverChildListDelegate([
-              if (state.inventory.lowStockProducts > 0 ||
-                  state.criticalBatches.isNotEmpty) ...[
-                _HealthSummaryBar(
-                  lowStockCount: state.inventory.lowStockProducts,
-                  criticalBatchesCount: state.criticalBatches.length,
-                ),
-                const SizedBox(height: 14),
-              ],
-              _buildExecutiveSubheader(context, state, isDesktop: false),
-              const SizedBox(height: 16),
-              _buildTabletKpiGrid(context, state),
-              const SizedBox(height: 16),
-              DashboardSplineChartCard(
-                sales: state.sales,
-                inventory: state.inventory,
-              ),
-              const SizedBox(height: 16),
-              const _DashboardAdminGoalCard(),
-              const SizedBox(height: 16),
-              const DashboardWeeklyActivityCard(),
-              const SizedBox(height: 16),
-              DashboardBestSellersTable(criticalBatches: state.criticalBatches),
-              if (state.criticalBatches.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                ExpiringBatchesCard(batches: state.criticalBatches),
-              ],
-              if (state.topCustomers.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                TopCustomersCard(
-                  customers: state.topCustomers,
-                  displayMode: TopCustomersDisplayMode.mobile,
-                ),
-              ],
-            ]),
+            delegate: SliverChildListDelegate(
+              _withSpacers(mobileWidgets, 16),
+            ),
           ),
         ),
       ],
     );
+  }
+
+  bool _hasAnyWidgetsVisible(DashboardLoaded state) {
+    return _visibleWidgets.contains('kpi_strip') || _hasAnyBodyWidgets(state);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -961,6 +1356,88 @@ class _DashboardScreenContent extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Envoltorio modular para tarjetas del Dashboard con menú contextual de 3 puntos (Shopeers Style)
+class _ModularCardWrapper extends StatelessWidget {
+  final String id;
+  final String title;
+  final Widget child;
+  final VoidCallback onHide;
+
+  const _ModularCardWrapper({
+    required this.id,
+    required this.title,
+    required this.child,
+    required this.onHide,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        child,
+        Positioned(
+          top: 10,
+          right: 10,
+          child: Material(
+            color: Colors.transparent,
+            child: PopupMenuButton<String>(
+              tooltip: 'Opciones de $title',
+              icon: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.more_horiz_rounded,
+                  size: 16,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 150),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 3,
+              onSelected: (val) {
+                if (val == 'hide') {
+                  onHide();
+                }
+              },
+              itemBuilder: (ctx) => [
+                PopupMenuItem(
+                  value: 'hide',
+                  height: 36,
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.visibility_off_outlined,
+                        size: 15,
+                        color: Color(0xFFE11D48),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Ocultar widget',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFE11D48),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1049,18 +1526,14 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
         ),
         child: const Row(
           children: [
-            Icon(
-              Icons.check_circle_rounded,
-              color: AppColors.success,
-              size: 20,
-            ),
-            SizedBox(width: 12),
+            Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
+            SizedBox(width: 10),
             Text(
-              'Todo bajo control. No hay alertas de stock ni vencimiento para hoy.',
+              'Inventario y Lotes Saludables · Cero Alertas Críticas',
               style: TextStyle(
-                color: AppColors.slate,
-                fontSize: 12.5,
+                color: AppColors.textPrimary,
                 fontWeight: FontWeight.w600,
+                fontSize: 13,
               ),
             ),
           ],
@@ -1068,103 +1541,232 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
       );
     }
 
-    void onReview() {
-      if (widget.lowStockCount > 0) {
-        context.go('/inventory?filter=low_stock');
-      } else if (widget.criticalBatchesCount > 0) {
-        context.go('/inventory?tab=batches&filter=critico');
-      } else {
-        context.go('/inventory');
-      }
-    }
+    final totalAlerts = widget.lowStockCount + widget.criticalBatchesCount;
 
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: AppColors.warning.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.25)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.error.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
       ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onReview,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
+      child: Row(
+        children: [
+          ScaleTransition(
+            scale: _scaleAnimation,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.warning,
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                RepaintBoundary(
-                  child: ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: Container(
-                      padding: const EdgeInsets.all(7),
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.warning_rounded,
-                        color: AppColors.error,
-                        size: 20,
-                      ),
-                    ),
+                Text(
+                  '$totalAlerts Alertas de Salud Operativa',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Atención requerida en almacén',
-                        style: TextStyle(
-                          color: AppColors.error,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        [
-                          if (widget.lowStockCount > 0)
-                            '${widget.lowStockCount} productos bajo stock',
-                          if (widget.criticalBatchesCount > 0)
-                            '${widget.criticalBatchesCount} lotes próximos a vencer',
-                        ].join(' · '),
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: onReview,
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.error,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    minimumSize: const Size(48, 48),
-                  ),
-                  icon: const Icon(Icons.chevron_right_rounded, size: 18),
-                  label: const Text(
-                    'Revisar',
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                Text(
+                  '${widget.lowStockCount} stock bajo · ${widget.criticalBatchesCount} lotes próximos a vencer',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
-        ),
+          TextButton.icon(
+            onPressed: () {
+              if (widget.criticalBatchesCount > 0) {
+                context.push('/inventory/batches');
+              } else {
+                context.push('/inventory');
+              }
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.warning,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              minimumSize: const Size(44, 38),
+            ),
+            icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+            label: const Text(
+              'Revisar',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ExpiringBatchesCard extends StatelessWidget {
+  final List<Map<String, dynamic>> batches;
+
+  const ExpiringBatchesCard({super.key, required this.batches});
+
+  @override
+  Widget build(BuildContext context) {
+    if (batches.isEmpty) return const SizedBox.shrink();
+
+    final urgent = batches.take(3).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+        boxShadow: AppColors.cardShadow(opacity: 0.05),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.timelapse_rounded,
+                  color: AppColors.error,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Lotes Críticos por Vencer (FEFO)',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    Text(
+                      '${batches.length} lote(s) requieren rotación prioritaria',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: urgent.length,
+            separatorBuilder:
+                (context, index) =>
+                    const Divider(height: 1, color: AppColors.border),
+            itemBuilder: (context, index) {
+              final b = urgent[index];
+              final days = b['days_until_expiration'] as int? ?? 0;
+              final code = b['batch_code'] as String? ?? 'N/A';
+              final prod = b['product_name'] as String? ?? 'Producto';
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            prod,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            'Lote: $code',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            days <= 7
+                                ? AppColors.error.withValues(alpha: 0.12)
+                                : AppColors.warning.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        days <= 0
+                            ? 'Vencido'
+                            : days == 1
+                            ? '1 día'
+                            : '$days días',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: days <= 7 ? AppColors.error : AppColors.warning,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          if (batches.length > 3) ...[
+            const SizedBox(height: 10),
+            Center(
+              child: TextButton(
+                onPressed: () => context.push('/inventory/batches'),
+                child: Text(
+                  'Ver todos los lotes (${batches.length})',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
